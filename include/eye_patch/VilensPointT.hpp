@@ -7,7 +7,7 @@ struct VilensPointT
     PCL_ADD_RGB
     PCL_ADD_NORMAL4D;
     float curvature;
-    PCL_MAKE_ALIGNED_OPERATOR_NEW;
+    PCL_MAKE_ALIGNED_OPERATOR_NEW
 
     VilensPointT()
     {

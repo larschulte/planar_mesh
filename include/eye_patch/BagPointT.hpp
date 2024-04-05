@@ -7,7 +7,7 @@ struct BagPointT
     float intensity;
     double timestamp;
     std::uint16_t ring;
-    PCL_MAKE_ALIGNED_OPERATOR_NEW;
+    PCL_MAKE_ALIGNED_OPERATOR_NEW
 
     BagPointT()
     {
