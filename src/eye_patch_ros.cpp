@@ -1,4 +1,53 @@
-#include "eye_patch/eye_patch_ros.hpp"
+#pragma once
+#define PCL_NO_PRECOMPILE // must define PCL_NO_PRECOMPILE before including any PCL templates when using custom point type
+
+#include "rclcpp/rclcpp.hpp"
+#include <tf2_ros/transform_listener.h>
+// #include "eye_patch/eye_patch_algo.hpp"
+
+#include "eye_patch/VilensPointT.hpp"
+#include "eye_patch/EyePointT.hpp"
+#include "eye_patch/BagPointT.hpp"
+
+#include <pcl_conversions/pcl_conversions.h>
+#include <pcl/common/transforms.h>
+// #include <eigen_conversions/eigen_msg.h>
+#include <Eigen/Geometry>
+#include <iostream>
+
+#include "matplotlibcpp.h"
+
+namespace plt = matplotlibcpp;
+
+namespace eye_patch
+{
+    class EyePatchRos
+    {
+    public:
+        EyePatchRos(ros::NodeHandle nh);
+        ~EyePatchRos();
+
+    private:
+        void callback(const sensor_msgs::PointCloud2::ConstPtr &callback_pointcloud_msg_constptr);
+        void publish(const pcl::PointCloud<EyePointT>::Ptr input_pointcloud_ptr, ros::Time stamp, std::string frame_id);
+
+        // node handle for input and output
+        ros::NodeHandle nh_;
+
+        // input
+        tf2_ros::Buffer tfBuffer_;
+        tf2_ros::TransformListener tfListener_;
+        ros::Subscriber sub_vilens_pointcloud_;
+        
+
+        // // algorithm
+        // std::unique_ptr<EyePatchAlgo> algo_;
+
+        // output
+        ros::Publisher pub_pointcloud_;
+    };
+}
+
 
 using namespace eye_patch;
 
@@ -26,19 +75,19 @@ void EyePatchRos::callback(const sensor_msgs::PointCloud2::ConstPtr &callback_po
     pcl::PointCloud<BagPointT> callback_pointcloud;
     pcl::fromROSMsg(*callback_pointcloud_msg_constptr, callback_pointcloud);
     
-    // transform
-    std::string source = header.frame_id;
-    std::string target = "map";
-    ros::Time time_stamp = header.stamp;
-    if (!tfBuffer_.canTransform(target, source, time_stamp))
-    {
-        return;
-    }
-    geometry_msgs::TransformStamped tf_lidar2world_msg = tfBuffer_.lookupTransform(target, source, time_stamp);
+    // // transform
+    // std::string source = header.frame_id;
+    // std::string target = "map";
+    // ros::Time time_stamp = header.stamp;
+    // if (!tfBuffer_.canTransform(target, source, time_stamp))
+    // {
+    //     return;
+    // }
+    // geometry_msgs::TransformStamped tf_lidar2world_msg = tfBuffer_.lookupTransform(target, source, time_stamp);
     
-    // convert to eigen transformation matrix
-    Eigen::Isometry3d tf_lidar2map_eigen_d;
-    tf::transformMsgToEigen(tf_lidar2world_msg.transform, tf_lidar2map_eigen_d);
+    // // convert to eigen transformation matrix
+    // Eigen::Isometry3d tf_lidar2map_eigen_d;
+    // tf::transformMsgToEigen(tf_lidar2world_msg.transform, tf_lidar2map_eigen_d);
     
     // // transform pointcloud to global
     // pcl::PointCloud<VilensPointT> global_pointcloud;
@@ -150,3 +199,18 @@ void EyePatchRos::callback(const sensor_msgs::PointCloud2::ConstPtr &callback_po
 //     msg.header.frame_id = frame_id;
 //     pub_pointcloud_.publish(msg);
 // }
+
+
+int main(int argc, char **argv)
+{
+    // node
+    rclcpp::init(argc, argv);
+    auto nh = rclcpp::Node::make_shared("eye_patch_ros_node");
+
+    // start object
+    eye_patch::EyePatchRos eye_patch_ros_object(nh);
+
+    // keep node running
+    ros::spin();
+    return 0;
+}
