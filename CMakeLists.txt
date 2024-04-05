@@ -1,37 +1,46 @@
-cmake_minimum_required(VERSION 3.0.2)
+cmake_minimum_required(VERSION 3.8)
 project(eye_patch)
 
-## Find catkin macros and libraries
-find_package(catkin REQUIRED COMPONENTS
-  eigen_conversions
-  pcl_conversions
-  roscpp
-  rospy
-  std_msgs
-  tf2_ros
-  tf_conversions
-)
+list(APPEND CMAKE_PREFIX_PATH "/usr/local/")
 
+# settings for complier version
+if(NOT CMAKE_CXX_STANDARD)
+  set(CMAKE_CXX_STANDARD 17)
+endif()
+if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  add_compile_options(-Wall -Wextra -Wpedantic)
+endif()
+
+# find dependencies
+find_package(ament_cmake REQUIRED)
+
+# pcl library
+find_package(PCL 1.14 REQUIRED)
+include_directories(${PCL_INCLUDE_DIRS})
+link_directories(${PCL_LIBRARY_DIRS})
+add_definitions(${PCL_DEFINITIONS})
+
+# delaunay triangulations
+#include <delaunator.hpp>
+find_package(delaunator REQUIRED)
+include_directories(${delaunator_INCLUDE_DIRS})
+
+# matplotlib-cpp
 find_package(PythonLibs REQUIRED)
 include_directories(${PYTHON_INCLUDE_DIRS})
 
-catkin_package(
-   INCLUDE_DIRS include
-   CATKIN_DEPENDS roscpp rospy std_msgs tf2_ros tf_conversions eigen_conversions pcl_conversions
-   DEPENDS
+# add executable
+add_executable(main src/main.cpp)
+target_link_libraries (main ${PCL_LIBRARIES} ${PYTHON_LIBRARIES} delaunator)
+target_include_directories(main
+  PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>)
+
+# install(TARGETS main DESTINATION lib/${PROJECT_NAME})
+install(TARGETS main
+  RUNTIME DESTINATION bin
 )
 
-# build
-include_directories(
-    include
-    ${catkin_INCLUDE_DIRS}
-)
-
-add_executable(         ${PROJECT_NAME}_node src/eye_patch_ros.cpp)
-target_link_libraries(  ${PROJECT_NAME}_node ${catkin_LIBRARIES} ${PYTHON_LIBRARIES})
-
-# # install scripts
-# catkin_install_python(PROGRAMS
-#   python/read_vilens_output.py
-#   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-# )
+# call ament build system
+ament_package()
