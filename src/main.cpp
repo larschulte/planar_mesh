@@ -161,7 +161,7 @@ delaunator::Delaunator obtain_triangulation(typename pcl::PointCloud<PointT>::Pt
 
 // add triangles to viewer
 template<typename PointT>
-void add_triangles_to_viewer(pcl::visualization::PCLVisualizer::Ptr viewer, int viewport, typename pcl::PointCloud<PointT>::Ptr cloud, typename pcl::PointCloud<PointT>::Ptr transformed_cloud, delaunator::Delaunator d)
+void viewer_add_triangles(pcl::visualization::PCLVisualizer::Ptr viewer, int viewport, typename pcl::PointCloud<PointT>::Ptr cloud, typename pcl::PointCloud<PointT>::Ptr transformed_cloud, delaunator::Delaunator d)
 {
     // plot triangles
     for(std::size_t i = 0; i < d.triangles.size(); i+=30) {
@@ -251,247 +251,275 @@ void plt_plot_triangles(delaunator::Delaunator d)
     }   
 }
 
+// point to triangle map for d2
+std::map<int, std::vector<int>> point_to_triangle_map(delaunator::Delaunator d)
+{
+    std::map<int, std::vector<int>> pt_map;
+    for(std::size_t i = 0; i < d.triangles.size(); i+=3) {
+        // indices
+        int i1 = d.triangles[i];
+        int i2 = d.triangles[i + 1];
+        int i3 = d.triangles[i + 2];
 
+        // store
+        pt_map[i1].push_back(i);
+        pt_map[i2].push_back(i);
+        pt_map[i3].push_back(i);
+    }
+
+    return pt_map;
+}
+
+// convert to 2d polar cloud
+template<typename PointT>
+pcl::PointCloud<pcl::PointXY>::Ptr obtain_2d_polar_cloud(typename pcl::PointCloud<PointT>::Ptr cloud)
+{
+    pcl::PointCloud<pcl::PointXY>::Ptr cloud_polar (new pcl::PointCloud<pcl::PointXY>);
+    cloud_polar->resize(cloud->size());
+    for (std::size_t i = 0; i < cloud->size(); i+=1)
+    {
+        pcl::PointXY point;
+
+        // compute azimuth and altitude
+        float x = cloud->points[i].x;
+        float y = cloud->points[i].y;
+        float z = cloud->points[i].z;
+        double r = sqrt(x * x + y * y + z * z);
+        double azimuth = atan2(y, x) * 180 / M_PI;
+        double altitude = asin(z / r) * 180 / M_PI;
+
+        point.x = azimuth;
+        point.y = altitude;
+        cloud_polar->points[i] = point;
+    }
+
+    return cloud_polar;
+}
+
+
+// convert to target frame using pose
+template<typename PointT>
+typename pcl::PointCloud<PointT>::Ptr transform_to_frame(typename pcl::PointCloud<PointT>::Ptr cloud, Eigen::Affine3d current_pose, Eigen::Affine3d target_pose)
+{
+    Eigen::Affine3d pose_current2target = target_pose.inverse() * current_pose; // the cloud will first be transformed to current pose, then to target pose
+    return transform_to_global<PointT>(cloud, pose_current2target);
+}
 
 using InputPointT = VilensPointT;
-
-// int main()
-// {
-//     // given index number, add pointcloud to display
-//     std::string pose_file = "/home/jiahao/datasets/osney power station/2024-03-26_13-47-27_rec004_osney_power_station/slam_pose_graph.slam";
-
-//     // std::string pcd_file1 = "/home/jiahao/datasets/osney power station/2024-03-26_13-47-27_rec004_osney_power_station/slam_clouds/cloud_1711460854_847538000.pcd";
-//     // pcl::PointCloud<InputPointT>::Ptr cloud1 = load_pointcloud<InputPointT>(pcd_file1);
-//     // Eigen::Affine3d pose_eigen1 = find_pose(pcd_file1, pose_file);
-//     // pcl::PointCloud<InputPointT>::Ptr transformed_cloud1 = transform_to_global<InputPointT>(cloud1, pose_eigen1);
-
-//     std::string pcd_file2 = "/home/jiahao/datasets/osney power station/2024-03-26_13-47-27_rec004_osney_power_station/slam_clouds/cloud_1711460869_333305000.pcd";
-//     pcl::PointCloud<InputPointT>::Ptr cloud2 = load_pointcloud<InputPointT>(pcd_file2);
-//     Eigen::Affine3d pose_eigen2 = find_pose(pcd_file2, pose_file);
-//     pcl::PointCloud<InputPointT>::Ptr transformed_cloud2 = transform_to_global<InputPointT>(cloud2, pose_eigen2);
-
-
-//     // update old points using triangles
-
-//     // // transform cloud1 to cloud2 frame 
-//     // Eigen::Affine3d pose1_to_pose2 = pose_eigen2.inverse() * pose_eigen1;
-//     // pcl::PointCloud<InputPointT>::Ptr cloud1_in_cloud2_frame (new pcl::PointCloud<InputPointT> ());
-//     // pcl::transformPointCloud (*cloud1, *cloud1_in_cloud2_frame, pose1_to_pose2);
-
-//     // triangulate cloud2
-//     delaunator::Delaunator d = obtain_triangulation<InputPointT>(cloud2);
-
-
-//     // ------------------------------------------------------ plt
-//     // plot black background
-//     plt_plot_black_background();
-//     // plot triangles
-//     plt_plot_triangles(d);
-//     // display
-//     plt::show();
-
-
-
-//     // // ------------------------------------------------------ pclvisuliazer    
-//     // // set up viewer
-//     // pcl::visualization::PCLVisualizer::Ptr viewer (new pcl::visualization::PCLVisualizer ("3D Viewer"));
-//     // viewer->getRenderWindow()->GlobalWarningDisplayOff(); // Add This Line
-    
-//     // // set up viewports
-//     // int port1(0);
-//     // viewer->createViewPort (0.0, 0.0, 0.5, 1.0, port1);
-//     // viewer->setBackgroundColor (0, 0, 0, port1);
-//     // int port2(0);
-//     // viewer->createViewPort (0.5, 0.0, 1.0, 1.0, port2);
-//     // viewer->setBackgroundColor (0, 0, 0, port2);
-
-//     // // set up coordinate system
-//     // viewer->initCameraParameters();
-//     // viewer->addCoordinateSystem(1);
-
-//     // // // add triangles to viewer
-//     // // add_triangles_to_viewer<InputPointT>(viewer, port1, cloud2, transformed_cloud2, d2);
-//     // // display pointclouds
-//     // add_to_viewer<InputPointT>(viewer, port1, transformed_cloud1, "transformed cloud", color_tuple(0, 255, 0), 1);
-//     // add_to_viewer<InputPointT>(viewer, port1, transformed_cloud2, "transformed cloud2", color_tuple(255, 0, 0), 1);
-//     // add_to_viewer<InputPointT>(viewer, port2, cloud1_in_cloud2_frame, "cloud1 in cloud2 frame", color_tuple(0, 255, 0), 1);
-//     // add_to_viewer<InputPointT>(viewer, port2, cloud2, "cloud2", color_tuple(255, 0, 0), 1);
-    
-//     // // display
-//     // viewer->spin();
-    
-//     return (0);
-// }
-
 
 int main()
 {
     // given index number, add pointcloud to display
     std::string pose_file = "/home/jiahao/datasets/osney power station/2024-03-26_13-47-27_rec004_osney_power_station/slam_pose_graph.slam";
-    std::string pcd_file2 = "/home/jiahao/datasets/osney power station/2024-03-26_13-47-27_rec004_osney_power_station/slam_clouds/cloud_1711460869_333305000.pcd";
+    std::string pcd_file1 = "/home/jiahao/datasets/osney power station/2024-03-26_13-47-27_rec004_osney_power_station/slam_clouds/cloud_1711460869_333305000.pcd";
+    std::string pcd_file2 = "/home/jiahao/datasets/osney power station/2024-03-26_13-47-27_rec004_osney_power_station/slam_clouds/cloud_1711460870_532271000.pcd";
+    pcl::PointCloud<InputPointT>::Ptr cloud1 = load_pointcloud<InputPointT>(pcd_file1);
     pcl::PointCloud<InputPointT>::Ptr cloud2 = load_pointcloud<InputPointT>(pcd_file2);
 
-    // triangulate cloud2
-    delaunator::Delaunator d = obtain_triangulation<InputPointT>(cloud2);
+    Eigen::Affine3d pose1 = find_pose(pcd_file1, pose_file);
+    Eigen::Affine3d pose2 = find_pose(pcd_file2, pose_file);
 
-    // update old points using triangles
+    // 3std 
+    double range_std = 0.01;
+    double range_std_x3 = range_std * 3;
 
 
-    // 2d cloud from coords
-    pcl::PointCloud<pcl::PointXY>::Ptr cloud2d (new pcl::PointCloud<pcl::PointXY>);
-    cloud2d->resize(d.coords.size() / 2);
-    for (std::size_t i = 0; i < d.coords.size(); i+=2)
+    // compute near cloud and far for cloud1
+    pcl::PointCloud<InputPointT>::Ptr cloud1_near (new pcl::PointCloud<InputPointT>);
+    pcl::PointCloud<InputPointT>::Ptr cloud1_far (new pcl::PointCloud<InputPointT>);
+    // resize
+    cloud1_near->resize(cloud1->size());
+    cloud1_far->resize(cloud1->size());
+    // vector to store eigen direction
+    std::vector<Eigen::Vector3f> directions1;
+    // compute azimuth and altitude coordinates
+    for (std::size_t i = 0; i < cloud1->size(); i++)
     {
-        pcl::PointXY point;
-        point.x = d.coords[i];
-        point.y = d.coords[i + 1];
-        cloud2d->points[i / 2] = point;
+        float x = cloud1->points[i].x;
+        float y = cloud1->points[i].y;
+        float z = cloud1->points[i].z;
+
+        Eigen::Vector3f point(x, y, z);
+        Eigen::Vector3f direction = point.normalized();
+        Eigen::Vector3f point_near = point - direction * range_std_x3;
+        Eigen::Vector3f point_far = point + direction * range_std_x3;
+
+        // store
+        cloud1_near->points[i].x = point_near(0);
+        cloud1_near->points[i].y = point_near(1);
+        cloud1_near->points[i].z = point_near(2);
+
+        cloud1_far->points[i].x = point_far(0);
+        cloud1_far->points[i].y = point_far(1);
+        cloud1_far->points[i].z = point_far(2);
+
+        directions1.push_back(direction);
     }
 
-    // kd tree search
+
+    // compute near cloud and far cloud for cloud 2
+    pcl::PointCloud<InputPointT>::Ptr cloud2_near (new pcl::PointCloud<InputPointT>);
+    pcl::PointCloud<InputPointT>::Ptr cloud2_far (new pcl::PointCloud<InputPointT>);
+    // resize
+    cloud2_near->resize(cloud2->size());
+    cloud2_far->resize(cloud2->size());
+    // vector to store eigen direction
+    std::vector<Eigen::Vector3f> directions2;
+    // compute azimuth and altitude coordinates
+    for (std::size_t i = 0; i < cloud2->size(); i++)
+    {
+        float x = cloud2->points[i].x;
+        float y = cloud2->points[i].y;
+        float z = cloud2->points[i].z;
+
+        Eigen::Vector3f point(x, y, z);
+        Eigen::Vector3f direction = point.normalized();
+        Eigen::Vector3f point_near = point - direction * range_std_x3;
+        Eigen::Vector3f point_far = point + direction * range_std_x3;
+
+        // store
+        cloud2_near->points[i].x = point_near(0);
+        cloud2_near->points[i].y = point_near(1);
+        cloud2_near->points[i].z = point_near(2);
+
+        cloud2_far->points[i].x = point_far(0);
+        cloud2_far->points[i].y = point_far(1);
+        cloud2_far->points[i].z = point_far(2);
+
+        directions2.push_back(direction);
+    }
+
+
+    // update cloud1 using cloud2
+
+    // triangulate cloud 2
+    delaunator::Delaunator d2 = obtain_triangulation<InputPointT>(cloud2);
+
+    // point to triangle map for d2
+    std::map<int, std::vector<int>> pt_map2 = point_to_triangle_map(d2);
+
+    
+    // prepare kd tree search for cloud 2
+    pcl::PointCloud<pcl::PointXY>::Ptr cloud2_polar = obtain_2d_polar_cloud<InputPointT>(cloud2);
     pcl::KdTreeFLANN<pcl::PointXY> kdtree;
-    kdtree.setInputCloud (cloud2d);
-    pcl::PointXY searchPoint;
-    searchPoint.x = 0;
-    searchPoint.y = 0;
+    kdtree.setInputCloud(cloud2_polar);
 
-    // K nearest neighbor search
-    int K = 1;
-    std::vector<int> pointIdxKNNSearch(K);
-    std::vector<float> pointKNNSquaredDistance(K);
-    if ( kdtree.nearestKSearch (searchPoint, K, pointIdxKNNSearch, pointKNNSquaredDistance) > 0 )
+    // convert cloud1_near to cloud2 coordinate
+    pcl::PointCloud<InputPointT>::Ptr cloud1_near_in_cloud2_frame = transform_to_frame<InputPointT>(cloud1_near, pose1, pose2);
+    pcl::PointCloud<InputPointT>::Ptr cloud1_far_cloud2_frame = transform_to_frame<InputPointT>(cloud1_far, pose1, pose2);
+
+
+    // cloud to store updated point
+    pcl::PointCloud<InputPointT>::Ptr cloud1_near_in_cloud2_frame_updated (new pcl::PointCloud<InputPointT>);
+    
+    // iterate through polar of cloud1_near_in_cloud2_frame
+    pcl::PointCloud<pcl::PointXY>::Ptr cloud1_in_cloud2_frame_polar = obtain_2d_polar_cloud<InputPointT>(cloud1_near_in_cloud2_frame);
+    for (std::size_t i = 0; i < cloud1_in_cloud2_frame_polar->size(); i++)
     {
-        for (std::size_t i = 0; i < pointIdxKNNSearch.size (); ++i)
-        std::cout << "    "  <<   cloud2d->points[pointIdxKNNSearch[i]].x 
-                    << " " << cloud2d->points[pointIdxKNNSearch[i]].y 
-                    << " (squared distance: " << pointKNNSquaredDistance[i] << ")" << std::endl;
-    }
+        InputPointT current_point = cloud1_near_in_cloud2_frame->points[i];
+        pcl::PointXY current_point_polar = cloud1_in_cloud2_frame_polar->points[i];
+        Eigen::Vector3f current_point_direction = directions1[i];
 
-    // list triangles that contains the search point
-    std::vector<int> triangles_containing_search_point;
-    for (std::size_t i = 0; i < d.triangles.size(); i+=3)
-    {
-        int i1 = d.triangles[i];
-        int i2 = d.triangles[i + 1];
-        int i3 = d.triangles[i + 2];
+        // search the closest point in cloud2 to current point in cloud 1 in polar coordinate
+        int K = 1;
+        pcl::Indices pointIdxKNNSearch(K);
+        std::vector<float> pointKNNSquaredDistance(K);
+        kdtree.nearestKSearch(current_point_polar, K, pointIdxKNNSearch, pointKNNSquaredDistance);
 
-        if (i1 == pointIdxKNNSearch[0] || i2 == pointIdxKNNSearch[0] || i3 == pointIdxKNNSearch[0])
+        // from the closest point, find all possible triangles that contains the current point
+        std::vector<int> triangles_containing_search_point = pt_map2[pointIdxKNNSearch[0]];
+
+        // find triangle that intersects with the search point in given direction
+        for (int triangle_index : triangles_containing_search_point)
         {
-            triangles_containing_search_point.push_back(i);
+            // indices
+            int i1 = d2.triangles[triangle_index];
+            int i2 = d2.triangles[triangle_index + 1];
+            int i3 = d2.triangles[triangle_index + 2];
+
+            // get local points
+            InputPointT p0, p1, p2;
+            p0 = cloud2_near->points[i1];
+            p1 = cloud2_near->points[i2];
+            p2 = cloud2_near->points[i3];
+
+            // compute point to plane intersection
+            Eigen::Vector3f normal = (p1.getVector3fMap() - p0.getVector3fMap()).cross(p2.getVector3fMap() - p0.getVector3fMap());
+            normal.normalize();
+            // make normal point towards 0, 0, 0 of cloud2
+            if (normal.dot(p0.getVector3fMap()) < 0)
+            {
+                normal = -normal;
+            }
+            double distance = (p0.getVector3fMap() - current_point).dot(normal) / current_point_direction.dot(normal);
+            Eigen::Vector3f intersection = current_point + current_point_direction * distance;
+
+            // compute barycentric coordinates of intersection
+            Eigen::Vector3f v0 = p1.getVector3fMap() - p0.getVector3fMap();
+            Eigen::Vector3f v1 = p2.getVector3fMap() - p0.getVector3fMap();
+            Eigen::Vector3f v2 = intersection - p0.getVector3fMap();
+            float dot00 = v0.dot(v0);
+            float dot01 = v0.dot(v1);
+            float dot02 = v0.dot(v2);
+            float dot11 = v1.dot(v1);
+            float dot12 = v1.dot(v2);
+            float invDenom = 1 / (dot00 * dot11 - dot01 * dot01);
+            float u = (dot11 * dot02 - dot01 * dot12) * invDenom;
+            float v = (dot00 * dot12 - dot01 * dot02) * invDenom;
+            // check if point is inside the triangle
+            bool inside = (u >= 0) && (v >= 0) && (u + v < 1);
+
+            if (inside)
+            {
+                // check if intersection is farther than the point
+                // update cloud1_near_in_cloud2_frame point if new triangle is farther than the point
+                if (distance > 0 && distance < 2 * range_std_x3)
+                {
+                    InputPointT updated_point;
+                    updated_point.x = intersection(0);
+                    updated_point.y = intersection(1);
+                    updated_point.z = intersection(2);
+                    cloud1_near_in_cloud2_frame_updated->push_back(updated_point);
+                }
+
+                break;
+            }
         }
     }
+    // the current update assume planar surface within each triangle, and does not filter the planar surface even if the triangle is very large
+    // this will be solved when introducing eye patch
 
-    // plot those triangles
-    for (std::size_t i = 0; i < triangles_containing_search_point.size(); i++)
-    {
-        int i1 = d.triangles[triangles_containing_search_point[i]];
-        int i2 = d.triangles[triangles_containing_search_point[i] + 1];
-        int i3 = d.triangles[triangles_containing_search_point[i] + 2];
+    // ------------------------------------------------------ pclvisuliazer    
+    // set up viewer
+    pcl::visualization::PCLVisualizer::Ptr viewer (new pcl::visualization::PCLVisualizer ("3D Viewer"));
+    viewer->getRenderWindow()->GlobalWarningDisplayOff(); // Add This Line
+    
+    // set up viewports
+    int port1(0);
+    viewer->createViewPort (0.0, 0.0, 0.5, 1.0, port1);
+    viewer->setBackgroundColor (0, 0, 0, port1);
+    int port2(0);
+    viewer->createViewPort (0.5, 0.0, 1.0, 1.0, port2);
+    viewer->setBackgroundColor (0, 0, 0, port2);
 
-        // plt - plot the triangle
-        float tx0 = d.coords[2 * i1];
-        float ty0 = d.coords[2 * i1 + 1];
-        float tx1 = d.coords[2 * i2];
-        float ty1 = d.coords[2 * i2 + 1];
-        float tx2 = d.coords[2 * i3];
-        float ty2 = d.coords[2 * i3 + 1];
-        plt::plot({tx0, tx1, tx2, tx0}, {ty0, ty1, ty2, ty0}, std::map<std::string, std::string>{{"linewidth", "1"}, {"color", "black"}});
-    }
+    // // set up viewports
+    // int port1(0);
+    // viewer->createViewPort (0.0, 0.0, 1, 1.0, port1);
+    // viewer->setBackgroundColor (0, 0, 0, port1);
+    
+    // set up coordinate system
+    viewer->initCameraParameters();
+    viewer->addCoordinateSystem(1);
 
-    // plt - plot points
-    std::vector<double> x_list, y_list;
-    for (std::size_t i = 0; i < cloud2d->size(); i++)
-    {
-        x_list.push_back((*cloud2d)[i].x);
-        y_list.push_back((*cloud2d)[i].y);
-    }
-    plt::scatter(x_list, y_list, 10);
+    // display pointclouds
+    // add_to_viewer<InputPointT>(viewer, port1, cloud1_near_in_cloud2_frame, "cloud1 near", color_tuple(255, 0, 0), 2); // r
+    add_to_viewer<InputPointT>(viewer, port1, cloud2_near, "cloud2 near", color_tuple(0, 255, 0), 2); // g
 
-    // plt - plot search point
-    std::vector<double> search_x_list = {searchPoint.x};
-    std::vector<double> search_y_list = {searchPoint.y};
-    plt::scatter(search_x_list, search_y_list, 10, std::map<std::string, std::string>{{"color", "red"}});
-
-    // plt - plot K nearest neighbors
-    std::vector<double> knn_x_list, knn_y_list;
-    for (std::size_t i = 0; i < pointIdxKNNSearch.size(); i++)
-    {
-        knn_x_list.push_back((*cloud2d)[pointIdxKNNSearch[i]].x);
-        knn_y_list.push_back((*cloud2d)[pointIdxKNNSearch[i]].y);
-    }
-    plt::scatter(knn_x_list, knn_y_list, 10, std::map<std::string, std::string>{{"color", "green"}});
-
-    plt::show();
+    // add_to_viewer<InputPointT>(viewer, port2, cloud1_near_in_cloud2_frame, "cloud1 near2", color_tuple(255, 0, 0), 2); // r
+    add_to_viewer<InputPointT>(viewer, port2, cloud1_near_in_cloud2_frame_updated, "cloud1 near updated", color_tuple(255, 255, 0), 2); // y
+    
+    // display
+    viewer->spin();
 
     return (0);
 }
-
-// int main()
-// {
-//     pcl::PointCloud<pcl::PointXY>::Ptr cloud (new pcl::PointCloud<pcl::PointXY>);
-
-//     // Generate pointcloud data
-//     cloud->width = 1000;
-//     cloud->height = 1;
-//     cloud->points.resize (cloud->width * cloud->height);
-
-//     for (std::size_t i = 0; i < cloud->size (); ++i)
-//     {
-//         (*cloud)[i].x = 1024.0f * rand () / (RAND_MAX + 1.0f);
-//         (*cloud)[i].y = 1024.0f * rand () / (RAND_MAX + 1.0f);
-//     }
-
-    
-
-
-//     pcl::KdTreeFLANN<pcl::PointXY> kdtree;
-//     kdtree.setInputCloud (cloud);
-//     pcl::PointXY searchPoint;
-//     searchPoint.x = 1024.0f * rand () / (RAND_MAX + 1.0f);
-//     searchPoint.y = 1024.0f * rand () / (RAND_MAX + 1.0f);
-
-//     // K nearest neighbor search
-
-//     int K = 10;
-
-//     std::vector<int> pointIdxKNNSearch(K);
-//     std::vector<float> pointKNNSquaredDistance(K);
-
-//     std::cout << "K nearest neighbor search at (" << searchPoint.x 
-//                 << " " << searchPoint.y 
-//                 << ") with K=" << K << std::endl;
-
-//     if ( kdtree.nearestKSearch (searchPoint, K, pointIdxKNNSearch, pointKNNSquaredDistance) > 0 )
-//     {
-//         for (std::size_t i = 0; i < pointIdxKNNSearch.size (); ++i)
-//         std::cout << "    "  <<   (*cloud)[ pointIdxKNNSearch[i] ].x 
-//                     << " " << (*cloud)[ pointIdxKNNSearch[i] ].y 
-//                     << " (squared distance: " << pointKNNSquaredDistance[i] << ")" << std::endl;
-//     }
-
-//     // plt - plot points
-//     std::vector<double> x_list, y_list;
-//     for (std::size_t i = 0; i < cloud->size(); i++)
-//     {
-//         x_list.push_back((*cloud)[i].x);
-//         y_list.push_back((*cloud)[i].y);
-//     }
-//     plt::scatter(x_list, y_list, 10);
-
-//     // plt - plot search point
-//     std::vector<double> search_x_list = {searchPoint.x};
-//     std::vector<double> search_y_list = {searchPoint.y};
-//     plt::scatter(search_x_list, search_y_list, 10, std::map<std::string, std::string>{{"color", "red"}});
-
-//     // plt - plot K nearest neighbors
-//     std::vector<double> knn_x_list, knn_y_list;
-//     for (std::size_t i = 0; i < pointIdxKNNSearch.size(); i++)
-//     {
-//         knn_x_list.push_back((*cloud)[pointIdxKNNSearch[i]].x);
-//         knn_y_list.push_back((*cloud)[pointIdxKNNSearch[i]].y);
-//     }
-//     plt::scatter(knn_x_list, knn_y_list, 10, std::map<std::string, std::string>{{"color", "green"}});
-
-//     plt::show();
-
-// }
