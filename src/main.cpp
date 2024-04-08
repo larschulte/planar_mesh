@@ -416,7 +416,7 @@ int main()
     pcl::PointCloud<pcl::PointXY>::Ptr cloud1_in_cloud2_frame_polar = obtain_2d_polar_cloud<InputPointT>(cloud1_near_in_cloud2_frame);
     for (std::size_t i = 0; i < cloud1_in_cloud2_frame_polar->size(); i++)
     {
-        InputPointT current_point = cloud1_near_in_cloud2_frame->points[i];
+        Eigen::Vector3f current_point = cloud1_near_in_cloud2_frame->points[i].getVector3fMap();
         pcl::PointXY current_point_polar = cloud1_in_cloud2_frame_polar->points[i];
         Eigen::Vector3f current_point_direction = directions1[i];
 
