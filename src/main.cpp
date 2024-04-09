@@ -16,7 +16,7 @@ namespace plt = matplotlibcpp;
 
 #include <pcl/common/transforms.h>
 #include <pcl/kdtree/kdtree_flann.h>
-
+#include <pcl/filters/extract_indices.h>
 
 // define color tuple
 typedef std::tuple<int, int, int> color_tuple;
@@ -445,9 +445,10 @@ typename pcl::PointCloud<PointT>::Ptr update_pointcloud(
 
     // cloud to store updated point
     typename pcl::PointCloud<PointT>::Ptr cloud1_in_cloud2_frame_updated (new pcl::PointCloud<PointT>);
-    // *cloud1_in_cloud2_frame_updated = *cloud1_in_cloud2_frame;
+    *cloud1_in_cloud2_frame_updated = *cloud1_in_cloud2_frame;
     
     // iterate through polar of cloud1_near_in_cloud2_frame
+    std::vector<int> used_triangles;
     pcl::PointCloud<pcl::PointXY>::Ptr cloud1_in_cloud2_frame_polar = obtain_2d_polar_cloud<PointT>(cloud1_in_cloud2_frame);
     for (std::size_t i = 0; i < cloud1_in_cloud2_frame_polar->size(); i++)
     {
@@ -464,6 +465,7 @@ typename pcl::PointCloud<PointT>::Ptr update_pointcloud(
         
         // 2. find intersections to those triangles
         std::vector<Eigen::Vector3f> intersections;
+        std::vector<int> triangles_that_have_intersection;
         for (int center_index : center_indices_searched)
         {
             // get triangle vertices xyz
@@ -479,20 +481,24 @@ typename pcl::PointCloud<PointT>::Ptr update_pointcloud(
             if (inside)
             {
                 intersections.push_back(intersection);
+                triangles_that_have_intersection.push_back(center_index);
             }
         }
 
         // 3. update the point if there is intersection
         // compute update distance
         std::vector<double> update_distances;
-        for (const auto &intersection : intersections)
+        std::vector<int> triangle_whose_intersection_is_within_range;
+        for (std::size_t intersection_index = 0; intersection_index < intersections.size(); intersection_index++)
         {
+            Eigen::Vector3f intersection = intersections[intersection_index];
             double distance = (intersection - current_point).dot(current_point_direction);
             if (type == NEAR)
             {
                 if (0 < distance && distance < range_std_x3)
                 {
                     update_distances.push_back(distance);
+                    triangle_whose_intersection_is_within_range.push_back(triangles_that_have_intersection[intersection_index]);
                 }
             }
             else if (type == FAR)
@@ -500,6 +506,7 @@ typename pcl::PointCloud<PointT>::Ptr update_pointcloud(
                 if (-range_std_x3 < distance && distance < 0)
                 {
                     update_distances.push_back(distance);
+                    triangle_whose_intersection_is_within_range.push_back(triangles_that_have_intersection[intersection_index]);
                 }
             }
         }
@@ -510,22 +517,55 @@ typename pcl::PointCloud<PointT>::Ptr update_pointcloud(
         // find min abs distance
         double min_distance = *std::min_element(update_distances.begin(), update_distances.end(), 
             [](double a, double b) {return std::abs(a) < std::abs(b);});
+        // find the triangle used
+        int min_distance_index = std::distance(update_distances.begin(), std::min_element(update_distances.begin(), update_distances.end(), 
+            [](double a, double b) {return std::abs(a) < std::abs(b);}));
+        int used_triangle = triangle_whose_intersection_is_within_range[min_distance_index];
         // compute closest intersection
         Eigen::Vector3f closest_intersection = current_point + current_point_direction * min_distance;
 
-        // // update point
-        // cloud1_in_cloud2_frame_updated->points[i].x = closest_intersection(0);
-        // cloud1_in_cloud2_frame_updated->points[i].y = closest_intersection(1);
-        // cloud1_in_cloud2_frame_updated->points[i].z = closest_intersection(2);
-
         // update point
-        PointT updated_point;
-        updated_point.x = closest_intersection(0);
-        updated_point.y = closest_intersection(1);
-        updated_point.z = closest_intersection(2);
-        cloud1_in_cloud2_frame_updated->push_back(updated_point);
+        cloud1_in_cloud2_frame_updated->points[i].x = closest_intersection(0);
+        cloud1_in_cloud2_frame_updated->points[i].y = closest_intersection(1);
+        cloud1_in_cloud2_frame_updated->points[i].z = closest_intersection(2);
+
+        // // update point
+        // PointT updated_point;
+        // updated_point.x = closest_intersection(0);
+        // updated_point.y = closest_intersection(1);
+        // updated_point.z = closest_intersection(2);
+        // cloud1_in_cloud2_frame_updated->push_back(updated_point);
+
+        // add used triangle to list
+        used_triangles.push_back(used_triangle);
     } 
 
+    // compute used point from used triangle using center_to_vertices_index_map
+    std::vector<int> used_points;
+    for (int used_triangle : used_triangles)
+    {
+        for (int vertex_index : center_to_vertices_index_map[used_triangle])
+        {
+            used_points.push_back(vertex_index);
+        }
+    }
+
+    // make copy of cloud2
+    typename pcl::PointCloud<PointT>::Ptr cloud2_copied (new pcl::PointCloud<PointT>);
+    *cloud2_copied = *cloud2;
+
+    // filter used points, pcl::filterindices
+    pcl::PointIndices::Ptr used_points_indices (new pcl::PointIndices);
+    used_points_indices->indices = used_points;
+    pcl::ExtractIndices<PointT> extract;
+    extract.setInputCloud(cloud2_copied);
+    extract.setIndices(used_points_indices);
+    extract.setNegative(true);
+    extract.filter(*cloud2_copied);
+
+    // add to cloud1_in_cloud2_frame_updated
+    *cloud1_in_cloud2_frame_updated += *cloud2_copied;
+    
     return cloud1_in_cloud2_frame_updated;
 }
 
@@ -560,7 +600,9 @@ int main()
     generate_near_far_cloud<InputPointT>(cloud2, range_std, cloud2_near, cloud2_far, cloud2_direction);
 
     pcl::PointCloud<InputPointT>::Ptr cloud1_near_in_cloud2_frame = transform_to_frame<InputPointT>(cloud1_near, pose1, pose2);
-    pcl::PointCloud<InputPointT>::Ptr cloud1_near_in_cloud2_frame_updated = update_pointcloud<InputPointT>(cloud1_near_in_cloud2_frame, cloud2_near, cloud1_direction, range_std, FAR);
+    pcl::PointCloud<InputPointT>::Ptr cloud1_far_in_cloud2_frame = transform_to_frame<InputPointT>(cloud1_far, pose1, pose2);
+    pcl::PointCloud<InputPointT>::Ptr cloud1_near_in_cloud2_frame_updated = update_pointcloud<InputPointT>(cloud1_near_in_cloud2_frame, cloud2_near, cloud1_direction, range_std, NEAR);
+    pcl::PointCloud<InputPointT>::Ptr cloud1_far_in_cloud2_frame_updated = update_pointcloud<InputPointT>(cloud1_far_in_cloud2_frame, cloud2_far, cloud1_direction, range_std, FAR);
 
     // the current update assume planar surface within each triangle, and does not filter the planar surface even if the triangle is very large
     // this will be solved when introducing eye patch
@@ -592,11 +634,13 @@ int main()
 
     // display pointclouds
     // add_to_viewer<InputPointT>(viewer, port1, cloud1_near_in_cloud2_frame, "cloud1 near", color_tuple(255, 0, 0), 2); // r
-    add_to_viewer<InputPointT>(viewer, port1, cloud1_near_in_cloud2_frame, "cloud1 near original", color_tuple(0, 255, 0), 2); // g
-    add_to_viewer<InputPointT>(viewer, port1, cloud1_near_in_cloud2_frame_updated, "cloud1 near updated", color_tuple(255, 0, 0), 2); // y
+    add_to_viewer<InputPointT>(viewer, port1, cloud1_near_in_cloud2_frame, "cloud1 near original", color_tuple(0, 255, 0), 2); // y
+    add_to_viewer<InputPointT>(viewer, port1, cloud2_near, "cloud2 near original", color_tuple(0, 255, 0), 2); // y
+    add_to_viewer<InputPointT>(viewer, port1, cloud1_far_in_cloud2_frame, "cloud1 far original", color_tuple(255, 0, 0), 2); // g
+    add_to_viewer<InputPointT>(viewer, port1, cloud2_far, "cloud2 far original", color_tuple(255, 0, 0), 2); // g
 
-    // add_to_viewer<InputPointT>(viewer, port2, cloud1_near_in_cloud2_frame, "cloud1 near2", color_tuple(255, 0, 0), 2); // r
-    add_to_viewer<InputPointT>(viewer, port2, cloud1_near_in_cloud2_frame_updated, "cloud1 near updated in port 2", color_tuple(255, 0, 0), 2); // y
+    add_to_viewer<InputPointT>(viewer, port2, cloud1_near_in_cloud2_frame_updated, "cloud1 near updated", color_tuple(0, 255, 0), 2); // y
+    add_to_viewer<InputPointT>(viewer, port2, cloud1_far_in_cloud2_frame_updated, "cloud1 far updated", color_tuple(255, 0, 0), 2); // g
     
     // display
     viewer->spin();
