@@ -476,12 +476,41 @@ int main()
 
     // triangulate cloud 2
     delaunator::Delaunator d2 = obtain_triangulation<InputPointT>(cloud2);
-    std::map<int, std::vector<int>> pt_map2 = point_to_triangle_map(d2);
+    
+    // compute triangle centers and center to vertex indices map
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud2_triangle_centers (new pcl::PointCloud<pcl::PointXYZ>);
+    cloud2_triangle_centers->resize(d2.triangles.size() / 3);
+
+    std::map<int, std::vector<int>> center_to_vertices_index_map;
+    for (std::size_t i = 0; i < d2.triangles.size(); i+=3)
+    {
+        // vertcies index
+        int v1_index = d2.triangles[i];
+        int v2_index = d2.triangles[i + 1];
+        int v3_index = d2.triangles[i + 2];
+
+        // vertices
+        Eigen::Vector3f v1 = cloud2_near->points[v1_index].getVector3fMap();
+        Eigen::Vector3f v2 = cloud2_near->points[v2_index].getVector3fMap();
+        Eigen::Vector3f v3 = cloud2_near->points[v3_index].getVector3fMap();
+
+        // center
+        Eigen::Vector3f center = (v1 + v2 + v3) / 3;
+
+        // store center
+        cloud2_triangle_centers->points[i / 3].x = center(0);
+        cloud2_triangle_centers->points[i / 3].y = center(1);
+        cloud2_triangle_centers->points[i / 3].z = center(2);
+
+        // store center to vertex indices map
+        center_to_vertices_index_map[i / 3].push_back(v1_index);
+        center_to_vertices_index_map[i / 3].push_back(v2_index);
+        center_to_vertices_index_map[i / 3].push_back(v3_index);
+    }
     
     // prepare kd tree search for cloud 2
-    pcl::PointCloud<pcl::PointXY>::Ptr cloud2_polar = obtain_2d_polar_cloud<InputPointT>(cloud2);
-    pcl::KdTreeFLANN<pcl::PointXY> cloud2_kdtree;
-    cloud2_kdtree.setInputCloud(cloud2_polar);
+    pcl::KdTreeFLANN<pcl::PointXY> cloud2_triangle_center_polar_kdtree;
+    cloud2_triangle_center_polar_kdtree.setInputCloud(obtain_2d_polar_cloud<pcl::PointXYZ>(cloud2_triangle_centers));
 
     // convert cloud1_near to cloud2 coordinate
     pcl::PointCloud<InputPointT>::Ptr cloud1_near_in_cloud2_frame = transform_to_frame<InputPointT>(cloud1_near, pose1, pose2);
@@ -502,41 +531,31 @@ int main()
         // find triangle that intersects with the search point in given direction
         // todo: make kdtree of triangle centers!
         
-        // 1. search the closest point in cloud2 to current point in cloud 1 in polar coordinate
-        // approximate search (the following three steps rely on closest point, which is incomplete, should expanc search area in future version)
-        int K = 1;
-        pcl::Indices pointIdxKNNSearch = get_k_nearest_neighbor(cloud2_kdtree, current_point_polar, K);
+        // 1. search closest triangle center
+        int K = 4;
+        pcl::Indices center_indices_searched = get_k_nearest_neighbor(cloud2_triangle_center_polar_kdtree, current_point_polar, K);
         
-        // 2. from the closest point, find all possible triangles that can contain the current point
-        // combined pt_map2[pointIdxKNNSearch[k]] to triangles_containing_search_point
-        std::vector<int> triangles_containing_search_point;
-        for (int k = 0; k < K; k++)
-        {
-            triangles_containing_search_point.insert(triangles_containing_search_point.end(), pt_map2[pointIdxKNNSearch[k]].begin(), pt_map2[pointIdxKNNSearch[k]].end());
-        }
-        
-        // 3. find point direction intersection with the set of possible triangles
+        // 2. find intersections to those triangles
         std::vector<Eigen::Vector3f> intersections;
-        for (int triangle_index : triangles_containing_search_point)
+        for (int center_index : center_indices_searched)
         {
             // get triangle vertices xyz
-            Eigen::Vector3f p0 = cloud2_near->points[d2.triangles[triangle_index]].getVector3fMap();
-            Eigen::Vector3f p1 = cloud2_near->points[d2.triangles[triangle_index + 1]].getVector3fMap();
-            Eigen::Vector3f p2 =  cloud2_near->points[d2.triangles[triangle_index + 2]].getVector3fMap();
+            Eigen::Vector3f v1 = cloud2_near->points[center_to_vertices_index_map[center_index][0]].getVector3fMap();
+            Eigen::Vector3f v2 = cloud2_near->points[center_to_vertices_index_map[center_index][1]].getVector3fMap();
+            Eigen::Vector3f v3 = cloud2_near->points[center_to_vertices_index_map[center_index][2]].getVector3fMap();
 
             // compute intersection
-            Eigen::Vector3f intersection = ray_triangle_intersection(current_point, current_point_direction, p0, p1, p2);
+            Eigen::Vector3f intersection = ray_triangle_intersection(current_point, current_point_direction, v1, v2, v3);
 
             // check if intersection is inside the triangle
-            bool inside = is_inside_triangle(p0, p1, p2, intersection);
+            bool inside = is_inside_triangle(v1, v2, v3, intersection);
             if (inside)
             {
                 intersections.push_back(intersection);
             }
         }
 
-        // 4. update the point if there is intersection
-        // skip if no intersection
+        // 3. update the point if there is intersection
         if (intersections.empty())
         {
             continue;
