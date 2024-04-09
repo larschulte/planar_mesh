@@ -397,9 +397,9 @@ pcl::Indices get_k_nearest_neighbor(pcl::KdTreeFLANN<PointT> kdtree, PointT poin
 template <typename PointT>
 void update_pointcloud(
     typename pcl::PointCloud<PointT>::Ptr old_cloud, 
-    std::vector<Eigen::Vector3f>& old_cloud_direction, 
+    std::vector<Eigen::Vector3f> old_cloud_direction, 
     typename pcl::PointCloud<PointT>::Ptr new_cloud, 
-    std::vector<Eigen::Vector3f>& new_cloud_direction, 
+    std::vector<int>& used_points,
     double range_std, 
     int type = NEAR
     )
@@ -542,33 +542,11 @@ void update_pointcloud(
     } 
 
     // compute used point from used triangle using center_to_vertices_index_map
-    std::vector<int> used_points;
     for (int used_triangle : used_triangles)
     {
         for (int vertex_index : center_to_vertices_index_map[used_triangle])
         {
             used_points.push_back(vertex_index);
-        }
-    }
-
-    // add unused point to old cloud
-    typename pcl::PointCloud<PointT>::Ptr new_cloud_copied (new pcl::PointCloud<PointT>);
-    *new_cloud_copied = *new_cloud;
-    pcl::PointIndices::Ptr used_points_indices (new pcl::PointIndices);
-    used_points_indices->indices = used_points;
-    pcl::ExtractIndices<PointT> extract;
-    extract.setInputCloud(new_cloud_copied);
-    extract.setIndices(used_points_indices);
-    extract.setNegative(true);
-    extract.filter(*new_cloud_copied);
-    *old_cloud += *new_cloud_copied;
-
-    // add unused point's direction to old cloud direction
-    for (std::size_t i = 0; i < new_cloud_direction.size(); i++)
-    {
-        if (std::find(used_points.begin(), used_points.end(), i) == used_points.end())
-        {
-            old_cloud_direction.push_back(new_cloud_direction[i]);
         }
     }
 }
@@ -578,7 +556,7 @@ using InputPointT = VilensPointT;
 
 int main()
 {
-    double range_std = 0.01;
+    double range_std = 0.0001;
 
 
     // given index number, add pointcloud to display
@@ -595,8 +573,7 @@ int main()
     // old cloud
     pcl::PointCloud<InputPointT>::Ptr old_cloud_near (new pcl::PointCloud<InputPointT>);
     pcl::PointCloud<InputPointT>::Ptr old_cloud_far (new pcl::PointCloud<InputPointT>);
-    std::vector<Eigen::Vector3f> old_cloud_near_direction;
-    std::vector<Eigen::Vector3f> old_cloud_far_direction;
+    std::vector<Eigen::Vector3f> old_cloud_direction;
 
     for (std::string pcd_file : pcd_file_list)
     {
@@ -612,8 +589,48 @@ int main()
         // update pointcloud
         pcl::PointCloud<InputPointT>::Ptr old_cloud_near_local = transform_to_frame<InputPointT>(old_cloud_near, Eigen::Isometry3d::Identity(), new_pose);
         pcl::PointCloud<InputPointT>::Ptr old_cloud_far_local = transform_to_frame<InputPointT>(old_cloud_far, Eigen::Isometry3d::Identity(), new_pose);
-        update_pointcloud<InputPointT>(old_cloud_near_local, old_cloud_near_direction, new_cloud_near, new_cloud_direction, range_std, NEAR);
-        update_pointcloud<InputPointT>(old_cloud_far_local, old_cloud_far_direction, new_cloud_far, new_cloud_direction, range_std, FAR);
+
+        std::vector<int> used_points;
+        update_pointcloud<InputPointT>(old_cloud_near_local, old_cloud_direction, new_cloud_near, used_points, range_std, NEAR);
+        update_pointcloud<InputPointT>(old_cloud_far_local, old_cloud_direction, new_cloud_far, used_points, range_std, FAR);
+
+        // unique used_points
+        std::sort(used_points.begin(), used_points.end());
+        used_points.erase(std::unique(used_points.begin(), used_points.end()), used_points.end());
+
+        // add unused point to old cloud
+        pcl::PointCloud<InputPointT>::Ptr new_cloud_near_copied (new pcl::PointCloud<InputPointT>);
+        pcl::PointCloud<InputPointT>::Ptr new_cloud_far_copied (new pcl::PointCloud<InputPointT>);
+
+        *new_cloud_near_copied = *new_cloud_near;
+        *new_cloud_far_copied = *new_cloud_far;
+
+        pcl::PointIndices::Ptr used_points_indices (new pcl::PointIndices);
+        used_points_indices->indices = used_points;
+
+        pcl::ExtractIndices<InputPointT> extract_near;
+        extract_near.setInputCloud(new_cloud_near_copied);
+        extract_near.setIndices(used_points_indices);
+        extract_near.setNegative(true);
+        extract_near.filter(*new_cloud_near_copied);
+        *old_cloud_near_local += *new_cloud_near_copied;
+        
+        pcl::ExtractIndices<InputPointT> extract_far;
+        extract_far.setInputCloud(new_cloud_far_copied);
+        extract_far.setIndices(used_points_indices);
+        extract_far.setNegative(true);
+        extract_far.filter(*new_cloud_far_copied);
+        *old_cloud_far_local += *new_cloud_far_copied;
+
+        // add unused point's direction to old cloud direction
+        for (std::size_t i = 0; i < new_cloud_direction.size(); i++)
+        {
+            if (std::find(used_points.begin(), used_points.end(), i) == used_points.end())
+            {
+                old_cloud_direction.push_back(new_cloud_direction[i]);
+            }
+        }
+
         pcl::PointCloud<InputPointT>::Ptr old_cloud_near_global = transform_to_frame<InputPointT>(old_cloud_near_local, new_pose, Eigen::Isometry3d::Identity());
         pcl::PointCloud<InputPointT>::Ptr old_cloud_far_global = transform_to_frame<InputPointT>(old_cloud_far_local, new_pose, Eigen::Isometry3d::Identity());
 
@@ -631,18 +648,18 @@ int main()
     pcl::visualization::PCLVisualizer::Ptr viewer (new pcl::visualization::PCLVisualizer ("3D Viewer"));
     viewer->getRenderWindow()->GlobalWarningDisplayOff(); // Add This Line
     
-    // // set up viewports
-    // int port1(0);
-    // viewer->createViewPort (0.0, 0.0, 0.5, 1.0, port1);
-    // viewer->setBackgroundColor (0, 0, 0, port1);
-    // int port2(0);
-    // viewer->createViewPort (0.5, 0.0, 1.0, 1.0, port2);
-    // viewer->setBackgroundColor (0, 0, 0, port2);
-
     // set up viewports
     int port1(0);
-    viewer->createViewPort (0.0, 0.0, 1, 1.0, port1);
+    viewer->createViewPort (0.0, 0.0, 0.5, 1.0, port1);
     viewer->setBackgroundColor (0, 0, 0, port1);
+    int port2(0);
+    viewer->createViewPort (0.5, 0.0, 1.0, 1.0, port2);
+    viewer->setBackgroundColor (0, 0, 0, port2);
+
+    // // set up viewports
+    // int port1(0);
+    // viewer->createViewPort (0.0, 0.0, 1, 1.0, port1);
+    // viewer->setBackgroundColor (0, 0, 0, port1);
     
     // set up coordinate system
     viewer->initCameraParameters();
@@ -650,6 +667,21 @@ int main()
 
     add_to_viewer<InputPointT>(viewer, port1, old_cloud_near, "oldcloud near updated", color_tuple(0, 255, 0), 2); // y
     add_to_viewer<InputPointT>(viewer, port1, old_cloud_far, "oldcloud far updated", color_tuple(255, 0, 0), 2); // g
+
+
+    // compute mean point from near and far for each index
+    pcl::PointCloud<InputPointT>::Ptr old_cloud_mean (new pcl::PointCloud<InputPointT>);
+    for (std::size_t i = 0; i < old_cloud_near->size(); i++)
+    {
+        InputPointT mean_point;
+        mean_point.x = (old_cloud_near->points[i].x + old_cloud_far->points[i].x) / 2;
+        mean_point.y = (old_cloud_near->points[i].y + old_cloud_far->points[i].y) / 2;
+        mean_point.z = (old_cloud_near->points[i].z + old_cloud_far->points[i].z) / 2;
+        old_cloud_mean->push_back(mean_point);
+    }
+
+    // add to viewer
+    add_to_viewer<InputPointT>(viewer, port2, old_cloud_mean, "oldcloud mean", color_tuple(0, 255, 0), 2); // b
     
     // display
     viewer->spin();
