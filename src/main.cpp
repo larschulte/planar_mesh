@@ -389,110 +389,41 @@ pcl::Indices get_k_nearest_neighbor(pcl::KdTreeFLANN<PointT> kdtree, PointT poin
     return nearest_neighbor;
 }
 
-// // nearest polar neighbor, local triangles, planar intersection
-// // approximate search (the following three steps rely on closest point, which is incomplete, should expanc search area in future version)
-// // in the future nearest k triangle planar search
-// template<typename PointT>
-// bool nearest_polar_neighbor_limited_triangles_planar_intersection(
-    
-//     Eigen::Vector3f current_point_xyz, 
-//     pcl::PointXY current_point_polar, 
-//     Eigen::Vector3f current_point_direction, 
-
-//     pcl::KdTreeFLANN<pcl::PointXY> cloud2_kdtree, 
-//     int search_number,
-//     typename pcl::PointCloud<PointT>::Ptr cloud2_near, 
-    
-//     std::map<int, std::vector<int>> pt_map2, 
-//     delaunator::Delaunator d2
-//     )
-// {
-//     // 1. search the closest point in cloud2 to current point in cloud 1 in polar coordinate
-//     pcl::Indices pointIdxKNNSearch(search_number);
-//     std::vector<float> pointKNNSquaredDistance(search_number);
-//     cloud2_kdtree.nearestKSearch(current_point_polar, search_number, pointIdxKNNSearch, pointKNNSquaredDistance);
-
-//     // 2. from the closest point, find all possible triangles that can contain the current point
-//     std::vector<int> triangles_containing_search_point = pt_map2[pointIdxKNNSearch[0]];
-
-//     // 3. for each possible triangle, check if the point and direction intersect with the triangle
-//     for (int triangle_index : triangles_containing_search_point)
-//     {
-//         // get triangle vertices
-//         Eigen::Vector3f p0, p1, p2;
-//         p0 = cloud2_near->points[d2.triangles[triangle_index]].getVector3fMap();
-//         p1 = cloud2_near->points[d2.triangles[triangle_index + 1]].getVector3fMap();
-//         p2 = cloud2_near->points[d2.triangles[triangle_index + 2]].getVector3fMap();
-
-//         // compute intersection
-//         Eigen::Vector3f intersection = ray_triangle_intersection(current_point_xyz, current_point_direction, p0, p1, p2);
-
-//         // check if intersection is inside the triangle
-//         bool inside = is_inside_triangle(p0, p1, p2, intersection);
-        
-//         if (inside)
-//         {
-//             return true;
-//         }
-//     }
-
-//     return false;
-
-// }
-
-using InputPointT = VilensPointT;
-
-
-int main()
+// compute updated pointcloud
+// define macros type NEAR and FAR
+#define NEAR 0
+#define FAR 1
+// function
+template <typename PointT>
+typename pcl::PointCloud<PointT>::Ptr update_pointcloud(
+    typename pcl::PointCloud<PointT>::Ptr cloud1_in_cloud2_frame, 
+    typename pcl::PointCloud<PointT>::Ptr cloud2, 
+    std::vector<Eigen::Vector3f> cloud1_direction, 
+    double range_std, 
+    int type = NEAR
+    )
 {
-    // given index number, add pointcloud to display
-    std::string pose_file = "/home/jiahao/datasets/osney power station/2024-03-26_13-47-27_rec004_osney_power_station/slam_pose_graph.slam";
-    std::string pcd_file1 = "/home/jiahao/datasets/osney power station/2024-03-26_13-47-27_rec004_osney_power_station/slam_clouds/cloud_1711460869_333305000.pcd";
-    std::string pcd_file2 = "/home/jiahao/datasets/osney power station/2024-03-26_13-47-27_rec004_osney_power_station/slam_clouds/cloud_1711460870_532271000.pcd";
-    pcl::PointCloud<InputPointT>::Ptr cloud1 = load_pointcloud<InputPointT>(pcd_file1);
-    pcl::PointCloud<InputPointT>::Ptr cloud2 = load_pointcloud<InputPointT>(pcd_file2);
-
-    Eigen::Affine3d pose1 = find_pose(pcd_file1, pose_file);
-    Eigen::Affine3d pose2 = find_pose(pcd_file2, pose_file);
-
-    // 3std 
-    double range_std = 0.01;
     double range_std_x3 = range_std * 3;
 
-    // compute near cloud and far for cloud1
-    pcl::PointCloud<InputPointT>::Ptr cloud1_near (new pcl::PointCloud<InputPointT>);
-    pcl::PointCloud<InputPointT>::Ptr cloud1_far (new pcl::PointCloud<InputPointT>);
-    std::vector<Eigen::Vector3f> cloud1_direction;
-    generate_near_far_cloud<InputPointT>(cloud1, range_std, cloud1_near, cloud1_far, cloud1_direction);
-    
-    // compute near cloud and far cloud for cloud 2
-    pcl::PointCloud<InputPointT>::Ptr cloud2_near (new pcl::PointCloud<InputPointT>);
-    pcl::PointCloud<InputPointT>::Ptr cloud2_far (new pcl::PointCloud<InputPointT>);
-    std::vector<Eigen::Vector3f> cloud2_direction;
-    generate_near_far_cloud<InputPointT>(cloud2, range_std, cloud2_near, cloud2_far, cloud2_direction);
-
-
-    // update cloud1 near using cloud2 near
-
     // triangulate cloud 2
-    delaunator::Delaunator d2 = obtain_triangulation<InputPointT>(cloud2);
+    delaunator::Delaunator d = obtain_triangulation<PointT>(cloud2);
     
     // compute triangle centers and center to vertex indices map
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud2_triangle_centers (new pcl::PointCloud<pcl::PointXYZ>);
-    cloud2_triangle_centers->resize(d2.triangles.size() / 3);
+    cloud2_triangle_centers->resize(d.triangles.size() / 3);
 
     std::map<int, std::vector<int>> center_to_vertices_index_map;
-    for (std::size_t i = 0; i < d2.triangles.size(); i+=3)
+    for (std::size_t i = 0; i < d.triangles.size(); i+=3)
     {
         // vertcies index
-        int v1_index = d2.triangles[i];
-        int v2_index = d2.triangles[i + 1];
-        int v3_index = d2.triangles[i + 2];
+        int v1_index = d.triangles[i];
+        int v2_index = d.triangles[i + 1];
+        int v3_index = d.triangles[i + 2];
 
         // vertices
-        Eigen::Vector3f v1 = cloud2_near->points[v1_index].getVector3fMap();
-        Eigen::Vector3f v2 = cloud2_near->points[v2_index].getVector3fMap();
-        Eigen::Vector3f v3 = cloud2_near->points[v3_index].getVector3fMap();
+        Eigen::Vector3f v1 = cloud2->points[v1_index].getVector3fMap();
+        Eigen::Vector3f v2 = cloud2->points[v2_index].getVector3fMap();
+        Eigen::Vector3f v3 = cloud2->points[v3_index].getVector3fMap();
 
         // center
         Eigen::Vector3f center = (v1 + v2 + v3) / 3;
@@ -512,19 +443,15 @@ int main()
     pcl::KdTreeFLANN<pcl::PointXY> cloud2_triangle_center_polar_kdtree;
     cloud2_triangle_center_polar_kdtree.setInputCloud(obtain_2d_polar_cloud<pcl::PointXYZ>(cloud2_triangle_centers));
 
-    // convert cloud1_near to cloud2 coordinate
-    pcl::PointCloud<InputPointT>::Ptr cloud1_near_in_cloud2_frame = transform_to_frame<InputPointT>(cloud1_near, pose1, pose2);
-    pcl::PointCloud<InputPointT>::Ptr cloud1_far_cloud2_frame = transform_to_frame<InputPointT>(cloud1_far, pose1, pose2);
-
     // cloud to store updated point
-    pcl::PointCloud<InputPointT>::Ptr cloud1_near_in_cloud2_frame_updated (new pcl::PointCloud<InputPointT>);
-    *cloud1_near_in_cloud2_frame_updated = *cloud1_near_in_cloud2_frame;
+    typename pcl::PointCloud<PointT>::Ptr cloud1_in_cloud2_frame_updated (new pcl::PointCloud<PointT>);
+    // *cloud1_in_cloud2_frame_updated = *cloud1_in_cloud2_frame;
     
     // iterate through polar of cloud1_near_in_cloud2_frame
-    pcl::PointCloud<pcl::PointXY>::Ptr cloud1_in_cloud2_frame_polar = obtain_2d_polar_cloud<InputPointT>(cloud1_near_in_cloud2_frame);
+    pcl::PointCloud<pcl::PointXY>::Ptr cloud1_in_cloud2_frame_polar = obtain_2d_polar_cloud<PointT>(cloud1_in_cloud2_frame);
     for (std::size_t i = 0; i < cloud1_in_cloud2_frame_polar->size(); i++)
     {
-        Eigen::Vector3f current_point = cloud1_near_in_cloud2_frame->points[i].getVector3fMap();
+        Eigen::Vector3f current_point = cloud1_in_cloud2_frame->points[i].getVector3fMap();
         pcl::PointXY current_point_polar = cloud1_in_cloud2_frame_polar->points[i];
         Eigen::Vector3f current_point_direction = cloud1_direction[i];
 
@@ -540,9 +467,9 @@ int main()
         for (int center_index : center_indices_searched)
         {
             // get triangle vertices xyz
-            Eigen::Vector3f v1 = cloud2_near->points[center_to_vertices_index_map[center_index][0]].getVector3fMap();
-            Eigen::Vector3f v2 = cloud2_near->points[center_to_vertices_index_map[center_index][1]].getVector3fMap();
-            Eigen::Vector3f v3 = cloud2_near->points[center_to_vertices_index_map[center_index][2]].getVector3fMap();
+            Eigen::Vector3f v1 = cloud2->points[center_to_vertices_index_map[center_index][0]].getVector3fMap();
+            Eigen::Vector3f v2 = cloud2->points[center_to_vertices_index_map[center_index][1]].getVector3fMap();
+            Eigen::Vector3f v3 = cloud2->points[center_to_vertices_index_map[center_index][2]].getVector3fMap();
 
             // compute intersection
             Eigen::Vector3f intersection = ray_triangle_intersection(current_point, current_point_direction, v1, v2, v3);
@@ -556,37 +483,87 @@ int main()
         }
 
         // 3. update the point if there is intersection
-        if (intersections.empty())
-        {
-            continue;
-        }
-        // find closest positive distance intersection
-        double min_distance = std::numeric_limits<double>::max();
-        Eigen::Vector3f closest_intersection;
+        // compute update distance
+        std::vector<double> update_distances;
         for (const auto &intersection : intersections)
         {
             double distance = (intersection - current_point).dot(current_point_direction);
-            if (distance > 0 && distance < min_distance)
+            if (type == NEAR)
             {
-                min_distance = distance;
-                closest_intersection = intersection;
+                if (0 < distance && distance < range_std_x3)
+                {
+                    update_distances.push_back(distance);
+                }
+            }
+            else if (type == FAR)
+            {
+                if (-range_std_x3 < distance && distance < 0)
+                {
+                    update_distances.push_back(distance);
+                }
             }
         }
-        // modify the point in cloud1_near_in_cloud2_frame_updated
-        if (min_distance < 2 * range_std_x3)
+        if (update_distances.empty())
         {
-            cloud1_near_in_cloud2_frame_updated->points[i].x = closest_intersection(0);
-            cloud1_near_in_cloud2_frame_updated->points[i].y = closest_intersection(1);
-            cloud1_near_in_cloud2_frame_updated->points[i].z = closest_intersection(2);
+            continue;
         }
-    }
+        // find min abs distance
+        double min_distance = *std::min_element(update_distances.begin(), update_distances.end(), 
+            [](double a, double b) {return std::abs(a) < std::abs(b);});
+        // compute closest intersection
+        Eigen::Vector3f closest_intersection = current_point + current_point_direction * min_distance;
+
+        // // update point
+        // cloud1_in_cloud2_frame_updated->points[i].x = closest_intersection(0);
+        // cloud1_in_cloud2_frame_updated->points[i].y = closest_intersection(1);
+        // cloud1_in_cloud2_frame_updated->points[i].z = closest_intersection(2);
+
+        // update point
+        PointT updated_point;
+        updated_point.x = closest_intersection(0);
+        updated_point.y = closest_intersection(1);
+        updated_point.z = closest_intersection(2);
+        cloud1_in_cloud2_frame_updated->push_back(updated_point);
+    } 
+
+    return cloud1_in_cloud2_frame_updated;
+}
+
+using InputPointT = VilensPointT;
+
+
+int main()
+{
+    // given index number, add pointcloud to display
+    std::string pose_file = "/home/jiahao/datasets/osney power station/2024-03-26_13-47-27_rec004_osney_power_station/slam_pose_graph.slam";
+    std::string pcd_file1 = "/home/jiahao/datasets/osney power station/2024-03-26_13-47-27_rec004_osney_power_station/slam_clouds/cloud_1711460869_333305000.pcd";
+    std::string pcd_file2 = "/home/jiahao/datasets/osney power station/2024-03-26_13-47-27_rec004_osney_power_station/slam_clouds/cloud_1711460870_532271000.pcd";
+    pcl::PointCloud<InputPointT>::Ptr cloud1 = load_pointcloud<InputPointT>(pcd_file1);
+    pcl::PointCloud<InputPointT>::Ptr cloud2 = load_pointcloud<InputPointT>(pcd_file2);
+
+    Eigen::Affine3d pose1 = find_pose(pcd_file1, pose_file);
+    Eigen::Affine3d pose2 = find_pose(pcd_file2, pose_file);
+
+    // 3std 
+    double range_std = 0.01;
+
+    // compute near cloud and far for cloud1
+    pcl::PointCloud<InputPointT>::Ptr cloud1_near (new pcl::PointCloud<InputPointT>);
+    pcl::PointCloud<InputPointT>::Ptr cloud1_far (new pcl::PointCloud<InputPointT>);
+    std::vector<Eigen::Vector3f> cloud1_direction;
+    generate_near_far_cloud<InputPointT>(cloud1, range_std, cloud1_near, cloud1_far, cloud1_direction);
+    
+    // compute near cloud and far cloud for cloud 2
+    pcl::PointCloud<InputPointT>::Ptr cloud2_near (new pcl::PointCloud<InputPointT>);
+    pcl::PointCloud<InputPointT>::Ptr cloud2_far (new pcl::PointCloud<InputPointT>);
+    std::vector<Eigen::Vector3f> cloud2_direction;
+    generate_near_far_cloud<InputPointT>(cloud2, range_std, cloud2_near, cloud2_far, cloud2_direction);
+
+    pcl::PointCloud<InputPointT>::Ptr cloud1_near_in_cloud2_frame = transform_to_frame<InputPointT>(cloud1_near, pose1, pose2);
+    pcl::PointCloud<InputPointT>::Ptr cloud1_near_in_cloud2_frame_updated = update_pointcloud<InputPointT>(cloud1_near_in_cloud2_frame, cloud2_near, cloud1_direction, range_std, FAR);
 
     // the current update assume planar surface within each triangle, and does not filter the planar surface even if the triangle is very large
     // this will be solved when introducing eye patch
-
-
-
-
 
 
 
