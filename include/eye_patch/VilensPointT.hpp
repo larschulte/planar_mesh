@@ -1,4 +1,4 @@
-#pragma once
+#define PCL_NO_PRECOMPILE
 #include <pcl/point_types.h> // for using macros PCL_ADD_
 
 struct VilensPointT
