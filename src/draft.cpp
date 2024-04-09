@@ -1,5 +1,39 @@
 #include "./main.cpp"
 
+// test for is_inside_triangle
+int main()
+{
+    Eigen::Vector3f p0(0, 0, 0);
+    Eigen::Vector3f p1(1, 0, 0);
+    Eigen::Vector3f p2(0.5, 1, 0);
+
+    // plot triangles given three points
+    std::vector<float> x_list = {p0(0), p1(0), p2(0), p0(0)};
+    std::vector<float> y_list = {p0(1), p1(1), p2(1), p0(1)};
+    plt::plot(x_list, y_list, std::map<std::string, std::string>{{"linewidth", "0.1"}, {"color", "black"}});
+
+    // scatter plot random points and color by if they are inside the triangle
+    std::vector<float> x_list_random;
+    std::vector<float> y_list_random;
+    std::vector<int> inside_list;
+    for (int i = 0; i < 1000; i++)
+    {
+        float x = (rand() % 100) / 100.0;
+        float y = (rand() % 100) / 100.0;
+        Eigen::Vector3f point(x, y, 0);
+        bool inside = is_inside_triangle(p0, p1, p2, point);
+        x_list_random.push_back(x);
+        y_list_random.push_back(y);
+        inside_list.push_back(inside);
+    }
+    // red if not inside, green if inside
+    plt::scatter_colored(x_list_random, y_list_random, inside_list, 1, std::map<std::string, std::string>{{"cmap", "viridis"}});
+    
+    plt::show();
+
+}
+
+
 int main()
 {
     // given index number, add pointcloud to display
