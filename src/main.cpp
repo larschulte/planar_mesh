@@ -344,7 +344,7 @@ Eigen::Vector3f ray_triangle_intersection(Eigen::Vector3f ray_origin, Eigen::Vec
 
 // generate near and far pointcloud and direction vector
 template<typename PointT>
-void generate_near_far_cloud(typename pcl::PointCloud<PointT>::Ptr cloud, double range_std, typename pcl::PointCloud<PointT>::Ptr cloud_near, typename pcl::PointCloud<PointT>::Ptr cloud_far, std::vector<Eigen::Vector3f>& directions)
+void compute_near_far_cloud(typename pcl::PointCloud<PointT>::Ptr cloud, double range_std, typename pcl::PointCloud<PointT>::Ptr cloud_near, typename pcl::PointCloud<PointT>::Ptr cloud_far, std::vector<Eigen::Vector3f>& directions)
 {
     // 3std
     double range_std_x3 = range_std * 3;
@@ -551,23 +551,68 @@ void update_pointcloud(
     }
 }
 
+// unique a vector
+template<typename T>
+void unique_vector(std::vector<T>& vec)
+{
+    std::sort(vec.begin(), vec.end());
+    vec.erase(std::unique(vec.begin(), vec.end()), vec.end());
+}
+
+
+// remove used points
+template<typename PointT>
+typename pcl::PointCloud<PointT>::Ptr remove_used_points(typename pcl::PointCloud<PointT>::Ptr cloud, std::vector<int> used_points)
+{
+    // convert into indices
+    pcl::PointIndices::Ptr used_points_indices (new pcl::PointIndices);
+    used_points_indices->indices = used_points;
+
+    // remove used points
+    pcl::ExtractIndices<PointT> extract;
+    extract.setInputCloud(cloud);
+    extract.setIndices(used_points_indices);
+    extract.setNegative(true);
+    typename pcl::PointCloud<PointT>::Ptr cloud_copied (new typename pcl::PointCloud<PointT>);
+    extract.filter(*cloud_copied);
+    
+    return cloud_copied;
+}
+
+// remove used direction
+std::vector<Eigen::Vector3f> remove_used_directions(std::vector<Eigen::Vector3f> directions, std::vector<int> used_points)
+{
+    std::vector<Eigen::Vector3f> directions_copied;
+    for (std::size_t i = 0; i < directions.size(); i++)
+    {
+        // if i not in used points
+        if (std::find(used_points.begin(), used_points.end(), i) == used_points.end())
+        {
+            directions_copied.push_back(directions[i]);
+        }
+    }
+    return directions_copied;
+}
+
 using InputPointT = VilensPointT;
 
 
 int main()
 {
-    double range_std = 0.01;
-
     // given index number, add pointcloud to display
     std::string pose_file = "/home/jiahao/datasets/osney power station/2024-03-26_13-47-27_rec004_osney_power_station/slam_pose_graph.slam";
 
     // pcd files
+    // need to test on broadstreet dataset
     std::vector<std::string> pcd_file_list;
     pcd_file_list.push_back("/home/jiahao/datasets/osney power station/2024-03-26_13-47-27_rec004_osney_power_station/slam_clouds/cloud_1711460869_333305000.pcd");
     pcd_file_list.push_back("/home/jiahao/datasets/osney power station/2024-03-26_13-47-27_rec004_osney_power_station/slam_clouds/cloud_1711460870_532271000.pcd");
     pcd_file_list.push_back("/home/jiahao/datasets/osney power station/2024-03-26_13-47-27_rec004_osney_power_station/slam_clouds/cloud_1711460871_630561000.pcd");
     pcd_file_list.push_back("/home/jiahao/datasets/osney power station/2024-03-26_13-47-27_rec004_osney_power_station/slam_clouds/cloud_1711460873_030014000.pcd");
     pcd_file_list.push_back("/home/jiahao/datasets/osney power station/2024-03-26_13-47-27_rec004_osney_power_station/slam_clouds/cloud_1711460876_026726000.pcd");
+
+    // algorithm parameters
+    double range_std = 0.01;
 
     // control cloud (for comparing with updated old cloud)
     pcl::PointCloud<InputPointT>::Ptr control_cloud (new pcl::PointCloud<InputPointT>);
@@ -579,63 +624,36 @@ int main()
 
     for (std::string pcd_file : pcd_file_list)
     {
+        // load cloud and pose
         pcl::PointCloud<InputPointT>::Ptr new_cloud = load_pointcloud<InputPointT>(pcd_file);
         Eigen::Affine3d new_pose = find_pose(pcd_file, pose_file);
 
         // add its global to control cloud
         *control_cloud += *transform_to_global<InputPointT>(new_cloud, new_pose);
 
-        // compute near cloud and far for cloud1
+        // compute near cloud and far for new cloud
         pcl::PointCloud<InputPointT>::Ptr new_cloud_near (new pcl::PointCloud<InputPointT>);
         pcl::PointCloud<InputPointT>::Ptr new_cloud_far (new pcl::PointCloud<InputPointT>);
         std::vector<Eigen::Vector3f> new_cloud_direction;
-        generate_near_far_cloud<InputPointT>(new_cloud, range_std, new_cloud_near, new_cloud_far, new_cloud_direction);
+        compute_near_far_cloud<InputPointT>(new_cloud, range_std, new_cloud_near, new_cloud_far, new_cloud_direction);
 
-        // update pointcloud
+        // transform to frame
         pcl::PointCloud<InputPointT>::Ptr old_cloud_near_local = transform_to_frame<InputPointT>(old_cloud_near, Eigen::Isometry3d::Identity(), new_pose);
         pcl::PointCloud<InputPointT>::Ptr old_cloud_far_local = transform_to_frame<InputPointT>(old_cloud_far, Eigen::Isometry3d::Identity(), new_pose);
 
+        // collect used point, update old cloud
         std::vector<int> used_points;
         update_pointcloud<InputPointT>(old_cloud_near_local, old_cloud_direction, new_cloud_near, used_points, range_std, NEAR);
         update_pointcloud<InputPointT>(old_cloud_far_local, old_cloud_direction, new_cloud_far, used_points, range_std, FAR);
-
-        // add unused point cloud to old cloud
-        // unique used_points
-        std::sort(used_points.begin(), used_points.end());
-        used_points.erase(std::unique(used_points.begin(), used_points.end()), used_points.end());
-
-        // convert into indices
-        pcl::PointIndices::Ptr used_points_indices (new pcl::PointIndices);
-        used_points_indices->indices = used_points;
-
-        // add unused near point
-        pcl::PointCloud<InputPointT>::Ptr new_cloud_near_copied (new pcl::PointCloud<InputPointT>);
-        *new_cloud_near_copied = *new_cloud_near;
-        pcl::ExtractIndices<InputPointT> extract_near;
-        extract_near.setInputCloud(new_cloud_near_copied);
-        extract_near.setIndices(used_points_indices);
-        extract_near.setNegative(true);
-        extract_near.filter(*new_cloud_near_copied);
-        *old_cloud_near_local += *new_cloud_near_copied;
-
-        // add unused far point
-        pcl::PointCloud<InputPointT>::Ptr new_cloud_far_copied (new pcl::PointCloud<InputPointT>);
-        *new_cloud_far_copied = *new_cloud_far;
-        pcl::ExtractIndices<InputPointT> extract_far;
-        extract_far.setInputCloud(new_cloud_far_copied);
-        extract_far.setIndices(used_points_indices);
-        extract_far.setNegative(true);
-        extract_far.filter(*new_cloud_far_copied);
-        *old_cloud_far_local += *new_cloud_far_copied;
-
-        // add unused point's direction to old cloud direction
-        for (std::size_t i = 0; i < new_cloud_direction.size(); i++)
-        {
-            if (std::find(used_points.begin(), used_points.end(), i) == used_points.end())
-            {
-                old_cloud_direction.push_back(new_cloud_direction[i]);
-            }
-        }
+        unique_vector<int>(used_points);
+        
+        // add ununsed points / directions to old cloud
+        pcl::PointCloud<InputPointT>::Ptr filtered_near_cloud = remove_used_points<InputPointT>(new_cloud_near, used_points);
+        pcl::PointCloud<InputPointT>::Ptr filtered_far_cloud = remove_used_points<InputPointT>(new_cloud_far, used_points);
+        std::vector<Eigen::Vector3f> filtered_directions = remove_used_directions(new_cloud_direction, used_points);
+        *old_cloud_near_local += *filtered_near_cloud;
+        *old_cloud_far_local += *filtered_far_cloud;
+        old_cloud_direction.insert(old_cloud_direction.end(), filtered_directions.begin(), filtered_directions.end());
 
         // transform back to global
         pcl::PointCloud<InputPointT>::Ptr old_cloud_near_global = transform_to_frame<InputPointT>(old_cloud_near_local, new_pose, Eigen::Isometry3d::Identity());
