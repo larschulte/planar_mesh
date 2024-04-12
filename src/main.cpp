@@ -600,16 +600,20 @@ using InputPointT = VilensPointT;
 int main()
 {
     // given index number, add pointcloud to display
-    std::string pose_file = "/home/jiahao/datasets/osney power station/2024-03-26_13-47-27_rec004_osney_power_station/slam_pose_graph.slam";
+    // std::string pose_file = "/home/jiahao/datasets/osney power station/2024-03-26_13-47-27_rec004_osney_power_station/slam_pose_graph.slam";
+    std::string pose_file = "/home/jiahao/datasets/bag2pcd_output/slam_poses/slam_poss_graph.slam";
 
     // pcd files
     // need to test on broadstreet dataset
     std::vector<std::string> pcd_file_list;
-    pcd_file_list.push_back("/home/jiahao/datasets/osney power station/2024-03-26_13-47-27_rec004_osney_power_station/slam_clouds/cloud_1711460869_333305000.pcd");
-    pcd_file_list.push_back("/home/jiahao/datasets/osney power station/2024-03-26_13-47-27_rec004_osney_power_station/slam_clouds/cloud_1711460870_532271000.pcd");
-    pcd_file_list.push_back("/home/jiahao/datasets/osney power station/2024-03-26_13-47-27_rec004_osney_power_station/slam_clouds/cloud_1711460871_630561000.pcd");
-    pcd_file_list.push_back("/home/jiahao/datasets/osney power station/2024-03-26_13-47-27_rec004_osney_power_station/slam_clouds/cloud_1711460873_030014000.pcd");
-    pcd_file_list.push_back("/home/jiahao/datasets/osney power station/2024-03-26_13-47-27_rec004_osney_power_station/slam_clouds/cloud_1711460876_026726000.pcd");
+    // pcd_file_list.push_back("/home/jiahao/datasets/osney power station/2024-03-26_13-47-27_rec004_osney_power_station/slam_clouds/cloud_1711460869_333305000.pcd");
+    // pcd_file_list.push_back("/home/jiahao/datasets/osney power station/2024-03-26_13-47-27_rec004_osney_power_station/slam_clouds/cloud_1711460870_532271000.pcd");
+    // pcd_file_list.push_back("/home/jiahao/datasets/osney power station/2024-03-26_13-47-27_rec004_osney_power_station/slam_clouds/cloud_1711460871_630561000.pcd");
+    // pcd_file_list.push_back("/home/jiahao/datasets/osney power station/2024-03-26_13-47-27_rec004_osney_power_station/slam_clouds/cloud_1711460873_030014000.pcd");
+    // pcd_file_list.push_back("/home/jiahao/datasets/osney power station/2024-03-26_13-47-27_rec004_osney_power_station/slam_clouds/cloud_1711460876_026726000.pcd");
+    pcd_file_list.push_back("/home/jiahao/datasets/bag2pcd_output/slam_clouds/cloud_1712763500_887906000.pcd");
+    pcd_file_list.push_back("/home/jiahao/datasets/bag2pcd_output/slam_clouds/cloud_1712763501_388037000.pcd");
+    pcd_file_list.push_back("/home/jiahao/datasets/bag2pcd_output/slam_clouds/cloud_1712763501_888041000.pcd");
 
     // algorithm parameters
     double range_std = 0.01;
