@@ -6,7 +6,6 @@
 struct VilensPointT
 {
     PCL_ADD_POINT4D;
-    PCL_ADD_RGB
     PCL_ADD_NORMAL4D;
     float curvature;
     PCL_MAKE_ALIGNED_OPERATOR_NEW
@@ -16,7 +15,6 @@ struct VilensPointT
         x = NAN;
         y = NAN;
         z = NAN;
-        rgb = 0;
         normal_x = NAN;
         normal_y = NAN;
         normal_z = NAN;
@@ -29,7 +27,6 @@ POINT_CLOUD_REGISTER_POINT_STRUCT(VilensPointT,
                                 (float, x, x)
                                 (float, y, y)
                                 (float, z, z)
-                                (std::uint32_t, rgb, rgb)
                                 (float, normal_x, normal_x)
                                 (float, normal_y, normal_y)
                                 (float, normal_z, normal_z)
