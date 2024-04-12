@@ -378,6 +378,25 @@ void compute_near_far_cloud(typename pcl::PointCloud<PointT>::Ptr cloud, double 
     }
 }
 
+// compute direction vector
+template<typename PointT>
+std::vector<Eigen::Vector3f> compute_point_directions(typename pcl::PointCloud<PointT>::Ptr cloud)
+{
+    // initialize
+    std::vector<Eigen::Vector3f> directions;
+    directions.resize(cloud->size());
+
+    // compute
+    for (std::size_t i = 0; i < cloud->size(); i++)
+    {
+        Eigen::Vector3f direction = cloud->points[i].getVector3fMap().normalized();
+        directions[i] = direction;
+    }
+
+    // return
+    return directions;
+}
+
 
 // get k nearest neighbor in tree
 template<typename PointT>
@@ -389,31 +408,15 @@ pcl::Indices get_k_nearest_neighbor(pcl::KdTreeFLANN<PointT> kdtree, PointT poin
     return nearest_neighbor;
 }
 
-// compute updated pointcloud
-// define macros type NEAR and FAR
-#define NEAR 0
-#define FAR 1
-// function
-template <typename PointT>
-void update_pointcloud(
-    typename pcl::PointCloud<PointT>::Ptr old_cloud, 
-    std::vector<Eigen::Vector3f> old_cloud_direction, 
-    typename pcl::PointCloud<PointT>::Ptr new_cloud, 
-    std::vector<int>& used_points,
-    double range_std, 
-    int type = NEAR
-    )
+// compute triangle center
+template<typename PointT>
+typename pcl::PointCloud<pcl::PointXYZ>::Ptr computer_triangle_center(typename pcl::PointCloud<PointT>::Ptr vertex_cloud, delaunator::Delaunator d)
 {
-    double range_std_x3 = range_std * 3;
+    // initialize
+    typename pcl::PointCloud<pcl::PointXYZ>::Ptr center_cloud (new typename pcl::PointCloud<pcl::PointXYZ>);
+    center_cloud->resize(d.triangles.size() / 3);
 
-    // triangulate cloud 2
-    delaunator::Delaunator d = obtain_triangulation<PointT>(new_cloud);
-    
-    // compute triangle centers and center to vertex indices map
-    pcl::PointCloud<pcl::PointXYZ>::Ptr new_cloud_triangle_centers (new pcl::PointCloud<pcl::PointXYZ>);
-    new_cloud_triangle_centers->resize(d.triangles.size() / 3);
-
-    std::map<int, std::vector<int>> center_to_vertices_index_map;
+    // compute triangle centers
     for (std::size_t i = 0; i < d.triangles.size(); i+=3)
     {
         // vertcies index
@@ -422,51 +425,93 @@ void update_pointcloud(
         int v3_index = d.triangles[i + 2];
 
         // vertices
-        Eigen::Vector3f v1 = new_cloud->points[v1_index].getVector3fMap();
-        Eigen::Vector3f v2 = new_cloud->points[v2_index].getVector3fMap();
-        Eigen::Vector3f v3 = new_cloud->points[v3_index].getVector3fMap();
+        Eigen::Vector3f v1 = vertex_cloud->points[v1_index].getVector3fMap();
+        Eigen::Vector3f v2 = vertex_cloud->points[v2_index].getVector3fMap();
+        Eigen::Vector3f v3 = vertex_cloud->points[v3_index].getVector3fMap();
 
         // center
         Eigen::Vector3f center = (v1 + v2 + v3) / 3;
 
         // store center
-        new_cloud_triangle_centers->points[i / 3].x = center(0);
-        new_cloud_triangle_centers->points[i / 3].y = center(1);
-        new_cloud_triangle_centers->points[i / 3].z = center(2);
+        center_cloud->points[i / 3].x = center(0);
+        center_cloud->points[i / 3].y = center(1);
+        center_cloud->points[i / 3].z = center(2);
+    }
+
+    // return
+    return center_cloud;
+}
+
+// compute triangle center to vertices index map
+// map[triangle_index in d] = [v1_index, v2_index, v3_index in vertex_cloud]
+std::map<int, std::vector<int>> compute_center_to_vertices_index_map(delaunator::Delaunator d)
+{
+    // initialize
+    std::map<int, std::vector<int>> map;
+    
+    // compute
+    for (std::size_t i = 0; i < d.triangles.size(); i+=3)
+    {
+        // vertcies index
+        int v1_index = d.triangles[i];
+        int v2_index = d.triangles[i + 1];
+        int v3_index = d.triangles[i + 2];
 
         // store center to vertex indices map
-        center_to_vertices_index_map[i / 3].push_back(v1_index);
-        center_to_vertices_index_map[i / 3].push_back(v2_index);
-        center_to_vertices_index_map[i / 3].push_back(v3_index);
+        map[i / 3].push_back(v1_index);
+        map[i / 3].push_back(v2_index);
+        map[i / 3].push_back(v3_index);
     }
-    
-    // prepare kd tree search for cloud 2
-    pcl::KdTreeFLANN<pcl::PointXY> new_cloud_triangle_center_polar_kdtree;
-    new_cloud_triangle_center_polar_kdtree.setInputCloud(obtain_2d_polar_cloud<pcl::PointXYZ>(new_cloud_triangle_centers));
 
-    // cloud to store updated point
-    typename pcl::PointCloud<PointT>::Ptr old_cloud_updated (new pcl::PointCloud<PointT>);
-    *old_cloud_updated = *old_cloud;
+    // return
+    return map;
+}
+
+// compute updated pointcloud
+// define macros type NEAR and FAR
+#define NEAR 0
+#define FAR 1
+// function
+template <typename PointT>
+void update_pointcloud(
+    typename pcl::PointCloud<PointT>::Ptr old_cloud, 
+    const std::vector<Eigen::Vector3f> old_cloud_direction, 
+    std::vector<float>& old_cloud_variance, 
+    const typename pcl::PointCloud<PointT>::Ptr new_cloud, 
+    std::vector<int>& used_points,
+    double range_std
+    )
+{
+    // triangulate new cloud
+    delaunator::Delaunator d = obtain_triangulation<PointT>(new_cloud);
     
-    // iterate through polar of cloud1_near_in_cloud2_frame
+    // compute triangle centers 
+    pcl::PointCloud<pcl::PointXYZ>::Ptr center_cloud = computer_triangle_center<PointT>(new_cloud, d);
+
+    // compute triangle center to vertices index map
+    std::map<int, std::vector<int>> center_to_vertices_index_map = compute_center_to_vertices_index_map(d);
+    
+    // prepare kd tree search
+    pcl::KdTreeFLANN<pcl::PointXY> new_cloud_triangle_center_polar_kdtree;
+    new_cloud_triangle_center_polar_kdtree.setInputCloud(obtain_2d_polar_cloud<pcl::PointXYZ>(center_cloud));
+    
+    // iterate through polar of old cloud
     std::vector<int> used_triangles;
     pcl::PointCloud<pcl::PointXY>::Ptr old_cloud_polar = obtain_2d_polar_cloud<PointT>(old_cloud);
     for (std::size_t i = 0; i < old_cloud_polar->size(); i++)
     {
+        // current point
         Eigen::Vector3f current_point = old_cloud->points[i].getVector3fMap();
         pcl::PointXY current_point_polar = old_cloud_polar->points[i];
         Eigen::Vector3f current_point_direction = old_cloud_direction[i];
-
-        // find triangle that intersects with the search point in given direction
-        // todo: make kdtree of triangle centers!
         
         // 1. search closest triangle center
         int K = 4;
         pcl::Indices center_indices_searched = get_k_nearest_neighbor(new_cloud_triangle_center_polar_kdtree, current_point_polar, K);
         
         // 2. find intersections to those triangles
-        std::vector<Eigen::Vector3f> intersections;
-        std::vector<int> triangles_that_have_intersection;
+        std::vector<int> all_intersected_triangle_indices;
+        std::vector<Eigen::Vector3f> all_intersections;
         for (int center_index : center_indices_searched)
         {
             // get triangle vertices xyz
@@ -481,67 +526,43 @@ void update_pointcloud(
             bool inside = is_inside_triangle(v1, v2, v3, intersection);
             if (inside)
             {
-                intersections.push_back(intersection);
-                triangles_that_have_intersection.push_back(center_index);
+                all_intersected_triangle_indices.push_back(center_index);
+                all_intersections.push_back(intersection);
             }
         }
+        bool no_intersections = all_intersections.size() == 0;
+        if (no_intersections) continue;
 
-        // 3. update the point if there is intersection
-        // compute update distance
-        std::vector<double> update_distances;
-        std::vector<int> triangle_whose_intersection_is_within_range;
-        for (std::size_t intersection_index = 0; intersection_index < intersections.size(); intersection_index++)
-        {
-            Eigen::Vector3f intersection = intersections[intersection_index];
-            double distance = (intersection - current_point).dot(current_point_direction);
-            if (type == NEAR)
-            {
-                if (0 < distance && distance < range_std_x3)
-                {
-                    update_distances.push_back(distance);
-                    triangle_whose_intersection_is_within_range.push_back(triangles_that_have_intersection[intersection_index]);
-                }
-            }
-            else if (type == FAR)
-            {
-                if (-range_std_x3 < distance && distance < 0)
-                {
-                    update_distances.push_back(distance);
-                    triangle_whose_intersection_is_within_range.push_back(triangles_that_have_intersection[intersection_index]);
-                }
-            }
-        }
-        if (update_distances.empty())
-        {
-            continue;
-        }
-        // find min abs distance
-        double min_distance = *std::min_element(update_distances.begin(), update_distances.end(), 
-            [](double a, double b) {return std::abs(a) < std::abs(b);});
-        // find the triangle used
-        int min_distance_index = std::distance(update_distances.begin(), std::min_element(update_distances.begin(), update_distances.end(), 
-            [](double a, double b) {return std::abs(a) < std::abs(b);}));
-        int used_triangle = triangle_whose_intersection_is_within_range[min_distance_index];
-        // compute closest intersection
-        Eigen::Vector3f closest_intersection = current_point + current_point_direction * min_distance;
+        // 3. find cloest intersection
+        auto iterator = std::min_element(all_intersections.begin(), all_intersections.end(),
+            [current_point](const Eigen::Vector3f& a, const Eigen::Vector3f& b) {return (a - current_point).norm() < (b - current_point).norm();});
+        int closest_intersected_triangle_index = all_intersected_triangle_indices[std::distance(all_intersections.begin(), iterator)];
+        Eigen::Vector3f closest_intersection = *iterator;
+        
+        // 4. compute posterior
+        Eigen::Vector3f prior_point = current_point;
+        float prior_variance = old_cloud_variance[i];
 
-        // update point
-        old_cloud->points[i].x = closest_intersection(0);
-        old_cloud->points[i].y = closest_intersection(1);
-        old_cloud->points[i].z = closest_intersection(2);
+        Eigen::Vector3f likelihood_point = closest_intersection;
+        float likelihood_variance = std::pow(range_std, 2);
 
-        // // update point
-        // PointT updated_point;
-        // updated_point.x = closest_intersection(0);
-        // updated_point.y = closest_intersection(1);
-        // updated_point.z = closest_intersection(2);
-        // cloud1_in_cloud2_frame_updated->push_back(updated_point);
+        Eigen::Vector3f posterior_point = (prior_point / prior_variance + likelihood_point / likelihood_variance) / (1 / prior_variance + 1 / likelihood_variance);
+        float posterior_variance = 1 / (1 / prior_variance + 1 / likelihood_variance);
 
-        // add used triangle to list
-        used_triangles.push_back(used_triangle);
-    } 
+        float update_threshold_distance = 3 * std::pow(prior_variance, 0.5) + 3 * std::pow(likelihood_variance, 0.5);
+        bool too_far = (prior_point - likelihood_point).norm() > update_threshold_distance;
+        if (too_far) continue;
 
-    // compute used point from used triangle using center_to_vertices_index_map
+
+        // 5. update old cloud
+        old_cloud->points[i].x = posterior_point(0);
+        old_cloud->points[i].y = posterior_point(1);
+        old_cloud->points[i].z = posterior_point(2);
+        old_cloud_variance[i] = posterior_variance;
+        used_triangles.push_back(closest_intersected_triangle_index); // record used triangles
+    }
+
+    // record used_points
     for (int used_triangle : used_triangles)
     {
         for (int vertex_index : center_to_vertices_index_map[used_triangle])
@@ -594,6 +615,21 @@ std::vector<Eigen::Vector3f> remove_used_directions(std::vector<Eigen::Vector3f>
     return directions_copied;
 }
 
+// remove used variance
+std::vector<float> remove_used_variance(std::vector<float> variances, std::vector<int> used_points)
+{
+    std::vector<float> variances_copied;
+    for (std::size_t i = 0; i < variances.size(); i++)
+    {
+        // if i not in used points
+        if (std::find(used_points.begin(), used_points.end(), i) == used_points.end())
+        {
+            variances_copied.push_back(variances[i]);
+        }
+    }
+    return variances_copied;
+}
+
 using InputPointT = VilensPointT;
 
 
@@ -622,9 +658,9 @@ int main()
     pcl::PointCloud<InputPointT>::Ptr control_cloud (new pcl::PointCloud<InputPointT>);
 
     // old cloud
-    pcl::PointCloud<InputPointT>::Ptr old_cloud_near (new pcl::PointCloud<InputPointT>);
-    pcl::PointCloud<InputPointT>::Ptr old_cloud_far (new pcl::PointCloud<InputPointT>);
+    pcl::PointCloud<InputPointT>::Ptr old_cloud (new pcl::PointCloud<InputPointT>);
     std::vector<Eigen::Vector3f> old_cloud_direction;
+    std::vector<float> old_cloud_variance;
 
     for (std::string pcd_file : pcd_file_list)
     {
@@ -636,36 +672,32 @@ int main()
         *control_cloud += *transform_to_global<InputPointT>(new_cloud, new_pose);
 
         // compute near cloud and far for new cloud
-        pcl::PointCloud<InputPointT>::Ptr new_cloud_near (new pcl::PointCloud<InputPointT>);
-        pcl::PointCloud<InputPointT>::Ptr new_cloud_far (new pcl::PointCloud<InputPointT>);
-        std::vector<Eigen::Vector3f> new_cloud_direction;
-        compute_near_far_cloud<InputPointT>(new_cloud, range_std, new_cloud_near, new_cloud_far, new_cloud_direction);
+        std::vector<Eigen::Vector3f> new_cloud_direction = compute_point_directions<InputPointT>(new_cloud);
+        std::vector<float> new_cloud_variance(new_cloud->size(), std::pow(range_std, 2));
 
-        // transform to frame
-        pcl::PointCloud<InputPointT>::Ptr old_cloud_near_local = transform_to_frame<InputPointT>(old_cloud_near, Eigen::Isometry3d::Identity(), new_pose);
-        pcl::PointCloud<InputPointT>::Ptr old_cloud_far_local = transform_to_frame<InputPointT>(old_cloud_far, Eigen::Isometry3d::Identity(), new_pose);
+        // transform old cloud to local frame
+        pcl::PointCloud<InputPointT>::Ptr old_cloud_local = transform_to_frame<InputPointT>(old_cloud, Eigen::Isometry3d::Identity(), new_pose);
 
         // collect used point, update old cloud
         std::vector<int> used_points;
-        update_pointcloud<InputPointT>(old_cloud_near_local, old_cloud_direction, new_cloud_near, used_points, range_std, NEAR);
-        update_pointcloud<InputPointT>(old_cloud_far_local, old_cloud_direction, new_cloud_far, used_points, range_std, FAR);
+        update_pointcloud<InputPointT>(old_cloud_local, old_cloud_direction, old_cloud_variance, new_cloud, used_points,range_std);
         unique_vector<int>(used_points);
         
         // add ununsed points / directions to old cloud
-        pcl::PointCloud<InputPointT>::Ptr filtered_near_cloud = remove_used_points<InputPointT>(new_cloud_near, used_points);
-        pcl::PointCloud<InputPointT>::Ptr filtered_far_cloud = remove_used_points<InputPointT>(new_cloud_far, used_points);
+        pcl::PointCloud<InputPointT>::Ptr filtered_new_cloud = remove_used_points<InputPointT>(new_cloud, used_points);
+        *old_cloud_local += *filtered_new_cloud;
+
         std::vector<Eigen::Vector3f> filtered_directions = remove_used_directions(new_cloud_direction, used_points);
-        *old_cloud_near_local += *filtered_near_cloud;
-        *old_cloud_far_local += *filtered_far_cloud;
         old_cloud_direction.insert(old_cloud_direction.end(), filtered_directions.begin(), filtered_directions.end());
 
-        // transform back to global
-        pcl::PointCloud<InputPointT>::Ptr old_cloud_near_global = transform_to_frame<InputPointT>(old_cloud_near_local, new_pose, Eigen::Isometry3d::Identity());
-        pcl::PointCloud<InputPointT>::Ptr old_cloud_far_global = transform_to_frame<InputPointT>(old_cloud_far_local, new_pose, Eigen::Isometry3d::Identity());
+        std::vector<float> filtered_varaince = remove_used_variance(new_cloud_variance, used_points);
+        old_cloud_variance.insert(old_cloud_variance.end(), filtered_varaince.begin(), filtered_varaince.end());
+
+        // transform old cloud to global frame
+        pcl::PointCloud<InputPointT>::Ptr old_cloud_global = transform_to_frame<InputPointT>(old_cloud_local, new_pose, Eigen::Isometry3d::Identity());
 
         // update old cloud
-        *old_cloud_near = *old_cloud_near_global;
-        *old_cloud_far = *old_cloud_far_global;
+        *old_cloud = *old_cloud_global;
     }
 
 
@@ -697,25 +729,13 @@ int main()
     // add_to_viewer<InputPointT>(viewer, port1, old_cloud_near, "oldcloud near updated", color_tuple(0, 255, 0), 2); // y
     // add_to_viewer<InputPointT>(viewer, port1, old_cloud_far, "oldcloud far updated", color_tuple(255, 0, 0), 2); // g
 
-
-    // compute mean point from near and far for each index
-    pcl::PointCloud<InputPointT>::Ptr old_cloud_mean (new pcl::PointCloud<InputPointT>);
-    for (std::size_t i = 0; i < old_cloud_near->size(); i++)
-    {
-        InputPointT mean_point;
-        mean_point.x = (old_cloud_near->points[i].x + old_cloud_far->points[i].x) / 2;
-        mean_point.y = (old_cloud_near->points[i].y + old_cloud_far->points[i].y) / 2;
-        mean_point.z = (old_cloud_near->points[i].z + old_cloud_far->points[i].z) / 2;
-        old_cloud_mean->push_back(mean_point);
-    }
-
     // // add to viewer
     // add_to_viewer<InputPointT>(viewer, port2, control_cloud, "control cloud", color_tuple(255, 0, 0), 3); // b
     // add_to_viewer<InputPointT>(viewer, port2, old_cloud_mean, "oldcloud mean", color_tuple(0, 255, 0), 3); // b
 
     // add to viewer
     add_to_viewer<InputPointT>(viewer, port1, control_cloud, "control cloud", color_tuple(0, 255, 0), 3); // b
-    add_to_viewer<InputPointT>(viewer, port2, old_cloud_mean, "oldcloud mean", color_tuple(0, 255, 0), 3); // b
+    add_to_viewer<InputPointT>(viewer, port2, old_cloud, "oldcloud mean", color_tuple(0, 255, 0), 3); // b
     // viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_OPACITY, 0.7, "control cloud");
     // viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_OPACITY, 0.7, "oldcloud mean");
     
