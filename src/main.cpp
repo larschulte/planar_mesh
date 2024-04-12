@@ -630,6 +630,63 @@ std::vector<float> remove_used_variance(std::vector<float> variances, std::vecto
     return variances_copied;
 }
 
+// algoirthm class
+template <typename PointT>
+class Algorithm
+{
+public:
+    // constructor, destructor
+    Algorithm(double range_std) : sensor_range_std_(range_std), old_cloud_(new typename pcl::PointCloud<PointT>){};
+    ~Algorithm(){};
+
+    // input
+    void add_pointcloud_and_pose(typename pcl::PointCloud<PointT>::Ptr new_cloud, Eigen::Affine3d new_pose)
+    {
+        // compute near cloud and far for new cloud
+        std::vector<Eigen::Vector3f> new_cloud_direction = compute_point_directions<PointT>(new_cloud);
+        std::vector<float> new_cloud_variance(new_cloud->size(), std::pow(sensor_range_std_, 2));
+
+        // transform old cloud to local frame
+        typename pcl::PointCloud<PointT>::Ptr old_cloud_local = transform_to_frame<PointT>(old_cloud_, Eigen::Isometry3d::Identity(), new_pose);
+
+        // collect used point, update old cloud
+        std::vector<int> used_points;
+        update_pointcloud<PointT>(old_cloud_local, old_cloud_direction_, old_cloud_variance_, new_cloud, used_points, sensor_range_std_);
+        unique_vector<int>(used_points);
+        
+        // add ununsed points / directions to old cloud
+        typename pcl::PointCloud<PointT>::Ptr filtered_new_cloud = remove_used_points<PointT>(new_cloud, used_points);
+        *old_cloud_local += *filtered_new_cloud;
+
+        std::vector<Eigen::Vector3f> filtered_directions = remove_used_directions(new_cloud_direction, used_points);
+        old_cloud_direction_.insert(old_cloud_direction_.end(), filtered_directions.begin(), filtered_directions.end());
+
+        std::vector<float> filtered_varaince = remove_used_variance(new_cloud_variance, used_points);
+        old_cloud_variance_.insert(old_cloud_variance_.end(), filtered_varaince.begin(), filtered_varaince.end());
+
+        // transform old cloud to global frame
+        typename pcl::PointCloud<PointT>::Ptr old_cloud_global = transform_to_frame<PointT>(old_cloud_local, new_pose, Eigen::Isometry3d::Identity());
+
+        // update old cloud
+        *old_cloud_ = *old_cloud_global;
+    }
+
+    // output
+    typename pcl::PointCloud<PointT>::Ptr get_old_cloud()
+    {
+        return old_cloud_;
+    }
+
+private:
+    // sensor parameters
+    double sensor_range_std_;
+
+    // algorithm data storage
+    typename pcl::PointCloud<PointT>::Ptr old_cloud_;
+    std::vector<Eigen::Vector3f> old_cloud_direction_;
+    std::vector<float> old_cloud_variance_;
+};
+
 using InputPointT = VilensPointT;
 
 
@@ -652,15 +709,11 @@ int main()
     pcd_file_list.push_back("/home/jiahao/datasets/bag2pcd_output/slam_clouds/cloud_1712763501_888041000.pcd");
 
     // algorithm parameters
-    double range_std = 0.01;
+    double sensor_range_std = 0.01;
+    Algorithm<InputPointT> algorithm(sensor_range_std);
 
     // control cloud (for comparing with updated old cloud)
     pcl::PointCloud<InputPointT>::Ptr control_cloud (new pcl::PointCloud<InputPointT>);
-
-    // old cloud
-    pcl::PointCloud<InputPointT>::Ptr old_cloud (new pcl::PointCloud<InputPointT>);
-    std::vector<Eigen::Vector3f> old_cloud_direction;
-    std::vector<float> old_cloud_variance;
 
     for (std::string pcd_file : pcd_file_list)
     {
@@ -671,33 +724,8 @@ int main()
         // add its global to control cloud
         *control_cloud += *transform_to_global<InputPointT>(new_cloud, new_pose);
 
-        // compute near cloud and far for new cloud
-        std::vector<Eigen::Vector3f> new_cloud_direction = compute_point_directions<InputPointT>(new_cloud);
-        std::vector<float> new_cloud_variance(new_cloud->size(), std::pow(range_std, 2));
-
-        // transform old cloud to local frame
-        pcl::PointCloud<InputPointT>::Ptr old_cloud_local = transform_to_frame<InputPointT>(old_cloud, Eigen::Isometry3d::Identity(), new_pose);
-
-        // collect used point, update old cloud
-        std::vector<int> used_points;
-        update_pointcloud<InputPointT>(old_cloud_local, old_cloud_direction, old_cloud_variance, new_cloud, used_points,range_std);
-        unique_vector<int>(used_points);
-        
-        // add ununsed points / directions to old cloud
-        pcl::PointCloud<InputPointT>::Ptr filtered_new_cloud = remove_used_points<InputPointT>(new_cloud, used_points);
-        *old_cloud_local += *filtered_new_cloud;
-
-        std::vector<Eigen::Vector3f> filtered_directions = remove_used_directions(new_cloud_direction, used_points);
-        old_cloud_direction.insert(old_cloud_direction.end(), filtered_directions.begin(), filtered_directions.end());
-
-        std::vector<float> filtered_varaince = remove_used_variance(new_cloud_variance, used_points);
-        old_cloud_variance.insert(old_cloud_variance.end(), filtered_varaince.begin(), filtered_varaince.end());
-
-        // transform old cloud to global frame
-        pcl::PointCloud<InputPointT>::Ptr old_cloud_global = transform_to_frame<InputPointT>(old_cloud_local, new_pose, Eigen::Isometry3d::Identity());
-
-        // update old cloud
-        *old_cloud = *old_cloud_global;
+        // algorithm
+        algorithm.add_pointcloud_and_pose(new_cloud, new_pose);
     }
 
 
@@ -735,7 +763,7 @@ int main()
 
     // add to viewer
     add_to_viewer<InputPointT>(viewer, port1, control_cloud, "control cloud", color_tuple(0, 255, 0), 3); // b
-    add_to_viewer<InputPointT>(viewer, port2, old_cloud, "oldcloud mean", color_tuple(0, 255, 0), 3); // b
+    add_to_viewer<InputPointT>(viewer, port2, algorithm.get_old_cloud(), "oldcloud mean", color_tuple(0, 255, 0), 3); // b
     // viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_OPACITY, 0.7, "control cloud");
     // viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_OPACITY, 0.7, "oldcloud mean");
     
