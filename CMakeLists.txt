@@ -40,7 +40,7 @@ target_include_directories(main
 # install(TARGETS main DESTINATION lib/${PROJECT_NAME})
 install(TARGETS 
   main
-  DESTINATION lib
+  DESTINATION lib/${PROJECT_NAME}
 )
 
 # call ament build system
