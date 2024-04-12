@@ -1,33 +1,39 @@
 #pragma once
+#define PCL_NO_PRECOMPILE
+
 #include <pcl/point_types.h> // for using macros PCL_ADD_
 
-struct BagPointT
+struct VilensPointT
 {
     PCL_ADD_POINT4D;
-    float intensity;
-    double timestamp;
-    std::uint16_t ring;
+    PCL_ADD_RGB
+    PCL_ADD_NORMAL4D;
+    float curvature;
     PCL_MAKE_ALIGNED_OPERATOR_NEW
 
-    BagPointT()
+    VilensPointT()
     {
         x = NAN;
         y = NAN;
         z = NAN;
-        intensity = NAN;
-        timestamp = NAN;
-        ring = 0;
+        rgb = 0;
+        normal_x = NAN;
+        normal_y = NAN;
+        normal_z = NAN;
+        curvature = NAN;
     };
 } EIGEN_ALIGN16;
 
 // need this for pcl/conversion to work
-POINT_CLOUD_REGISTER_POINT_STRUCT(BagPointT,
+POINT_CLOUD_REGISTER_POINT_STRUCT(VilensPointT,
                                 (float, x, x)
                                 (float, y, y)
                                 (float, z, z)
-                                (float, intensity, intensity)
-                                (double, timestamp, timestamp)
-                                (std::uint16_t, ring, ring)
+                                (std::uint32_t, rgb, rgb)
+                                (float, normal_x, normal_x)
+                                (float, normal_y, normal_y)
+                                (float, normal_z, normal_z)
+                                (float, curvature, curvature)
 );
 
 
