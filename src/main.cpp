@@ -57,7 +57,7 @@ load_pointcloud(std::string pcd_file)
     {
         PCL_ERROR ("Couldn't read file test_pcd.pcd \n");
     }
-    std::cout << "Loaded " << cloud->size() << " points" << std::endl;
+    // std::cout << "Loaded " << cloud->size() << " points" << std::endl;
     return cloud;
 }
 
@@ -68,8 +68,8 @@ find_pose(std::string pcd_file, std::string pose_file)
     std::string pcd_file_name = pcd_file.substr(pcd_file.find_last_of("/\\") + 1);
     std::string sec_str = pcd_file_name.substr(6, 10);
     std::string nsec_str = pcd_file_name.substr(17, 9);
-    std::cout << "sec: " << sec_str << std::endl;
-    std::cout << "nsec: " << nsec_str << std::endl;
+    // std::cout << "sec: " << sec_str << std::endl;
+    // std::cout << "nsec: " << nsec_str << std::endl;
 
     // find pose 
     std::ifstream pose_stream(pose_file);
@@ -90,7 +90,7 @@ find_pose(std::string pcd_file, std::string pose_file)
 
             if (timestamp_sec == std::stoi(sec_str) && timestamp_nsec == std::stoi(nsec_str))
             {
-                std::cout << "found pose" << std::endl;
+                // std::cout << "found pose" << std::endl;
                 pose_x = x;
                 pose_y = y;
                 pose_z = z;
@@ -153,7 +153,7 @@ delaunator::Delaunator obtain_triangulation(typename pcl::PointCloud<PointT>::Pt
 
     // create delaunay triangles given x and y
     delaunator::Delaunator d(*coords);
-    std::cout << "Number of triangles: " << d.triangles.size() << std::endl;
+    // std::cout << "Number of triangles: " << d.triangles.size() << std::endl;
 
     return d;
 }
@@ -687,27 +687,65 @@ private:
     std::vector<float> old_cloud_variance_;
 };
 
+
+// read all files under folder
+std::vector<std::string> read_under_folder(std::string pcd_file_folder)
+{
+    // initialize
+    std::vector<std::string> pcd_file_list;
+
+    // read
+    DIR *dirstream = opendir(pcd_file_folder.c_str());
+    struct dirent *entry;
+    while ((entry = readdir(dirstream)) != NULL) 
+    {
+        // obtain file name
+        std::string file_name = entry->d_name;
+        if (file_name.find(".pcd") == std::string::npos) continue; // skip if not pcd file
+
+        // pushback
+        pcd_file_list.push_back(pcd_file_folder + file_name);
+    }
+    closedir(dirstream);
+    
+    // sort
+    std::sort(pcd_file_list.begin(), pcd_file_list.end());
+
+    // return 
+    return pcd_file_list;
+}
+
+
+// file to pose map
+std::map<std::string, Eigen::Affine3d> create_file_to_pose_map(std::vector<std::string> pcd_file_list, std::string pose_file_path)
+{
+    // initialize
+    std::map<std::string, Eigen::Affine3d> file_to_pose_map;
+
+    // create
+    for (std::string pcd_file : pcd_file_list)
+    {
+        Eigen::Affine3d pose = find_pose(pcd_file, pose_file_path);
+        file_to_pose_map[pcd_file] = pose;
+    }
+
+    // return 
+    return file_to_pose_map;
+}
+
 using InputPointT = VilensPointT;
-
-
 int main()
 {
     // given index number, add pointcloud to display
-    // std::string pose_file = "/home/jiahao/datasets/osney power station/2024-03-26_13-47-27_rec004_osney_power_station/slam_pose_graph.slam";
-    std::string pose_file = "/home/jiahao/datasets/bag2pcd_output/slam_poses/slam_poss_graph.slam";
+    std::string pcd_file_folder = "/home/jiahao/datasets/bag2pcd_output/slam_clouds/";
+    std::string pose_file_path = "/home/jiahao/datasets/bag2pcd_output/slam_poses/slam_poss_graph.slam";
 
     // pcd files
-    // need to test on broadstreet dataset
-    std::vector<std::string> pcd_file_list;
-    // pcd_file_list.push_back("/home/jiahao/datasets/osney power station/2024-03-26_13-47-27_rec004_osney_power_station/slam_clouds/cloud_1711460869_333305000.pcd");
-    // pcd_file_list.push_back("/home/jiahao/datasets/osney power station/2024-03-26_13-47-27_rec004_osney_power_station/slam_clouds/cloud_1711460870_532271000.pcd");
-    // pcd_file_list.push_back("/home/jiahao/datasets/osney power station/2024-03-26_13-47-27_rec004_osney_power_station/slam_clouds/cloud_1711460871_630561000.pcd");
-    // pcd_file_list.push_back("/home/jiahao/datasets/osney power station/2024-03-26_13-47-27_rec004_osney_power_station/slam_clouds/cloud_1711460873_030014000.pcd");
-    // pcd_file_list.push_back("/home/jiahao/datasets/osney power station/2024-03-26_13-47-27_rec004_osney_power_station/slam_clouds/cloud_1711460876_026726000.pcd");
-    pcd_file_list.push_back("/home/jiahao/datasets/bag2pcd_output/slam_clouds/cloud_1712763500_887906000.pcd");
-    pcd_file_list.push_back("/home/jiahao/datasets/bag2pcd_output/slam_clouds/cloud_1712763501_388037000.pcd");
-    pcd_file_list.push_back("/home/jiahao/datasets/bag2pcd_output/slam_clouds/cloud_1712763501_888041000.pcd");
+    std::vector<std::string> pcd_file_list = read_under_folder(pcd_file_folder);
 
+    // file to pose map
+    std::map<std::string, Eigen::Affine3d> file_to_pose_map = create_file_to_pose_map(pcd_file_list, pose_file_path);
+    
     // algorithm parameters
     double sensor_range_std = 0.01;
     Algorithm<InputPointT> algorithm(sensor_range_std);
@@ -715,19 +753,24 @@ int main()
     // control cloud (for comparing with updated old cloud)
     pcl::PointCloud<InputPointT>::Ptr control_cloud (new pcl::PointCloud<InputPointT>);
 
-    for (std::string pcd_file : pcd_file_list)
+
+    std::size_t number_of_files = 5;
+    for (std::size_t i = 0; i < number_of_files; i++)
     {
         // load cloud and pose
+        std::string pcd_file = pcd_file_list[i];
         pcl::PointCloud<InputPointT>::Ptr new_cloud = load_pointcloud<InputPointT>(pcd_file);
-        Eigen::Affine3d new_pose = find_pose(pcd_file, pose_file);
+        Eigen::Affine3d new_pose = file_to_pose_map[pcd_file];
 
         // add its global to control cloud
         *control_cloud += *transform_to_global<InputPointT>(new_cloud, new_pose);
 
         // algorithm
         algorithm.add_pointcloud_and_pose(new_cloud, new_pose);
-    }
 
+        // message, output old_cloud_number of points
+        std::cout << "old cloud number of points: " << algorithm.get_old_cloud()->size() << std::endl;
+    }
 
     // the current update assume planar surface within each triangle, and does not filter the planar surface even if the triangle is very large
     // this will be solved when introducing eye patch
