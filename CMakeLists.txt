@@ -38,8 +38,9 @@ target_include_directories(main
     $<INSTALL_INTERFACE:include>)
 
 # install(TARGETS main DESTINATION lib/${PROJECT_NAME})
-install(TARGETS main
-  RUNTIME DESTINATION bin
+install(TARGETS 
+  main
+  DESTINATION lib
 )
 
 # call ament build system
