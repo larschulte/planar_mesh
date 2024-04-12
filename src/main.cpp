@@ -9,19 +9,21 @@
 using InputPointT = VilensPointT;
 int main()
 {
-    // data loader
-    std::string pcd_file_folder = "/home/jiahao/datasets/bag2pcd_output/slam_clouds/";
-    std::string pose_file_path = "/home/jiahao/datasets/bag2pcd_output/slam_poses/slam_poss_graph.slam";
-    DataLoader<InputPointT> data_loader(pcd_file_folder, pose_file_path);
-
-    // algorithm parameters
+    // parameters
+    std::string pcd_file_folder = "/home/jiahao/datasets/bag2pcd_output/mission2_reverse/slam_clouds/";
+    std::string pose_file_path = "/home/jiahao/datasets/bag2pcd_output/mission2_reverse/slam_poses/slam_poss_graph.slam";
+    std::size_t number_of_files = 150;
     double sensor_range_std = 0.01;
+
+    // data loader
+    DataLoader<InputPointT> data_loader(pcd_file_folder, pose_file_path);
+    
+    // algorithm
     Algorithm<InputPointT> algorithm(sensor_range_std);
 
     // control cloud (for comparing with updated old cloud)
     pcl::PointCloud<InputPointT>::Ptr control_cloud (new pcl::PointCloud<InputPointT>);
 
-    std::size_t number_of_files = 5;
     for (std::size_t i = 0; i < number_of_files; i++)
     {
         // load cloud and pose
@@ -33,7 +35,7 @@ int main()
         algorithm.add_pointcloud_and_pose(new_cloud, new_pose);
 
         // message
-        std::cout << "old cloud number of points: " << algorithm.get_old_cloud()->size() << std::endl;
+        std::cout << i << " old cloud number of points: " << algorithm.get_old_cloud()->size() << std::endl;
     }
 
     // the current update assume planar surface within each triangle, and does not filter the planar surface even if the triangle is very large
