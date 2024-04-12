@@ -637,7 +637,6 @@ class Algorithm
 public:
     // constructor, destructor
     Algorithm(double range_std) : sensor_range_std_(range_std), old_cloud_(new typename pcl::PointCloud<PointT>){};
-    ~Algorithm(){};
 
     // input
     void add_pointcloud_and_pose(typename pcl::PointCloud<PointT>::Ptr new_cloud, Eigen::Affine3d new_pose)
@@ -733,19 +732,43 @@ std::map<std::string, Eigen::Affine3d> create_file_to_pose_map(std::vector<std::
     return file_to_pose_map;
 }
 
+// class for loading data
+template <typename PointT>
+class DataLoader
+{
+public:
+    DataLoader(std::string pcd_file_folder, std::string pose_file_path)
+    {
+        pcd_file_list_ = read_under_folder(pcd_file_folder);
+        file_to_pose_map_ = create_file_to_pose_map(pcd_file_list_, pose_file_path);
+    }
+
+    typename pcl::PointCloud<PointT>::Ptr
+    get_cloud(int i)
+    {
+        return load_pointcloud<PointT>(pcd_file_list_[i]);
+    }
+
+    Eigen::Affine3d
+    get_pose(int i)
+    {
+        return file_to_pose_map_[pcd_file_list_[i]];
+    }
+
+private:
+    std::vector<std::string> pcd_file_list_;
+    std::map<std::string, Eigen::Affine3d> file_to_pose_map_;
+};
+
+
 using InputPointT = VilensPointT;
 int main()
 {
-    // given index number, add pointcloud to display
+    // data loader
     std::string pcd_file_folder = "/home/jiahao/datasets/bag2pcd_output/slam_clouds/";
     std::string pose_file_path = "/home/jiahao/datasets/bag2pcd_output/slam_poses/slam_poss_graph.slam";
+    DataLoader<InputPointT> data_loader(pcd_file_folder, pose_file_path);
 
-    // pcd files
-    std::vector<std::string> pcd_file_list = read_under_folder(pcd_file_folder);
-
-    // file to pose map
-    std::map<std::string, Eigen::Affine3d> file_to_pose_map = create_file_to_pose_map(pcd_file_list, pose_file_path);
-    
     // algorithm parameters
     double sensor_range_std = 0.01;
     Algorithm<InputPointT> algorithm(sensor_range_std);
@@ -753,14 +776,12 @@ int main()
     // control cloud (for comparing with updated old cloud)
     pcl::PointCloud<InputPointT>::Ptr control_cloud (new pcl::PointCloud<InputPointT>);
 
-
     std::size_t number_of_files = 5;
     for (std::size_t i = 0; i < number_of_files; i++)
     {
         // load cloud and pose
-        std::string pcd_file = pcd_file_list[i];
-        pcl::PointCloud<InputPointT>::Ptr new_cloud = load_pointcloud<InputPointT>(pcd_file);
-        Eigen::Affine3d new_pose = file_to_pose_map[pcd_file];
+        pcl::PointCloud<InputPointT>::Ptr new_cloud = data_loader.get_cloud(i);
+        Eigen::Affine3d new_pose = data_loader.get_pose(i);
 
         // add its global to control cloud
         *control_cloud += *transform_to_global<InputPointT>(new_cloud, new_pose);
