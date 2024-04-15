@@ -385,7 +385,7 @@ update_pointcloud(
         
         // 2. find intersections to those triangles
         std::vector<int> all_intersected_triangle_indices;
-        std::vector<Eigen::Vector3f> all_intersections;
+        std::vector<Eigen::Vector3f> all_likelihood_points;
         std::vector<double> all_likelihood_variance;
         for (int center_index : center_indices_searched)
         {
@@ -406,26 +406,29 @@ update_pointcloud(
             if (inside)
             {
                 all_intersected_triangle_indices.push_back(center_index);
-                all_intersections.push_back(likelihood_point);
+                all_likelihood_points.push_back(likelihood_point);
                 all_likelihood_variance.push_back(likelihood_variance);
             }
         }
-        bool no_intersections = all_intersections.size() == 0;
+        bool no_intersections = all_likelihood_points.size() == 0;
         if (no_intersections) continue;
 
         // 3. find cloest intersection
-        auto iterator = std::min_element(all_intersections.begin(), all_intersections.end(),
+        // get iterator
+        auto iterator = std::min_element(all_likelihood_points.begin(), all_likelihood_points.end(),
             [current_point](const Eigen::Vector3f& a, const Eigen::Vector3f& b) {return (a - current_point).norm() < (b - current_point).norm();});
-        int closest_intersected_triangle_index = all_intersected_triangle_indices[std::distance(all_intersections.begin(), iterator)];
-        double closest_intersected_triangle_likelihood_variance = all_likelihood_variance[std::distance(all_intersections.begin(), iterator)];
+
+        // point, variance, triangle index
         Eigen::Vector3f closest_likelihood_point = *iterator;
+        double closest_likelihood_variance = all_likelihood_variance[std::distance(all_likelihood_points.begin(), iterator)];
+        int closest_intersected_triangle_index = all_intersected_triangle_indices[std::distance(all_likelihood_points.begin(), iterator)];
         
         // 4. compute posterior
         Eigen::Vector3f prior_point = current_point;
         float prior_variance = old_cloud_variance[i];
 
         Eigen::Vector3f likelihood_point = closest_likelihood_point;
-        float likelihood_variance = closest_intersected_triangle_likelihood_variance;
+        float likelihood_variance = closest_likelihood_variance;
 
         Eigen::Vector3f posterior_point = (prior_point / prior_variance + likelihood_point / likelihood_variance) / (1 / prior_variance + 1 / likelihood_variance);
         float posterior_variance = 1 / (1 / prior_variance + 1 / likelihood_variance);
