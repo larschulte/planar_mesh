@@ -12,7 +12,7 @@ int main()
     // parameters
     std::string pcd_file_folder = "/home/jiahao/datasets/bag2pcd_output/mission2_reverse/slam_clouds/";
     std::string pose_file_path = "/home/jiahao/datasets/bag2pcd_output/mission2_reverse/slam_poses/slam_poss_graph.slam";
-    std::size_t number_of_files = 150;
+    std::size_t number_of_files = 10;
     double sensor_range_std = 0.01;
 
     // data loader

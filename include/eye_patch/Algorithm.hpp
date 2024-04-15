@@ -218,6 +218,132 @@ obtain_triangulation(typename pcl::PointCloud<PointT>::Ptr cloud)
 }
 
 
+// https://stackoverflow.com/questions/11719168/how-do-i-find-the-sphere-center-from-3-points-and-radius
+bool compute_sphere_centers(Eigen::Vector3f p1, Eigen::Vector3f p2, Eigen::Vector3f p3, float r, Eigen::Vector3f &sphere_center1, Eigen::Vector3f &sphere_center2)
+{
+    // edge and normal
+    Eigen::Vector3f e1 = p2 - p1;
+    Eigen::Vector3f e2 = p3 - p1;
+    Eigen::Vector3f normal = e1.cross(e2);
+
+    // circle center
+    Eigen::Vector3f c = (e1.squaredNorm() * e2 - e2.squaredNorm() * e1).cross(normal) / ( 2 * normal.squaredNorm() ) + p1;
+
+    // compute t
+    Eigen::Vector3f cp1 = c - p1;
+    float t_squared = (r*r - cp1.squaredNorm()) / normal.squaredNorm();
+    if (t_squared < 0) return false;
+    float t = std::sqrt(t_squared);
+
+    // compute sphere center
+    sphere_center1 = c + normal * t;
+    sphere_center2 = c - normal * t;
+    return true;
+}
+
+
+// https://stackoverflow.com/questions/5883169/intersection-between-a-line-and-a-sphere
+bool line_sphere_intersection(Eigen::Vector3f point, Eigen::Vector3f direction, Eigen::Vector3f sphere_center, double sphere_radius, Eigen::Vector3f& solution1, Eigen::Vector3f& solution2)
+{
+    // http://www.codeproject.com/Articles/19799/Simple-Ray-Tracing-in-C-Part-II-Triangles-Intersec
+
+    // compute A B C
+    double cx = sphere_center[0];
+    double cy = sphere_center[1];
+    double cz = sphere_center[2];
+    double r = sphere_radius;
+    double px = point[0];
+    double py = point[1];
+    double pz = point[2];
+    double dx = direction[0];
+    double dy = direction[1];
+    double dz = direction[2];
+    double A = dx * dx + dy * dy + dz * dz;
+    double B = 2.0 * (px * dx + py * dy + pz * dz - dx * cx - dy * cy - dz * cz);
+    double C = px * px - 2.0 * px * cx + cx * cx + py * py - 2.0 * py * cy + cy * cy + pz * pz - 2.0 * pz * cz + cz * cz - r * r;
+
+    // discriminant
+    double det = B * B - 4.0 * A * C;
+    if ( det < 0 ) return false; // no solution
+
+    // compute solutions
+    double t1 = 1/(2.0*A) * (- B - std::sqrt(det));
+    double t2 = 1/(2.0*A) * (- B + std::sqrt(det));
+    solution1 = point + t1 * direction;    
+    solution2 = point + t2 * direction;
+
+    return true;
+}
+
+
+bool eye_patch_intersection(Eigen::Vector3f current_point,
+                            Eigen::Vector3f current_point_direction,
+                            Eigen::Vector3f v1, 
+                            Eigen::Vector3f v2,
+                            Eigen::Vector3f v3,
+                            double vertex_variance,
+                            double sphere_radius,
+                            Eigen::Vector3f& likelihood_point,
+                            double& likelihood_variance
+                            )
+{
+    
+    Eigen::Vector3f sphere_center1, sphere_center2;
+    bool sphere_exists = compute_sphere_centers(v1, v2, v3, sphere_radius, sphere_center1, sphere_center2);
+    if (!sphere_exists)
+    {
+        return false;
+    }
+
+    // compute line and sphere intersection
+    Eigen::Vector3f intersection11, intersection12;
+    Eigen::Vector3f intersection21, intersection22;
+    bool intersection_exists1 = line_sphere_intersection(current_point, current_point_direction, sphere_center1, sphere_radius, intersection11, intersection12);
+    bool intersection_exists2 = line_sphere_intersection(current_point, current_point_direction, sphere_center2, sphere_radius, intersection21, intersection22);
+    if (!intersection_exists1 || !intersection_exists2)
+    {
+        return false;
+    }
+
+    // find the two inner intersection
+    Eigen::Vector3f inner_intersection1, inner_intersection2;
+    double distance1121 = (intersection11 - intersection21).norm();
+    double distance1122 = (intersection11 - intersection22).norm();
+    double distance1221 = (intersection12 - intersection21).norm();
+    double distance1222 = (intersection12 - intersection22).norm();
+    if (distance1121 < distance1122 && distance1121 < distance1221 && distance1121 < distance1222)
+    {
+        inner_intersection1 = intersection11;
+        inner_intersection2 = intersection21;
+    }
+    else if (distance1122 < distance1121 && distance1122 < distance1221 && distance1122 < distance1222)
+    {
+        inner_intersection1 = intersection11;
+        inner_intersection2 = intersection22;
+    }
+    else if (distance1221 < distance1121 && distance1221 < distance1122 && distance1221 < distance1222)
+    {
+        inner_intersection1 = intersection12;
+        inner_intersection2 = intersection21;
+    }
+    else
+    {
+        inner_intersection1 = intersection12;
+        inner_intersection2 = intersection22;
+    }
+
+    // compute variance
+    double uniform_variance = (inner_intersection1 - inner_intersection2).squaredNorm() / 12;
+    double noise_variance = vertex_variance;
+
+    // assignment
+    likelihood_point = (inner_intersection1 + inner_intersection2) / 2;
+    likelihood_variance = uniform_variance + noise_variance;
+
+    return true;
+}
+
+
 // compute updated pointcloud
 template <typename PointT>
 void 
@@ -260,6 +386,7 @@ update_pointcloud(
         // 2. find intersections to those triangles
         std::vector<int> all_intersected_triangle_indices;
         std::vector<Eigen::Vector3f> all_intersections;
+        std::vector<double> all_likelihood_variance;
         for (int center_index : center_indices_searched)
         {
             // get triangle vertices xyz
@@ -268,14 +395,19 @@ update_pointcloud(
             Eigen::Vector3f v3 = new_cloud->points[center_to_vertices_index_map[center_index][2]].getVector3fMap();
 
             // compute intersection
-            Eigen::Vector3f intersection = ray_triangle_intersection(current_point, current_point_direction, v1, v2, v3);
+            Eigen::Vector3f likelihood_point;
+            double likelihood_variance;
+            double sphere_radius = 0.05;
+            bool intersection_exists = eye_patch_intersection(current_point, current_point_direction, v1, v2, v3, std::pow(range_std, 2), sphere_radius, likelihood_point, likelihood_variance);
+            if (!intersection_exists) continue;
 
             // check if intersection is inside the triangle
-            bool inside = is_inside_triangle(v1, v2, v3, intersection);
+            bool inside = is_inside_triangle(v1, v2, v3, likelihood_point);
             if (inside)
             {
                 all_intersected_triangle_indices.push_back(center_index);
-                all_intersections.push_back(intersection);
+                all_intersections.push_back(likelihood_point);
+                all_likelihood_variance.push_back(likelihood_variance);
             }
         }
         bool no_intersections = all_intersections.size() == 0;
@@ -285,14 +417,15 @@ update_pointcloud(
         auto iterator = std::min_element(all_intersections.begin(), all_intersections.end(),
             [current_point](const Eigen::Vector3f& a, const Eigen::Vector3f& b) {return (a - current_point).norm() < (b - current_point).norm();});
         int closest_intersected_triangle_index = all_intersected_triangle_indices[std::distance(all_intersections.begin(), iterator)];
-        Eigen::Vector3f closest_intersection = *iterator;
+        double closest_intersected_triangle_likelihood_variance = all_likelihood_variance[std::distance(all_intersections.begin(), iterator)];
+        Eigen::Vector3f closest_likelihood_point = *iterator;
         
         // 4. compute posterior
         Eigen::Vector3f prior_point = current_point;
         float prior_variance = old_cloud_variance[i];
 
-        Eigen::Vector3f likelihood_point = closest_intersection;
-        float likelihood_variance = std::pow(range_std, 2);
+        Eigen::Vector3f likelihood_point = closest_likelihood_point;
+        float likelihood_variance = closest_intersected_triangle_likelihood_variance;
 
         Eigen::Vector3f posterior_point = (prior_point / prior_variance + likelihood_point / likelihood_variance) / (1 / prior_variance + 1 / likelihood_variance);
         float posterior_variance = 1 / (1 / prior_variance + 1 / likelihood_variance);

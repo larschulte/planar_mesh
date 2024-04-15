@@ -1,5 +1,40 @@
 #include "./main.cpp"
 
+// test for eye_patch intersection 
+
+int main()
+{
+    // input
+    Eigen::Vector3f v1(0, 0, 0);
+    Eigen::Vector3f v2(1, 0, 0);
+    Eigen::Vector3f v3(0, 2, 0);
+    Eigen::Vector3f current_point(0.5, 0.5, 1);
+    Eigen::Vector3f current_point_direction(0, 0, -1);
+    double vertex_variance = std::pow(0.01, 2);
+    float sphere_radius = 3;
+
+    // output
+    Eigen::Vector3f likelihood_point;
+    double likelihood_variance;
+
+    // compute likelihood point
+    bool sphere_exists = eye_patch_intersection(v1, v2, v3, current_point, current_point_direction, vertex_variance, sphere_radius, likelihood_point, likelihood_variance);
+
+    // print
+    if (!sphere_exists)
+    {
+        std::cout << "no sphere exists" << std::endl;
+        return 0;
+    }
+    else
+    {
+    std::cout << "likelihood point: " << likelihood_point.transpose() << std::endl;
+    std::cout << "likelihood variance: " << likelihood_variance << std::endl;
+    }
+
+    return 0;
+}
+
 // test for is_inside_triangle
 int main()
 {
