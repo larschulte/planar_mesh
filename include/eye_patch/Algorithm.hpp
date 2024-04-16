@@ -344,15 +344,78 @@ bool eye_patch_intersection(Eigen::Vector3f current_point,
 }
 
 
+// unique a vector
+template<typename T>
+void 
+unique_vector(std::vector<T>& vec)
+{
+    std::sort(vec.begin(), vec.end());
+    vec.erase(std::unique(vec.begin(), vec.end()), vec.end());
+}
+
+
+// remove used points
+template<typename PointT>
+typename pcl::PointCloud<PointT>::Ptr 
+remove_used_points(typename pcl::PointCloud<PointT>::Ptr cloud, std::vector<int> used_points)
+{
+    // convert into indices
+    pcl::PointIndices::Ptr used_points_indices (new pcl::PointIndices);
+    used_points_indices->indices = used_points;
+
+    // remove used points
+    pcl::ExtractIndices<PointT> extract;
+    extract.setInputCloud(cloud);
+    extract.setIndices(used_points_indices);
+    extract.setNegative(true);
+    typename pcl::PointCloud<PointT>::Ptr cloud_copied (new typename pcl::PointCloud<PointT>);
+    extract.filter(*cloud_copied);
+    
+    return cloud_copied;
+}
+
+// remove used direction
+std::vector<Eigen::Vector3f> 
+remove_used_directions(std::vector<Eigen::Vector3f> directions, std::vector<int> used_points)
+{
+    std::vector<Eigen::Vector3f> directions_copied;
+    for (std::size_t i = 0; i < directions.size(); i++)
+    {
+        // if i not in used points
+        if (std::find(used_points.begin(), used_points.end(), i) == used_points.end())
+        {
+            directions_copied.push_back(directions[i]);
+        }
+    }
+    return directions_copied;
+}
+
+// remove used variance
+std::vector<float> 
+remove_used_variance(std::vector<float> variances, std::vector<int> used_points)
+{
+    std::vector<float> variances_copied;
+    for (std::size_t i = 0; i < variances.size(); i++)
+    {
+        // if i not in used points
+        if (std::find(used_points.begin(), used_points.end(), i) == used_points.end())
+        {
+            variances_copied.push_back(variances[i]);
+        }
+    }
+    return variances_copied;
+}
+
 // compute updated pointcloud
 template <typename PointT>
 void 
 update_pointcloud(
     typename pcl::PointCloud<PointT>::Ptr old_cloud, 
-    const std::vector<Eigen::Vector3f> old_cloud_direction, 
+    std::vector<Eigen::Vector3f>& old_cloud_direction, 
     std::vector<float>& old_cloud_variance, 
     const typename pcl::PointCloud<PointT>::Ptr new_cloud, 
-    std::vector<int>& used_points,
+    const std::vector<Eigen::Vector3f> new_cloud_direction, 
+    const std::vector<float> new_cloud_variance, 
     double range_std
     )
 {
@@ -365,6 +428,9 @@ update_pointcloud(
     // compute triangle center to vertices index map
     std::map<int, std::vector<int>> center_to_vertices_index_map = compute_center_to_vertices_index_map(d);
     
+    // used points
+    std::vector<int> used_points;
+
     // prepare kd tree search
     pcl::KdTreeFLANN<pcl::PointXY> new_cloud_triangle_center_polar_kdtree;
     new_cloud_triangle_center_polar_kdtree.setInputCloud(obtain_2d_polar_cloud<pcl::PointXYZ>(center_cloud));
@@ -449,68 +515,18 @@ update_pointcloud(
             used_points.push_back(vertex_index);
         }
     }
-}
 
-// unique a vector
-template<typename T>
-void 
-unique_vector(std::vector<T>& vec)
-{
-    std::sort(vec.begin(), vec.end());
-    vec.erase(std::unique(vec.begin(), vec.end()), vec.end());
-}
+    unique_vector<int>(used_points);
+        
+    // add ununsed points / directions to old cloud
+    typename pcl::PointCloud<PointT>::Ptr filtered_new_cloud = remove_used_points<PointT>(new_cloud, used_points);
+    *old_cloud += *filtered_new_cloud;
 
+    std::vector<Eigen::Vector3f> filtered_directions = remove_used_directions(new_cloud_direction, used_points);
+    old_cloud_direction.insert(old_cloud_direction.end(), filtered_directions.begin(), filtered_directions.end());
 
-// remove used points
-template<typename PointT>
-typename pcl::PointCloud<PointT>::Ptr 
-remove_used_points(typename pcl::PointCloud<PointT>::Ptr cloud, std::vector<int> used_points)
-{
-    // convert into indices
-    pcl::PointIndices::Ptr used_points_indices (new pcl::PointIndices);
-    used_points_indices->indices = used_points;
-
-    // remove used points
-    pcl::ExtractIndices<PointT> extract;
-    extract.setInputCloud(cloud);
-    extract.setIndices(used_points_indices);
-    extract.setNegative(true);
-    typename pcl::PointCloud<PointT>::Ptr cloud_copied (new typename pcl::PointCloud<PointT>);
-    extract.filter(*cloud_copied);
-    
-    return cloud_copied;
-}
-
-// remove used direction
-std::vector<Eigen::Vector3f> 
-remove_used_directions(std::vector<Eigen::Vector3f> directions, std::vector<int> used_points)
-{
-    std::vector<Eigen::Vector3f> directions_copied;
-    for (std::size_t i = 0; i < directions.size(); i++)
-    {
-        // if i not in used points
-        if (std::find(used_points.begin(), used_points.end(), i) == used_points.end())
-        {
-            directions_copied.push_back(directions[i]);
-        }
-    }
-    return directions_copied;
-}
-
-// remove used variance
-std::vector<float> 
-remove_used_variance(std::vector<float> variances, std::vector<int> used_points)
-{
-    std::vector<float> variances_copied;
-    for (std::size_t i = 0; i < variances.size(); i++)
-    {
-        // if i not in used points
-        if (std::find(used_points.begin(), used_points.end(), i) == used_points.end())
-        {
-            variances_copied.push_back(variances[i]);
-        }
-    }
-    return variances_copied;
+    std::vector<float> filtered_varaince = remove_used_variance(new_cloud_variance, used_points);
+    old_cloud_variance.insert(old_cloud_variance.end(), filtered_varaince.begin(), filtered_varaince.end());
 }
 
 
@@ -552,19 +568,7 @@ public:
         typename pcl::PointCloud<PointT>::Ptr old_cloud_local = transform_to_frame<PointT>(old_cloud_, Eigen::Isometry3d::Identity(), new_pose);
 
         // collect used point, update old cloud
-        std::vector<int> used_points;
-        update_pointcloud<PointT>(old_cloud_local, old_cloud_direction_, old_cloud_variance_, new_cloud, used_points, sensor_range_std_);
-        unique_vector<int>(used_points);
-        
-        // add ununsed points / directions to old cloud
-        typename pcl::PointCloud<PointT>::Ptr filtered_new_cloud = remove_used_points<PointT>(new_cloud, used_points);
-        *old_cloud_local += *filtered_new_cloud;
-
-        std::vector<Eigen::Vector3f> filtered_directions = remove_used_directions(new_cloud_direction, used_points);
-        old_cloud_direction_.insert(old_cloud_direction_.end(), filtered_directions.begin(), filtered_directions.end());
-
-        std::vector<float> filtered_varaince = remove_used_variance(new_cloud_variance, used_points);
-        old_cloud_variance_.insert(old_cloud_variance_.end(), filtered_varaince.begin(), filtered_varaince.end());
+        update_pointcloud<PointT>(old_cloud_local, old_cloud_direction_, old_cloud_variance_, new_cloud, new_cloud_direction, new_cloud_variance, sensor_range_std_);
 
         // transform old cloud to global frame
         typename pcl::PointCloud<PointT>::Ptr old_cloud_global = transform_to_frame<PointT>(old_cloud_local, new_pose, Eigen::Isometry3d::Identity());
