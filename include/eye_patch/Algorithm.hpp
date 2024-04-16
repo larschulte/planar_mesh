@@ -381,7 +381,7 @@ update_pointcloud(
         
         // 1. search closest triangle center
         int K = 4;
-        pcl::Indices center_indices_searched = get_k_nearest_neighbor(new_cloud_triangle_center_polar_kdtree, current_point_polar, K);
+        pcl::Indices center_indices_searched = get_k_nearest_neighbor(new_cloud_triangle_center_polar_kdtree, current_point_polar, K); // the returned indices is ordered by closest
         
         // 2. find intersections to those triangles
         std::vector<int> all_intersected_triangle_indices;
@@ -389,46 +389,41 @@ update_pointcloud(
         std::vector<double> all_likelihood_variance;
         for (int center_index : center_indices_searched)
         {
+            // get triangle vertices index
+            int v1_index = center_to_vertices_index_map[center_index][0];
+            int v2_index = center_to_vertices_index_map[center_index][1];
+            int v3_index = center_to_vertices_index_map[center_index][2];
+
             // get triangle vertices xyz
-            Eigen::Vector3f v1 = new_cloud->points[center_to_vertices_index_map[center_index][0]].getVector3fMap();
-            Eigen::Vector3f v2 = new_cloud->points[center_to_vertices_index_map[center_index][1]].getVector3fMap();
-            Eigen::Vector3f v3 = new_cloud->points[center_to_vertices_index_map[center_index][2]].getVector3fMap();
+            Eigen::Vector3f v1 = new_cloud->points[v1_index].getVector3fMap();
+            Eigen::Vector3f v2 = new_cloud->points[v2_index].getVector3fMap();
+            Eigen::Vector3f v3 = new_cloud->points[v3_index].getVector3fMap();
 
             // compute intersection
             Eigen::Vector3f likelihood_point;
             double likelihood_variance;
-            double sphere_radius = 0.05;
+            double sphere_radius = 0.1;
             bool intersection_exists = eye_patch_intersection(current_point, current_point_direction, v1, v2, v3, std::pow(range_std, 2), sphere_radius, likelihood_point, likelihood_variance);
             if (!intersection_exists) continue;
 
             // check if intersection is inside the triangle
             bool inside = is_inside_triangle(v1, v2, v3, likelihood_point);
-            if (inside)
-            {
-                all_intersected_triangle_indices.push_back(center_index);
-                all_likelihood_points.push_back(likelihood_point);
-                all_likelihood_variance.push_back(likelihood_variance);
-            }
+            if (!inside) continue;
+            
+            // store intersection
+            all_intersected_triangle_indices.push_back(center_index);
+            all_likelihood_points.push_back(likelihood_point);
+            all_likelihood_variance.push_back(likelihood_variance);
         }
-        bool no_intersections = all_likelihood_points.size() == 0;
-        if (no_intersections) continue;
-
-        // 3. find cloest intersection
-        // get iterator
-        auto iterator = std::min_element(all_likelihood_points.begin(), all_likelihood_points.end(),
-            [current_point](const Eigen::Vector3f& a, const Eigen::Vector3f& b) {return (a - current_point).norm() < (b - current_point).norm();});
-
-        // point, variance, triangle index
-        Eigen::Vector3f closest_likelihood_point = *iterator;
-        double closest_likelihood_variance = all_likelihood_variance[std::distance(all_likelihood_points.begin(), iterator)];
-        int closest_intersected_triangle_index = all_intersected_triangle_indices[std::distance(all_likelihood_points.begin(), iterator)];
+        if (all_likelihood_points.size() != 1) continue; // only proceed if there is one and only one intersectoin (which is most of the cases)
+        // with more than one intersection, there is ambiguity and is better to wait for more aligned scan to update the point
         
-        // 4. compute posterior
+        // 3. compute posterior
         Eigen::Vector3f prior_point = current_point;
         float prior_variance = old_cloud_variance[i];
 
-        Eigen::Vector3f likelihood_point = closest_likelihood_point;
-        float likelihood_variance = closest_likelihood_variance;
+        Eigen::Vector3f likelihood_point = all_likelihood_points[0];
+        float likelihood_variance = all_likelihood_variance[0];
 
         Eigen::Vector3f posterior_point = (prior_point / prior_variance + likelihood_point / likelihood_variance) / (1 / prior_variance + 1 / likelihood_variance);
         float posterior_variance = 1 / (1 / prior_variance + 1 / likelihood_variance);
@@ -438,12 +433,12 @@ update_pointcloud(
         if (too_far) continue;
 
 
-        // 5. update old cloud
+        // 4. update old cloud
         old_cloud->points[i].x = posterior_point(0);
         old_cloud->points[i].y = posterior_point(1);
         old_cloud->points[i].z = posterior_point(2);
         old_cloud_variance[i] = posterior_variance;
-        used_triangles.push_back(closest_intersected_triangle_index); // record used triangles
+        used_triangles.push_back(all_intersected_triangle_indices[0]); // record used triangles
     }
 
     // record used_points
