@@ -419,6 +419,9 @@ update_pointcloud(
     double range_std
     )
 {
+    // curvature parameter
+    double sphere_radius = 0.1;
+
     // triangulate new cloud
     delaunator::Delaunator d = obtain_triangulation<PointT>(new_cloud);
     
@@ -428,15 +431,14 @@ update_pointcloud(
     // compute triangle center to vertices index map
     std::map<int, std::vector<int>> center_to_vertices_index_map = compute_center_to_vertices_index_map(d);
     
-    // used points
-    std::vector<int> used_points;
+    // new point to old point map
+    std::map<int, std::vector<int>> new_to_updated_old_point_map;
 
     // prepare kd tree search
     pcl::KdTreeFLANN<pcl::PointXY> new_cloud_triangle_center_polar_kdtree;
     new_cloud_triangle_center_polar_kdtree.setInputCloud(obtain_2d_polar_cloud<pcl::PointXYZ>(center_cloud));
     
-    // iterate through polar of old cloud
-    std::vector<int> used_triangles;
+    // update old cloud
     pcl::PointCloud<pcl::PointXY>::Ptr old_cloud_polar = obtain_2d_polar_cloud<PointT>(old_cloud);
     for (std::size_t i = 0; i < old_cloud_polar->size(); i++)
     {
@@ -468,7 +470,6 @@ update_pointcloud(
             // compute intersection
             Eigen::Vector3f likelihood_point;
             double likelihood_variance;
-            double sphere_radius = 0.1;
             bool intersection_exists = eye_patch_intersection(current_point, current_point_direction, v1, v2, v3, std::pow(range_std, 2), sphere_radius, likelihood_point, likelihood_variance);
             if (!intersection_exists) continue;
 
@@ -481,9 +482,13 @@ update_pointcloud(
             all_likelihood_points.push_back(likelihood_point);
             all_likelihood_variance.push_back(likelihood_variance);
         }
-        if (all_likelihood_points.size() != 1) continue; // only proceed if there is one and only one intersectoin (which is most of the cases)
-        // with more than one intersection, there is ambiguity and is better to wait for more aligned scan to update the point
-        
+        if (all_likelihood_points.size() != 1) 
+        {
+            continue; 
+            // only proceed if there is one and only one intersectoin (which is most of the cases)
+            // with more than one intersection, there is ambiguity and is better to wait for more aligned scan to update the point
+        }
+
         // 3. compute posterior
         Eigen::Vector3f prior_point = current_point;
         float prior_variance = old_cloud_variance[i];
@@ -504,29 +509,30 @@ update_pointcloud(
         old_cloud->points[i].y = posterior_point(1);
         old_cloud->points[i].z = posterior_point(2);
         old_cloud_variance[i] = posterior_variance;
-        used_triangles.push_back(all_intersected_triangle_indices[0]); // record used triangles
+
+        int intersected_triangle_index = all_intersected_triangle_indices[0];
+        new_to_updated_old_point_map[center_to_vertices_index_map[intersected_triangle_index][0]].push_back(i);
+        new_to_updated_old_point_map[center_to_vertices_index_map[intersected_triangle_index][1]].push_back(i);
+        new_to_updated_old_point_map[center_to_vertices_index_map[intersected_triangle_index][2]].push_back(i);
     }
 
-    // record used_points
-    for (int used_triangle : used_triangles)
+    // update new cloud
+    // only add new cloud if, the closest three point creates an intersection that has larger uncertainty than the new point
+    for (std::size_t i = 0; i < new_cloud->size(); i++)
     {
-        for (int vertex_index : center_to_vertices_index_map[used_triangle])
+        // get updated old points
+        std::vector<int> updated_old_points_indices = new_to_updated_old_point_map[i];
+
+        // if no old point is updated by this new point
+        if (updated_old_points_indices.size() == 0) 
         {
-            used_points.push_back(vertex_index);
+            // add this new point to the old cloud
+            old_cloud->push_back(new_cloud->points[i]);
+            old_cloud_direction.push_back(new_cloud_direction[i]);
+            old_cloud_variance.push_back(new_cloud_variance[i]);
+            continue;
         }
     }
-
-    unique_vector<int>(used_points);
-        
-    // add ununsed points / directions to old cloud
-    typename pcl::PointCloud<PointT>::Ptr filtered_new_cloud = remove_used_points<PointT>(new_cloud, used_points);
-    *old_cloud += *filtered_new_cloud;
-
-    std::vector<Eigen::Vector3f> filtered_directions = remove_used_directions(new_cloud_direction, used_points);
-    old_cloud_direction.insert(old_cloud_direction.end(), filtered_directions.begin(), filtered_directions.end());
-
-    std::vector<float> filtered_varaince = remove_used_variance(new_cloud_variance, used_points);
-    old_cloud_variance.insert(old_cloud_variance.end(), filtered_varaince.begin(), filtered_varaince.end());
 }
 
 
