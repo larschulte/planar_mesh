@@ -292,6 +292,7 @@ bool eye_patch_intersection(Eigen::Vector3f current_point,
     bool sphere_exists = compute_sphere_centers(v1, v2, v3, sphere_radius, sphere_center1, sphere_center2);
     if (!sphere_exists)
     {
+        // std::cout << "Sphere does not exist" << std::endl;
         return false;
     }
 
@@ -302,6 +303,7 @@ bool eye_patch_intersection(Eigen::Vector3f current_point,
     bool intersection_exists2 = line_sphere_intersection(current_point, current_point_direction, sphere_center2, sphere_radius, intersection21, intersection22);
     if (!intersection_exists1 || !intersection_exists2)
     {
+        // std::cout << "Ray does not intersect with sphere" << std::endl;
         return false;
     }
 
@@ -420,7 +422,7 @@ update_pointcloud(
     )
 {
     // curvature parameter
-    double sphere_radius = 0.1;
+    double sphere_radius = 1;
 
     // triangulate new cloud
     delaunator::Delaunator d = obtain_triangulation<PointT>(new_cloud);
@@ -516,8 +518,7 @@ update_pointcloud(
         new_to_updated_old_point_map[center_to_vertices_index_map[intersected_triangle_index][2]].push_back(i);
     }
 
-    // update new cloud
-    // only add new cloud if, the closest three point creates an intersection that has larger uncertainty than the new point
+    // add new cloud
     for (std::size_t i = 0; i < new_cloud->size(); i++)
     {
         // get updated old points
@@ -532,6 +533,31 @@ update_pointcloud(
             old_cloud_variance.push_back(new_cloud_variance[i]);
             continue;
         }
+
+        // // if there are old points updated by this new point, but the new point is far away from the old point
+        // bool far_away = true;
+        // for (int updated_old_point_index : updated_old_points_indices)
+        // {
+        //     Eigen::Vector3f updated_old_point = old_cloud->points[updated_old_point_index].getVector3fMap();
+        //     double updated_old_point_variance = old_cloud_variance[updated_old_point_index];
+        //     double updated_old_point_std = std::pow(updated_old_point_variance, 0.5);
+
+        //     Eigen::Vector3f new_point = new_cloud->points[i].getVector3fMap();
+        //     float distance = (updated_old_point - new_point).norm();
+        //     if (distance < 3 * updated_old_point_std)
+        //     {
+        //         far_away = false;
+        //         break;
+        //     }
+        // }
+        // if (far_away)
+        // {
+        //     // add this new point to the old cloud
+        //     old_cloud->push_back(new_cloud->points[i]);
+        //     old_cloud_direction.push_back(new_cloud_direction[i]);
+        //     old_cloud_variance.push_back(new_cloud_variance[i]);
+        //     continue;
+        // }
     }
 }
 
