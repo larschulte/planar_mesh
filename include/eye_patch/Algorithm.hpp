@@ -589,6 +589,50 @@ public:
         return old_cloud_;
     }
 
+    typename pcl::PointCloud<PointT>::Ptr get_near_cloud()
+    {
+        typename pcl::PointCloud<PointT>::Ptr near_cloud (new pcl::PointCloud<PointT>);
+        for (std::size_t i = 0; i < old_cloud_->size(); i++)
+        {
+            Eigen::Vector3f point = old_cloud_->points[i].getVector3fMap();
+            Eigen::Vector3f direction = old_cloud_direction_[i];
+            float variance = old_cloud_variance_[i];
+            float shift_distance = 3 * std::pow(variance, 0.5);
+            Eigen::Vector3f near_point = point - direction * shift_distance;
+
+            PointT near_point_pcl;
+            near_point_pcl.x = near_point(0);
+            near_point_pcl.y = near_point(1);
+            near_point_pcl.z = near_point(2);
+
+            near_cloud->push_back(near_point_pcl);
+        }
+
+        return near_cloud;
+    }
+
+    typename pcl::PointCloud<PointT>::Ptr get_far_cloud()
+    {
+        typename pcl::PointCloud<PointT>::Ptr far_cloud (new pcl::PointCloud<PointT>);
+        for (std::size_t i = 0; i < old_cloud_->size(); i++)
+        {
+            Eigen::Vector3f point = old_cloud_->points[i].getVector3fMap();
+            Eigen::Vector3f direction = old_cloud_direction_[i];
+            float variance = old_cloud_variance_[i];
+            float shift_distance = 3 * std::pow(variance, 0.5);
+            Eigen::Vector3f far_point = point + direction * shift_distance;
+
+            PointT far_point_pcl;
+            far_point_pcl.x = far_point(0);
+            far_point_pcl.y = far_point(1);
+            far_point_pcl.z = far_point(2);
+
+            far_cloud->push_back(far_point_pcl);
+        }
+
+        return far_cloud;
+    }
+
 private:
     // sensor parameters
     double sensor_range_std_;

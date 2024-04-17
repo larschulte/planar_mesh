@@ -12,7 +12,7 @@ int main()
     // parameters
     std::string pcd_file_folder = "/home/jiahao/datasets/bag2pcd_output/mission2_reverse/slam_clouds/";
     std::string pose_file_path = "/home/jiahao/datasets/bag2pcd_output/mission2_reverse/slam_poses/slam_poss_graph.slam";
-    std::size_t number_of_files = 30;
+    std::size_t number_of_files = 50;
     double sensor_range_std = 0.01;
 
     // data loader
@@ -51,8 +51,11 @@ int main()
     viewer->createViewPort (0.0, 0.0, 0.5, 1.0, port1);
     viewer->setBackgroundColor (0, 0, 0, port1);
     int port2(0);
-    viewer->createViewPort (0.5, 0.0, 1.0, 1.0, port2);
+    viewer->createViewPort (0.5, 0.5, 1.0, 1.0, port2);
     viewer->setBackgroundColor (0, 0, 0, port2);
+    int port3(0);
+    viewer->createViewPort (0.5, 0.0, 1.0, 0.5, port3);
+    viewer->setBackgroundColor (0, 0, 0, port3);
 
     // // set up viewports
     // int port1(0);
@@ -72,7 +75,10 @@ int main()
 
     // add to viewer
     add_to_viewer<InputPointT>(viewer, port1, control_cloud, "control cloud", color_tuple(0, 255, 0), 3); // b
+    // add_to_viewer<InputPointT>(viewer, port1, algorithm.get_old_cloud(), "oldcloud mean red", color_tuple(255, 255, 255), 3); // b
     add_to_viewer<InputPointT>(viewer, port2, algorithm.get_old_cloud(), "oldcloud mean", color_tuple(0, 255, 0), 3); // b
+    add_to_viewer<InputPointT>(viewer, port3, algorithm.get_near_cloud(), "oldcloud near", color_tuple(0, 255, 0), 3); // b
+    add_to_viewer<InputPointT>(viewer, port3, algorithm.get_far_cloud(), "oldcloud far", color_tuple(255, 0, 0), 3); // b
     // viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_OPACITY, 0.7, "control cloud");
     // viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_OPACITY, 0.7, "oldcloud mean");
     
