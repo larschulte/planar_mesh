@@ -125,4 +125,26 @@ void plt_plot_triangles(delaunator::Delaunator d)
         // message
         std::cout << "adding triange " << i <<  " out of " << d.triangles.size() << std::endl;
     }   
+
+    // reverse x axis order
+    plt::xlim(180, -180);
+}
+
+// plot coordinates in plt
+void plt_scatter_plot_coords(delaunator::Delaunator d, std::vector<double> colors)
+{
+    // extract x, y coordinates
+    std::vector<double> x_coords;
+    std::vector<double> y_coords;
+    for (std::size_t i = 0; i < d.coords.size(); i+=2)
+    {
+        x_coords.push_back(d.coords[i]);
+        y_coords.push_back(d.coords[i + 1]);
+    }
+
+    // scatter plots
+    plt::scatter_colored(x_coords, y_coords, colors, 3);
+
+    // reverse x axis order
+    plt::xlim(180, -180);
 }
