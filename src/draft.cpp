@@ -2,6 +2,197 @@
 
 // test for eye_patch intersection 
 
+// test curvature computation
+// compute vertex to link map
+std::map<int, std::vector<int>> compute_vertex_to_link_map(delaunator::Delaunator d)
+{
+    // initialize
+    std::map<int, std::vector<int>> vertex_to_link_map;
+
+    // compute link
+    for (std::size_t i = 0; i < d.triangles.size(); i+=3)
+    {
+        // vertcies index
+        int v1_index = d.triangles[i];
+        int v2_index = d.triangles[i + 1];
+        int v3_index = d.triangles[i + 2];
+        
+        // push link
+        vertex_to_link_map[v1_index].push_back(v2_index);
+        vertex_to_link_map[v1_index].push_back(v3_index);
+        vertex_to_link_map[v2_index].push_back(v1_index);
+        vertex_to_link_map[v2_index].push_back(v3_index);
+        vertex_to_link_map[v3_index].push_back(v1_index);
+        vertex_to_link_map[v3_index].push_back(v2_index);
+    }
+    
+    for (auto& [vertex_index, links] : vertex_to_link_map)
+    {
+        unique_vector(links);
+    }
+
+    // return
+    return vertex_to_link_map;
+}
+// compute vertex curvature 
+template <typename PointT>
+std::map<int, float> compute_vertex_to_curvature_map(typename pcl::PointCloud<PointT>::Ptr cloud, std::map<int, std::vector<int>> vertex_to_link_map, std::map<int, Eigen::Vector3f> vertex_to_normal_map)
+{
+    // initialize
+    std::map<int, float> vertex_to_curvature_map;
+
+    // compute curvature
+    for (auto& [vertex_index, links] : vertex_to_link_map)
+    {
+        Eigen::Vector3f p_c = cloud->at(vertex_index).getVector3fMap();
+        Eigen::Vector3f n_c = vertex_to_normal_map[vertex_index];
+
+        // compute mean curvature
+        float total_curvature = 0;
+        int count = 0;
+        for (auto& link : links)
+        {
+            // individual link curvature
+            Eigen::Vector3f p_l = cloud->at(link).getVector3fMap();
+            Eigen::Vector3f n_l = vertex_to_normal_map[link];
+            float link_curvature = compute_edge_curvature(p_c, p_l, n_c, n_l);
+
+            // mean
+            total_curvature += link_curvature;
+            count++;
+        }
+        float mean_curvature = total_curvature / count;
+
+        // store
+        vertex_to_curvature_map[vertex_index] = mean_curvature;
+    }
+
+    // return
+    return vertex_to_curvature_map;
+}   
+using InputPointT = VilensPointT;
+int main()
+{
+    // parameters
+    std::string pcd_file_folder = "/home/jiahao/datasets/bag2pcd_output/mission2_reverse/slam_clouds/";
+    std::string pose_file_path = "/home/jiahao/datasets/bag2pcd_output/mission2_reverse/slam_poses/slam_poss_graph.slam";
+
+    // data loader
+    DataLoader<InputPointT> data_loader(pcd_file_folder, pose_file_path);
+    pcl::PointCloud<InputPointT>::Ptr cloud (new pcl::PointCloud<InputPointT>);
+    cloud = data_loader.get_cloud(0);
+
+    // triangulate the cloud
+    delaunator::Delaunator d = obtain_triangulation<InputPointT>(cloud);
+
+    // plt_plot_black_background();
+    // plt_plot_triangles(d);
+    // // scatter color
+    // std::vector<double> scatter_color;
+    // for (std::size_t i = 0; i < cloud->size(); i++)
+    // {
+    //     float distance = cloud->points[i].getVector3fMap().norm();
+    //     float distance_threshold = 6;
+    //     if (distance > distance_threshold)
+    //     {
+    //         distance = distance_threshold;
+    //     }
+        
+    //     scatter_color.push_back(distance);
+    // }
+    // plt_scatter_plot_coords(d, scatter_color); 
+    // plt::show();
+
+    
+
+    // compute vertex normal
+    std::map<int, Eigen::Vector3f> vertex_to_normal_map = compute_vertex_to_normal_map<InputPointT>(cloud, d);
+    
+    // compute vertex link
+    std::map<int, std::vector<int>> vertex_to_link_map = compute_vertex_to_link_map(d);
+
+    // compute vertex curvature
+    std::map<int, float> vertex_to_mean_curvature_map = compute_vertex_to_curvature_map<InputPointT>(cloud, vertex_to_link_map, vertex_to_normal_map);
+
+
+    // the current update assume planar surface within each triangle, and does not filter the planar surface even if the triangle is very large
+    // this will be solved when introducing eye patch
+
+    // ------------------------------------------------------ pclvisuliazer    
+    // set up viewer
+    pcl::visualization::PCLVisualizer::Ptr viewer (new pcl::visualization::PCLVisualizer ("3D Viewer"));
+    viewer->getRenderWindow()->GlobalWarningDisplayOff(); // Add This Line
+    
+    // set up viewports
+    int port1(0);
+    viewer->createViewPort (0.0, 0.0, 1, 1.0, port1);
+    viewer->setBackgroundColor (0, 0, 0, port1);
+    viewer->initCameraParameters();
+    viewer->addCoordinateSystem(1);
+
+
+    // convert to viewer cloud
+    pcl::PointCloud<pcl::PointXYZINormal>::Ptr viewer_cloud(new pcl::PointCloud<pcl::PointXYZINormal>);
+    viewer_cloud->resize(cloud->size());
+    for (std::size_t i = 0; i < cloud->size(); i++)
+    {
+        pcl::PointXYZINormal viewer_point;
+        viewer_point.x = cloud->points[i].x;
+        viewer_point.y = cloud->points[i].y;
+        viewer_point.z = cloud->points[i].z;
+        float radius = abs(1.0 / vertex_to_mean_curvature_map[i]);
+        std::cout << "radius is " << radius << std::endl;
+        // cap the radius
+        float radius_cap = 0.8;
+        if (radius > radius_cap)
+        {
+            radius = radius_cap;
+        }
+        viewer_point.intensity = radius;
+        viewer_point.normal_x = vertex_to_normal_map[i][0];
+        viewer_point.normal_y = vertex_to_normal_map[i][1];
+        viewer_point.normal_z = vertex_to_normal_map[i][2];
+        viewer_cloud->points[i] = viewer_point;
+    }
+
+    // color
+    // std::tuple<int, int, int> color(0, 255, 0);
+    // pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZINormal> color_handler(xyz_cloud, std::get<0>(color), std::get<1>(color), std::get<2>(color));
+    
+
+    // add to viewer
+    pcl::visualization::PointCloudColorHandlerGenericField<pcl::PointXYZINormal> color_handler(viewer_cloud, "intensity");
+    viewer->addPointCloud<pcl::PointXYZINormal> (viewer_cloud, color_handler, "pointcloud", port1);
+    viewer->addPointCloudNormals<pcl::PointXYZINormal> (viewer_cloud, 1, 0.05, "normals", port1);
+    viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 3, "pointcloud");
+    
+    
+
+    // add spheres
+    for (std::size_t i = 0; i < cloud->size(); i = i + 10)
+    {
+        pcl::PointXYZINormal point = viewer_cloud->points[i];
+        float radius = point.intensity;
+        if (radius > 0.1)
+        {
+            continue;
+        }
+        Eigen::Vector3f point_vector = point.getVector3fMap();
+        Eigen::Vector3f point_normal = point.getNormalVector3fMap();
+        Eigen::Vector3f sphere_center = point_vector - radius * point_normal;
+
+        viewer->addSphere(pcl::PointXYZ(sphere_center[0], sphere_center[1], sphere_center[2]), radius, 1, 0, 0, "sphere" + std::to_string(i), port1);
+    }
+
+
+    // display
+    viewer->spin();
+
+    return (0);
+}
+
+
+
 int main()
 {
     // input

@@ -408,6 +408,62 @@ remove_used_variance(std::vector<float> variances, std::vector<int> used_points)
     return variances_copied;
 }
 
+
+// compute vertex normal using discrete vector area
+template <typename PointT>
+std::map<int, Eigen::Vector3f> compute_vertex_to_normal_map(typename pcl::PointCloud<PointT>::Ptr cloud, delaunator::Delaunator d)
+{   
+    // initialize
+    std::map<int, Eigen::Vector3f> vertex_to_normal_map;
+
+    // compute normal
+    for (std::size_t i = 0; i < d.triangles.size(); i+=3)
+    {
+        // vertex indices
+        int v1_index = d.triangles[i];
+        int v2_index = d.triangles[i + 1];
+        int v3_index = d.triangles[i + 2];
+        // vertex vectors
+        Eigen::Vector3f v1 = cloud->points[v1_index].getVector3fMap();
+        Eigen::Vector3f v2 = cloud->points[v2_index].getVector3fMap();
+        Eigen::Vector3f v3 = cloud->points[v3_index].getVector3fMap();
+
+        // find the order and push cross products
+        Eigen::Vector3f v21 = v2 - v1;
+        Eigen::Vector3f v31 = v3 - v1;
+        // order
+        if (v21.cross(v31).dot(v1) < 0)
+        {
+            vertex_to_normal_map[v1_index] += v2.cross(v3);
+            vertex_to_normal_map[v2_index] += v3.cross(v1);
+            vertex_to_normal_map[v3_index] += v1.cross(v2);
+        }
+        else
+        {
+            vertex_to_normal_map[v1_index] += v3.cross(v2);
+            vertex_to_normal_map[v2_index] += v1.cross(v3);
+            vertex_to_normal_map[v3_index] += v2.cross(v1);
+        }
+    }
+    for (auto& [vertex_index, normal] : vertex_to_normal_map)
+    {
+        normal.normalize();
+    }
+    
+    // return
+    return vertex_to_normal_map;
+}
+
+float compute_edge_curvature(Eigen::Vector3f p1, Eigen::Vector3f p2, Eigen::Vector3f n1, Eigen::Vector3f n2)
+{
+    // compute curvature
+    Eigen::Vector3f p = p2 - p1;
+    Eigen::Vector3f n = n2 - n1;
+    float curvature = (n).dot(p) / p.squaredNorm();
+    return curvature;
+}
+
+
 // compute updated pointcloud
 template <typename PointT>
 void 
@@ -421,11 +477,11 @@ update_pointcloud(
     double range_std
     )
 {
-    // curvature parameter
-    double sphere_radius = 1;
-
     // triangulate new cloud
     delaunator::Delaunator d = obtain_triangulation<PointT>(new_cloud);
+
+    // compute vertex to normal map
+    std::map<int, Eigen::Vector3f> vertex_to_normal_map = compute_vertex_to_normal_map<PointT>(new_cloud, d);
     
     // compute triangle centers 
     pcl::PointCloud<pcl::PointXYZ>::Ptr center_cloud = computer_triangle_center<PointT>(new_cloud, d);
@@ -468,6 +524,20 @@ update_pointcloud(
             Eigen::Vector3f v1 = new_cloud->points[v1_index].getVector3fMap();
             Eigen::Vector3f v2 = new_cloud->points[v2_index].getVector3fMap();
             Eigen::Vector3f v3 = new_cloud->points[v3_index].getVector3fMap();
+
+            // get triangle curvature
+            Eigen::Vector3f v1_normal = vertex_to_normal_map[v1_index];
+            Eigen::Vector3f v2_normal = vertex_to_normal_map[v2_index];
+            Eigen::Vector3f v3_normal = vertex_to_normal_map[v3_index];
+
+            float curvature_12 = compute_edge_curvature(v1, v2, v1_normal, v2_normal);
+            float curvature_23 = compute_edge_curvature(v2, v3, v2_normal, v3_normal);
+            float curvature_31 = compute_edge_curvature(v3, v1, v3_normal, v1_normal);
+
+            float mean_curvature = (curvature_12 + curvature_23 + curvature_31) / 3;
+
+            // get sphere radius
+            float sphere_radius = 1 / mean_curvature;
 
             // compute intersection
             Eigen::Vector3f likelihood_point;
