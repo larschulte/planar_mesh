@@ -13,23 +13,11 @@ typedef std::tuple<int, int, int> color_tuple;
 template <typename PointT> void 
 add_to_viewer(pcl::visualization::PCLVisualizer::Ptr viewer, int viewport, typename pcl::PointCloud<PointT>::Ptr cloud, std::string cloud_name, color_tuple color, float point_size)
 {
-    // convert to xyz cloud
-    pcl::PointCloud<pcl::PointXYZ>::Ptr xyz_cloud(new pcl::PointCloud<pcl::PointXYZ>);
-    xyz_cloud->resize(cloud->size());
-    for (std::size_t i = 0; i < cloud->size(); i++)
-    {
-        pcl::PointXYZ xyz_point;
-        xyz_point.x = cloud->points[i].x;
-        xyz_point.y = cloud->points[i].y;
-        xyz_point.z = cloud->points[i].z;
-        xyz_cloud->points[i] = xyz_point;
-    }
-
     // color
-    pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ> color_handler(xyz_cloud, std::get<0>(color), std::get<1>(color), std::get<2>(color));
+    pcl::visualization::PointCloudColorHandlerCustom<PointT> color_handler(cloud, std::get<0>(color), std::get<1>(color), std::get<2>(color));
 
     // add to viewer
-    viewer->addPointCloud<pcl::PointXYZ> (xyz_cloud, color_handler, cloud_name, viewport);
+    viewer->addPointCloud<PointT> (cloud, color_handler, cloud_name, viewport);
 
     // set point size
     viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, point_size, cloud_name);
