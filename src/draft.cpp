@@ -2,6 +2,10 @@
 
 // test for eye_patch intersection 
 
+// viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_OPACITY, 0.7, "control cloud");
+// viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_OPACITY, 0.7, "oldcloud mean");
+
+
 // test curvature computation
 // compute vertex to link map
 std::map<int, std::vector<int>> compute_vertex_to_link_map(delaunator::Delaunator d)
