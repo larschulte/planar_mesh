@@ -657,32 +657,39 @@ class Algorithm
 {
 public:
     // constructor, destructor
-    Algorithm(double range_std) : sensor_range_std_(range_std), old_cloud_(new typename pcl::PointCloud<PointT>){};
+    Algorithm(double range_std) 
+        : 
+        sensor_range_std_(range_std), 
+        old_cloud_(new typename pcl::PointCloud<PointT>),
+        control_cloud_(new typename pcl::PointCloud<PointT>)
+        {};
 
     // input
-    void add_pointcloud_and_pose(typename pcl::PointCloud<PointT>::Ptr new_cloud, Eigen::Affine3d new_pose)
+    void input(typename pcl::PointCloud<PointT>::Ptr new_cloud, Eigen::Affine3d new_pose)
     {
-        // compute near cloud and far for new cloud
+        // generate new cloud direction and variance
         std::vector<Eigen::Vector3f> new_cloud_direction = compute_point_directions<PointT>(new_cloud);
         std::vector<float> new_cloud_variance(new_cloud->size(), std::pow(sensor_range_std_, 2));
 
-        // transform old cloud to local frame
-        typename pcl::PointCloud<PointT>::Ptr old_cloud_local = transform_to_frame<PointT>(old_cloud_, Eigen::Isometry3d::Identity(), new_pose);
-
-        // collect used point, update old cloud
-        update_pointcloud<PointT>(old_cloud_local, old_cloud_direction_, old_cloud_variance_, new_cloud, new_cloud_direction, new_cloud_variance, sensor_range_std_);
-
-        // transform old cloud to global frame
-        typename pcl::PointCloud<PointT>::Ptr old_cloud_global = transform_to_frame<PointT>(old_cloud_local, new_pose, Eigen::Isometry3d::Identity());
-
         // update old cloud
+        typename pcl::PointCloud<PointT>::Ptr old_cloud_local = transform_to_frame<PointT>(old_cloud_, Eigen::Isometry3d::Identity(), new_pose);
+        update_pointcloud<PointT>(old_cloud_local, old_cloud_direction_, old_cloud_variance_, new_cloud, new_cloud_direction, new_cloud_variance, sensor_range_std_);
+        typename pcl::PointCloud<PointT>::Ptr old_cloud_global = transform_to_frame<PointT>(old_cloud_local, new_pose, Eigen::Isometry3d::Identity());
         *old_cloud_ = *old_cloud_global;
+
+        // update control cloud
+        *control_cloud_ += *transform_to_global<PointT>(new_cloud, new_pose);
     }
 
     // output
     typename pcl::PointCloud<PointT>::Ptr get_old_cloud()
     {
         return old_cloud_;
+    }
+
+    typename pcl::PointCloud<PointT>::Ptr get_control_cloud()
+    {
+        return control_cloud_;
     }
 
     typename pcl::PointCloud<PointT>::Ptr get_near_cloud()
@@ -737,4 +744,7 @@ private:
     typename pcl::PointCloud<PointT>::Ptr old_cloud_;
     std::vector<Eigen::Vector3f> old_cloud_direction_;
     std::vector<float> old_cloud_variance_;
+
+    // control cloud
+    typename pcl::PointCloud<PointT>::Ptr control_cloud_;
 };
