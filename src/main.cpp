@@ -26,21 +26,15 @@ public:
         // algorithms
         algorithm_.input(new_cloud, new_pose);
 
-        // store output
-        control_cloud_ = algorithm_.get_control_cloud();
-        old_cloud_ = algorithm_.get_old_cloud();
-        near_cloud_ = algorithm_.get_near_cloud();
-        far_cloud_ = algorithm_.get_far_cloud();
-
-        // output 
+        // increment
         i_++;
     }
-    
-    typename pcl::PointCloud<PointT>::Ptr control_cloud_;
-    typename pcl::PointCloud<PointT>::Ptr old_cloud_;
-    typename pcl::PointCloud<PointT>::Ptr near_cloud_;
-    typename pcl::PointCloud<PointT>::Ptr far_cloud_;
 
+    typename pcl::PointCloud<PointT>::Ptr get_control_cloud() { return algorithm_.get_control_cloud(); }
+    typename pcl::PointCloud<PointT>::Ptr get_old_cloud() { return algorithm_.get_old_cloud(); }
+    typename pcl::PointCloud<PointT>::Ptr get_near_cloud() { return algorithm_.get_near_cloud(); }
+    typename pcl::PointCloud<PointT>::Ptr get_far_cloud() { return algorithm_.get_far_cloud(); }
+    
 private:
     DataLoader<PointT> data_loader_;
     Algorithm<PointT> algorithm_;
@@ -71,7 +65,18 @@ public:
         // set up coordinate system
         viewer_->initCameraParameters();
         viewer_->addCoordinateSystem(1);
-        
+
+        // set up initial pointcloud
+        // color
+        pcl::visualization::PointCloudColorHandlerCustom<PointT> color_control_cloud(app_.get_control_cloud(), 0, 255, 0);
+        pcl::visualization::PointCloudColorHandlerCustom<PointT> color_old_cloud(app_.get_old_cloud(), 0, 255, 0);
+        // add to viewer
+        viewer_->addPointCloud<PointT> (app_.get_control_cloud(), color_control_cloud, "control cloud", port1);
+        viewer_->addPointCloud<PointT> (app_.get_old_cloud(), color_old_cloud, "old cloud", port2);
+        // set point size
+        viewer_->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 3, "control cloud");
+        viewer_->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 3, "old cloud");
+
         // register keyboard callback
         viewer_->registerKeyboardCallback(&InteractiveViewer::keyboard_callback, *this, nullptr);
 
@@ -94,19 +99,11 @@ private:
             // step application
             app_.step();
 
-            // remove old visual
-            if (viewer_->contains("control cloud"))
-            {
-                viewer_->removePointCloud("control cloud");
-            }
-            if (viewer_->contains("oldcloud mean"))
-            {
-                viewer_->removePointCloud("oldcloud mean");
-            }
-
-            // add new visual
-            add_to_viewer<PointT>(viewer_, port1, app_.control_cloud_, "control cloud", color_tuple(0, 255, 0), 3); // b
-            add_to_viewer<PointT>(viewer_, port2, app_.old_cloud_, "oldcloud mean", color_tuple(0, 255, 0), 3); // b
+            // update pointcloud
+            pcl::visualization::PointCloudColorHandlerCustom<PointT> color_control_cloud(app_.get_control_cloud(), 0, 255, 0);
+            pcl::visualization::PointCloudColorHandlerCustom<PointT> color_old_cloud(app_.get_old_cloud(), 0, 255, 0);
+            viewer_->updatePointCloud<PointT>(app_.get_control_cloud(), color_control_cloud, "control cloud");
+            viewer_->updatePointCloud<PointT>(app_.get_old_cloud(), color_old_cloud, "old cloud");
         }
     }  
 };
