@@ -4,6 +4,9 @@ project(eye_patch)
 list(APPEND CMAKE_PREFIX_PATH "/usr/local/")
 
 # settings for complier version
+set(CMAKE_C_COMPILER "ccache")
+set(CMAKE_C_COMPILER_ARG1 "gcc")
+
 if(NOT CMAKE_CXX_STANDARD)
   set(CMAKE_CXX_STANDARD 17)
 endif()
