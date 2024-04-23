@@ -634,7 +634,7 @@ update_pointcloud(
 
 template<typename PointT>
 typename pcl::PointCloud<PointT>::Ptr 
-transform_to_global(typename pcl::PointCloud<PointT>::Ptr cloud, Eigen::Affine3d pose_eigen)
+transform_cloud_to_global(typename pcl::PointCloud<PointT>::Ptr cloud, Eigen::Affine3d pose_eigen)
 {
     // transform point cloud
     typename pcl::PointCloud<PointT>::Ptr transformed_cloud (new pcl::PointCloud<PointT> ());
@@ -642,15 +642,39 @@ transform_to_global(typename pcl::PointCloud<PointT>::Ptr cloud, Eigen::Affine3d
     return transformed_cloud;
 }
 
+// transform direction to global
+std::vector<Eigen::Vector3f> transform_direction_to_global(const std::vector<Eigen::Vector3f>& direction, const Eigen::Affine3d& pose_eigen)
+{
+    // initialize
+    std::vector<Eigen::Vector3f> direction_transformed = direction;
+
+    // process
+    for (std::size_t i = 0; i < direction.size(); i++)
+    {
+        // directional vector doesn't require translation, only rotation
+        direction_transformed[i] = pose_eigen.cast<float>().rotation() * direction[i]; 
+    }
+
+    // return
+    return direction_transformed;
+}
+
 // convert to target frame using pose
 template<typename PointT>
 typename pcl::PointCloud<PointT>::Ptr 
-transform_to_frame(typename pcl::PointCloud<PointT>::Ptr cloud, Eigen::Affine3d current_pose, Eigen::Affine3d target_pose)
+transform_cloud_to_frame(typename pcl::PointCloud<PointT>::Ptr cloud, Eigen::Affine3d current_pose, Eigen::Affine3d target_pose)
 {
     Eigen::Affine3d pose_current2target = target_pose.inverse() * current_pose; // the cloud will first be transformed to current pose, then to target pose
-    return transform_to_global<PointT>(cloud, pose_current2target);
+    return transform_cloud_to_global<PointT>(cloud, pose_current2target);
 }
 
+// convert direction to target frame using pose
+std::vector<Eigen::Vector3f>
+transform_direction_to_frame(const std::vector<Eigen::Vector3f>& direction, Eigen::Affine3d current_pose, Eigen::Affine3d target_pose)
+{
+    Eigen::Affine3d pose_current2target = target_pose.inverse() * current_pose; // the cloud will first be transformed to current pose, then to target pose
+    return transform_direction_to_global(direction, pose_current2target);
+}
 
 template <typename PointT>
 class Algorithm
@@ -671,14 +695,21 @@ public:
         std::vector<Eigen::Vector3f> new_cloud_direction = compute_point_directions<PointT>(new_cloud);
         std::vector<float> new_cloud_variance(new_cloud->size(), std::pow(sensor_range_std_, 2));
 
-        // update old cloud
-        typename pcl::PointCloud<PointT>::Ptr old_cloud_local = transform_to_frame<PointT>(old_cloud_, Eigen::Isometry3d::Identity(), new_pose);
-        update_pointcloud<PointT>(old_cloud_local, old_cloud_direction_, old_cloud_variance_, new_cloud, new_cloud_direction, new_cloud_variance, sensor_range_std_);
-        typename pcl::PointCloud<PointT>::Ptr old_cloud_global = transform_to_frame<PointT>(old_cloud_local, new_pose, Eigen::Isometry3d::Identity());
-        *old_cloud_ = *old_cloud_global;
+        // global to local
+        typename pcl::PointCloud<PointT>::Ptr old_cloud_local = transform_cloud_to_frame<PointT>(old_cloud_, Eigen::Isometry3d::Identity(), new_pose);
+        std::vector<Eigen::Vector3f> old_cloud_direction_local = transform_direction_to_frame(old_cloud_direction_, Eigen::Isometry3d::Identity(), new_pose);
+        
+        // process
+        update_pointcloud<PointT>(old_cloud_local, old_cloud_direction_local, old_cloud_variance_, new_cloud, new_cloud_direction, new_cloud_variance, sensor_range_std_);
 
-        // update control cloud
-        *control_cloud_ += *transform_to_global<PointT>(new_cloud, new_pose);
+        // local to global
+        typename pcl::PointCloud<PointT>::Ptr old_cloud_global = transform_cloud_to_frame<PointT>(old_cloud_local, new_pose, Eigen::Isometry3d::Identity());
+        std::vector<Eigen::Vector3f> old_cloud_direction_global = transform_direction_to_frame(old_cloud_direction_local, new_pose, Eigen::Isometry3d::Identity());
+
+        // store
+        *old_cloud_ = *old_cloud_global;
+        old_cloud_direction_ = old_cloud_direction_global;
+        *control_cloud_ += *transform_cloud_to_global<PointT>(new_cloud, new_pose);
     }
 
     // output
