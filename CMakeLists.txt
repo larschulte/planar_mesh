@@ -49,5 +49,20 @@ install(TARGETS
   DESTINATION lib/${PROJECT_NAME}
 )
 
+# add executable
+add_executable(temp src/temp.cpp)
+target_link_libraries (temp ${PCL_LIBRARIES} ${PYTHON_LIBRARIES} delaunator)
+target_include_directories(temp
+  PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>)
+
+# install(TARGETS main DESTINATION lib/${PROJECT_NAME})
+install(TARGETS 
+  temp
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+
 # call ament build system
 ament_package()
