@@ -5,6 +5,78 @@
 #include "point_type/BagPointT.hpp"
 #include "point_type/VilensPointT.hpp"
 
+
+class flann2d
+{
+public:
+    flann2d()
+        :
+        flann_tree(flann::KDTreeIndexParams(1))
+        {};
+    
+    void set_input(pcl::PointCloud<pcl::PointXY>::Ptr triangle_center_cloud_polar)
+    {
+        // compute data storage
+        for (const auto& point : triangle_center_cloud_polar->points)
+        {
+            flann_data_storage.push_back(point.x);
+            flann_data_storage.push_back(point.y);
+        }
+
+        // record
+        flann_last_id = triangle_center_cloud_polar->size() - 1;
+
+        // add to flann
+        flann_tree.buildIndex(flann::Matrix<float>(flann_data_storage.data(), triangle_center_cloud_polar->size(), 2));
+    }
+    
+    void knnSearch(pcl::PointXY searchPoint, std::vector<int>& search_indices, std::vector<float>& search_dists, int K)
+    {
+        // convert to vector
+        std::vector<float> query_point = {searchPoint.x, searchPoint.y};
+
+        // intialize
+        std::vector<std::vector<int>> list_of_search_indices(1, std::vector<int>(K));
+        std::vector<std::vector<float>> list_of_search_dists(1, std::vector<float>(K));
+
+        // search
+        flann_tree.knnSearch(flann::Matrix<float>(query_point.data(), 1, 2), list_of_search_indices, list_of_search_dists, K, flann::SearchParams(-1, 0));
+
+        // extract
+        search_indices = list_of_search_indices[0];
+        search_dists = list_of_search_dists[0];
+    }
+
+    void addPoints(pcl::PointXY new_point_polar)
+    {
+        // convert to vector
+        std::vector<float> new_triangle_center1_polar;
+        new_triangle_center1_polar.push_back(new_point_polar.x);
+        new_triangle_center1_polar.push_back(new_point_polar.y);
+
+        // add
+        flann_tree.addPoints(flann::Matrix<float>(new_triangle_center1_polar.data(), 1, 2));
+
+        // update id
+        flann_last_id++;
+    }
+
+    void removePoint(int id)
+    {
+        flann_tree.removePoint(id);
+    }
+
+    int flann_last_id;
+
+private:
+    std::vector<float> flann_data_storage;
+
+    flann::Index<flann::L2<float>> flann_tree;
+    
+};
+
+
+
 using InputPointT = VilensPointT;
 int main()
 {
@@ -95,16 +167,9 @@ int main()
     // // ------------- flann ---------------
     pcl::PointCloud<pcl::PointXYZ>::Ptr triangle_center_cloud = compute_triangle_center_cloud<InputPointT>(old_cloud_local, triangle_map);
     pcl::PointCloud<pcl::PointXY>::Ptr triangle_center_cloud_polar = compute_2d_polar_cloud<pcl::PointXYZ>(triangle_center_cloud);
-    std::vector<float> flann_data_storage;
-    for (const auto& point : triangle_center_cloud_polar->points)
-    {
-        flann_data_storage.push_back(point.x);
-        flann_data_storage.push_back(point.y);
-    }
-    flann::Matrix<float> flann_data_matrix(flann_data_storage.data(), triangle_center_cloud_polar->size(), 2);
-    flann::Index<flann::L2<float>> flann_tree(flann_data_matrix, flann::KDTreeIndexParams(1));
-    flann_tree.buildIndex();
-    int flann_last_id = triangle_center_cloud_polar->size() - 1;
+
+    flann2d flann_tree;
+    flann_tree.set_input(triangle_center_cloud_polar);
 
 
     pcl::PointCloud<pcl::PointXY>::Ptr new_point_polar_cloud = compute_2d_polar_cloud<InputPointT>(new_cloud);
@@ -122,12 +187,9 @@ int main()
 
         // search
         int K = 4;
-        std::vector<float> query_point = {searchPoint.x, searchPoint.y};
-        std::vector<std::vector<int>> list_of_search_indices(1, std::vector<int>(K));
-        std::vector<std::vector<float>> list_of_search_dists(1, std::vector<float>(K));
-        flann_tree.knnSearch(flann::Matrix<float>(query_point.data(), 1, 2), list_of_search_indices, list_of_search_dists, K, flann::SearchParams(-1, 0));
-        std::vector<int> search_indices = list_of_search_indices[0];
-        std::vector<float> search_dists = list_of_search_dists[0];
+        std::vector<int> search_indices;
+        std::vector<float> search_dists;
+        flann_tree.knnSearch(searchPoint, search_indices, search_dists, K);
  
         // for each searched triangle center
         std::vector<int> intersected_triangle_indices;
@@ -189,10 +251,9 @@ int main()
         // remove
         triangle_map.erase(min_triangle_index);
         // add
-        triangle_map[flann_last_id+1] = new_triangle1;
-        triangle_map[flann_last_id+2] = new_triangle2;
-        triangle_map[flann_last_id+3] = new_triangle3;
-        flann_last_id += 3;
+        triangle_map[flann_tree.flann_last_id+1] = new_triangle1;
+        triangle_map[flann_tree.flann_last_id+2] = new_triangle2;
+        triangle_map[flann_tree.flann_last_id+3] = new_triangle3;
 
         // --- flann ---
         // remove
@@ -217,13 +278,13 @@ int main()
         compute_azimuth_and_altitude(new_triangle_center2, azimuth2, altitude2);
         compute_azimuth_and_altitude(new_triangle_center3, azimuth3, altitude3);
         // generate polar dataset
-        std::vector<float> new_triangle_center1_polar = {azimuth1, altitude1};
-        std::vector<float> new_triangle_center2_polar = {azimuth2, altitude2};
-        std::vector<float> new_triangle_center3_polar = {azimuth3, altitude3};
+        pcl::PointXY new_triangle_center1_polar(azimuth1, altitude1);
+        pcl::PointXY new_triangle_center2_polar(azimuth2, altitude2);
+        pcl::PointXY new_triangle_center3_polar(azimuth3, altitude3);
         // add
-        flann_tree.addPoints(flann::Matrix<float>(new_triangle_center1_polar.data(), 1, 2), 10);
-        flann_tree.addPoints(flann::Matrix<float>(new_triangle_center2_polar.data(), 1, 2), 10);
-        flann_tree.addPoints(flann::Matrix<float>(new_triangle_center3_polar.data(), 1, 2), 10);
+        flann_tree.addPoints(new_triangle_center1_polar);
+        flann_tree.addPoints(new_triangle_center2_polar);
+        flann_tree.addPoints(new_triangle_center3_polar);
     }
 
 
