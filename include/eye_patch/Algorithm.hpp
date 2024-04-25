@@ -27,30 +27,43 @@ point_to_triangle_map(delaunator::Delaunator d)
     return pt_map;
 }
 
+void compute_azimuth_and_altitude(const Eigen::Vector3f& point, float& azimuth, float& altitude)
+{
+    // x y z
+    float x = point[0];
+    float y = point[1];
+    float z = point[2];
+
+    // r azimuth altitude
+    double r = sqrt(x * x + y * y + z * z);
+    azimuth = atan2(y, x) * 180 / M_PI;
+    altitude = asin(z / r) * 180 / M_PI;
+}
+
 // convert to 2d polar cloud
 template<typename PointT>
 pcl::PointCloud<pcl::PointXY>::Ptr 
-obtain_2d_polar_cloud(typename pcl::PointCloud<PointT>::Ptr cloud)
+compute_2d_polar_cloud(typename pcl::PointCloud<PointT>::Ptr cloud)
 {
+    // initialize
     pcl::PointCloud<pcl::PointXY>::Ptr cloud_polar (new pcl::PointCloud<pcl::PointXY>);
     cloud_polar->resize(cloud->size());
+
+    // process
     for (std::size_t i = 0; i < cloud->size(); i+=1)
     {
-        pcl::PointXY point;
+        // initialize
+        float azimuth, altitude;
 
-        // compute azimuth and altitude
-        float x = cloud->points[i].x;
-        float y = cloud->points[i].y;
-        float z = cloud->points[i].z;
-        double r = sqrt(x * x + y * y + z * z);
-        double azimuth = atan2(y, x) * 180 / M_PI;
-        double altitude = asin(z / r) * 180 / M_PI;
+        // process
+        compute_azimuth_and_altitude(cloud->points[i].getVector3fMap(), azimuth, altitude);
 
-        point.x = azimuth;
-        point.y = altitude;
-        cloud_polar->points[i] = point;
+        // store
+        cloud_polar->points[i].x = azimuth;
+        cloud_polar->points[i].y = altitude;
     }
 
+    // return
     return cloud_polar;
 }
 
@@ -184,6 +197,48 @@ d_to_triangle_map(delaunator::Delaunator d)
 
     // return
     return map;
+}
+
+// compute triangle center
+template<typename PointT>
+typename pcl::PointCloud<pcl::PointXYZ>::Ptr 
+compute_triangle_center_cloud(typename pcl::PointCloud<PointT>::Ptr cloud, std::map<int, std::vector<int>> triangle_map)
+{
+    // initialize
+    typename pcl::PointCloud<pcl::PointXYZ>::Ptr center_cloud (new typename pcl::PointCloud<pcl::PointXYZ>);
+
+    // compute triangle centers
+    for (const auto& entry : triangle_map)
+    {
+        // vertices index
+        int v1_index = entry.second[0];
+        int v2_index = entry.second[1];
+        int v3_index = entry.second[2];
+        
+        // vertices vector
+        Eigen::Vector3f v1 = cloud->points[v1_index].getVector3fMap();
+        Eigen::Vector3f v2 = cloud->points[v2_index].getVector3fMap();
+        Eigen::Vector3f v3 = cloud->points[v3_index].getVector3fMap();
+
+        // center vector
+        Eigen::Vector3f center = (v1 + v2 + v3) / 3;
+
+        // center point
+        pcl::PointXYZ center_point(center(0), center(1), center(2));
+
+        // store
+        center_cloud->push_back(center_point);
+    }
+
+    // return
+    return center_cloud;
+}
+
+template<typename PointT>
+typename pcl::PointCloud<pcl::PointXYZ>::Ptr 
+compute_triangle_center_cloud(typename pcl::PointCloud<PointT>::Ptr cloud, delaunator::Delaunator d)
+{
+    return compute_triangle_center_cloud<PointT>(cloud, d_to_triangle_map(d));
 }
 
 // triangulation
@@ -484,7 +539,7 @@ update_pointcloud(
     std::map<int, Eigen::Vector3f> vertex_to_normal_map = compute_vertex_to_normal_map<PointT>(new_cloud, d);
     
     // compute triangle centers 
-    pcl::PointCloud<pcl::PointXYZ>::Ptr center_cloud = computer_triangle_center<PointT>(new_cloud, d);
+    pcl::PointCloud<pcl::PointXYZ>::Ptr center_cloud = compute_triangle_center_cloud<PointT>(new_cloud, d);
 
     // compute triangle center to vertices index map
     std::map<int, std::vector<int>> center_to_vertices_index_map = d_to_triangle_map(d);
@@ -494,10 +549,10 @@ update_pointcloud(
 
     // prepare kd tree search
     pcl::KdTreeFLANN<pcl::PointXY> new_cloud_triangle_center_polar_kdtree;
-    new_cloud_triangle_center_polar_kdtree.setInputCloud(obtain_2d_polar_cloud<pcl::PointXYZ>(center_cloud));
+    new_cloud_triangle_center_polar_kdtree.setInputCloud(compute_2d_polar_cloud<pcl::PointXYZ>(center_cloud));
     
     // update old cloud
-    pcl::PointCloud<pcl::PointXY>::Ptr old_cloud_polar = obtain_2d_polar_cloud<PointT>(old_cloud);
+    pcl::PointCloud<pcl::PointXY>::Ptr old_cloud_polar = compute_2d_polar_cloud<PointT>(old_cloud);
     for (std::size_t i = 0; i < old_cloud_polar->size(); i++)
     {
         // current point

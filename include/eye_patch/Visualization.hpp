@@ -81,6 +81,27 @@ void viewer_add_triangles(pcl::visualization::PCLVisualizer::Ptr viewer, int vie
     }
 }
 
+template <typename PointT>
+pcl::PolygonMesh convert_to_mesh(const typename pcl::PointCloud<PointT>::Ptr cloud, std::map<int, std::vector<int>>& triangle_map)
+{
+    // initialize
+    pcl::PolygonMesh mesh;
+
+    // process
+    pcl::toPCLPointCloud2(*cloud, mesh.cloud); // pointcloud
+    for (const auto& pair : triangle_map) // triangles
+    { 
+        pcl::Vertices v;
+        v.vertices.push_back(pair.second[0]);
+        v.vertices.push_back(pair.second[1]);
+        v.vertices.push_back(pair.second[2]);
+        mesh.polygons.push_back(v);
+    }
+
+    // return
+    return mesh;
+}
+
 void plt_plot_black_background()
 {
     std::vector<double> background_x_list = {-180, 180, 180, -180, -180};
