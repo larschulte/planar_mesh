@@ -163,7 +163,7 @@ computer_triangle_center(typename pcl::PointCloud<PointT>::Ptr vertex_cloud, del
 // compute triangle center to vertices index map
 // map[triangle_index in d] = [v1_index, v2_index, v3_index in vertex_cloud]
 std::map<int, std::vector<int>> 
-compute_center_to_vertices_index_map(delaunator::Delaunator d)
+d_to_triangle_map(delaunator::Delaunator d)
 {
     // initialize
     std::map<int, std::vector<int>> map;
@@ -487,7 +487,7 @@ update_pointcloud(
     pcl::PointCloud<pcl::PointXYZ>::Ptr center_cloud = computer_triangle_center<PointT>(new_cloud, d);
 
     // compute triangle center to vertices index map
-    std::map<int, std::vector<int>> center_to_vertices_index_map = compute_center_to_vertices_index_map(d);
+    std::map<int, std::vector<int>> center_to_vertices_index_map = d_to_triangle_map(d);
     
     // new point to old point map
     std::map<int, std::vector<int>> new_to_updated_old_point_map;

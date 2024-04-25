@@ -33,18 +33,19 @@ pcl::PolygonMesh obtain_mesh(const typename pcl::PointCloud<PointT>::Ptr cloud, 
 
 
 template <typename PointT>
-pcl::PolygonMesh obtain_mesh(const typename pcl::PointCloud<PointT>::Ptr cloud, const std::vector<std::vector<int>>& triangles)
+pcl::PolygonMesh obtain_mesh(const typename pcl::PointCloud<PointT>::Ptr cloud, std::map<int, std::vector<int>>& triangle_map)
 {
     // initialize
     pcl::PolygonMesh mesh;
 
     // process
     // store triangles
-    for(std::size_t i = 0; i < triangles.size(); i++) {
+    // iterate through triangle_map
+    for (const auto& pair : triangle_map) {
         pcl::Vertices v;
-        v.vertices.push_back(triangles[i][0]);
-        v.vertices.push_back(triangles[i][1]);
-        v.vertices.push_back(triangles[i][2]);
+        v.vertices.push_back(pair.second[0]);
+        v.vertices.push_back(pair.second[1]);
+        v.vertices.push_back(pair.second[2]);
         mesh.polygons.push_back(v);
     }
     // store pointcloud
@@ -58,32 +59,30 @@ pcl::PolygonMesh obtain_mesh(const typename pcl::PointCloud<PointT>::Ptr cloud, 
 // compute triangle center
 template<typename PointT>
 typename pcl::PointCloud<pcl::PointXYZ>::Ptr 
-computer_triangle_center(typename pcl::PointCloud<PointT>::Ptr vertex_cloud, std::vector<std::vector<int>> triangles)
+computer_triangle_center(typename pcl::PointCloud<PointT>::Ptr vertex_cloud, std::map<int, std::vector<int>> triangle_map)
 {
     // initialize
     typename pcl::PointCloud<pcl::PointXYZ>::Ptr center_cloud (new typename pcl::PointCloud<pcl::PointXYZ>);
-    center_cloud->resize(triangles.size());
 
     // compute triangle centers
-    for (std::size_t i = 0; i < triangles.size(); i++)
+    // iterate over triangle map
+    for (const auto& entry : triangle_map)
     {
         // vertcies index
-        int v1_index = triangles[i][0];
-        int v2_index = triangles[i][1];
-        int v3_index = triangles[i][2];
+        int v1_index = entry.second[0];
+        int v2_index = entry.second[1];
+        int v3_index = entry.second[2];
         
         // vertices
         Eigen::Vector3f v1 = vertex_cloud->points[v1_index].getVector3fMap();
         Eigen::Vector3f v2 = vertex_cloud->points[v2_index].getVector3fMap();
         Eigen::Vector3f v3 = vertex_cloud->points[v3_index].getVector3fMap();
-
-        // center
+        // center vector
         Eigen::Vector3f center = (v1 + v2 + v3) / 3;
-
-        // store center
-        center_cloud->points[i].x = center(0);
-        center_cloud->points[i].y = center(1);
-        center_cloud->points[i].z = center(2);
+        // center point
+        pcl::PointXYZ center_point(center(0), center(1), center(2));
+        // store
+        center_cloud->push_back(center_point);
     }
 
     // return
@@ -222,7 +221,7 @@ int main()
 
     // obtain old cloud triangulation in old cloud frame
     delaunator::Delaunator old_d = obtain_triangulation<InputPointT> (old_cloud);
-    std::vector<std::vector<int>> triangle_list = d_to_triangle_list(old_d);
+    std::map<int, std::vector<int>> triangle_map = d_to_triangle_map(old_d);
 
     // transform old cloud to new cloud frame
     typename pcl::PointCloud<InputPointT>::Ptr old_cloud_local = transform_cloud_to_frame<InputPointT>(old_cloud, old_pose, new_pose);
@@ -231,7 +230,7 @@ int main()
     
     
     // // ------------- flann ---------------
-    pcl::PointCloud<pcl::PointXYZ>::Ptr triangle_center_cloud = computer_triangle_center<InputPointT>(old_cloud_local, triangle_list);
+    pcl::PointCloud<pcl::PointXYZ>::Ptr triangle_center_cloud = computer_triangle_center<InputPointT>(old_cloud_local, triangle_map);
     pcl::PointCloud<pcl::PointXY>::Ptr triangle_center_cloud_polar = obtain_2d_polar_cloud<pcl::PointXYZ>(triangle_center_cloud);
     std::vector<float> data;
     for (const auto& point : triangle_center_cloud_polar->points)
@@ -243,13 +242,11 @@ int main()
     flann::Index<flann::L2<float>> flann_tree(flann_dataset, flann::KDTreeIndexParams(1));
     flann_tree.buildIndex();
 
-
+    int flann_last_id = triangle_center_cloud_polar->size() - 1;
 
 
 
     pcl::PointCloud<pcl::PointXY>::Ptr new_point_polar_cloud = obtain_2d_polar_cloud<InputPointT>(new_cloud);
-    // reserved triangles
-    triangle_list.reserve(triangle_list.size() + new_point_polar_cloud->size()*3);
     for (std::size_t i = 0; i < new_point_polar_cloud->size(); i++)
     {
         // get new point (vector)
@@ -279,7 +276,7 @@ int main()
             int index = search_indices[j];
 
             // get vertices index
-            std::vector<int> vertices_index = triangle_list[index];
+            std::vector<int> vertices_index = triangle_map[index];
 
             // get vertices point
             InputPointT p0 = old_cloud_local->points[vertices_index[0]];
@@ -322,22 +319,23 @@ int main()
         
         
         // --- triangle --- 
-        // // remove
-        // triangle_list.erase(triangle_list.begin() + min_triangle_index);
         // get vertices index
-        std::vector<int> vertices_index = triangle_list[min_triangle_index];
+        std::vector<int> vertices_index = triangle_map[min_triangle_index];
         // compute
         std::vector<int> new_triangle1 = {vertices_index[0], vertices_index[1], new_point_index};
         std::vector<int> new_triangle2 = {vertices_index[1], vertices_index[2], new_point_index};
         std::vector<int> new_triangle3 = {vertices_index[2], vertices_index[0], new_point_index};
+        // remove
+        triangle_map.erase(min_triangle_index);
         // add
-        triangle_list.push_back(new_triangle1);
-        triangle_list.push_back(new_triangle2);
-        triangle_list.push_back(new_triangle3);
+        triangle_map[flann_last_id+1] = new_triangle1;
+        triangle_map[flann_last_id+2] = new_triangle2;
+        triangle_map[flann_last_id+3] = new_triangle3;
+        flann_last_id += 3;
 
         // --- flann ---
-        // // remove
-        // flann_tree.removePoint(min_triangle_index);
+        // remove
+        flann_tree.removePoint(min_triangle_index);
         // compute azimuth and altitude for new triangle center
         // get vertices point
         InputPointT p0 = old_cloud_local->points[vertices_index[0]];
@@ -403,7 +401,7 @@ int main()
     viewer->addCoordinateSystem(1);
 
     // create mesh
-    pcl::PolygonMesh old_mesh = obtain_mesh<InputPointT>(old_cloud_local, triangle_list);
+    pcl::PolygonMesh old_mesh = obtain_mesh<InputPointT>(old_cloud_local, triangle_map);
     // // add mesh
     // viewer->addPolygonMesh(old_mesh, "mesh");
     // add polyline
