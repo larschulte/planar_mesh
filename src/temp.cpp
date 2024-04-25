@@ -242,9 +242,9 @@ int main()
         
         
         // --- triangle --- 
-        // get vertices index
+        // vertices index
         std::vector<int> vertices_index = triangle_map[min_triangle_index];
-        // compute
+        // new triangles
         std::vector<int> new_triangle1 = {vertices_index[0], vertices_index[1], new_point_index};
         std::vector<int> new_triangle2 = {vertices_index[1], vertices_index[2], new_point_index};
         std::vector<int> new_triangle3 = {vertices_index[2], vertices_index[0], new_point_index};
@@ -256,31 +256,20 @@ int main()
         triangle_map[flann_tree.flann_last_id+3] = new_triangle3;
 
         // --- flann ---
-        // remove
-        flann_tree.removePoint(min_triangle_index);
-        // compute azimuth and altitude for new triangle center
-        // get vertices point
+        // vertices point
         InputPointT p0 = old_cloud_local->points[vertices_index[0]];
         InputPointT p1 = old_cloud_local->points[vertices_index[1]];
         InputPointT p2 = old_cloud_local->points[vertices_index[2]];
-        // get vertices vector
-        Eigen::Vector3f v0 = p0.getVector3fMap();
-        Eigen::Vector3f v1 = p1.getVector3fMap();
-        Eigen::Vector3f v2 = p2.getVector3fMap();
-        // compute azimuth and altitude
-        float azimuth1, altitude1;
-        float azimuth2, altitude2;
-        float azimuth3, altitude3;
-        Eigen::Vector3f new_triangle_center1 = (v0 + v1 + v_new_point) / 3;
-        Eigen::Vector3f new_triangle_center2 = (v1 + v2 + v_new_point) / 3;
-        Eigen::Vector3f new_triangle_center3 = (v2 + v0 + v_new_point) / 3;
-        compute_azimuth_and_altitude(new_triangle_center1, azimuth1, altitude1);
-        compute_azimuth_and_altitude(new_triangle_center2, azimuth2, altitude2);
-        compute_azimuth_and_altitude(new_triangle_center3, azimuth3, altitude3);
-        // generate polar dataset
-        pcl::PointXY new_triangle_center1_polar(azimuth1, altitude1);
-        pcl::PointXY new_triangle_center2_polar(azimuth2, altitude2);
-        pcl::PointXY new_triangle_center3_polar(azimuth3, altitude3);
+        // center point
+        pcl::PointXYZ new_triangle_center1 = compute_triangle_center_point(p0, p1, p_new_point);
+        pcl::PointXYZ new_triangle_center2 = compute_triangle_center_point(p1, p2, p_new_point);
+        pcl::PointXYZ new_triangle_center3 = compute_triangle_center_point(p2, p0, p_new_point);
+        // center polar point
+        pcl::PointXY new_triangle_center1_polar = compute_2d_polar_point(new_triangle_center1);
+        pcl::PointXY new_triangle_center2_polar = compute_2d_polar_point(new_triangle_center2);
+        pcl::PointXY new_triangle_center3_polar = compute_2d_polar_point(new_triangle_center3);
+        // remove
+        flann_tree.removePoint(min_triangle_index);
         // add
         flann_tree.addPoints(new_triangle_center1_polar);
         flann_tree.addPoints(new_triangle_center2_polar);

@@ -27,17 +27,20 @@ point_to_triangle_map(delaunator::Delaunator d)
     return pt_map;
 }
 
-void compute_azimuth_and_altitude(const Eigen::Vector3f& point, float& azimuth, float& altitude)
+template <typename PointT>
+pcl::PointXY compute_2d_polar_point(PointT point)
 {
     // x y z
-    float x = point[0];
-    float y = point[1];
-    float z = point[2];
+    float x = point.x;
+    float y = point.y;
+    float z = point.z;
 
     // r azimuth altitude
     double r = sqrt(x * x + y * y + z * z);
-    azimuth = atan2(y, x) * 180 / M_PI;
-    altitude = asin(z / r) * 180 / M_PI;
+    double azimuth = atan2(y, x) * 180 / M_PI;
+    double altitude = asin(z / r) * 180 / M_PI;
+
+    return pcl::PointXY(azimuth, altitude);
 }
 
 // convert to 2d polar cloud
@@ -52,15 +55,7 @@ compute_2d_polar_cloud(typename pcl::PointCloud<PointT>::Ptr cloud)
     // process
     for (std::size_t i = 0; i < cloud->size(); i+=1)
     {
-        // initialize
-        float azimuth, altitude;
-
-        // process
-        compute_azimuth_and_altitude(cloud->points[i].getVector3fMap(), azimuth, altitude);
-
-        // store
-        cloud_polar->points[i].x = azimuth;
-        cloud_polar->points[i].y = altitude;
+        cloud_polar->points[i] = compute_2d_polar_point<PointT>(cloud->points[i]);
     }
 
     // return
@@ -138,39 +133,23 @@ get_k_nearest_neighbor(pcl::KdTreeFLANN<PointT> kdtree, PointT point, int k)
     return nearest_neighbor;
 }
 
-// compute triangle center
 template<typename PointT>
-typename pcl::PointCloud<pcl::PointXYZ>::Ptr 
-computer_triangle_center(typename pcl::PointCloud<PointT>::Ptr vertex_cloud, delaunator::Delaunator d)
+typename pcl::PointXYZ
+compute_triangle_center_point(PointT p1, PointT p2, PointT p3)
 {
-    // initialize
-    typename pcl::PointCloud<pcl::PointXYZ>::Ptr center_cloud (new typename pcl::PointCloud<pcl::PointXYZ>);
-    center_cloud->resize(d.triangles.size() / 3);
+    // vectors
+    Eigen::Vector3f v1 = p1.getVector3fMap();
+    Eigen::Vector3f v2 = p2.getVector3fMap();
+    Eigen::Vector3f v3 = p3.getVector3fMap();
 
-    // compute triangle centers
-    for (std::size_t i = 0; i < d.triangles.size(); i+=3)
-    {
-        // vertcies index
-        int v1_index = d.triangles[i];
-        int v2_index = d.triangles[i + 1];
-        int v3_index = d.triangles[i + 2];
+    // center
+    Eigen::Vector3f center = (v1 + v2 + v3) / 3;
 
-        // vertices
-        Eigen::Vector3f v1 = vertex_cloud->points[v1_index].getVector3fMap();
-        Eigen::Vector3f v2 = vertex_cloud->points[v2_index].getVector3fMap();
-        Eigen::Vector3f v3 = vertex_cloud->points[v3_index].getVector3fMap();
-
-        // center
-        Eigen::Vector3f center = (v1 + v2 + v3) / 3;
-
-        // store center
-        center_cloud->points[i / 3].x = center(0);
-        center_cloud->points[i / 3].y = center(1);
-        center_cloud->points[i / 3].z = center(2);
-    }
+    // point
+    pcl::PointXYZ center_point(center(0), center(1), center(2));
 
     // return
-    return center_cloud;
+    return center_point;
 }
 
 // compute triangle center to vertices index map
@@ -210,21 +189,13 @@ compute_triangle_center_cloud(typename pcl::PointCloud<PointT>::Ptr cloud, std::
     // compute triangle centers
     for (const auto& entry : triangle_map)
     {
-        // vertices index
-        int v1_index = entry.second[0];
-        int v2_index = entry.second[1];
-        int v3_index = entry.second[2];
-        
-        // vertices vector
-        Eigen::Vector3f v1 = cloud->points[v1_index].getVector3fMap();
-        Eigen::Vector3f v2 = cloud->points[v2_index].getVector3fMap();
-        Eigen::Vector3f v3 = cloud->points[v3_index].getVector3fMap();
-
-        // center vector
-        Eigen::Vector3f center = (v1 + v2 + v3) / 3;
+        // vertices point
+        PointT p1 = cloud->points[entry.second[0]];
+        PointT p2 = cloud->points[entry.second[1]];
+        PointT p3 = cloud->points[entry.second[2]];
 
         // center point
-        pcl::PointXYZ center_point(center(0), center(1), center(2));
+        pcl::PointXYZ center_point = compute_triangle_center_point<PointT>(p1, p2, p3);
 
         // store
         center_cloud->push_back(center_point);
