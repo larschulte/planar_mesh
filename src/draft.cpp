@@ -1,5 +1,15 @@
 #include "./main.cpp"
 
+
+// use pcl kdtree first
+pcl::KdTreeFLANN<InputPointT> kdtree;
+kdtree.setInputCloud(old_cloud);
+kdtree.radiusSearch(new_cloud->points[i], 0.1, search_indices, search_dists);
+old_cloud->push_back(new_cloud->points[i]);
+kdtree.setInputCloud(old_cloud);
+
+
+
 // test for eye_patch intersection 
 
 // viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_OPACITY, 0.7, "control cloud");

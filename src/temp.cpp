@@ -31,23 +31,6 @@ public:
         flann_tree.buildIndex(flann::Matrix<float>(flann_data_storage.data(), point_cloud->size(), 3));
     }
     
-    void knnSearch(PointT searchPoint, std::vector<int>& search_indices, std::vector<float>& search_dists, int K)
-    {
-        // convert to vector
-        std::vector<float> query_point = {searchPoint.x, searchPoint.y, searchPoint.z};
-
-        // intialize
-        std::vector<std::vector<int>> list_of_search_indices(1, std::vector<int>(K));
-        std::vector<std::vector<float>> list_of_search_dists(1, std::vector<float>(K));
-
-        // search
-        flann_tree.knnSearch(flann::Matrix<float>(query_point.data(), 1, 3), list_of_search_indices, list_of_search_dists, K, flann::SearchParams(-1, 0));
-
-        // extract
-        search_indices = list_of_search_indices[0];
-        search_dists = list_of_search_dists[0];
-    }
-
     void radiusSearch(PointT searchPoint, std::vector<int>& search_indices, std::vector<float>& search_dists, float radius)
     {
         // convert to vector
@@ -109,17 +92,13 @@ int main()
     Eigen::Affine3d new_pose = data_loader.get_pose(i1);
 
 
-    // initialize old cloud with one point
+    // old cloud
     typename pcl::PointCloud<InputPointT>::Ptr old_cloud(new pcl::PointCloud<InputPointT>);
     old_cloud->push_back(new_cloud->points[0]);
 
-    // initialize flann3d
+    // flann3d
     flann3d<InputPointT> flann_tree;
     flann_tree.set_input(old_cloud);
-
-    // // use pcl kdtree first
-    // pcl::KdTreeFLANN<InputPointT> kdtree;
-    // kdtree.setInputCloud(old_cloud);
 
 
     // for each point in new cloud, find the points within radius r in old cloud, forms potential edges to those points, add the edge to the mesh object
@@ -128,54 +107,44 @@ int main()
 
     for (std::size_t i = 1; i < new_cloud->size(); i++)
     {
-        // print i
         std::cout << "i: " << i << std::endl;
 
-        // search
+        // current point
+        InputPointT current_point = new_cloud->points[i];
+        
+        // search point
         std::vector<int> search_indices;
         std::vector<float> search_dists;
-        flann_tree.radiusSearch(new_cloud->points[i], search_indices, search_dists, 0.1);
-        // kdtree.radiusSearch(new_cloud->points[i], 0.1, search_indices, search_dists);
-
-        // add edges
+        float search_radius = 0.1;
+        flann_tree.radiusSearch(current_point, search_indices, search_dists, search_radius);
+        
+        // add searched edges to map
         for (std::size_t j = 0; j < search_indices.size(); j++)
         {
-            // add edge
             edge_map[i].push_back(search_indices[j]);
         }
 
-        // add point to flann
-        flann_tree.addPoints(new_cloud->points[i]);
-        // old_cloud->push_back(new_cloud->points[i]);
-        // kdtree.setInputCloud(old_cloud);
+        // add current point to flann
+        flann_tree.addPoints(current_point);
     }
 
-    // // print the edge_map
-    // for (const auto& pair : edge_map)
-    // {
-    //     std::cout << pair.first << ": ";
-    //     for (const auto& edge : pair.second)
-    //     {
-    //         std::cout << edge << " ";
-    //     }
-    //     std::cout << std::endl;
-    // }
-
-
-
-
+    // make mesh
     pcl::PolygonMesh mesh;
-
-    // process
-    pcl::toPCLPointCloud2(*new_cloud, mesh.cloud); // pointcloud
-    for (const auto& pair : edge_map) // triangles
+    // add points
+    pcl::toPCLPointCloud2(*new_cloud, mesh.cloud); 
+    // add edges
+    for (const auto& pair : edge_map) // source and targets pair
     { 
-        for (const auto& edge : pair.second)
+        // source
+        int source_i = pair.first;
+
+        // targets
+        for (const auto& target_j : pair.second)
         {
-            pcl::Vertices v;
-            v.vertices.push_back(pair.first);
-            v.vertices.push_back(edge);
-            mesh.polygons.push_back(v);
+            pcl::Vertices edge;
+            edge.vertices.push_back(source_i);
+            edge.vertices.push_back(target_j);
+            mesh.polygons.push_back(edge);
         }
     }
 
