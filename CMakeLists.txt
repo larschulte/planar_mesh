@@ -63,6 +63,20 @@ install(TARGETS
   DESTINATION lib/${PROJECT_NAME}
 )
 
+# add add_executable
+add_executable(add_mesh_to_mesh src/add_mesh_to_mesh.cpp)
+target_link_libraries (add_mesh_to_mesh ${PCL_LIBRARIES} ${PYTHON_LIBRARIES} delaunator)
+target_include_directories(add_mesh_to_mesh
+  PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>)
+
+# install(TARGETS main DESTINATION lib/${PROJECT_NAME})
+install(TARGETS 
+  add_mesh_to_mesh
+  DESTINATION lib/${PROJECT_NAME}
+)
+
 
 # call ament build system
 ament_package()
