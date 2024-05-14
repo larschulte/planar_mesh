@@ -74,9 +74,6 @@ public:
 
         // add
         flann_tree.addPoints(flann::Matrix<float>(flann_data_storage.data() + flann_data_storage.size() - 3, 1, 3));
-        // flann_tree.buildIndex();
-        // flann_tree.addPoints(flann::Matrix<float>(flann_data_storage..data(), 1, 3));
-        // flann_tree.buildIndex(flann::Matrix<float>(flann_data_storage.data(), flann_last_id + 1, 3));
 
         // update id
         flann_last_id++;
@@ -112,17 +109,17 @@ int main()
     Eigen::Affine3d new_pose = data_loader.get_pose(i1);
 
 
-    // // initialize flann3d
-    // flann3d<InputPointT> flann_tree;
-    // typename pcl::PointCloud<InputPointT>::Ptr old_cloud(new pcl::PointCloud<InputPointT>);
-    // old_cloud->push_back(new_cloud->points[0]);
-    // flann_tree.set_input(old_cloud);
-
-    // use pcl kdtree first
-    pcl::KdTreeFLANN<InputPointT> kdtree;
+    // initialize old cloud with one point
     typename pcl::PointCloud<InputPointT>::Ptr old_cloud(new pcl::PointCloud<InputPointT>);
     old_cloud->push_back(new_cloud->points[0]);
-    kdtree.setInputCloud(old_cloud);
+
+    // initialize flann3d
+    flann3d<InputPointT> flann_tree;
+    flann_tree.set_input(old_cloud);
+
+    // // use pcl kdtree first
+    // pcl::KdTreeFLANN<InputPointT> kdtree;
+    // kdtree.setInputCloud(old_cloud);
 
 
     // for each point in new cloud, find the points within radius r in old cloud, forms potential edges to those points, add the edge to the mesh object
@@ -137,9 +134,8 @@ int main()
         // search
         std::vector<int> search_indices;
         std::vector<float> search_dists;
-        // flann_tree.radiusSearch(new_cloud->points[i], search_indices, search_dists, 0.03);
-        // flann_tree.knnSearch(new_cloud->points[i], search_indices, search_dists, 3);
-        kdtree.radiusSearch(new_cloud->points[i], 0.1732, search_indices, search_dists);
+        flann_tree.radiusSearch(new_cloud->points[i], search_indices, search_dists, 0.1);
+        // kdtree.radiusSearch(new_cloud->points[i], 0.1, search_indices, search_dists);
 
         // add edges
         for (std::size_t j = 0; j < search_indices.size(); j++)
@@ -149,10 +145,9 @@ int main()
         }
 
         // add point to flann
-        // flann_tree.addPoints(new_cloud->points[i]);
-
-        old_cloud->push_back(new_cloud->points[i]);
-        kdtree.setInputCloud(old_cloud);
+        flann_tree.addPoints(new_cloud->points[i]);
+        // old_cloud->push_back(new_cloud->points[i]);
+        // kdtree.setInputCloud(old_cloud);
     }
 
     // // print the edge_map
