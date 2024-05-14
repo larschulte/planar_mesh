@@ -50,12 +50,12 @@ public:
     void addPoints(pcl::PointXY new_point_polar)
     {
         // convert to vector
-        std::vector<float> new_triangle_center1_polar;
-        new_triangle_center1_polar.push_back(new_point_polar.x);
-        new_triangle_center1_polar.push_back(new_point_polar.y);
+        std::vector<float> new_triangle_center_polar;
+        new_triangle_center_polar.push_back(new_point_polar.x);
+        new_triangle_center_polar.push_back(new_point_polar.y);
 
         // add
-        flann_tree.addPoints(flann::Matrix<float>(new_triangle_center1_polar.data(), 1, 2));
+        flann_tree.addPoints(flann::Matrix<float>(new_triangle_center_polar.data(), 1, 2));
 
         // update id
         flann_last_id++;
@@ -72,7 +72,6 @@ private:
     std::vector<float> flann_data_storage;
 
     flann::Index<flann::L2<float>> flann_tree;
-    
 };
 
 
@@ -143,36 +142,34 @@ int main()
     // // show
     // plt::show();
 
-    
+    // ------------------------------ dataloader
     // old cloud
     int i1 = 0;
     typename pcl::PointCloud<InputPointT>::Ptr old_cloud = data_loader.get_cloud(i1);
     Eigen::Affine3d old_pose = data_loader.get_pose(i1);
-
     // new cloud
     int i2 = 50;
     typename pcl::PointCloud<InputPointT>::Ptr new_cloud = data_loader.get_cloud(i2);
     Eigen::Affine3d new_pose = data_loader.get_pose(i2);
 
-    // obtain old cloud triangulation in old cloud frame
+    // ------------------------------ algorithm
+    // delaunay triangulation old cloud
     delaunator::Delaunator old_d = obtain_triangulation<InputPointT> (old_cloud);
     std::map<int, std::vector<int>> triangle_map = d_to_triangle_map(old_d);
 
-    // transform old cloud to new cloud frame
+    // compute triangle center cloud and polar
     typename pcl::PointCloud<InputPointT>::Ptr old_cloud_local = transform_cloud_to_frame<InputPointT>(old_cloud, old_pose, new_pose);
-
-
-    
-    
-    // // ------------- flann ---------------
     pcl::PointCloud<pcl::PointXYZ>::Ptr triangle_center_cloud = compute_triangle_center_cloud<InputPointT>(old_cloud_local, triangle_map);
     pcl::PointCloud<pcl::PointXY>::Ptr triangle_center_cloud_polar = compute_2d_polar_cloud<pcl::PointXYZ>(triangle_center_cloud);
 
+    // initialize flann
     flann2d flann_tree;
     flann_tree.set_input(triangle_center_cloud_polar);
 
-
+    // compute polar coordinate of each new point
     pcl::PointCloud<pcl::PointXY>::Ptr new_point_polar_cloud = compute_2d_polar_cloud<InputPointT>(new_cloud);
+
+    // search for each new point
     for (std::size_t i = 0; i < new_point_polar_cloud->size(); i++)
     {
         // get new point (vector)
@@ -185,36 +182,27 @@ int main()
         // output stat
         std::cout << "processing point " << i << " out of " << new_point_polar_cloud->size() << std::endl;
 
-        // search
+        // search for nearest triangles
         int K = 4;
-        std::vector<int> search_indices;
-        std::vector<float> search_dists;
-        flann_tree.knnSearch(searchPoint, search_indices, search_dists, K);
+        std::vector<int> knn_indices;
+        std::vector<float> knn_dists;
+        flann_tree.knnSearch(searchPoint, knn_indices, knn_dists, K);
  
         // for each searched triangle center
         std::vector<int> intersected_triangle_indices;
         std::vector<float> intersected_triangle_distances;
-        for (std::size_t j = 0; j < search_indices.size(); j++)
+        for (int knn_index : knn_indices)
         {
-            int index = search_indices[j];
-
             // get vertices index
-            std::vector<int> vertices_index = triangle_map[index];
-
-            // get vertices point
-            InputPointT p0 = old_cloud_local->points[vertices_index[0]];
-            InputPointT p1 = old_cloud_local->points[vertices_index[1]];
-            InputPointT p2 = old_cloud_local->points[vertices_index[2]];
+            std::vector<int> vertex_indices = triangle_map[knn_index];
 
             // get vertices vector
-            Eigen::Vector3f v0 = p0.getVector3fMap();
-            Eigen::Vector3f v1 = p1.getVector3fMap();
-            Eigen::Vector3f v2 = p2.getVector3fMap();
+            Eigen::Vector3f v0 = old_cloud_local->points[vertex_indices[0]].getVector3fMap();
+            Eigen::Vector3f v1 = old_cloud_local->points[vertex_indices[1]].getVector3fMap();
+            Eigen::Vector3f v2 = old_cloud_local->points[vertex_indices[2]].getVector3fMap();
 
             // compute ray triangle intersection
-            Eigen::Vector3f ray_origin = v_new_point;
-            Eigen::Vector3f ray_direction = v_new_point.normalized();
-            Eigen::Vector3f intersection = ray_triangle_intersection(ray_origin, ray_direction, v0, v1, v2);
+            Eigen::Vector3f intersection = ray_triangle_intersection(v_new_point, v_new_point.normalized(), v0, v1, v2);
             float distance = (intersection - v_new_point).norm();
 
             // check if intersection is inside the triangle
@@ -222,26 +210,23 @@ int main()
             if (!inside) continue;
             
             // store the intersection
-            intersected_triangle_indices.push_back(index);
+            intersected_triangle_indices.push_back(knn_index);
             intersected_triangle_distances.push_back(distance);
         }
 
         // skip if no intersection
         if (intersected_triangle_indices.size() == 0) continue;
 
-        // --- point --- 
+        // find the closest triangle (out of the k searched ones)
+        int min_index = std::distance(intersected_triangle_distances.begin(), std::min_element(intersected_triangle_distances.begin(), intersected_triangle_distances.end()));
+        int min_triangle_index = intersected_triangle_indices[min_index];
+
+        // --- update point --- 
         // add 
         old_cloud_local->push_back(p_new_point);
         int new_point_index = old_cloud_local->size() - 1;
 
-
-        // find the triangle to remove (has the smallest distance to the new point)
-        int min_index = std::distance(intersected_triangle_distances.begin(), std::min_element(intersected_triangle_distances.begin(), intersected_triangle_distances.end()));
-        // std::cout << "min_index: " << min_index << std::endl;
-        int min_triangle_index = intersected_triangle_indices[min_index];
-        
-        
-        // --- triangle --- 
+        // --- update triangle map --- 
         // vertices index
         std::vector<int> vertices_index = triangle_map[min_triangle_index];
         // new triangles
@@ -255,7 +240,7 @@ int main()
         triangle_map[flann_tree.flann_last_id+2] = new_triangle2;
         triangle_map[flann_tree.flann_last_id+3] = new_triangle3;
 
-        // --- flann ---
+        // --- update flann triangle polar data ---
         // vertices point
         InputPointT p0 = old_cloud_local->points[vertices_index[0]];
         InputPointT p1 = old_cloud_local->points[vertices_index[1]];
