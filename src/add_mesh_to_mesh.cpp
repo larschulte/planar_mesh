@@ -47,6 +47,8 @@ public:
         search_dists = list_of_search_dists[0];
     }
 
+    // since addPoints seem to take input as reference, this might suggest the following addPoints isn't doing anything
+    // todo, test and fix
     void addPoints(pcl::PointXY new_point_polar)
     {
         // convert to vector
