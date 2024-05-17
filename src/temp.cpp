@@ -5,6 +5,8 @@
 #include "point_type/BagPointT.hpp"
 #include "point_type/VilensPointT.hpp"
 
+#include "eye_patch/BVH.hpp"
+
 template <typename PointT>
 class flann3d
 {
@@ -76,83 +78,51 @@ private:
 };
 
 
-
-using InputPointT = VilensPointT;
-int main()
-{
-    std::string pcd_file_folder = "/home/jiahao/datasets/bag2pcd_output/mission2_reverse/slam_clouds/";
-    std::string pose_file_path = "/home/jiahao/datasets/bag2pcd_output/mission2_reverse/slam_poses/slam_poss_graph.slam";
-
-    DataLoader<InputPointT> data_loader(pcd_file_folder, pose_file_path);
-
-    // ------------------------------ data
-    // new cloud
-    int i1 = 0;
-    typename pcl::PointCloud<InputPointT>::Ptr new_cloud = data_loader.get_cloud(i1);
-    Eigen::Affine3d new_pose = data_loader.get_pose(i1);
-
-
-    // old cloud
-    typename pcl::PointCloud<InputPointT>::Ptr old_cloud(new pcl::PointCloud<InputPointT>);
-    old_cloud->push_back(new_cloud->points[0]);
-
-    // flann3d
-    flann3d<InputPointT> flann_tree;
-    flann_tree.set_input(old_cloud);
-
-
-    // for each point in new cloud, find the points within radius r in old cloud, forms potential edges to those points, add the edge to the mesh object
-    // initialize
-    std::map<int, std::vector<int>> edge_map; // for each ith point, it is connected to the points in the vector<int>
-
-    for (std::size_t i = 1; i < new_cloud->size(); i++)
+int main() {
+    // Define your mesh vertices and triangles
+    std::vector<Eigen::Vector3d> vertices = 
     {
-        std::cout << "i: " << i << std::endl;
+        Eigen::Vector3d(1, 1, 1),
+        Eigen::Vector3d(-1, 1, 1),
+        Eigen::Vector3d(-1, -1, 1),
+        Eigen::Vector3d(1, -1, 1),
+        Eigen::Vector3d(1, 1, -1),
+        Eigen::Vector3d(-1, 1, -1),
+        Eigen::Vector3d(-1, -1, -1),
+        Eigen::Vector3d(1, -1, -1)
+    };
+    std::vector<std::array<int, 3>> triangles = 
+    {
+        {0, 1, 2},
+        {0, 3, 2},
+        {0, 3, 7},
+        {0, 4, 7},
+        {0, 1, 5},
+        {0, 4, 5},
+        {6, 5, 1},
+        {6, 2, 1},
+        {6, 5, 4},
+        {6, 7, 4},
+        {6, 2, 3},
+        {6, 7, 3}
+    };
 
-        // current point
-        InputPointT current_point = new_cloud->points[i];
-        
-        // search point
-        std::vector<int> search_indices;
-        std::vector<float> search_dists;
-        float search_radius = 0.1;
-        flann_tree.radiusSearch(current_point, search_indices, search_dists, search_radius);
-        
-        // add searched edges to map
-        for (std::size_t j = 0; j < search_indices.size(); j++)
-        {
-            edge_map[i].push_back(search_indices[j]);
-        }
+    // Build the BVH
+    auto bvhRoot = buildBVH(vertices, triangles, 0, triangles.size());
 
-        // add current point to flann
-        flann_tree.addPoints(current_point);
+    // Define the ray
+    Eigen::Vector3d rayOrigin(0.5, 0.5, 0.5);
+    Eigen::Vector3d rayDirection(1, 1, 1);
+    Eigen::Vector3d intersectionPoint;
+
+    // Perform intersection test
+    bool intersect = intersectBVH(bvhRoot, rayOrigin, rayDirection, vertices, triangles, intersectionPoint);
+
+    if (intersect) {
+        std::cout << "Intersection at: " << intersectionPoint.transpose() << std::endl;
+    } else {
+        std::cout << "No intersection." << std::endl;
     }
-
-    // make mesh
-    pcl::PolygonMesh mesh;
-    // add points
-    pcl::toPCLPointCloud2(*new_cloud, mesh.cloud); 
-    // add edges
-    for (const auto& pair : edge_map) // source and targets pair
-    { 
-        // source
-        int source_i = pair.first;
-
-        // targets
-        for (const auto& target_j : pair.second)
-        {
-            pcl::Vertices edge;
-            edge.vertices.push_back(source_i);
-            edge.vertices.push_back(target_j);
-            mesh.polygons.push_back(edge);
-        }
-    }
-
-
-
-
-    // // transform old cloud to global coordinate
-    // typename pcl::PointCloud<InputPointT>::Ptr new_cloud_local = transform_cloud_to_global<InputPointT>(new_cloud, new_pose);
 
 
     // viewer
@@ -160,20 +130,189 @@ int main()
     viewer->getRenderWindow()->GlobalWarningDisplayOff(); // Add This Line
     viewer->initCameraParameters();
     viewer->addCoordinateSystem(1);
+    
+    // make mesh
+    pcl::PolygonMesh mesh;
+    // add points to mesh.cloud
+    pcl::PointCloud<pcl::PointXYZ>::Ptr new_cloud(new pcl::PointCloud<pcl::PointXYZ>);
+    for (const auto& vertex : vertices)
+    {
+        pcl::PointXYZ point;
+        point.x = vertex[0];
+        point.y = vertex[1];
+        point.z = vertex[2];
+        new_cloud->push_back(point);
+    }
+    // add points
+    pcl::toPCLPointCloud2(*new_cloud, mesh.cloud); 
 
-    // // add point cloud to viewer
-    // pcl::visualization::PointCloudColorHandlerCustom<InputPointT> new_cloud_color_handler(new_cloud_local, 0, 255, 0);
-    // viewer->addPointCloud<InputPointT> (new_cloud_local, new_cloud_color_handler, "new_cloud");
-    // viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 3, "new_cloud");
-
+    // add triangle to mesh
+    for (const auto& triangle : triangles)
+    {
+        pcl::Vertices v;
+        v.vertices.push_back(triangle[0]);
+        v.vertices.push_back(triangle[1]);
+        v.vertices.push_back(triangle[2]);
+        mesh.polygons.push_back(v);
+    }
     // add mesh
     viewer->addPolylineFromPolygonMesh(mesh, "polyline");
+
+    // add ray
+    pcl::PointXYZ ray_origin;
+    ray_origin.x = rayOrigin[0];
+    ray_origin.y = rayOrigin[1];
+    ray_origin.z = rayOrigin[2];
+    pcl::PointXYZ ray_end;
+    double length = 2;
+    ray_end.x = rayOrigin[0] + rayDirection[0] * length;
+    ray_end.y = rayOrigin[1] + rayDirection[1] * length;
+    ray_end.z = rayOrigin[2] + rayDirection[2] * length;
+    viewer->addLine(ray_origin, ray_end, 1, 1, 0, "ray");
+
+    // add ray origin
+    viewer->addSphere(ray_origin, 0.01, 1, 0, 0, "ray_origin");
+
+    // add intersection
+    if (intersect)
+    {
+        pcl::PointXYZ intersection;
+        intersection.x = intersectionPoint[0];
+        intersection.y = intersectionPoint[1];
+        intersection.z = intersectionPoint[2];
+        viewer->addSphere(intersection, 0.01, 0, 1, 0, "intersection");
+    }
 
     // spin
     viewer->spin();
 
     return 0;
 }
+
+
+
+
+
+
+
+// int main()
+// {
+//     // test ray triangle intersection
+//     Eigen::Vector3d orig(0.5, 0.25, 0);
+//     Eigen::Vector3d dir(0, 0, 1);
+//     Eigen::Vector3d v0(0, 0, 1);
+//     Eigen::Vector3d v1(1, 0, 1);
+//     Eigen::Vector3d v2(0, 1, 1);
+//     Eigen::Vector3d outIntersection;
+//     bool intersect = rayTriangleIntersect(orig, dir, v0, v1, v2, outIntersection);
+//     std::cout << "intersect: " << intersect << std::endl;
+//     std::cout << "outIntersection: " << outIntersection << std::endl;
+// }
+
+// using InputPointT = VilensPointT;
+// int main()
+// {
+//     std::string pcd_file_folder = "/home/jiahao/datasets/bag2pcd_output/mission2_reverse/slam_clouds/";
+//     std::string pose_file_path = "/home/jiahao/datasets/bag2pcd_output/mission2_reverse/slam_poses/slam_poss_graph.slam";
+
+//     DataLoader<InputPointT> data_loader(pcd_file_folder, pose_file_path);
+
+//     // ------------------------------ data
+//     // new cloud
+//     int i1 = 0;
+//     typename pcl::PointCloud<InputPointT>::Ptr new_cloud = data_loader.get_cloud(i1);
+//     Eigen::Affine3d new_pose = data_loader.get_pose(i1);
+
+
+//     // old cloud
+//     typename pcl::PointCloud<InputPointT>::Ptr old_cloud(new pcl::PointCloud<InputPointT>);
+//     old_cloud->push_back(new_cloud->points[0]);
+
+//     // flann3d
+//     flann3d<InputPointT> flann_tree;
+//     flann_tree.set_input(old_cloud);
+
+
+//     // for each point in new cloud, find the triangles in old cloud that contains it
+//     // each triangle is in a set
+    
+    
+    
+//     // // 1. for each point in new cloud, find the points within radius r in old cloud, forms potential edges to those points, add the edge to the mesh object
+//     // // 2. check if the found point is in a set
+    
+//     // // initialize
+//     // std::map<int, std::vector<int>> edge_map; // for each ith point, it is connected to the points in the vector<int>
+
+//     // for (std::size_t i = 1; i < new_cloud->size(); i++)
+//     // {
+//     //     std::cout << "i: " << i << std::endl;
+
+//     //     // current point
+//     //     InputPointT current_point = new_cloud->points[i];
+        
+//     //     // search point
+//     //     std::vector<int> search_indices;
+//     //     std::vector<float> search_dists;
+//     //     float search_radius = 0.1;
+//     //     flann_tree.radiusSearch(current_point, search_indices, search_dists, search_radius);
+        
+//     //     // add searched edges to map
+//     //     for (std::size_t j = 0; j < search_indices.size(); j++)
+//     //     {
+//     //         edge_map[i].push_back(search_indices[j]);
+//     //     }
+
+//     //     // add current point to flann
+//     //     flann_tree.addPoints(current_point);
+//     // }
+
+//     // // make mesh
+//     // pcl::PolygonMesh mesh;
+//     // // add points
+//     // pcl::toPCLPointCloud2(*new_cloud, mesh.cloud); 
+//     // // add edges
+//     // for (const auto& pair : edge_map) // source and targets pair
+//     // { 
+//     //     // source
+//     //     int source_i = pair.first;
+
+//     //     // targets
+//     //     for (const auto& target_j : pair.second)
+//     //     {
+//     //         pcl::Vertices edge;
+//     //         edge.vertices.push_back(source_i);
+//     //         edge.vertices.push_back(target_j);
+//     //         mesh.polygons.push_back(edge);
+//     //     }
+//     // }
+
+
+
+
+//     // // transform old cloud to global coordinate
+//     // typename pcl::PointCloud<InputPointT>::Ptr new_cloud_local = transform_cloud_to_global<InputPointT>(new_cloud, new_pose);
+
+
+//     // viewer
+//     pcl::visualization::PCLVisualizer::Ptr viewer(new pcl::visualization::PCLVisualizer ("3D Viewer"));
+//     viewer->getRenderWindow()->GlobalWarningDisplayOff(); // Add This Line
+//     viewer->initCameraParameters();
+//     viewer->addCoordinateSystem(1);
+
+//     // // add point cloud to viewer
+//     // pcl::visualization::PointCloudColorHandlerCustom<InputPointT> new_cloud_color_handler(new_cloud_local, 0, 255, 0);
+//     // viewer->addPointCloud<InputPointT> (new_cloud_local, new_cloud_color_handler, "new_cloud");
+//     // viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 3, "new_cloud");
+
+//     // // add mesh
+//     // viewer->addPolylineFromPolygonMesh(mesh, "polyline");
+
+//     // spin
+//     viewer->spin();
+
+//     return 0;
+// }
 
 
 
