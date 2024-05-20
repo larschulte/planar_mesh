@@ -113,15 +113,15 @@ int main() {
     // Define the ray
     Eigen::Vector3d rayOrigin(0.5, 0.5, 0.5);
     Eigen::Vector3d rayDirection(1, 1, 1);
-    Eigen::Vector3d intersectionPoint;
+    std::vector<Eigen::Vector3d> intersectionPointList;
 
     // Perform intersection test
-    bool intersect = intersectBVH(bvhRoot, rayOrigin, rayDirection, vertices, triangles, intersectionPoint);
+    bool intersect = intersectBVH(bvhRoot, rayOrigin, rayDirection, vertices, triangles, intersectionPointList);
 
     if (intersect) {
-        std::cout << "Intersection at: " << intersectionPoint.transpose() << std::endl;
-    } else {
-        std::cout << "No intersection." << std::endl;
+        for (const auto& intersectionPoint : intersectionPointList) {
+            std::cout << "Intersection point: " << intersectionPoint.transpose() << std::endl;
+        }
     }
 
 
@@ -177,9 +177,9 @@ int main() {
     if (intersect)
     {
         pcl::PointXYZ intersection;
-        intersection.x = intersectionPoint[0];
-        intersection.y = intersectionPoint[1];
-        intersection.z = intersectionPoint[2];
+        intersection.x = intersectionPointList[0][0];
+        intersection.y = intersectionPointList[0][1];
+        intersection.z = intersectionPointList[0][2];
         viewer->addSphere(intersection, 0.01, 0, 1, 0, "intersection");
     }
 
