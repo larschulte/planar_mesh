@@ -90,7 +90,7 @@ struct BVHNode
 };
 
 // the start and end are indices of the triangles list
-std::shared_ptr<BVHNode> buildBVH(const std::vector<Eigen::Vector3d>& points, std::vector<std::array<int, 3>>& triangle_to_indices_map, int start, int end) 
+std::shared_ptr<BVHNode> buildBVH(std::map<int, Eigen::Vector3d>& vertex_to_vector3d_map, std::map<int, std::array<int, 3>>& triangle_to_indices_map, std::vector<int>& triangle_id_list, int start, int end) 
 {
     // create node
     auto node = std::make_shared<BVHNode>();
@@ -98,10 +98,11 @@ std::shared_ptr<BVHNode> buildBVH(const std::vector<Eigen::Vector3d>& points, st
     // compute bounding box
     for (int i = start; i < end; ++i) 
     {
-        const std::array<int, 3>& indices = triangle_to_indices_map[i];
-        node->box.expand(points[indices[0]]);
-        node->box.expand(points[indices[1]]);
-        node->box.expand(points[indices[2]]);
+        std::array<int, 3>& indices = triangle_to_indices_map[triangle_id_list[i]];
+        node->box.expand(vertex_to_vector3d_map[indices[0]]);
+        node->box.expand(vertex_to_vector3d_map[indices[1]]);
+        node->box.expand(vertex_to_vector3d_map[indices[2]]);
+
     }
 
     // create leaf node when we have less than 4 triangles
@@ -110,10 +111,10 @@ std::shared_ptr<BVHNode> buildBVH(const std::vector<Eigen::Vector3d>& points, st
         // reserve space
         node->triangleIndices.reserve(end - start);
 
-        // store triangle indices
+        // store triangle id
         for (int i = start; i < end; ++i) 
         {
-            node->triangleIndices.push_back(i);
+            node->triangleIndices.push_back(triangle_id_list[i]);
         }
 
         // return node
@@ -127,25 +128,26 @@ std::shared_ptr<BVHNode> buildBVH(const std::vector<Eigen::Vector3d>& points, st
     if (extent[2] > extent[axis]) axis = 2;
 
     // sort triangle by its center along the longest axis
+    // nth_element is a partial sort, it will put the mid element in the mid position, everything smaller on the left but not sorted, and everything bigger on the right but not sorted
     int mid = (start + end) / 2;
-    std::nth_element(triangle_to_indices_map.begin() + start, triangle_to_indices_map.begin() + mid, triangle_to_indices_map.begin() + end, 
-        [&](const std::array<int, 3>& a, const std::array<int, 3>& b) 
+    std::nth_element(triangle_id_list.begin() + start, triangle_id_list.begin() + mid, triangle_id_list.begin() + end, 
+        [&](const int& a, const int& b) 
         {
-            double centerA = (points[a[0]][axis] + points[a[1]][axis] + points[a[2]][axis]) / 3.0;
-            double centerB = (points[b[0]][axis] + points[b[1]][axis] + points[b[2]][axis]) / 3.0;
+            double centerA = (vertex_to_vector3d_map[triangle_to_indices_map[a][0]][axis] + vertex_to_vector3d_map[triangle_to_indices_map[a][1]][axis] + vertex_to_vector3d_map[triangle_to_indices_map[a][2]][axis]) / 3.0;
+            double centerB = (vertex_to_vector3d_map[triangle_to_indices_map[b][0]][axis] + vertex_to_vector3d_map[triangle_to_indices_map[b][1]][axis] + vertex_to_vector3d_map[triangle_to_indices_map[b][2]][axis]) / 3.0;
             return centerA < centerB;
         });
 
     // recursive build children nodes
-    node->left = buildBVH(points, triangle_to_indices_map, start, mid);
-    node->right = buildBVH(points, triangle_to_indices_map, mid, end);
+    node->left = buildBVH(vertex_to_vector3d_map, triangle_to_indices_map, triangle_id_list, start, mid);
+    node->right = buildBVH(vertex_to_vector3d_map, triangle_to_indices_map, triangle_id_list, mid, end);
 
     // return node
     return node;
 }
 
-
-bool intersectBVH(const std::shared_ptr<BVHNode>& node, const Eigen::Vector3d& orig, const Eigen::Vector3d& dir, const std::vector<Eigen::Vector3d>& points, const std::vector<std::array<int, 3>>& triangle_to_indices_map, std::vector<Eigen::Vector3d>& outIntersectionList) 
+// no const for map since map[i] may create new element if not present
+bool intersectBVH(const std::shared_ptr<BVHNode>& node, const Eigen::Vector3d& orig, const Eigen::Vector3d& dir, std::map<int, Eigen::Vector3d>& vertex_to_vector3d_map, std::map<int, std::array<int, 3>>& triangle_to_indices_map, std::vector<Eigen::Vector3d>& outIntersectionList) 
 {
     // skip if ray doesn't intersect bounding box
     double tMin = -std::numeric_limits<double>::infinity();
@@ -157,8 +159,8 @@ bool intersectBVH(const std::shared_ptr<BVHNode>& node, const Eigen::Vector3d& o
     {
         std::vector<Eigen::Vector3d> outIntersectionListLeft;
         std::vector<Eigen::Vector3d> outIntersectionListRight;
-        bool hitLeft = intersectBVH(node->left, orig, dir, points, triangle_to_indices_map, outIntersectionListLeft);
-        bool hitRight = intersectBVH(node->right, orig, dir, points, triangle_to_indices_map, outIntersectionListRight);
+        bool hitLeft = intersectBVH(node->left, orig, dir, vertex_to_vector3d_map, triangle_to_indices_map, outIntersectionListLeft);
+        bool hitRight = intersectBVH(node->right, orig, dir, vertex_to_vector3d_map, triangle_to_indices_map, outIntersectionListRight);
         outIntersectionList.insert(outIntersectionList.end(), outIntersectionListLeft.begin(), outIntersectionListLeft.end());
         outIntersectionList.insert(outIntersectionList.end(), outIntersectionListRight.begin(), outIntersectionListRight.end());
         return hitLeft || hitRight;
@@ -170,9 +172,9 @@ bool intersectBVH(const std::shared_ptr<BVHNode>& node, const Eigen::Vector3d& o
     {
         // each triangle
         const std::array<int, 3> indices = triangle_to_indices_map[node_triangle];
-        Eigen::Vector3d v0 = points[indices[0]];
-        Eigen::Vector3d v1 = points[indices[1]];
-        Eigen::Vector3d v2 = points[indices[2]];
+        Eigen::Vector3d v0 = vertex_to_vector3d_map[indices[0]];
+        Eigen::Vector3d v1 = vertex_to_vector3d_map[indices[1]];
+        Eigen::Vector3d v2 = vertex_to_vector3d_map[indices[2]];
 
         // check intersection
         Eigen::Vector3d intersectPoint;

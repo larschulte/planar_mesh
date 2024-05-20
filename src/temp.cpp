@@ -80,35 +80,41 @@ private:
 
 int main() {
     // Define your mesh vertices and triangles
-    std::vector<Eigen::Vector3d> vertices = 
+    // vertices id to vector3d map
+    std::map<int, Eigen::Vector3d> vertex_to_vector3d_map;
+    vertex_to_vector3d_map[0] = Eigen::Vector3d(1, 1, 1);
+    vertex_to_vector3d_map[1] = Eigen::Vector3d(-1, 1, 1);
+    vertex_to_vector3d_map[2] = Eigen::Vector3d(-1, -1, 1);
+    vertex_to_vector3d_map[3] = Eigen::Vector3d(1, -1, 1);
+    vertex_to_vector3d_map[4] = Eigen::Vector3d(1, 1, -1);
+    vertex_to_vector3d_map[5] = Eigen::Vector3d(-1, 1, -1);
+    vertex_to_vector3d_map[6] = Eigen::Vector3d(-1, -1, -1);
+    vertex_to_vector3d_map[7] = Eigen::Vector3d(1, -1, -1);
+
+    // triangle id to indices map
+    std::map<int, std::array<int, 3>> triangle_to_indices_map;
+    triangle_to_indices_map[0] = {0, 1, 2};
+    triangle_to_indices_map[1] = {0, 3, 2};
+    triangle_to_indices_map[2] = {0, 3, 7};
+    triangle_to_indices_map[3] = {0, 4, 7};
+    triangle_to_indices_map[4] = {0, 1, 5};
+    triangle_to_indices_map[5] = {0, 4, 5};
+    triangle_to_indices_map[6] = {6, 5, 1};
+    triangle_to_indices_map[7] = {6, 2, 1};
+    triangle_to_indices_map[8] = {6, 5, 4};
+    triangle_to_indices_map[9] = {6, 7, 4};
+    triangle_to_indices_map[10] = {6, 2, 3};
+    triangle_to_indices_map[11] = {6, 7, 3};
+
+    // triangle id list
+    std::vector<int> triangle_id_list;
+    for (const auto& pair : triangle_to_indices_map)
     {
-        Eigen::Vector3d(1, 1, 1),
-        Eigen::Vector3d(-1, 1, 1),
-        Eigen::Vector3d(-1, -1, 1),
-        Eigen::Vector3d(1, -1, 1),
-        Eigen::Vector3d(1, 1, -1),
-        Eigen::Vector3d(-1, 1, -1),
-        Eigen::Vector3d(-1, -1, -1),
-        Eigen::Vector3d(1, -1, -1)
-    };
-    std::vector<std::array<int, 3>> triangles = 
-    {
-        {0, 1, 2},
-        {0, 3, 2},
-        {0, 3, 7},
-        {0, 4, 7},
-        {0, 1, 5},
-        {0, 4, 5},
-        {6, 5, 1},
-        {6, 2, 1},
-        {6, 5, 4},
-        {6, 7, 4},
-        {6, 2, 3},
-        {6, 7, 3}
-    };
+        triangle_id_list.push_back(pair.first);
+    }
 
     // Build the BVH
-    auto bvhRoot = buildBVH(vertices, triangles, 0, triangles.size());
+    auto bvhRoot = buildBVH(vertex_to_vector3d_map, triangle_to_indices_map, triangle_id_list, 0, triangle_id_list.size());
 
     // Define the ray
     Eigen::Vector3d rayOrigin(0.5, 0.5, 0.5);
@@ -116,7 +122,7 @@ int main() {
     std::vector<Eigen::Vector3d> intersectionPointList;
 
     // Perform intersection test
-    bool intersect = intersectBVH(bvhRoot, rayOrigin, rayDirection, vertices, triangles, intersectionPointList);
+    bool intersect = intersectBVH(bvhRoot, rayOrigin, rayDirection, vertex_to_vector3d_map, triangle_to_indices_map, intersectionPointList);
 
     if (intersect) {
         for (const auto& intersectionPoint : intersectionPointList) {
@@ -135,25 +141,27 @@ int main() {
     pcl::PolygonMesh mesh;
     // add points to mesh.cloud
     pcl::PointCloud<pcl::PointXYZ>::Ptr new_cloud(new pcl::PointCloud<pcl::PointXYZ>);
-    for (const auto& vertex : vertices)
+    for (const auto& pair : vertex_to_vector3d_map)
     {
         pcl::PointXYZ point;
-        point.x = vertex[0];
-        point.y = vertex[1];
-        point.z = vertex[2];
+        point.x = pair.second[0];
+        point.y = pair.second[1];
+        point.z = pair.second[2];
         new_cloud->push_back(point);
     }
+
+
     // add points
     pcl::toPCLPointCloud2(*new_cloud, mesh.cloud); 
 
     // add triangle to mesh
-    for (const auto& triangle : triangles)
+    for (const auto& pair : triangle_to_indices_map)
     {
-        pcl::Vertices v;
-        v.vertices.push_back(triangle[0]);
-        v.vertices.push_back(triangle[1]);
-        v.vertices.push_back(triangle[2]);
-        mesh.polygons.push_back(v);
+        pcl::Vertices triangle;
+        triangle.vertices.push_back(pair.second[0]);
+        triangle.vertices.push_back(pair.second[1]);
+        triangle.vertices.push_back(pair.second[2]);
+        mesh.polygons.push_back(triangle);
     }
     // add mesh
     viewer->addPolylineFromPolygonMesh(mesh, "polyline");
