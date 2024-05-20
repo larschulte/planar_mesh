@@ -147,7 +147,14 @@ std::shared_ptr<BVHNode> buildBVH(std::map<int, Eigen::Vector3d>& vertex_to_vect
 }
 
 // no const for map since map[i] may create new element if not present
-bool intersectBVH(const std::shared_ptr<BVHNode>& node, const Eigen::Vector3d& orig, const Eigen::Vector3d& dir, std::map<int, Eigen::Vector3d>& vertex_to_vector3d_map, std::map<int, std::array<int, 3>>& triangle_to_indices_map, std::vector<Eigen::Vector3d>& outIntersectionList) 
+bool intersectBVH(
+    const std::shared_ptr<BVHNode>& node, 
+    const Eigen::Vector3d& orig, 
+    const Eigen::Vector3d& dir, 
+    std::map<int, Eigen::Vector3d>& vertex_to_vector3d_map, 
+    std::map<int, std::array<int, 3>>& triangle_to_indices_map, 
+    std::vector<int>& outTriangleIdList,
+    std::vector<Eigen::Vector3d>& outIntersectionList) 
 {
     // skip if ray doesn't intersect bounding box
     double tMin = -std::numeric_limits<double>::infinity();
@@ -157,12 +164,19 @@ bool intersectBVH(const std::shared_ptr<BVHNode>& node, const Eigen::Vector3d& o
     // if not leaf, recursively check children
     if (!node->isLeaf())
     {
+        std::vector<int> outTriangleIdListLeft;
+        std::vector<int> outTriangleIdListRight;
         std::vector<Eigen::Vector3d> outIntersectionListLeft;
         std::vector<Eigen::Vector3d> outIntersectionListRight;
-        bool hitLeft = intersectBVH(node->left, orig, dir, vertex_to_vector3d_map, triangle_to_indices_map, outIntersectionListLeft);
-        bool hitRight = intersectBVH(node->right, orig, dir, vertex_to_vector3d_map, triangle_to_indices_map, outIntersectionListRight);
+
+        bool hitLeft = intersectBVH(node->left, orig, dir, vertex_to_vector3d_map, triangle_to_indices_map, outTriangleIdListLeft, outIntersectionListLeft);
+        bool hitRight = intersectBVH(node->right, orig, dir, vertex_to_vector3d_map, triangle_to_indices_map, outTriangleIdListRight, outIntersectionListRight);
+
+        outTriangleIdList.insert(outTriangleIdList.end(), outTriangleIdListLeft.begin(), outTriangleIdListLeft.end());
+        outTriangleIdList.insert(outTriangleIdList.end(), outTriangleIdListRight.begin(), outTriangleIdListRight.end());
         outIntersectionList.insert(outIntersectionList.end(), outIntersectionListLeft.begin(), outIntersectionListLeft.end());
         outIntersectionList.insert(outIntersectionList.end(), outIntersectionListRight.begin(), outIntersectionListRight.end());
+
         return hitLeft || hitRight;
     }
 
@@ -183,6 +197,7 @@ bool intersectBVH(const std::shared_ptr<BVHNode>& node, const Eigen::Vector3d& o
         // return if intersected
         if (intersected) 
         {
+            outTriangleIdList.push_back(node_triangle);
             outIntersectionList.push_back(intersectPoint);
             hasIntersection = true;
         }

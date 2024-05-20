@@ -117,16 +117,17 @@ int main() {
     auto bvhRoot = buildBVH(vertex_to_vector3d_map, triangle_to_indices_map, triangle_id_list, 0, triangle_id_list.size());
 
     // Define the ray
-    Eigen::Vector3d rayOrigin(0.5, 0.5, 0.5);
-    Eigen::Vector3d rayDirection(1, 1, 1);
+    Eigen::Vector3d rayOrigin(0, 0, 0);
+    Eigen::Vector3d rayDirection(0, 0, 1);
+    std::vector<int> intersectedTriangleIdList;
     std::vector<Eigen::Vector3d> intersectionPointList;
 
     // Perform intersection test
-    bool intersect = intersectBVH(bvhRoot, rayOrigin, rayDirection, vertex_to_vector3d_map, triangle_to_indices_map, intersectionPointList);
+    bool intersect = intersectBVH(bvhRoot, rayOrigin, rayDirection, vertex_to_vector3d_map, triangle_to_indices_map, intersectedTriangleIdList, intersectionPointList);
 
     if (intersect) {
-        for (const auto& intersectionPoint : intersectionPointList) {
-            std::cout << "Intersection point: " << intersectionPoint.transpose() << std::endl;
+        for (std::size_t i = 0; i < intersectedTriangleIdList.size(); ++i) {
+            std::cout << "Intersection with triangle id: " << intersectedTriangleIdList[i] << " at point: " << intersectionPointList[i].transpose() << std::endl;
         }
     }
 
