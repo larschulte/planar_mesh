@@ -30,7 +30,7 @@ public:
         flann_last_id = boundary_points_set.size() - 1;
 
         // add to flann
-        flann_tree.buildIndex(flann::Matrix<float>(flann_data_storage.data(), boundary_points_set.size(), 3));
+        flann_tree.buildIndex(flann::Matrix<double>(flann_data_storage.data(), boundary_points_set.size(), 3));
     }
     
     void set_input(typename pcl::PointCloud<PointT>::Ptr point_cloud)
@@ -47,37 +47,37 @@ public:
         flann_last_id = point_cloud->size() - 1;
 
         // add to flann
-        flann_tree.buildIndex(flann::Matrix<float>(flann_data_storage.data(), point_cloud->size(), 3));
+        flann_tree.buildIndex(flann::Matrix<double>(flann_data_storage.data(), point_cloud->size(), 3));
     }
     
-    void radiusSearch(Eigen::Vector3d searchPoint, std::vector<int>& search_indices, std::vector<float>& search_dists, float radius)
+    void radiusSearch(Eigen::Vector3d searchPoint, std::vector<int>& search_indices, std::vector<double>& search_dists, double radius)
     {
         // convert to vector
-        std::vector<float> query_point = {searchPoint[0], searchPoint[1], searchPoint[2]};
+        std::vector<double> query_point = {searchPoint[0], searchPoint[1], searchPoint[2]}; 
 
         // intialize
         std::vector<std::vector<int>> list_of_search_indices(1, std::vector<int>());
-        std::vector<std::vector<float>> list_of_search_dists(1, std::vector<float>());
+        std::vector<std::vector<double>> list_of_search_dists(1, std::vector<double>());
 
         // search
-        flann_tree.radiusSearch(flann::Matrix<float>(query_point.data(), 1, 3), list_of_search_indices, list_of_search_dists, radius * radius, flann::SearchParams(-1, 0));
+        flann_tree.radiusSearch(flann::Matrix<double>(query_point.data(), 1, 3), list_of_search_indices, list_of_search_dists, radius * radius, flann::SearchParams(-1, 0));
 
         // extract
         search_indices = list_of_search_indices[0];
         search_dists = list_of_search_dists[0];
     }
 
-    void radiusSearch(PointT searchPoint, std::vector<int>& search_indices, std::vector<float>& search_dists, float radius)
+    void radiusSearch(PointT searchPoint, std::vector<int>& search_indices, std::vector<double>& search_dists, double radius)
     {
         // convert to vector
-        std::vector<float> query_point = {searchPoint.x, searchPoint.y, searchPoint.z};
+        std::vector<double> query_point = {searchPoint.x, searchPoint.y, searchPoint.z};
 
         // intialize
         std::vector<std::vector<int>> list_of_search_indices(1, std::vector<int>());
-        std::vector<std::vector<float>> list_of_search_dists(1, std::vector<float>());
+        std::vector<std::vector<double>> list_of_search_dists(1, std::vector<double>());
 
         // search
-        flann_tree.radiusSearch(flann::Matrix<float>(query_point.data(), 1, 3), list_of_search_indices, list_of_search_dists, radius * radius, flann::SearchParams(-1, 0));
+        flann_tree.radiusSearch(flann::Matrix<double>(query_point.data(), 1, 3), list_of_search_indices, list_of_search_dists, radius * radius, flann::SearchParams(-1, 0));
 
         // extract
         search_indices = list_of_search_indices[0];
@@ -92,7 +92,7 @@ public:
         flann_data_storage.push_back(new_point[2]);
 
         // add
-        flann_tree.addPoints(flann::Matrix<float>(flann_data_storage.data() + flann_data_storage.size() - 3, 1, 3));
+        flann_tree.addPoints(flann::Matrix<double>(flann_data_storage.data() + flann_data_storage.size() - 3, 1, 3));
 
         // update id
         flann_last_id++;
@@ -106,7 +106,7 @@ public:
         flann_data_storage.push_back(new_point.z);
 
         // add
-        flann_tree.addPoints(flann::Matrix<float>(flann_data_storage.data() + flann_data_storage.size() - 3, 1, 3));
+        flann_tree.addPoints(flann::Matrix<double>(flann_data_storage.data() + flann_data_storage.size() - 3, 1, 3));
 
         // update id
         flann_last_id++;
@@ -120,9 +120,9 @@ public:
     int flann_last_id;
 
 private:
-    std::vector<float> flann_data_storage;
+    std::vector<double> flann_data_storage;
 
-    flann::Index<flann::L2_Simple<float>> flann_tree;
+    flann::Index<flann::L2_Simple<double>> flann_tree;
 };
 
 
@@ -147,7 +147,7 @@ ray_plane_intersection(Eigen::Vector3d ray_origin, Eigen::Vector3d ray_direction
 
 // ray set intersection 
 // todo - need to handle the rayOrigin and thisPoint in different coordinate
-Eigen::Vector3d ray_set_intersection(Eigen::Vector3d rayOrigin, Eigen::Vector3d rayDirection, Eigen::Vector3d thisPoint, std::set<int> point_ids, std::map<int, Eigen::Vector3d> point_to_vector3d_map)
+Eigen::Vector3d ray_set_intersection(Eigen::Vector3d rayOrigin, Eigen::Vector3d rayDirection, std::set<int> point_ids, std::map<int, Eigen::Vector3d> point_to_vector3d_map)
 {
     // compute points mean
     Eigen::Vector3d mean = Eigen::Vector3d::Zero();
@@ -236,7 +236,7 @@ void add_new_point_procedure(
 
     // perform radius search
     std::vector<int> search_indices;
-    std::vector<float> search_dists;
+    std::vector<double> search_dists;
     flann_tree.radiusSearch(thisPoint, search_indices, search_dists, search_size);
 
     // if no searched results, add point as set
@@ -282,10 +282,11 @@ void add_new_point_procedure(
         std::set<int> searched_point_ids = pair.second;
 
         // check plane if at least 3 points in the set, else consider the point is added to the set
-        if (searched_point_ids.size() >= 3)
+        std::set<int> points_in_set = set_to_points_map[set_id];
+        if (points_in_set.size() >= 3)
         {
             // ray set intersection
-            Eigen::Vector3d rayPlaneIntersectionPoint = ray_set_intersection(rayOrigin, rayDirection, thisPoint, searched_point_ids, point_to_vector3d_map);
+            Eigen::Vector3d rayPlaneIntersectionPoint = ray_set_intersection(rayOrigin, rayDirection, points_in_set, point_to_vector3d_map);
             double distance = (thisPoint - rayPlaneIntersectionPoint).norm();
 
             // skip if not within plane
@@ -442,79 +443,56 @@ void add_new_point_procedure(
     }
 }
 
-using InputPointT = VilensPointT;
-int main()
+
+
+// application class
+template <typename PointT>
+class Application
 {
-    /* 
-    - when a new point comes in, check intersected triangle
-    - if have intersection
-        - from the intersected triangle, retrieve the set
-        - from the set, check relation of the point with the set
-        - cases
-            - within - add the point to the set and to the triangle
-            - in front of - move to "no intersection" process
-            - behind
-                - remove the triangle from the set
-                - recompute boundary edge and edge points
-                - for each point within the triangle, re-add them to the map
-    - if no intersection with any triangles
-        - perform radius search on edge points
-            - from the edge points identify the set / planes
-            - if new point does not match found planes
-                - add the new point as new set
-            - if new point match found planes
-                - form edge to the found edge points
-                - form triangle between the new point and any two edge points that have a boundary edge between them
-                - the triangle is added to the set and the boundary edge and points are recomputed
-    */
-
-    // input data
-    std::string pcd_file_folder = "/home/jiahao/datasets/bag2pcd_output/mission2_reverse/slam_clouds/";
-    std::string pose_file_path = "/home/jiahao/datasets/bag2pcd_output/mission2_reverse/slam_poses/slam_poss_graph.slam";
-    DataLoader<InputPointT> data_loader(pcd_file_folder, pose_file_path);
-    int i1 = 0;
-    typename pcl::PointCloud<InputPointT>::Ptr new_cloud = data_loader.get_cloud(i1);
-    // Eigen::Affine3d new_pose = data_loader.get_pose(i1);
-
-    // storage data
-
-        // point
-    int next_point_id = 0;
-    std::map<int, Eigen::Vector3d> point_to_vector3d_map;
-    std::map<int, int> point_to_set_map;
-    std::map<int, std::set<int>> point_to_edge_map;
-
-        // triangle
-    int next_triangle_id = 0;
-    std::map<int, std::array<int, 3>> triangle_to_vertices_map;
-    std::map<int, int> triangle_to_set_map;
-    std::map<int, std::set<int>> triangle_to_points_map;
-    
-        // set
-    int next_set_id = 0;
-    std::map<int, std::set<int>> set_to_points_map; // each set contains id to points
-    std::map<int, std::set<int>> set_to_triangles_map; // each set contains id to triangles
-    
-        // edge
-    int next_edge_id = 0;
-    std::map<int, std::array<int, 2>> edge_to_vertices_map;
-    std::map<std::array<int, 2>, int> edge_to_vertices_map_reverse;
-    std::map<int, int> edge_occurrences_count; // number of triangles that share the edge
-
-        // boundary
-    std::set<int> boundary_points_set;
-    std::set<int> boundary_edge_set;
-    
-
-
-
-    // settings
-    double distance_threshold = 0.05;
-    float search_size = 0.1;
-
-    // for each point in new cloud
-    for (std::size_t i = 0; i < new_cloud->size(); i++)
+public:
+    Application() 
     {
+        /* 
+        - when a new point comes in, check intersected triangle
+        - if have intersection
+            - from the intersected triangle, retrieve the set
+            - from the set, check relation of the point with the set
+            - cases
+                - within - add the point to the set and to the triangle
+                - in front of - move to "no intersection" process
+                - behind
+                    - remove the triangle from the set
+                    - recompute boundary edge and edge points
+                    - for each point within the triangle, re-add them to the map
+        - if no intersection with any triangles
+            - perform radius search on edge points
+                - from the edge points identify the set / planes
+                - if new point does not match found planes
+                    - add the new point as new set
+                - if new point match found planes
+                    - form edge to the found edge points
+                    - form triangle between the new point and any two edge points that have a boundary edge between them
+                    - the triangle is added to the set and the boundary edge and points are recomputed
+        */
+
+        // input data
+        std::string pcd_file_folder = "/home/jiahao/datasets/bag2pcd_output/mission2_reverse/slam_clouds/";
+        std::string pose_file_path = "/home/jiahao/datasets/bag2pcd_output/mission2_reverse/slam_poses/slam_poss_graph.slam";
+        DataLoader<VilensPointT> data_loader(pcd_file_folder, pose_file_path);
+        int i1 = 0;
+        new_cloud = data_loader.get_cloud(i1);
+
+
+        // loop
+        i = 0;
+        
+    }
+
+    void step()
+    {
+        // for each point in new cloud
+        if (i >= new_cloud->size()) return;
+        
         // print
         std::cout << "Processing point " << i << " / " << new_cloud->size() << std::endl;
 
@@ -533,6 +511,10 @@ int main()
 
         // Define this point
         Eigen::Vector3d thisPoint = new_cloud->points[i].getVector3fMap().cast<double>();
+
+        // Define search size
+        // double search_size = thisPoint.norm() * 0.02;
+        double search_size = 0.1;
 
         // Define the ray
         Eigen::Vector3d rayOrigin(0, 0, 0);
@@ -564,7 +546,7 @@ int main()
 
                 
                 // ray set intersection
-                Eigen::Vector3d rayPlaneIntersectionPoint = ray_set_intersection(rayOrigin, rayDirection, thisPoint, point_ids, point_to_vector3d_map);
+                Eigen::Vector3d rayPlaneIntersectionPoint = ray_set_intersection(rayOrigin, rayDirection, point_ids, point_to_vector3d_map);
                 double distance = (thisPoint - rayPlaneIntersectionPoint).norm();
 
 
@@ -704,46 +686,163 @@ int main()
                 distance_threshold
             );
         }
+
+        i++;
     }
 
-    // make mesh
-    pcl::PolygonMesh mesh;
-
-    // add point to cloud
-    pcl::PointCloud<pcl::PointXYZ>::Ptr mesh_cloud(new pcl::PointCloud<pcl::PointXYZ>);
-    for (const auto& pair : point_to_vector3d_map)
+    std::map<int, Eigen::Vector3d> get_point_to_vector3d_map() {return point_to_vector3d_map;};
+    std::map<int, std::array<int, 2>> get_edge_to_vertices_map() {return edge_to_vertices_map;};
+    pcl::PointCloud<pcl::PointXYZ>::Ptr get_cloud()
     {
-        pcl::PointXYZ point;
-        point.x = pair.second[0];
-        point.y = pair.second[1];
-        point.z = pair.second[2];
-        mesh_cloud->push_back(point);
+        pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
+        for (const auto& pair : point_to_vector3d_map)
+        {
+            pcl::PointXYZ point;
+            point.x = pair.second[0];
+            point.y = pair.second[1];
+            point.z = pair.second[2];
+            cloud->push_back(point);
+        }
+        return cloud;
     }
-    // convert to PCLPointCloud2
-    pcl::toPCLPointCloud2(*mesh_cloud, mesh.cloud); 
 
-    // add edges to mesh
-    for (const auto& pair : edge_to_vertices_map)
-    {
-        pcl::Vertices edge;
-        edge.vertices.push_back(pair.second[0]);
-        edge.vertices.push_back(pair.second[1]);
-        mesh.polygons.push_back(edge);
-    }
     
+private:
+    std::size_t i;
+    typename pcl::PointCloud<VilensPointT>::Ptr new_cloud;
 
-    // add viewer
-    pcl::visualization::PCLVisualizer::Ptr viewer(new pcl::visualization::PCLVisualizer ("3D Viewer"));
-    viewer->getRenderWindow()->GlobalWarningDisplayOff(); // Add This Line
-    viewer->initCameraParameters();
-    viewer->addCoordinateSystem(1);
+    // settings
+    double distance_threshold = 0.05;
 
-    // add mesh
-    viewer->addPolylineFromPolygonMesh(mesh, "polyline");
+        // point
+    int next_point_id = 0;
+    std::map<int, Eigen::Vector3d> point_to_vector3d_map;
+    std::map<int, int> point_to_set_map;
+    std::map<int, std::set<int>> point_to_edge_map;
 
-    // spin
-    viewer->spin();
+        // triangle
+    int next_triangle_id = 0;
+    std::map<int, std::array<int, 3>> triangle_to_vertices_map;
+    std::map<int, int> triangle_to_set_map;
+    std::map<int, std::set<int>> triangle_to_points_map;
+    
+        // set
+    int next_set_id = 0;
+    std::map<int, std::set<int>> set_to_points_map; // each set contains id to points
+    std::map<int, std::set<int>> set_to_triangles_map; // each set contains id to triangles
+    
+        // edge
+    int next_edge_id = 0;
+    std::map<int, std::array<int, 2>> edge_to_vertices_map;
+    std::map<std::array<int, 2>, int> edge_to_vertices_map_reverse;
+    std::map<int, int> edge_occurrences_count; // number of triangles that share the edge
 
+        // boundary
+    std::set<int> boundary_points_set;
+    std::set<int> boundary_edge_set;
+    
+};
+
+
+// interactive viewer class
+template <typename PointT>
+class InteractiveViewer 
+{
+public:
+    InteractiveViewer(Application<PointT>& app) 
+        : 
+        app_(app),
+        viewer_(new pcl::visualization::PCLVisualizer ("3D Viewer"))
+    {   
+        // turn off warning
+        viewer_->getRenderWindow()->GlobalWarningDisplayOff(); // Add This Line
+        
+        // set up viewports
+        viewer_->setBackgroundColor (0, 0, 0);
+   
+        // set up coordinate system
+        viewer_->initCameraParameters();
+        viewer_->addCoordinateSystem(1);
+
+        // set up initial mesh
+        pcl::PolygonMesh mesh;
+        viewer_->addPolylineFromPolygonMesh(mesh, "polyline");
+        // set up initial point cloud
+        pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
+        viewer_->addPointCloud(cloud, "cloud");
+        viewer_->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 3, "cloud");
+
+
+        // register keyboard callback
+        viewer_->registerKeyboardCallback(&InteractiveViewer::keyboard_callback, *this, nullptr);
+
+        // spin
+        viewer_->spin();
+    }
+
+private:
+    Application<PointT>& app_;
+
+    pcl::visualization::PCLVisualizer::Ptr viewer_;
+    
+    void keyboard_callback(const pcl::visualization::KeyboardEvent &event, void*) 
+    {
+        bool space_down = event.getKeySym() == "space" && event.keyDown();
+        if (space_down)
+        {
+            // step application
+            app_.step();
+
+            // get data from app
+            std::map<int, Eigen::Vector3d> point_to_vector3d_map = app_.get_point_to_vector3d_map();
+            std::map<int, std::array<int, 2>> edge_to_vertices_map = app_.get_edge_to_vertices_map();
+            pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = app_.get_cloud();
+
+            // recompute mesh
+            pcl::PolygonMesh mesh;
+            // add point to cloud
+            pcl::PointCloud<pcl::PointXYZ>::Ptr mesh_cloud(new pcl::PointCloud<pcl::PointXYZ>);
+            for (const auto& pair : point_to_vector3d_map)
+            {
+                pcl::PointXYZ point;
+                point.x = pair.second[0];
+                point.y = pair.second[1];
+                point.z = pair.second[2];
+                mesh_cloud->push_back(point);
+            }
+            // convert to PCLPointCloud2
+            pcl::toPCLPointCloud2(*mesh_cloud, mesh.cloud); 
+            // add edges to mesh
+            for (const auto& pair : edge_to_vertices_map)
+            {
+                pcl::Vertices edge;
+                edge.vertices.push_back(pair.second[0]);
+                edge.vertices.push_back(pair.second[1]);
+                mesh.polygons.push_back(edge);
+            }
+
+            // remove old mesh
+            viewer_->removeShape("polyline");
+            // add new mesh
+            viewer_->addPolylineFromPolygonMesh(mesh, "polyline");
+
+            // update cloud
+            pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ> color_cloud(cloud, 0, 255, 0);
+            viewer_->updatePointCloud<pcl::PointXYZ>(cloud, color_cloud, "cloud");
+        }
+    }  
+};
+
+
+
+using InputPointT = VilensPointT;
+int main()
+{
+    // application
+    Application<InputPointT> app;
+
+    // interactive viewer
+    InteractiveViewer<InputPointT> iviewer(app);
 
    return 0;
 }
