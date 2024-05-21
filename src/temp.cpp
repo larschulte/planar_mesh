@@ -192,6 +192,7 @@ void add_new_point_procedure(
     std::map<int, std::set<int>>& point_to_edge_map,
     std::set<int>& boundary_edge_set,
     std::map<int, std::array<int, 3>>& triangle_to_vertices_map,
+    std::map<int, int>& triangle_to_set_map,
     std::map<int, std::set<int>>& set_to_triangles_map,
     int& next_point_id,
     int& next_edge_id,
@@ -201,15 +202,15 @@ void add_new_point_procedure(
     double distance_threshold
 ) 
 {
+    // add to point
+    point_to_vector3d_map[next_point_id] = thisPoint;
+
     // perform radius search on boundary points
 
     // if no boundary points, add the point as new set
     if (boundary_points_set.size() == 0)
     {
         // ----------- add point as set ----------- 
-        
-        // add to point
-        point_to_vector3d_map[next_point_id] = thisPoint;
 
         // add to set
         set_to_points_map[next_set_id].insert(next_point_id);
@@ -242,9 +243,6 @@ void add_new_point_procedure(
     if (search_indices.size() == 0)
     {
         // ----------- add point as set ----------- 
-        
-        // add to point
-        point_to_vector3d_map[next_point_id] = thisPoint;
 
         // add to set
         set_to_points_map[next_set_id].insert(next_point_id);
@@ -274,6 +272,7 @@ void add_new_point_procedure(
     }
 
     // for each set of searched points
+    bool added_to_a_set = false;
     for (const auto& pair : set_to_searched_points_map)
     {
         // set id
@@ -282,15 +281,22 @@ void add_new_point_procedure(
         // searched points
         std::set<int> searched_point_ids = pair.second;
 
-        // ray set intersection
-        Eigen::Vector3d rayPlaneIntersectionPoint = ray_set_intersection(rayOrigin, rayDirection, thisPoint, searched_point_ids, point_to_vector3d_map);
-        double distance = (thisPoint - rayPlaneIntersectionPoint).norm();
-
-        // skip if not within plane
-        if (distance < -distance_threshold || distance_threshold < distance) // within plane
+        // check plane if at least 3 points in the set, else consider the point is added to the set
+        if (searched_point_ids.size() >= 3)
         {
-            continue;
+            // ray set intersection
+            Eigen::Vector3d rayPlaneIntersectionPoint = ray_set_intersection(rayOrigin, rayDirection, thisPoint, searched_point_ids, point_to_vector3d_map);
+            double distance = (thisPoint - rayPlaneIntersectionPoint).norm();
+
+            // skip if not within plane
+            if (distance < -distance_threshold || distance_threshold < distance) // not within plane
+            {
+                continue;
+            }
         }
+
+        // update flag
+        added_to_a_set = true;
 
         // update set to points map
         set_to_points_map[set_id].insert(next_point_id);
@@ -351,6 +357,7 @@ void add_new_point_procedure(
 
             // add to triangle list
             triangle_to_vertices_map[next_triangle_id] = triangle;
+            triangle_to_set_map[next_triangle_id] = set_id;
             set_to_triangles_map[set_id].insert(next_triangle_id);
             next_triangle_id ++;
             
@@ -408,6 +415,30 @@ void add_new_point_procedure(
 
         }
 
+        // increment next point
+        next_point_id ++;
+
+    }
+
+    // if not added to any set, add the point as new set
+    if (!added_to_a_set)
+    {
+        // ----------- add point as set ----------- 
+
+        // add to set
+        set_to_points_map[next_set_id].insert(next_point_id);
+
+        // add to boundary points
+        boundary_points_set.insert(next_point_id);
+
+        // add to point to set map
+        point_to_set_map[next_point_id] = next_set_id;
+
+        // increment set id
+        next_set_id ++;
+
+        // increment point id
+        next_point_id ++;
     }
 }
 
@@ -443,7 +474,7 @@ int main()
     DataLoader<InputPointT> data_loader(pcd_file_folder, pose_file_path);
     int i1 = 0;
     typename pcl::PointCloud<InputPointT>::Ptr new_cloud = data_loader.get_cloud(i1);
-    Eigen::Affine3d new_pose = data_loader.get_pose(i1);
+    // Eigen::Affine3d new_pose = data_loader.get_pose(i1);
 
     // storage data
 
@@ -484,6 +515,12 @@ int main()
     // for each point in new cloud
     for (std::size_t i = 0; i < new_cloud->size(); i++)
     {
+        // print
+        std::cout << "Processing point " << i << " / " << new_cloud->size() << std::endl;
+
+        // print number of triangles
+        std::cout << "Number of triangles: " << triangle_to_vertices_map.size() << std::endl;
+
         // precompute
         std::vector<int> triangle_map_keys;
         for (const auto& pair : triangle_to_vertices_map)
@@ -555,6 +592,7 @@ int main()
                         point_to_edge_map,
                         boundary_edge_set,
                         triangle_to_vertices_map,
+                        triangle_to_set_map,
                         set_to_triangles_map,
                         next_point_id,
                         next_edge_id,
@@ -609,6 +647,9 @@ int main()
                         // for each point previously within the triangle, re-add them to the map
                     for (int point_id : points)
                     {
+                        // compute this point
+                        Eigen::Vector3d thisPoint = point_to_vector3d_map[point_id];
+                        Eigen::Vector3d rayDirection = (thisPoint - rayOrigin).normalized();
                         add_new_point_procedure(
                             thisPoint,
                             rayOrigin,
@@ -623,6 +664,7 @@ int main()
                             point_to_edge_map,
                             boundary_edge_set,
                             triangle_to_vertices_map,
+                            triangle_to_set_map,
                             set_to_triangles_map,
                             next_point_id,
                             next_edge_id,
@@ -652,6 +694,7 @@ int main()
                 point_to_edge_map,
                 boundary_edge_set,
                 triangle_to_vertices_map,
+                triangle_to_set_map,
                 set_to_triangles_map,
                 next_point_id,
                 next_edge_id,
@@ -662,10 +705,6 @@ int main()
             );
         }
     }
-
-
-    // display edge mesh
-    edge_to_vertices_map;
 
     // make mesh
     pcl::PolygonMesh mesh;
