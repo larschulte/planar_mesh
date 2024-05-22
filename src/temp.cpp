@@ -234,10 +234,46 @@ void add_new_point_procedure(
     flann3d<VilensPointT> flann_tree;
     flann_tree.set_input(point_to_vector3d_map, boundary_points_set);
 
+    // setup kdtreeflann
+    pcl::PointCloud<pcl::PointXYZ>::Ptr kdcloud(new pcl::PointCloud<pcl::PointXYZ>);
+    for (const auto& pair : point_to_vector3d_map)
+    {
+        pcl::PointXYZ point;
+        point.x = pair.second[0];
+        point.y = pair.second[1];
+        point.z = pair.second[2];
+        kdcloud->push_back(point);
+    }
+    // // add the search point to cloud as well, note down its index
+    pcl::PointXYZ searchPoint;
+    searchPoint.x = thisPoint[0];
+    searchPoint.y = thisPoint[1];
+    searchPoint.z = thisPoint[2];
+    // kdcloud->push_back(searchPoint);
+    // int searchPointIndex = kdcloud->size() - 1;
+    pcl::KdTreeFLANN<pcl::PointXYZ> kdtree;
+    kdtree.setInputCloud(kdcloud);
+
+
     // perform radius search
+    // std::vector<int> search_indices;
+    // std::vector<double> search_dists;
+    // flann_tree.radiusSearch(thisPoint, search_indices, search_dists, search_size);
     std::vector<int> search_indices;
-    std::vector<double> search_dists;
-    flann_tree.radiusSearch(thisPoint, search_indices, search_dists, search_size);
+    std::vector<float> search_dists;
+    kdtree.radiusSearch(searchPoint, 0.5, search_indices, search_dists, 0);
+
+    // // extract points that are also in boundary points
+    // std::vector<int> boundary_search_indices;
+    // for (int search_index : search_indices)
+    // {
+    //     if (boundary_points_set.find(search_index) != boundary_points_set.end())
+    //     {
+    //         boundary_search_indices.push_back(search_index);
+    //     }
+    // }
+    // search_indices = boundary_search_indices;
+
 
     // if no searched results, add point as set
     if (search_indices.size() == 0)
