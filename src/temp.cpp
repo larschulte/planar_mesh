@@ -336,7 +336,7 @@ public:
         return points_grouped_by_set;
     }
 
-    std::vector<int> compute_boundary_edge_list()
+    std::set<int> compute_boundary_edge_set()
     {
         // intialize edge occurrences count
         std::map<int, int> edge_occurrences_count;
@@ -368,6 +368,14 @@ public:
             }
         }
 
+        return boundary_edge_set;
+    }
+
+    std::vector<int> compute_boundary_edge_list()
+    {
+        // get boundary edge set
+        std::set<int> boundary_edge_set = compute_boundary_edge_set();
+
         // convert to list
         std::vector<int> boundary_edge_list;
         for (int edge_id : boundary_edge_set)
@@ -379,24 +387,15 @@ public:
         return boundary_edge_list;
     }
 
-    std::set<int> compute_boundary_edge_set()
+    std::set<int> compute_boundary_point_set()
     {
-        // get boundary edge list
-        std::vector<int> boundary_edge_list = compute_boundary_edge_list();
-
-        // return
-        return std::set<int>(boundary_edge_list.begin(), boundary_edge_list.end());
-    }
-
-    std::vector<int> compute_boundary_point_list()
-    {
-        // get boundary edge list
-        std::vector<int> boundary_edge_list = compute_boundary_edge_list();
+        // get boundary edge set
+        std::set<int> boundary_edge_set = compute_boundary_edge_set();
 
         // identify boundary points
         // add points from boundary edges
         std::set<int> boundary_points_set;
-        for (int edge_id : boundary_edge_list)
+        for (int edge_id : boundary_edge_set)
         {
             std::array<int, 2> vertices = edge_to_point_map[edge_id];
             boundary_points_set.insert(vertices[0]);
@@ -411,6 +410,15 @@ public:
             }
         }
 
+        return boundary_points_set;
+    }
+
+    // compute boundary point list
+    std::vector<int> compute_boundary_point_list()
+    {
+        // get boundary point set
+        std::set<int> boundary_points_set = compute_boundary_point_set();
+
         // convert to list
         std::vector<int> boundary_points_list;
         for (int point_id : boundary_points_set)
@@ -418,18 +426,8 @@ public:
             boundary_points_list.push_back(point_id);
         }
 
-        // return 
-        return boundary_points_list;
-    }
-
-    // compute boundary point set
-    std::set<int> compute_boundary_point_set()
-    {
-        // get boundary point list
-        std::vector<int> boundary_point_list = compute_boundary_point_list();
-
         // return
-        return std::set<int>(boundary_point_list.begin(), boundary_point_list.end());
+        return boundary_points_list;
     }
 
     void fit_plane_to_points(std::set<int> point_ids, Eigen::Vector3d& mean, Eigen::Vector3d& normal)
