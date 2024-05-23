@@ -243,7 +243,7 @@ public:
 
         // add to set
         set_to_points_map[setID].insert(newPointID);
-        point_to_set_map[newPointID] = setID;
+        point_to_sets_map[newPointID].insert(setID);
     }
 
     void add_edge(int newEdgeID, int setID, std::array<int, 2> newEdge)
@@ -253,8 +253,8 @@ public:
         edge_to_point_map_reverse[newEdge] = newEdgeID;
 
         // update point to edge
-        point_to_edge_map[newEdge[0]].insert(newEdgeID);
-        point_to_edge_map[newEdge[1]].insert(newEdgeID);
+        point_to_edges_map[newEdge[0]].insert(newEdgeID);
+        point_to_edges_map[newEdge[1]].insert(newEdgeID);
 
         // update set to edge
         set_to_edges_map[setID].insert(newEdgeID);
@@ -325,7 +325,10 @@ public:
         std::map<int, std::set<int>> points_grouped_by_set;
         for (int point_id : point_indices)
         {
-            points_grouped_by_set[point_to_set_map[point_id]].insert(point_id);
+            for (int set_id : point_to_sets_map[point_id])
+            {
+                points_grouped_by_set[set_id].insert(point_id);
+            }
         }
 
         return points_grouped_by_set;
@@ -399,7 +402,7 @@ public:
         // add points that do not have edge 
         for (int point_id : point_list)
         {
-            if (point_to_edge_map.find(point_id) == point_to_edge_map.end())
+            if (point_to_edges_map.find(point_id) == point_to_edges_map.end())
             {
                 boundary_points_set.insert(point_id);
             }
@@ -773,7 +776,7 @@ public:
 
         // assuming all searched point are from the same set
         int closet_searched_point_id = *searched_boundary_points_set.begin();
-        int closet_set_id = point_to_set_map[closet_searched_point_id];
+        int closet_set_id = *point_to_sets_map[closet_searched_point_id].begin();
         std::cout << "searched_set_id: " << closet_set_id << std::endl;
 
         // add point
@@ -1064,7 +1067,7 @@ public:
             point.x = point_to_vector3d_map[point_id][0];
             point.y = point_to_vector3d_map[point_id][1];
             point.z = point_to_vector3d_map[point_id][2];
-            point.intensity = point_to_set_map[point_id];
+            point.intensity = *point_to_sets_map[point_id].begin();
             cloud->push_back(point);
         }
         return cloud;
@@ -1098,8 +1101,8 @@ private:
     int next_point_id = 0;
     std::vector<int> point_list;
     std::map<int, Eigen::Vector3d> point_to_vector3d_map;
-    std::map<int, int> point_to_set_map;
-    std::map<int, std::set<int>> point_to_edge_map;
+    std::map<int, std::set<int>> point_to_sets_map;
+    std::map<int, std::set<int>> point_to_edges_map;
 
         // triangle
     int next_triangle_id = 0;
