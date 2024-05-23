@@ -1,11 +1,16 @@
 #include "eye_patch/DataLoader.hpp"
-#include "eye_patch/Algorithm.hpp"
-#include "eye_patch/Visualization.hpp"
 
-#include "point_type/BagPointT.hpp"
-#include "point_type/VilensPointT.hpp"
-
+// #include "eye_patch/Algorithm.hpp"
+#include <pcl/common/transforms.h>
+#include <pcl/kdtree/kdtree_flann.h>
 #include "eye_patch/BVH.hpp"
+
+// #include "eye_patch/Visualization.hpp"
+#include <pcl/point_types.h>
+#include <pcl/visualization/pcl_visualizer.h>
+
+// #include "point_type/BagPointT.hpp"
+#include "point_type/VilensPointT.hpp"
 
 template <typename PointT>
 class flann3d
@@ -374,6 +379,15 @@ public:
         return boundary_edge_list;
     }
 
+    std::set<int> compute_boundary_edge_set()
+    {
+        // get boundary edge list
+        std::vector<int> boundary_edge_list = compute_boundary_edge_list();
+
+        // return
+        return std::set<int>(boundary_edge_list.begin(), boundary_edge_list.end());
+    }
+
     std::vector<int> compute_boundary_point_list()
     {
         // get boundary edge list
@@ -583,6 +597,108 @@ public:
         return (u >= 0) && (v >= 0) && (u + v <= 1);
     }
 
+    std::set<int> extract_existing_edge_between_points(std::set<int> candidate_point_set, std::set<int> candidate_edge_set)
+    {
+        // initialize
+        std::set<int> out_existing_edge_set;
+
+        // process
+        // for each pair of candidate points
+        for (int point_id1 : candidate_point_set)
+        {
+            for (int point_id2 : candidate_point_set)
+            {
+                // skip if repeated
+                if (point_id1 >= point_id2) continue;
+
+                // skip if edge does not exist
+                std::array<int, 2> edge = {point_id1, point_id2};
+                if (edge_to_point_map_reverse.find(edge) == edge_to_point_map_reverse.end()) continue;
+                
+                // skip if edge not in candidate_edge_set
+                if (candidate_edge_set.find(edge_to_point_map_reverse[edge]) == candidate_edge_set.end()) continue;
+
+                // else add to set
+                out_existing_edge_set.insert(edge_to_point_map_reverse[edge]);
+            }
+        }
+
+        // return
+        return out_existing_edge_set;
+    }
+
+    bool edge_edges_intersection(std::array<int, 2> edgeA, std::set<std::array<int, 2>> edgeB_set, std::map<int, Eigen::Vector2d> points_to_vector2d_map)
+    {
+        for (const auto& edgeB : edgeB_set)
+        {
+            // if intersected at end points, don't count
+            if (edgeA[0] == edgeB[0] || edgeA[0] == edgeB[1] || edgeA[1] == edgeB[0] || edgeA[1] == edgeB[1]) continue;
+
+            // intersection check
+            Eigen::Vector2d pointA0 = points_to_vector2d_map[edgeA[0]];
+            Eigen::Vector2d pointA1 = points_to_vector2d_map[edgeA[1]];
+            Eigen::Vector2d pointB0 = points_to_vector2d_map[edgeB[0]];
+            Eigen::Vector2d pointB1 = points_to_vector2d_map[edgeB[1]];
+            if (doIntersect(pointA0, pointA1, pointB0, pointB1)) return true;
+        }
+
+        return false;
+    }
+
+    bool triangle_contains_point(std::array<int, 3> triangle, std::set<int> point_set, std::map<int, Eigen::Vector2d> points_to_vector2d_map)
+    {
+        for (int point_id : point_set)
+        {
+            // if contained at end points, don't count
+            if (point_id == triangle[0] || point_id == triangle[1] || point_id == triangle[2]) continue;
+
+            // containment check
+            Eigen::Vector2d point = points_to_vector2d_map[point_id];
+            Eigen::Vector2d a = points_to_vector2d_map[triangle[0]];
+            Eigen::Vector2d b = points_to_vector2d_map[triangle[1]];
+            Eigen::Vector2d c = points_to_vector2d_map[triangle[2]];
+            if (point_in_triangle(point, a, b, c)) return true;
+        }
+    
+        return false;
+    }
+    
+
+
+    // convert to edge vertices set
+    std::set<std::array<int, 2>> convert_to_edge_vertices_set(std::set<int> edge_set)
+    {
+        // initialize
+        std::set<std::array<int, 2>> edge_vertices_set;
+
+        // process
+        for (int edge_id : edge_set)
+        {
+            edge_vertices_set.insert(edge_to_point_map[edge_id]);
+        }
+
+        // return
+        return edge_vertices_set;
+    }
+
+    // project points to plane
+    std::map<int, Eigen::Vector2d> project_points_to_plane(std::set<int> point_set, Eigen::Matrix<double, 3, 2> projection_matrix)
+    {
+        // initialize
+        std::map<int, Eigen::Vector2d> points_to_vector2d_map;
+
+        // process
+        for (int point_id : point_set)
+        {
+            Eigen::Vector3d point = point_to_vector3d_map[point_id];
+            Eigen::Vector2d projection = (projection_matrix.transpose() * point).head<2>();
+            points_to_vector2d_map[point_id] = projection;
+        }
+
+        // return
+        return points_to_vector2d_map;
+    }
+
     void step()
     {
         // for each point in new cloud
@@ -591,23 +707,13 @@ public:
         Eigen::Vector3d thisPointVEC = new_cloud->points[i].getVector3fMap().cast<double>();
         i ++;
         
-        // convert to pcl point
-        pcl::PointXYZ thisPointPCL;
-        thisPointPCL.x = thisPointVEC[0];
-        thisPointPCL.y = thisPointVEC[1];
-        thisPointPCL.z = thisPointVEC[2];
+        // get new point id
         int newPointID = getNewPointID();
-
-
-        
-        // perform radius search on all points
-        double search_size = 0.2;
-
         
         // setup kdtreeflann
         pcl::PointCloud<pcl::PointXYZ>::Ptr kdcloud = point_to_vector3d_cloud();
 
-        // if empty cloud, add point to new set
+        // if empty cloud, can not set up radius search, add point to new set
         if (kdcloud->size() == 0)
         {
             add_point_coordinate(newPointID, thisPointVEC);
@@ -617,11 +723,18 @@ public:
             return;
         }
 
+        // radius search size
+        double search_size = 0.2;
+
         // perform radius search
         pcl::KdTreeFLANN<pcl::PointXYZ> kdtree;
         kdtree.setInputCloud(kdcloud);
         std::vector<int> search_indices;
         std::vector<float> search_dists;
+        pcl::PointXYZ thisPointPCL;
+        thisPointPCL.x = thisPointVEC[0];
+        thisPointPCL.y = thisPointVEC[1];
+        thisPointPCL.z = thisPointVEC[2];
         kdtree.radiusSearch(thisPointPCL, search_size, search_indices, search_dists, 0);
 
 
@@ -634,17 +747,6 @@ public:
             add_point_to_set(newPointID, newSetID);
             return;
         }
-
-        // // else, add point as edges
-        // add_point_coordinate(newPointID, thisPointVEC);
-        // // add edge for each searched point
-        // for (int point_id : search_indices)
-        // {
-        //     int newEdgeID = getNewEdgeID();
-        //     add_edge(newEdgeID, point_id, newPointID);
-        // }
-
-
 
         // assuming all searched point are from the same set
         add_point_coordinate(newPointID, thisPointVEC);
@@ -694,47 +796,6 @@ public:
             return;
         }
 
-        // // compute plane from the searched points
-        // Eigen::Vector3d mean;
-        // Eigen::Vector3d normal;
-        // std::set<int> plane_set = searched_point_set;
-        // plane_set.insert(newPointID);
-        // fit_plane_to_points(plane_set, mean, normal);
-        
-        // // compute projection of new point to the plane (also used as basis vector of the plane)
-        // Eigen::Vector3d point_to_mean = thisPointVEC - mean;
-        // Eigen::Vector3d new_point_projection = point_to_mean - point_to_mean.dot(normal) * normal;
-        // Eigen::Vector3d basis = new_point_projection.normalized();
-        // double new_point_x = new_point_projection.dot(basis);
-        // double new_point_y = new_point_projection.dot(normal.cross(basis));
-
-        // // compute projection of boundary point to the plane, and thus 2d projection
-        // std::map<int, std::array<double, 2>> projected_boundary_point_map;
-        // for (int point_id : searched_boundary_points_set)
-        // {
-        //     Eigen::Vector3d point = point_to_vector3d_map[point_id];
-        //     Eigen::Vector3d point_to_mean = point - mean;
-        //     Eigen::Vector3d projection = point_to_mean - point_to_mean.dot(normal) * normal;
-
-        //     double x = projection.dot(basis);
-        //     double y = projection.dot(normal.cross(basis));
-
-        //     projected_boundary_point_map[point_id][0] = x;
-        //     projected_boundary_point_map[point_id][1] = y;
-        // }
-
-        // // delaunay triangulation
-        // std::vector<double>* coords = new std::vector<double>();
-        // for (const auto& pair : projected_boundary_point_map)
-        // {
-        //     coords->push_back(pair.second[0]);
-        //     coords->push_back(pair.second[1]);
-        // }
-        // coords->push_back(new_point_x);
-        // coords->push_back(new_point_y);
-        // delaunator::Delaunator d(*coords);
-
-
         // get the closest set
         int closet_searched_point_id = searched_boundary_points_list[0];
         int closet_set_id = point_to_set_map[closet_searched_point_id];
@@ -749,15 +810,9 @@ public:
         // projection matrix : (projection_matrix.transpose() * point).head<2>()
         Eigen::Matrix<double, 3, 2> projection_matrix = eigenvectors.rightCols<2>();  // Use the last two eigenvectors
         
-        // get projected points map
-        std::map<int, Eigen::Vector2d> points_to_vector2d_map;
-        for (int point_id : searched_boundary_points_set)
-        {
-            Eigen::Vector3d point = point_to_vector3d_map[point_id];
-            Eigen::Vector2d projection = (projection_matrix.transpose() * point).head<2>();
-            points_to_vector2d_map[point_id] = projection;
-        }
-        points_to_vector2d_map[newPointID] = (projection_matrix.transpose() * thisPointVEC).head<2>();
+        // points_to_vector2d_map
+        std::set<int> points_to_project = searched_boundary_points_set; points_to_project.insert(newPointID);
+        std::map<int, Eigen::Vector2d> points_to_vector2d_map = project_points_to_plane(points_to_project, projection_matrix);
                 
         // instead of using delaunay
         // 1. form edge to all searched boundary point
@@ -765,152 +820,48 @@ public:
         // 3. if there are existing boundary edge between the two points, add triangle
         // 4. if there are boundary point inside the triangle, cancel it 
 
-        // get the list of boundary edges between searched boundary points
-        std::vector<int> boundary_edge_list = compute_boundary_edge_list();
-        std::set<int> existing_boundary_edge_set;
-        for (int point_id :searched_boundary_points_set) // for each searched point
-        {
-            for (int edge_id : point_to_edge_map[point_id]) // for each edge of the searched point
-            {
-                // skip if not boundary edge
-                if (std::find(boundary_edge_list.begin(), boundary_edge_list.end(), edge_id) == boundary_edge_list.end()) continue;
-                
-                // skip if connected point is not in the searched boundary points
-                int connected_point_id = edge_to_point_map[edge_id][0] == point_id ? edge_to_point_map[edge_id][1] : edge_to_point_map[edge_id][0];
-                if (searched_boundary_points_set.find(connected_point_id) == searched_boundary_points_set.end()) continue;
-
-                // add to set
-                existing_boundary_edge_set.insert(edge_id);
-            }
-        }
-
-        // form edge to all searched boundary point
+        // existing boundary edges between searched boundary points
+        std::set<int> existing_boundary_edge_set = extract_existing_edge_between_points(searched_boundary_points_set, compute_boundary_edge_set());
+        std::set<std::array<int, 2>> existing_boundary_edge_vertices_set = convert_to_edge_vertices_set(existing_boundary_edge_set);
+        
+        // add edge (form edge to all searched boundary point)
         std::set<int> searched_boundary_points_used;
         for (int point_id : searched_boundary_points_set)
         {
             // new edge
-            Eigen::Vector2d edge1_s = points_to_vector2d_map[newPointID];
-            Eigen::Vector2d edge1_e = points_to_vector2d_map[point_id];
+            std::array<int, 2> newEdge = {point_id, newPointID};
 
-            // if the edge intersects any existing boundary edge, cancel it
-            bool intersect = false;
-            for (int edge_id : existing_boundary_edge_set)
-            {
-                // existing edge
-                int id_s = edge_to_point_map[edge_id][0];
-                int id_e = edge_to_point_map[edge_id][1];
-
-                // if share vertices with point_id, don't count as intersected
-                if (id_s == point_id || id_e == point_id) continue;
-
-                // check intersection
-                Eigen::Vector2d edge2_s = points_to_vector2d_map[id_s];
-                Eigen::Vector2d edge2_e = points_to_vector2d_map[id_e];
-
-                // if intersected
-                if (doIntersect(edge1_s, edge1_e, edge2_s, edge2_e))
-                {
-                    intersect = true;
-                    break;
-                }
-            }
-
-            // if intersect, skip
-            if (intersect) continue;
+            // skip if intersected
+            if (edge_edges_intersection(newEdge, existing_boundary_edge_vertices_set, points_to_vector2d_map)) continue;
 
             // add edge
             int newEdgeID = getNewEdgeID();
-            add_edge(newEdgeID, point_id, newPointID);
+            add_edge(newEdgeID, newEdge[0], newEdge[1]);
 
             // add to used
             searched_boundary_points_used.insert(point_id);
         }
 
-        // if the two boundary points have a boundary edge between them, add triangle
-        for (int existing_edge_id : existing_boundary_edge_set)
-        {
-            std::array<int, 2> existing_edge = edge_to_point_map[existing_edge_id];
-            
+        // add triangle (form triangle if two used boundary points have a boundary edge between them)
+        for (const auto& existing_edge_vertices : existing_boundary_edge_vertices_set)
+        {   
             // skip if not both points are used
-            bool first_point_used = searched_boundary_points_used.find(existing_edge[0]) != searched_boundary_points_used.end();
-            bool second_point_used = searched_boundary_points_used.find(existing_edge[1]) != searched_boundary_points_used.end();
-            if (!first_point_used || !second_point_used) continue;
-            std::array<int, 3> triangle = {existing_edge[0], existing_edge[1], newPointID};
-            
-            // skip if triangle contains other boundary points
-            bool triangle_contains_boundary_point = false;
-            for (int point_id : searched_boundary_points_set)
-            {
-                if (point_id == existing_edge[0] || point_id == existing_edge[1]) continue;
+            int i1 = existing_edge_vertices[0];
+            int i2 = existing_edge_vertices[1];
+            bool i1_used = searched_boundary_points_used.find(i1) != searched_boundary_points_used.end();
+            bool i2_used = searched_boundary_points_used.find(i2) != searched_boundary_points_used.end();
+            if (!i1_used || !i2_used) continue;
 
-                Eigen::Vector2d point = points_to_vector2d_map[point_id];
-                Eigen::Vector2d a = points_to_vector2d_map[existing_edge[0]];
-                Eigen::Vector2d b = points_to_vector2d_map[existing_edge[1]];
-                Eigen::Vector2d c = points_to_vector2d_map[newPointID];
-                if (point_in_triangle(point, a, b, c))
-                {
-                    triangle_contains_boundary_point = true;
-                    break;
-                }
-            }
-            if (triangle_contains_boundary_point) continue;
+            // new triangle
+            std::array<int, 3> newTriangle = {i1, i2, newPointID};
+
+            // skip if triangle contains other boundary points
+            if (triangle_contains_point(newTriangle, searched_boundary_points_set, points_to_vector2d_map)) continue;
 
             // add triangle
             int newTriangleID = getNewTriangleID();
-            add_triangle(newTriangleID, closet_set_id, triangle);
+            add_triangle(newTriangleID, closet_set_id, newTriangle);
         }
-
-
-        // // delaunay triangulation
-        // std::vector<double>* coords = new std::vector<double>();
-        // for (const auto& pair : points_to_vector2d_map)
-        // {
-        //     coords->push_back(pair.second[0]);
-        //     coords->push_back(pair.second[1]);
-        // }
-        // delaunator::Delaunator d(*coords);
-
-        // // find the triangle that contains the new point
-        // for (std::size_t i = 0; i < d.triangles.size(); i+=3)
-        // {
-        //     // indices
-        //     int i1 = d.triangles[i];
-        //     int i2 = d.triangles[i + 1];
-        //     int i3 = d.triangles[i + 2];
-
-        //     // if any indices is the new point
-        //     int new_point_index = d.coords.size() / 2 - 1;
-        //     if (i1 == new_point_index || i2 == new_point_index || i3 == new_point_index)
-        //     {
-        //         // add edge to the set
-        //         // find the two index that are not the new point
-        //         std::set<int> i_s = {i1, i2, i3};
-        //         i_s.erase(new_point_index);
-        //         int first_vertex = *i_s.begin();
-        //         int second_vertex = *i_s.rbegin();
-
-        //         // if the edge does not exist, add edge
-        //         if (edge_to_point_map_reverse.find({searched_boundary_points_list[first_vertex], newPointID}) == edge_to_point_map_reverse.end())
-        //         {
-        //             int newEdgeID1 = getNewEdgeID();
-        //             add_edge(newEdgeID1, searched_boundary_points_list[first_vertex], newPointID);
-        //         }
-        //         if (edge_to_point_map_reverse.find({searched_boundary_points_list[second_vertex], newPointID}) == edge_to_point_map_reverse.end())
-        //         {
-        //             int newEdgeID2 = getNewEdgeID();
-        //             add_edge(newEdgeID2, searched_boundary_points_list[second_vertex], newPointID);
-        //         }
-
-        //         // add triangle to the set
-        //         int newTriangleID = getNewTriangleID();
-        //         std::array<int, 3> triangle = {searched_boundary_points_list[first_vertex], searched_boundary_points_list[second_vertex], newPointID};
-        //         triangle_to_vertices_map[newTriangleID] = triangle;
-
-        //         continue;
-        //     }
-        // }
-
-
 
 
         // std::map<int, std::set<int>> set_to_searched_points_map = group_points_by_set(search_indices);
