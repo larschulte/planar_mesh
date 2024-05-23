@@ -1064,6 +1064,27 @@ public:
         return cloud;
     }
 
+    pcl::PointCloud<pcl::PointXYZI>::Ptr point_to_vector3d_set_colored_cloud(std::vector<int> point_indices)
+    {
+        pcl::PointCloud<pcl::PointXYZI>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZI>);
+        for (int point_id : point_indices)
+        {
+            pcl::PointXYZI point;
+            point.x = point_to_vector3d_map[point_id][0];
+            point.y = point_to_vector3d_map[point_id][1];
+            point.z = point_to_vector3d_map[point_id][2];
+            point.intensity = point_to_set_map[point_id];
+            cloud->push_back(point);
+        }
+        return cloud;
+    }
+
+    pcl::PointCloud<pcl::PointXYZI>::Ptr point_to_vector3d_set_colored_cloud()
+    {
+        return point_to_vector3d_set_colored_cloud(point_list);
+    }
+    
+
     pcl::PointCloud<pcl::PointXYZ>::Ptr boundary_point_cloud()
     {
         return point_to_vector3d_cloud(compute_boundary_point_list());
@@ -1134,21 +1155,17 @@ public:
         viewer_->initCameraParameters();
         viewer_->addCoordinateSystem(1);
 
-        // set up initial mesh
+        // mesh
         pcl::PolygonMesh mesh;
         viewer_->addPolylineFromPolygonMesh(mesh, "polyline");
+
+        // boundary edges
         pcl::PolygonMesh boundary_mesh;
         viewer_->addPolylineFromPolygonMesh(mesh, "boundary_edges");
 
-        // set up initial point cloud
+        // colored cloud
         pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
         viewer_->addPointCloud(cloud, "cloud");
-        viewer_->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 3, "cloud");
-        // set up boundary point cloud
-        pcl::PointCloud<pcl::PointXYZ>::Ptr boundary_point_cloud(new pcl::PointCloud<pcl::PointXYZ>);
-        viewer_->addPointCloud(boundary_point_cloud, "boundary point cloud");
-        viewer_->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 5, "boundary point cloud");
-
 
         // register keyboard callback
         viewer_->registerKeyboardCallback(&InteractiveViewer::keyboard_callback, *this, nullptr);
@@ -1205,20 +1222,21 @@ private:
                 boundary_mesh.polygons.push_back(edge);
             }
 
-            // remove old mesh
+            // mesh
             viewer_->removeShape("polyline");
             viewer_->addPolylineFromPolygonMesh(mesh, "polyline");
 
+            // boundary edges
             viewer_->removeShape("boundary_edges");
             viewer_->addPolylineFromPolygonMesh(boundary_mesh, "boundary_edges");
-            // modify edge color
             viewer_->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, 1.0, 1.0, 0.0, "boundary_edges");
+            viewer_->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, 5, "boundary_edges");
 
-            // update cloud
-            pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ> color_cloud(cloud, 0, 255, 0);
-            viewer_->updatePointCloud<pcl::PointXYZ>(cloud, color_cloud, "cloud");
-            pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ> color_boundary_point_cloud(cloud, 255, 255, 0);
-            viewer_->updatePointCloud<pcl::PointXYZ>(boundary_point_cloud, color_boundary_point_cloud, "boundary point cloud");
+            // set colored cloud
+            pcl::PointCloud<pcl::PointXYZI>::Ptr intensity_cloud = app_.point_to_vector3d_set_colored_cloud();
+            pcl::visualization::PointCloudColorHandlerGenericField<pcl::PointXYZI> intensity_handler(intensity_cloud, "intensity");
+            viewer_->updatePointCloud<pcl::PointXYZI>(intensity_cloud, intensity_handler, "cloud");
+            viewer_->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 6, "cloud");
         }
     }  
 };
