@@ -737,8 +737,9 @@ public:
         // get new point id
         int newPointID = getNewPointID();
         
-        // setup kdtreeflann
-        pcl::PointCloud<pcl::PointXYZ>::Ptr kdcloud = point_to_vector3d_cloud();
+        // setup kdtreeflann (search boundary points only)
+        std::vector<int> boundary_point_list = compute_boundary_point_list();
+        pcl::PointCloud<pcl::PointXYZ>::Ptr kdcloud = point_to_vector3d_cloud(boundary_point_list);
 
         // if empty cloud, can not set up radius search, add point to new set
         if (kdcloud->size() == 0)
@@ -764,6 +765,12 @@ public:
         thisPointPCL.z = thisPointVEC[2];
         kdtree.radiusSearch(thisPointPCL, search_size, search_indices, search_dists, 0);
 
+        // convert search_indices to point_id
+        std::set<int> searched_boundary_points_set;
+        for (int search_index : search_indices)
+        {
+            searched_boundary_points_set.insert(boundary_point_list[search_index]);
+        }
 
         // if no searched results, add point to new set
         if (search_indices.size() == 0)
@@ -777,11 +784,6 @@ public:
 
         // assuming all searched point are from the same set
         add_point_coordinate(newPointID, thisPointVEC);
-
-        // find boundary points in the searched points
-        std::set<int> searched_point_set = std::set<int>(search_indices.begin(), search_indices.end());
-        std::set<int> boundary_points_set = compute_boundary_point_set();
-        std::set<int> searched_boundary_points_set = intersection_of_sets(searched_point_set, boundary_points_set);    
 
         // get the current set
         int closet_searched_point_id = *searched_boundary_points_set.begin();
