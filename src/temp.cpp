@@ -236,30 +236,18 @@ public:
     // 2. perform delaunay triangulation using the boundary points and the new point
     // 3. add the edge and triangles connected to the new point to the original mesh
 
-    void add_point_to_set(int pointID, int setID)
+    void add_point(int newPointID, int setID, Eigen::Vector3d thisPoint)
     {
-        // add to set
-        set_to_points_map[setID].insert(pointID);
-        point_to_set_map[pointID] = setID;
-
-        // // add to boundary points
-        // boundary_points_set.insert(newPointID);
-    }
-
-    void add_point_coordinate(int newPointID, Eigen::Vector3d thisPoint)
-    {
-        // add point list
-        point_list.push_back(newPointID);
-
         // add eigen
         point_to_vector3d_map[newPointID] = thisPoint;
+
+        // add to set
+        set_to_points_map[setID].insert(newPointID);
+        point_to_set_map[newPointID] = setID;
     }
 
     void add_edge(int newEdgeID, int setID, std::array<int, 2> newEdge)
     {
-        // add to edge list
-        edge_list.push_back(newEdgeID);
-
         // update edge to point 
         edge_to_point_map[newEdgeID] = newEdge;
         edge_to_point_map_reverse[newEdge] = newEdgeID;
@@ -283,32 +271,52 @@ public:
 
     int getNewPointID()
     {
+        // get id
         int newPointID = next_point_id;
         next_point_id ++;
 
+        // update point list
+        point_list.push_back(newPointID);
+
+        // return
         return newPointID;
     }
 
     int getNewSetID()
     {
+        // get id
         int newSetID = next_set_id;
         next_set_id ++;
 
+        // update set list
+        set_list.push_back(newSetID);
+
+        // return
         return newSetID;
     }
 
     int getNewEdgeID()
     {
+        // get id
         int newEdgeID = next_edge_id;
         next_edge_id ++;
 
+        // update edge list
+        edge_list.push_back(newEdgeID);
+
+        // return
         return newEdgeID;
     }
     int getNewTriangleID()
     {
+        // get id
         int newTriangleID = next_triangle_id;
         next_triangle_id ++;
 
+        // update triangle list
+        triangle_list.push_back(newTriangleID);
+
+        // return
         return newTriangleID;
     }
 
@@ -729,10 +737,8 @@ public:
         // if empty cloud, can not set up radius search, add point to new set
         if (kdcloud->size() == 0)
         {
-            add_point_coordinate(newPointID, thisPointVEC);
-
             int newSetID = getNewSetID();
-            add_point_to_set(newPointID, newSetID);
+            add_point(newPointID, newSetID, thisPointVEC);
             return;
         }
 
@@ -760,10 +766,8 @@ public:
         // if no searched results, add point to new set
         if (search_indices.size() == 0)
         {
-            add_point_coordinate(newPointID, thisPointVEC);
-
             int newSetID = getNewSetID();
-            add_point_to_set(newPointID, newSetID);
+            add_point(newPointID, newSetID, thisPointVEC);
             return;
         }
 
@@ -773,8 +777,7 @@ public:
         std::cout << "searched_set_id: " << closet_set_id << std::endl;
 
         // add point
-        add_point_coordinate(newPointID, thisPointVEC);
-        add_point_to_set(newPointID, closet_set_id);
+        add_point(newPointID, closet_set_id, thisPointVEC);
 
         // compute set eigenvectors
         // if set size too small, can't compute eigenvectors?
@@ -1093,34 +1096,30 @@ private:
 
         // point
     int next_point_id = 0;
+    std::vector<int> point_list;
     std::map<int, Eigen::Vector3d> point_to_vector3d_map;
     std::map<int, int> point_to_set_map;
     std::map<int, std::set<int>> point_to_edge_map;
-    std::vector<int> point_list;
 
         // triangle
     int next_triangle_id = 0;
+    std::vector<int> triangle_list;
     std::map<int, std::array<int, 3>> triangle_to_vertices_map;
     std::map<int, int> triangle_to_set_map;
     std::map<int, std::set<int>> triangle_to_points_map;
     
         // set
     int next_set_id = 0;
+    std::vector<int> set_list;
     std::map<int, std::set<int>> set_to_points_map; // each set contains id to points
     std::map<int, std::set<int>> set_to_edges_map; // each set contains id to edges
     std::map<int, std::set<int>> set_to_triangles_map; // each set contains id to triangles
     
         // edge
     int next_edge_id = 0;
+    std::vector<int> edge_list;
     std::map<int, std::array<int, 2>> edge_to_point_map;
     std::map<std::array<int, 2>, int> edge_to_point_map_reverse;
-    // std::map<int, int> edge_occurrences_count; // number of triangles that share the edge
-    std::vector<int> edge_list;
-
-    //     // boundary
-    // std::set<int> boundary_points_set;
-    // std::set<int> boundary_edge_set;
-    
 };
 
 
