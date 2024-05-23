@@ -788,50 +788,9 @@ public:
         int closet_set_id = point_to_set_map[closet_searched_point_id];
         std::cout << "searched_set_id: " << closet_set_id << std::endl;
 
-        // existing boundary edges between searched boundary points
-        std::set<int> existing_boundary_edge_set = extract_existing_edge_between_points(searched_boundary_points_set, compute_boundary_edge_set());
-        std::set<std::array<int, 2>> existing_boundary_edge_vertices_set = convert_to_edge_vertices_set(existing_boundary_edge_set);
-
-        // if not enough boundary points
-        if (searched_boundary_points_set.size() < 3)
-        {
-            // add edge for each searched point
-            for (int point_id : searched_boundary_points_set)
-            {
-                int newEdgeID = getNewEdgeID();
-                add_edge(newEdgeID, point_id, newPointID);
-                add_point_to_set(newPointID, point_to_set_map[point_id]);
-            }
-
-            // if the two boundary points have a boundary edge between them, add triangle
-            if (searched_boundary_points_set.size() == 2)
-            {
-                // first element of searched_boundary_points_set
-                int i1 = *searched_boundary_points_set.begin();
-                int i2 = *searched_boundary_points_set.end();
-                std::array<int, 2> edge = {i1, i2};
-                
-                // get boundary edge list
-                std::vector<int> boundary_edge_list = compute_boundary_edge_list();
-                if (edge_to_point_map_reverse.find(edge) != edge_to_point_map_reverse.end()) // edge exist
-                {
-                    if (std::find(boundary_edge_list.begin(), boundary_edge_list.end(), edge_to_point_map_reverse[edge]) != boundary_edge_list.end()) // edge is boundary edge
-                    {
-                        int newTriangleID = getNewTriangleID();
-                        std::array<int, 3> triangle = {i1, i2, newPointID};
-                        add_triangle(newTriangleID, closet_set_id, triangle);
-                    }
-                }
-            }
-            return;
-        }
-
-        
-
-        // if set size too small, can't compute eigenvectors
-        // [todo]
-
         // compute set eigenvectors
+        // if set size too small, can't compute eigenvectors?
+        // [todo]
         Eigen::Matrix3d eigenvectors = get_set_eigenvectors(closet_set_id);
 
         // projection matrix : (projection_matrix.transpose() * point).head<2>()
@@ -840,14 +799,17 @@ public:
         // points_to_vector2d_map
         std::set<int> points_to_project = searched_boundary_points_set; points_to_project.insert(newPointID);
         std::map<int, Eigen::Vector2d> points_to_vector2d_map = project_points_to_plane(points_to_project, projection_matrix);
-                
-        // instead of using delaunay
-        // 1. form edge to all searched boundary point
-        // 2. if the edge intersects any existing boundary edge, cancel it
-        // 3. if there are existing boundary edge between the two points, add triangle
-        // 4. if there are boundary point inside the triangle, cancel it 
 
-        // add edge (form edge to all searched boundary point)
+        // existing edges between searched points (boundary)
+        std::set<int> existing_boundary_edge_set = extract_existing_edge_between_points(searched_boundary_points_set, compute_boundary_edge_set());
+        std::set<std::array<int, 2>> existing_boundary_edge_vertices_set = convert_to_edge_vertices_set(existing_boundary_edge_set);
+
+
+        // to add a new point to mesh
+        // - form edge to boundary point of the mesh, skip if the edge intersects any existing boundary edge
+        // - form triangle if two used boundary points have a boundary edge between them, skip if the triangle contains other boundary points
+
+        // add edge
         std::set<int> searched_boundary_points_used;
         for (int point_id : searched_boundary_points_set)
         {
@@ -865,7 +827,7 @@ public:
             searched_boundary_points_used.insert(point_id);
         }
 
-        // add triangle (form triangle if two used boundary points have a boundary edge between them)
+        // add triangle
         for (const auto& existing_edge_vertices : existing_boundary_edge_vertices_set)
         {   
             // skip if not both points are used
