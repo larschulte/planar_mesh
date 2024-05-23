@@ -334,38 +334,61 @@ public:
         return points_grouped_by_set;
     }
 
-    std::set<int> compute_boundary_edge_set()
+    std::set<int> compute_boundary_edge_set_of_set(int setID)
     {
         // intialize edge occurrences count
-        std::map<int, int> edge_occurrences_count;
-        for (int edge_id : edge_list)
+        std::map<int, int> edge_count;
+        for (int edge_id : set_to_edges_map[setID])
         {
-            edge_occurrences_count[edge_id] = 0;
+            edge_count[edge_id] = 0;
         }
 
-        // iterate through all triangles to count edge
-        for (const auto& pair : triangle_to_vertices_map)
+        // for each triangle, increment edge count
+        for (int triangle_id : set_to_triangles_map[setID])
         {
-            std::array<int, 3> vertices = pair.second;
+            std::array<int, 3> vertices = triangle_to_vertices_map[triangle_id];
             for (int i = 0; i < 3; i++)
             {
+                // get correct edge order
                 int smaller_id = std::min(vertices[i], vertices[(i + 1) % 3]);
                 int larger_id = std::max(vertices[i], vertices[(i + 1) % 3]);
                 std::array<int, 2> edge = {smaller_id, larger_id};
-                edge_occurrences_count[edge_to_point_map_reverse[edge]] ++;
+
+                // increment count
+                edge_count[edge_to_point_map_reverse[edge]] ++;
             }
         }
         
         // identify boundary edges (edges that are shared by only 0 or 1 triangle)
         std::set<int> boundary_edge_set;
-        for (const auto& pair : edge_occurrences_count)
+        for (const auto& pair : edge_count)
         {
-            if (pair.second <= 1)
+            if (pair.second <= 1) 
             {
                 boundary_edge_set.insert(pair.first);
             }
         }
 
+        // return
+        return boundary_edge_set;
+    }
+
+    std::set<int> compute_boundary_edge_set()
+    {
+        // initialize
+        std::set<int> boundary_edge_set;
+
+        // process
+        for (int set_id : set_list)
+        {
+            // get boundary edge set of set
+            std::set<int> boundary_edge_set_of_set = compute_boundary_edge_set_of_set(set_id);
+
+            // add to boundary edge set
+            boundary_edge_set.insert(boundary_edge_set_of_set.begin(), boundary_edge_set_of_set.end());
+        }
+
+        // return
         return boundary_edge_set;
     }
 
