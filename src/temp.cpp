@@ -255,34 +255,21 @@ public:
         point_to_vector3d_map[newPointID] = thisPoint;
     }
 
-    void add_edge(int newEdgeID, int smaller_id, int larger_id)
+    void add_edge(int newEdgeID, int setID, std::array<int, 2> newEdge)
     {
-        // add edge list
+        // add to edge list
         edge_list.push_back(newEdgeID);
 
-        // edge
-        std::array<int, 2> edge = {smaller_id, larger_id}; // the smaller id is first
+        // update edge to point 
+        edge_to_point_map[newEdgeID] = newEdge;
+        edge_to_point_map_reverse[newEdge] = newEdgeID;
 
-        // get smaller id set
-        int smaller_set_id = point_to_set_map[smaller_id];
-        // add larger id to smaller id set
-        set_to_points_map[smaller_set_id].insert(larger_id);
-        point_to_set_map[larger_id] = smaller_set_id;
+        // update point to edge
+        point_to_edge_map[newEdge[0]].insert(newEdgeID);
+        point_to_edge_map[newEdge[1]].insert(newEdgeID);
 
-        // add point to edge to vertices map
-        edge_to_point_map[newEdgeID] = edge;
-        edge_to_point_map_reverse[edge] = newEdgeID;
-
-        // // initialize edge count (only increment when a new triangle is added)
-        // edge_occurrences_count[newEdgeID] = 0;
-        // // new edge are always boundary edge, if only search between boundary points
-        // boundary_edge_set.insert(next_edge_id);
-        // boundary_points_set.insert(edge[0]);
-        // boundary_points_set.insert(edge[1]);
-
-        // update point to edge map
-        point_to_edge_map[smaller_id].insert(newEdgeID);
-        point_to_edge_map[larger_id].insert(newEdgeID);
+        // update set to edge
+        set_to_edges_map[setID].insert(newEdgeID);
     }
 
     void add_triangle(int newTriangleID, int newSetID, std::array<int, 3> vertices)
@@ -781,12 +768,13 @@ public:
         }
 
         // assuming all searched point are from the same set
-        add_point_coordinate(newPointID, thisPointVEC);
-
-        // get the current set
         int closet_searched_point_id = *searched_boundary_points_set.begin();
         int closet_set_id = point_to_set_map[closet_searched_point_id];
         std::cout << "searched_set_id: " << closet_set_id << std::endl;
+
+        // add point
+        add_point_coordinate(newPointID, thisPointVEC);
+        add_point_to_set(newPointID, closet_set_id);
 
         // compute set eigenvectors
         // if set size too small, can't compute eigenvectors?
@@ -821,7 +809,7 @@ public:
 
             // add edge
             int newEdgeID = getNewEdgeID();
-            add_edge(newEdgeID, newEdge[0], newEdge[1]);
+            add_edge(newEdgeID, closet_set_id, newEdge);
 
             // add to used
             searched_boundary_points_used.insert(point_id);
@@ -1119,6 +1107,7 @@ private:
         // set
     int next_set_id = 0;
     std::map<int, std::set<int>> set_to_points_map; // each set contains id to points
+    std::map<int, std::set<int>> set_to_edges_map; // each set contains id to edges
     std::map<int, std::set<int>> set_to_triangles_map; // each set contains id to triangles
     
         // edge
