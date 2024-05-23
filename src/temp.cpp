@@ -422,6 +422,16 @@ public:
         return boundary_points_list;
     }
 
+    // compute boundary point set
+    std::set<int> compute_boundary_point_set()
+    {
+        // get boundary point list
+        std::vector<int> boundary_point_list = compute_boundary_point_list();
+
+        // return
+        return std::set<int>(boundary_point_list.begin(), boundary_point_list.end());
+    }
+
     void fit_plane_to_points(std::set<int> point_ids, Eigen::Vector3d& mean, Eigen::Vector3d& normal)
     {
         // compute mean
@@ -699,6 +709,23 @@ public:
         return points_to_vector2d_map;
     }
 
+    // extract set from set
+    std::set<int> intersection_of_sets(std::set<int> setA, std::set<int> setB)
+    {
+        // initialize
+        std::set<int> setOut;
+
+        // process
+        for (int elemA : setA)
+        {
+            if (setB.find(elemA) != setB.end()) setOut.insert(elemA);
+        }
+        
+        // return
+        return setOut;
+    }
+    
+
     void step()
     {
         // for each point in new cloud
@@ -751,36 +778,39 @@ public:
         // assuming all searched point are from the same set
         add_point_coordinate(newPointID, thisPointVEC);
 
-        // searched_point_set
-        std::set<int> searched_point_set(search_indices.begin(), search_indices.end());
-
         // find boundary points in the searched points
-        std::vector<int> boundary_points_list = compute_boundary_point_list();
-        std::set<int> boundary_points_set(boundary_points_list.begin(), boundary_points_list.end());
-        std::set<int> searched_boundary_points_set;
-        for (int point_id : search_indices)
-        {
-            if (boundary_points_set.find(point_id) != boundary_points_set.end())
-            {
-                searched_boundary_points_set.insert(point_id);
-            }
-        }
-        std::vector<int> searched_boundary_points_list(searched_boundary_points_set.begin(), searched_boundary_points_set.end());
+        std::set<int> searched_point_set = std::set<int>(search_indices.begin(), search_indices.end());
+        std::set<int> boundary_points_set = compute_boundary_point_set();
+        std::set<int> searched_boundary_points_set = intersection_of_sets(searched_point_set, boundary_points_set);    
+
+        // get the current set
+        int closet_searched_point_id = *searched_boundary_points_set.begin();
+        int closet_set_id = point_to_set_map[closet_searched_point_id];
+        std::cout << "searched_set_id: " << closet_set_id << std::endl;
+
+        // existing boundary edges between searched boundary points
+        std::set<int> existing_boundary_edge_set = extract_existing_edge_between_points(searched_boundary_points_set, compute_boundary_edge_set());
+        std::set<std::array<int, 2>> existing_boundary_edge_vertices_set = convert_to_edge_vertices_set(existing_boundary_edge_set);
 
         // if not enough boundary points
-        if (searched_boundary_points_list.size() < 3)
+        if (searched_boundary_points_set.size() < 3)
         {
             // add edge for each searched point
-            for (int point_id : searched_boundary_points_list)
+            for (int point_id : searched_boundary_points_set)
             {
                 int newEdgeID = getNewEdgeID();
                 add_edge(newEdgeID, point_id, newPointID);
                 add_point_to_set(newPointID, point_to_set_map[point_id]);
             }
+
             // if the two boundary points have a boundary edge between them, add triangle
-            if (searched_boundary_points_list.size() == 2)
+            if (searched_boundary_points_set.size() == 2)
             {
-                std::array<int, 2> edge = {searched_boundary_points_list[0], searched_boundary_points_list[1]};
+                // first element of searched_boundary_points_set
+                int i1 = *searched_boundary_points_set.begin();
+                int i2 = *searched_boundary_points_set.end();
+                std::array<int, 2> edge = {i1, i2};
+                
                 // get boundary edge list
                 std::vector<int> boundary_edge_list = compute_boundary_edge_list();
                 if (edge_to_point_map_reverse.find(edge) != edge_to_point_map_reverse.end()) // edge exist
@@ -788,18 +818,15 @@ public:
                     if (std::find(boundary_edge_list.begin(), boundary_edge_list.end(), edge_to_point_map_reverse[edge]) != boundary_edge_list.end()) // edge is boundary edge
                     {
                         int newTriangleID = getNewTriangleID();
-                        std::array<int, 3> triangle = {searched_boundary_points_list[0], searched_boundary_points_list[1], newPointID};
-                        add_triangle(newTriangleID, point_to_set_map[searched_boundary_points_list[0]], triangle);
+                        std::array<int, 3> triangle = {i1, i2, newPointID};
+                        add_triangle(newTriangleID, closet_set_id, triangle);
                     }
                 }
             }
             return;
         }
 
-        // get the closest set
-        int closet_searched_point_id = searched_boundary_points_list[0];
-        int closet_set_id = point_to_set_map[closet_searched_point_id];
-        std::cout << "searched_set_id: " << closet_set_id << std::endl;
+        
 
         // if set size too small, can't compute eigenvectors
         // [todo]
@@ -820,10 +847,6 @@ public:
         // 3. if there are existing boundary edge between the two points, add triangle
         // 4. if there are boundary point inside the triangle, cancel it 
 
-        // existing boundary edges between searched boundary points
-        std::set<int> existing_boundary_edge_set = extract_existing_edge_between_points(searched_boundary_points_set, compute_boundary_edge_set());
-        std::set<std::array<int, 2>> existing_boundary_edge_vertices_set = convert_to_edge_vertices_set(existing_boundary_edge_set);
-        
         // add edge (form edge to all searched boundary point)
         std::set<int> searched_boundary_points_used;
         for (int point_id : searched_boundary_points_set)
