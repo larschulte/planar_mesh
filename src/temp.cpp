@@ -24,20 +24,40 @@ public:
         flann_data_storage.reserve(point_set.size() * 3);
         index_to_pointID.reserve(point_set.size());
 
-        // compute data storage
+        // process
         for (int point_id : point_set)
         {
+            // add to data storage
             flann_data_storage.push_back(point_to_vector3d_map[point_id][0]);
             flann_data_storage.push_back(point_to_vector3d_map[point_id][1]);
             flann_data_storage.push_back(point_to_vector3d_map[point_id][2]);
+
+            // add to index
             index_to_pointID.push_back(point_id);
         }
 
-        // record
-        flann_last_id = point_set.size() - 1;
-
         // add to flann
         flann_tree.buildIndex(flann::Matrix<double>(flann_data_storage.data(), point_set.size(), 3));
+
+        // update id
+        flann_last_id = point_set.size() - 1;
+    }
+
+    void addPoints(Eigen::Vector3d new_point)
+    {
+        // add to data storage
+        flann_data_storage.push_back(new_point[0]);
+        flann_data_storage.push_back(new_point[1]);
+        flann_data_storage.push_back(new_point[2]);
+
+        // add to index
+        index_to_pointID.push_back(flann_last_id);
+
+        // add to flann
+        flann_tree.addPoints(flann::Matrix<double>(flann_data_storage.data() + flann_data_storage.size() - 3, 1, 3));
+
+        // update id
+        flann_last_id++;
     }
     
     std::set<int> radiusSearch(Eigen::Vector3d searchPoint, double radius)
@@ -69,20 +89,6 @@ public:
 
         // return
         return searched_ids;
-    }
-
-    void addPoints(Eigen::Vector3d new_point)
-    {
-        // convert to vector
-        flann_data_storage.push_back(new_point[0]);
-        flann_data_storage.push_back(new_point[1]);
-        flann_data_storage.push_back(new_point[2]);
-
-        // add
-        flann_tree.addPoints(flann::Matrix<double>(flann_data_storage.data() + flann_data_storage.size() - 3, 1, 3));
-
-        // update id
-        flann_last_id++;
     }
 
     int flann_last_id;
@@ -149,8 +155,11 @@ public:
         set_to_points_map[setID].insert(newPointID);
         point_to_sets_map[newPointID].insert(setID);
 
-        // update boundary edge and points
+        // update set boundary points
         set_to_boundary_point_set_map[setID].insert(newPointID);
+
+        // update global boundary points
+        global_boundary_point_set.insert(newPointID);
     }
 
     void add_edge(int newEdgeID, int setID, std::array<int, 2> newEdge)
@@ -166,11 +175,15 @@ public:
         // update set to edge
         set_to_edges_map[setID].insert(newEdgeID);
 
-        // update boundary edge and points
+        // update set boundary edge and points
         set_to_edge_count_map[setID][newEdgeID] = 0;
         set_to_boundary_edge_set_map[setID].insert(newEdgeID);
         set_to_boundary_point_set_map[setID].insert(newEdge[0]);
         set_to_boundary_point_set_map[setID].insert(newEdge[1]);
+
+        // update global boundary points
+        global_boundary_point_set.insert(newEdge[0]);
+        global_boundary_point_set.insert(newEdge[1]);
     }
 
     void add_triangle(int newTriangleID, int newSetID, std::array<int, 3> vertices)
@@ -196,17 +209,23 @@ public:
             // cases
             if (count <= 1)
             {
-                // add to boundary edge
+                // udpate set boundary edge
                 set_to_boundary_edge_set_map[newSetID].insert(edge_to_point_map_reverse[edge]);
-                // add to boundary points
+                
+                // update set boundary points
                 set_to_boundary_point_set_map[newSetID].insert(edge[0]);
                 set_to_boundary_point_set_map[newSetID].insert(edge[1]);
+
+                // update global boundary points
+                global_boundary_point_set.insert(edge[0]);
+                global_boundary_point_set.insert(edge[1]);
             } 
             else
             {
-                // remove from boundary edge
+                // remove from set boundary edge
                 set_to_boundary_edge_set_map[newSetID].erase(edge_to_point_map_reverse[edge]);
-                // remove from boundary points (if the edge point no longer connects to a boundary edge, it is removed from boundary points)
+
+                // remove from set boundary points (if the edge point no longer connects to a boundary edge, it is removed from boundary points)
                 for (int point_id : edge)
                 {
                     bool is_boundary = false;
@@ -220,6 +239,31 @@ public:
                     }
                     if (!is_boundary) set_to_boundary_point_set_map[newSetID].erase(point_id);
                 }
+
+                // remove from global boundary points (only if the point is not boundary point in any set)
+                bool is_boundary;
+
+                is_boundary = false;
+                for (int set_id : point_to_sets_map[smaller_id])
+                {
+                    if (set_to_boundary_point_set_map[set_id].find(smaller_id) != set_to_boundary_point_set_map[set_id].end())
+                    {
+                        is_boundary = true;
+                        break;
+                    }
+                }
+                if (!is_boundary) global_boundary_point_set.erase(smaller_id);
+
+                is_boundary = false;
+                for (int set_id : point_to_sets_map[larger_id])
+                {
+                    if (set_to_boundary_point_set_map[set_id].find(larger_id) != set_to_boundary_point_set_map[set_id].end())
+                    {
+                        is_boundary = true;
+                        break;
+                    }
+                }
+                if (!is_boundary) global_boundary_point_set.erase(larger_id);
             }
         }
     }
@@ -958,8 +1002,7 @@ public:
         int newPointID = getNewPointID();
         
         // if empty, can not set up radius search, add point to new set
-        std::vector<int> boundary_point_list = get_boundary_point_list();
-        if (boundary_point_list.size() == 0)
+        if (global_boundary_point_set.size() == 0)
         {
             int newSetID = getNewSetID();
             add_point(newPointID, newSetID, thisPointVEC, thisPointOriginVEC);
@@ -971,7 +1014,7 @@ public:
 
         // perform flann3d radius search
         flann3d flann;
-        flann.set_input(get_boundary_point_set(), point_to_vector3d_map);
+        flann.set_input(global_boundary_point_set, point_to_vector3d_map);
         std::set<int> searched_boundary_points_set = flann.radiusSearch(thisPointVEC, search_size);
 
         // if no searched results, add point to new set
@@ -1213,6 +1256,9 @@ private:
     std::vector<int> edge_list;
     std::map<int, std::array<int, 2>> edge_to_point_map;
     std::map<std::array<int, 2>, int> edge_to_point_map_reverse;
+
+        // boundary
+    std::set<int> global_boundary_point_set;
 };
 
 
