@@ -904,7 +904,6 @@ public:
         }
 
         // for each sets of searched points
-        double distance_threshold = 0.1;
         std::map<int, std::set<int>> set_to_searched_points_map = group_points_by_set(searched_boundary_points_set);
 
         // record size and distance
@@ -1028,6 +1027,15 @@ public:
             // add triangle
             int newTriangleID = getNewTriangleID();
             add_triangle(newTriangleID, setID, newTriangle);
+        }
+    }
+
+    void loop()
+    {
+        // finish all points in step
+        while (i < new_cloud->size())
+        {
+            step();
         }
     }
 
@@ -1176,7 +1184,7 @@ private:
         if (space_down)
         {
             // step application
-            app_.step();
+            app_.loop();
             // std::cout << "Number of triangles: " << app_.get_number_of_triangles() << std::endl;
 
             // get data from app
