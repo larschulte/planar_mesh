@@ -319,6 +319,47 @@ public:
         return boundary_edge_set;
     }
 
+    std::set<int> compute_boundary_point_set_of_set(int setID)
+    {
+        // get boundary edge set
+        std::set<int> boundary_edge_set = compute_boundary_edge_set_of_set(setID);
+
+        // identify boundary points
+        // add points from boundary edges
+        std::set<int> boundary_points_set;
+        for (int edge_id : boundary_edge_set)
+        {
+            std::array<int, 2> vertices = edge_to_point_map[edge_id];
+            boundary_points_set.insert(vertices[0]);
+            boundary_points_set.insert(vertices[1]);
+        }
+        // add points that do not have edge in the same set
+        for (int point_id : set_to_points_map[setID])
+        {
+            // if point have no edge, add
+            if (point_to_edges_map.find(point_id) == point_to_edges_map.end())
+            {
+                boundary_points_set.insert(point_id);
+            }
+            // if point have edge, non is in the same set, add
+            else
+            {
+                bool one_edge_in_same_set = false;
+                for (int edge_id : point_to_edges_map[point_id])
+                {
+                    if (set_to_edges_map[setID].find(edge_id) != set_to_edges_map[setID].end())
+                    {
+                        one_edge_in_same_set = true;
+                        break;
+                    }
+                }
+                if (!one_edge_in_same_set) boundary_points_set.insert(point_id);
+            }
+        }
+
+        return boundary_points_set;
+    }
+
     std::set<int> compute_boundary_edge_set()
     {
         // initialize
@@ -879,7 +920,8 @@ public:
         Eigen::Matrix<double, 3, 2> projection_matrix = eigenvectors.rightCols<2>();  // Use the last two eigenvectors
 
         // points_to_vector2d_map
-        std::set<int> points_to_project = searched_boundary_points_in_current_set; points_to_project.insert(newPointID);
+        std::set<int> points_to_project = compute_boundary_point_set_of_set(setID);
+        points_to_project.insert(newPointID);
         std::map<int, Eigen::Vector2d> points_to_vector2d_map = project_points_to_plane(points_to_project, projection_matrix);
 
         // existing edges between searched points (boundary)
@@ -898,8 +940,8 @@ public:
             // new edge
             std::array<int, 2> newEdge = {point_id, newPointID};
 
-            // skip if intersected
-            if (edge_edges_intersection(newEdge, existing_boundary_edge_vertices_set, points_to_vector2d_map)) continue;
+            // skip if intersected with any boundary edge of the current set
+            if (edge_edges_intersection(newEdge, convert_to_edge_vertices_set(compute_boundary_edge_set_of_set(setID)), points_to_vector2d_map)) continue;
 
             // add edge
             int newEdgeID = getNewEdgeID();
@@ -1116,7 +1158,7 @@ private:
             viewer_->removeShape("polyline");
             viewer_->addPolylineFromPolygonMesh(mesh, "polyline");
             viewer_->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, 0.1, 0.1, 0.1, "polyline");
-            viewer_->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, 1, "polyline");
+            viewer_->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, 0.3, "polyline");
 
             // boundary edges
             viewer_->removeShape("boundary_edges");
