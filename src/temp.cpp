@@ -175,10 +175,11 @@ public:
     // 2. perform delaunay triangulation using the boundary points and the new point
     // 3. add the edge and triangles connected to the new point to the original mesh
 
-    void add_point(int newPointID, int setID, Eigen::Vector3d thisPoint)
+    void add_point(int newPointID, int setID, Eigen::Vector3d thisPoint, Eigen::Vector3d origin)
     {
         // add eigen
         point_to_vector3d_map[newPointID] = thisPoint;
+        point_to_origin_vector3d_map[newPointID] = origin;
 
         // add to set
         set_to_points_map[setID].insert(newPointID);
@@ -522,6 +523,22 @@ public:
         return projections;
     }
     
+    Eigen::Vector3d get_set_mean(int setID)
+    {
+        // initialize
+        Eigen::Vector3d mean = Eigen::Vector3d::Zero();
+
+        // process
+        for (int point_id : set_to_points_map[setID])
+        {
+            mean += point_to_vector3d_map[point_id];
+        }
+        mean /= set_to_points_map[setID].size();
+
+        // return
+        return mean;
+    }
+
     Eigen::Matrix3d  get_set_eigenvectors(int setID)
     {
         // mean
@@ -715,6 +732,50 @@ public:
         return points_to_vector2d_map;
     }
 
+    // project points to set
+    std::map<int, Eigen::Vector2d> project_points_to_set(std::set<int> point_set, int setID)
+    {
+        // get set eigenvectors
+        Eigen::Matrix3d eigenvectors = get_set_eigenvectors(setID);
+
+        // project points to plane
+        Eigen::Matrix<double, 3, 2> projection_matrix = eigenvectors.rightCols<2>();
+        std::map<int, Eigen::Vector2d> points_to_vector2d_map = project_points_to_plane(point_set, projection_matrix);
+
+        // return
+        return points_to_vector2d_map;
+    }
+
+    // project points to set with range correction
+    std::map<int, Eigen::Vector2d> project_points_to_set_with_range_correction(std::set<int> point_set, int setID)
+    {
+        // initialize
+        std::map<int, Eigen::Vector2d> points_to_vector2d_map;
+
+        // get set eigenvectors
+        Eigen::Matrix3d eigenvectors = get_set_eigenvectors(setID);
+        Eigen::Vector3d mean = get_set_mean(setID);
+        Eigen::Vector3d normal = eigenvectors.col(0);
+
+        // for each point
+        for (int point_id : point_set)
+        {
+            // intersection point
+            Eigen::Vector3d rayOrigin = point_to_origin_vector3d_map[point_id];
+            Eigen::Vector3d rayEndPoint = point_to_vector3d_map[point_id];
+            Eigen::Vector3d rayDirection = rayEndPoint.normalized();
+            Eigen::Vector3d rayPlaneIntersectionPoint = ray_plane_intersection(rayOrigin, rayDirection, mean, normal);
+
+            // project intersected points to plane
+            Eigen::Matrix<double, 3, 2> projection_matrix = eigenvectors.rightCols<2>();
+            Eigen::Vector2d projected_point = (projection_matrix.transpose() * rayPlaneIntersectionPoint).head<2>();
+            points_to_vector2d_map[point_id] = projected_point;
+        }
+
+        // return
+        return points_to_vector2d_map;
+    }
+
     // extract set from set
     std::set<int> intersection_of_sets(std::set<int> setA, std::set<int> setB)
     {
@@ -795,6 +856,7 @@ public:
         if (i >= new_cloud->size()) return;
         std::cout << "Processing point " << i << " / " << new_cloud->size() << std::endl;
         Eigen::Vector3d thisPointVEC = new_cloud->points[i].getVector3fMap().cast<double>();
+        Eigen::Vector3d thisPointOriginVEC = Eigen::Vector3d(0, 0, 0);
         i ++;
         
         // get new point id
@@ -808,7 +870,7 @@ public:
         if (kdcloud->size() == 0)
         {
             int newSetID = getNewSetID();
-            add_point(newPointID, newSetID, thisPointVEC);
+            add_point(newPointID, newSetID, thisPointVEC, thisPointOriginVEC);
             return;
         }
 
@@ -837,7 +899,7 @@ public:
         if (searched_boundary_points_set.size() == 0)
         {
             int newSetID = getNewSetID();
-            add_point(newPointID, newSetID, thisPointVEC);
+            add_point(newPointID, newSetID, thisPointVEC, thisPointOriginVEC);
             return;
         }
 
@@ -905,7 +967,7 @@ public:
         else
         {
             setID = getNewSetID(); 
-            add_point(newPointID, setID, thisPointVEC);
+            add_point(newPointID, setID, thisPointVEC, thisPointOriginVEC);
             return;
         }
 
@@ -913,16 +975,12 @@ public:
         std::set<int> searched_boundary_points_in_current_set = set_to_searched_points_map[setID];
 
         // add point
-        add_point(newPointID, setID, thisPointVEC);
-
-        // projection matrix : (projection_matrix.transpose() * point).head<2>()
-        Eigen::Matrix3d eigenvectors = get_set_eigenvectors(setID);
-        Eigen::Matrix<double, 3, 2> projection_matrix = eigenvectors.rightCols<2>();  // Use the last two eigenvectors
+        add_point(newPointID, setID, thisPointVEC, thisPointOriginVEC);
 
         // points_to_vector2d_map
         std::set<int> points_to_project = compute_boundary_point_set_of_set(setID);
         points_to_project.insert(newPointID);
-        std::map<int, Eigen::Vector2d> points_to_vector2d_map = project_points_to_plane(points_to_project, projection_matrix);
+        std::map<int, Eigen::Vector2d> points_to_vector2d_map = project_points_to_set_with_range_correction(points_to_project, setID);
 
         // existing edges between searched points (boundary)
         std::set<int> existing_boundary_edge_set = extract_existing_edge_between_points(searched_boundary_points_in_current_set, compute_boundary_edge_set());
@@ -1040,6 +1098,7 @@ private:
         // point
     int next_point_id = 0;
     std::vector<int> point_list;
+    std::map<int, Eigen::Vector3d> point_to_origin_vector3d_map;
     std::map<int, Eigen::Vector3d> point_to_vector3d_map;
     std::map<int, std::set<int>> point_to_sets_map;
     std::map<int, std::set<int>> point_to_edges_map;
