@@ -16,7 +16,13 @@
 class flann3d
 {
 public:
-    flann3d() : flann_tree(flann::KDTreeIndexParams(1)){};
+    flann3d() : flann_tree(flann::KDTreeIndexParams(1))
+    {
+        // placeholder
+        std::set<int> point_set = {-1};
+        std::map<int, Eigen::Vector3d> point_to_vector3d_map = {{-1, Eigen::Vector3d(0, 0, 0)}};
+        set_input(point_set, point_to_vector3d_map);
+    };
     
     void set_input(std::set<int> point_set, std::map<int, Eigen::Vector3d> point_to_vector3d_map)
     {
@@ -43,7 +49,7 @@ public:
         flann_last_id = point_set.size() - 1;
     }
 
-    void addPoints(Eigen::Vector3d new_point)
+    void addPoint(Eigen::Vector3d new_point, int point_id)
     {
         // add to data storage
         flann_data_storage.push_back(new_point[0]);
@@ -51,13 +57,42 @@ public:
         flann_data_storage.push_back(new_point[2]);
 
         // add to index
-        index_to_pointID.push_back(flann_last_id);
+        index_to_pointID.push_back(point_id);
 
         // add to flann
         flann_tree.addPoints(flann::Matrix<double>(flann_data_storage.data() + flann_data_storage.size() - 3, 1, 3));
 
         // update id
         flann_last_id++;
+    }
+
+    void deletePoint(int point_id)
+    {
+        // find index
+        int index = -1;
+        for (auto i = 0; i < index_to_pointID.size(); i++)
+        {
+            if (index_to_pointID[i] == point_id)
+            {
+                index = i;
+                break;
+            }
+        }
+
+        // if not found, return
+        if (index == -1) return;
+
+        // delete from data storage
+        flann_data_storage.erase(flann_data_storage.begin() + index * 3, flann_data_storage.begin() + index * 3 + 3);
+
+        // delete from index
+        index_to_pointID.erase(index_to_pointID.begin() + index);
+
+        // delete from flann
+        flann_tree.removePoint(index);
+
+        // update id
+        flann_last_id--;
     }
     
     std::set<int> radiusSearch(Eigen::Vector3d searchPoint, double radius)
@@ -87,6 +122,9 @@ public:
             searched_ids.insert(index_to_pointID[index]);
         }
 
+        // remove placeholder
+        searched_ids.erase(-1);
+        
         // return
         return searched_ids;
     }
@@ -159,7 +197,8 @@ public:
         set_to_boundary_point_set_map[setID].insert(newPointID);
 
         // update global boundary points
-        global_boundary_point_set.insert(newPointID);
+        bool inserted = global_boundary_point_set.insert(newPointID).second;
+        if (inserted) flann.addPoint(thisPoint, newPointID);
     }
 
     void add_edge(int newEdgeID, int setID, std::array<int, 2> newEdge)
@@ -182,8 +221,10 @@ public:
         set_to_boundary_point_set_map[setID].insert(newEdge[1]);
 
         // update global boundary points
-        global_boundary_point_set.insert(newEdge[0]);
-        global_boundary_point_set.insert(newEdge[1]);
+        bool inserted0 = global_boundary_point_set.insert(newEdge[0]).second;
+        bool inserted1 = global_boundary_point_set.insert(newEdge[1]).second;
+        if (inserted0) flann.addPoint(point_to_vector3d_map[newEdge[0]], newEdge[0]);
+        if (inserted1) flann.addPoint(point_to_vector3d_map[newEdge[1]], newEdge[1]);
     }
 
     void add_triangle(int newTriangleID, int newSetID, std::array<int, 3> vertices)
@@ -217,8 +258,10 @@ public:
                 set_to_boundary_point_set_map[newSetID].insert(edge[1]);
 
                 // update global boundary points
-                global_boundary_point_set.insert(edge[0]);
-                global_boundary_point_set.insert(edge[1]);
+                bool inserted0 = global_boundary_point_set.insert(edge[0]).second;
+                bool inserted1 = global_boundary_point_set.insert(edge[1]).second;
+                if (inserted0) flann.addPoint(point_to_vector3d_map[edge[0]], edge[0]);
+                if (inserted1) flann.addPoint(point_to_vector3d_map[edge[1]], edge[1]);
             } 
             else
             {
@@ -252,7 +295,13 @@ public:
                         break;
                     }
                 }
-                if (!is_boundary) global_boundary_point_set.erase(smaller_id);
+                if (!is_boundary) 
+                {
+                    // bool erased = global_boundary_point_set.find(smaller_id) != global_boundary_point_set.end();
+                    global_boundary_point_set.erase(smaller_id);
+                    
+                    // if (erased) flann.deletePoint(smaller_id);
+                }
 
                 is_boundary = false;
                 for (int set_id : point_to_sets_map[larger_id])
@@ -263,7 +312,13 @@ public:
                         break;
                     }
                 }
-                if (!is_boundary) global_boundary_point_set.erase(larger_id);
+                if (!is_boundary) 
+                {
+                    // bool erased = global_boundary_point_set.find(larger_id) != global_boundary_point_set.end();
+                    global_boundary_point_set.erase(larger_id);
+
+                    // if (erased) flann.deletePoint(larger_id);
+                }
             }
         }
     }
@@ -1013,9 +1068,8 @@ public:
         double search_size = 0.2;
 
         // perform flann3d radius search
-        flann3d flann;
-        flann.set_input(global_boundary_point_set, point_to_vector3d_map);
         std::set<int> searched_boundary_points_set = flann.radiusSearch(thisPointVEC, search_size);
+        searched_boundary_points_set = intersection_of_sets(searched_boundary_points_set, global_boundary_point_set);
 
         // if no searched results, add point to new set
         if (searched_boundary_points_set.size() == 0)
@@ -1258,6 +1312,7 @@ private:
     std::map<std::array<int, 2>, int> edge_to_point_map_reverse;
 
         // boundary
+    flann3d flann;
     std::set<int> global_boundary_point_set;
 };
 
