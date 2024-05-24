@@ -184,6 +184,9 @@ public:
         // add to set
         set_to_points_map[setID].insert(newPointID);
         point_to_sets_map[newPointID].insert(setID);
+
+        // update boundary edge and points
+        set_to_boundary_point_set_map[setID].insert(newPointID);
     }
 
     void add_edge(int newEdgeID, int setID, std::array<int, 2> newEdge)
@@ -198,6 +201,12 @@ public:
 
         // update set to edge
         set_to_edges_map[setID].insert(newEdgeID);
+
+        // update boundary edge and points
+        set_to_edge_count_map[setID][newEdgeID] = 0;
+        set_to_boundary_edge_set_map[setID].insert(newEdgeID);
+        set_to_boundary_point_set_map[setID].insert(newEdge[0]);
+        set_to_boundary_point_set_map[setID].insert(newEdge[1]);
     }
 
     void add_triangle(int newTriangleID, int newSetID, std::array<int, 3> vertices)
@@ -207,6 +216,48 @@ public:
 
         // add triangle to set map
         set_to_triangles_map[newSetID].insert(newTriangleID);
+
+        // update boundary edge and points
+        for (int i = 0; i < 3; i++)
+        {
+            // get correct edge order
+            int smaller_id = std::min(vertices[i], vertices[(i + 1) % 3]);
+            int larger_id = std::max(vertices[i], vertices[(i + 1) % 3]);
+            std::array<int, 2> edge = {smaller_id, larger_id};
+
+            // increment count
+            int& count = set_to_edge_count_map[newSetID][edge_to_point_map_reverse[edge]];
+            count ++;
+
+            // cases
+            if (count <= 1)
+            {
+                // add to boundary edge
+                set_to_boundary_edge_set_map[newSetID].insert(edge_to_point_map_reverse[edge]);
+                // add to boundary points
+                set_to_boundary_point_set_map[newSetID].insert(edge[0]);
+                set_to_boundary_point_set_map[newSetID].insert(edge[1]);
+            } 
+            else
+            {
+                // remove from boundary edge
+                set_to_boundary_edge_set_map[newSetID].erase(edge_to_point_map_reverse[edge]);
+                // remove from boundary points (if the edge point no longer connects to a boundary edge, it is removed from boundary points)
+                for (int point_id : edge)
+                {
+                    bool is_boundary = false;
+                    for (int edge_id : point_to_edges_map[point_id])
+                    {
+                        if (set_to_boundary_edge_set_map[newSetID].find(edge_id) != set_to_boundary_edge_set_map[newSetID].end())
+                        {
+                            is_boundary = true;
+                            break;
+                        }
+                    }
+                    if (!is_boundary) set_to_boundary_point_set_map[newSetID].erase(point_id);
+                }
+            }
+        }
     }
 
     int getNewPointID()
@@ -427,6 +478,86 @@ public:
     {
         // get boundary point set
         std::set<int> boundary_points_set = compute_boundary_point_set();
+
+        // convert to list
+        std::vector<int> boundary_points_list;
+        for (int point_id : boundary_points_set)
+        {
+            boundary_points_list.push_back(point_id);
+        }
+
+        // return
+        return boundary_points_list;
+    }
+
+    std::set<int> get_boundary_edge_set_of_set(int setID)
+    {
+        return set_to_boundary_edge_set_map[setID];
+    }
+        
+    std::set<int> get_boundary_edge_set()
+    {
+        // initialize
+        std::set<int> boundary_edge_set;
+
+        // process
+        for (int set_id : set_list)
+        {
+            // get boundary edge set of set
+            std::set<int> boundary_edge_set_of_set = get_boundary_edge_set_of_set(set_id);
+
+            // add to boundary edge set
+            boundary_edge_set.insert(boundary_edge_set_of_set.begin(), boundary_edge_set_of_set.end());
+        }
+
+        // return
+        return boundary_edge_set;
+    }
+
+    std::vector<int> get_boundary_edge_list()
+    {
+        // get boundary edge set
+        std::set<int> boundary_edge_set = get_boundary_edge_set();
+
+        // convert to list
+        std::vector<int> boundary_edge_list;
+        for (int edge_id : boundary_edge_set)
+        {
+            boundary_edge_list.push_back(edge_id);
+        }
+
+        // return
+        return boundary_edge_list;
+    }
+
+    std::set<int> get_boundary_point_set_of_set(int setID)
+    {
+        return set_to_boundary_point_set_map[setID];
+    }
+    
+    std::set<int> get_boundary_point_set()
+    {
+        // initialize
+        std::set<int> boundary_points_set;
+
+        // process
+        for (int set_id : set_list)
+        {
+            // get boundary point set of set
+            std::set<int> boundary_point_set_of_set = get_boundary_point_set_of_set(set_id);
+
+            // add to boundary point set
+            boundary_points_set.insert(boundary_point_set_of_set.begin(), boundary_point_set_of_set.end());
+        }
+
+        // return
+        return boundary_points_set;
+    }
+
+    std::vector<int> get_boundary_point_list()
+    {
+        // get boundary point set
+        std::set<int> boundary_points_set = get_boundary_point_set();
 
         // convert to list
         std::vector<int> boundary_points_list;
@@ -863,7 +994,7 @@ public:
         int newPointID = getNewPointID();
         
         // setup kdtreeflann (search boundary points only)
-        std::vector<int> boundary_point_list = compute_boundary_point_list();
+        std::vector<int> boundary_point_list = get_boundary_point_list();
         pcl::PointCloud<pcl::PointXYZ>::Ptr kdcloud = point_to_vector3d_cloud(boundary_point_list);
 
         // if empty cloud, can not set up radius search, add point to new set
@@ -977,12 +1108,12 @@ public:
         add_point(newPointID, setID, thisPointVEC, thisPointOriginVEC);
 
         // points_to_vector2d_map
-        std::set<int> points_to_project = compute_boundary_point_set_of_set(setID);
+        std::set<int> points_to_project = get_boundary_point_set_of_set(setID);
         points_to_project.insert(newPointID);
         std::map<int, Eigen::Vector2d> points_to_vector2d_map = project_points_to_set_with_range_correction(points_to_project, setID);
 
         // existing edges between searched points (boundary)
-        std::set<int> existing_boundary_edge_set = extract_existing_edge_between_points(searched_boundary_points_in_current_set, compute_boundary_edge_set());
+        std::set<int> existing_boundary_edge_set = extract_existing_edge_between_points(searched_boundary_points_in_current_set, get_boundary_edge_set_of_set(setID));
         std::set<std::array<int, 2>> existing_boundary_edge_vertices_set = convert_to_edge_vertices_set(existing_boundary_edge_set);
 
 
@@ -998,7 +1129,7 @@ public:
             std::array<int, 2> newEdge = {point_id, newPointID};
 
             // skip if intersected with any boundary edge of the current set
-            if (edge_edges_intersection(newEdge, convert_to_edge_vertices_set(compute_boundary_edge_set_of_set(setID)), points_to_vector2d_map)) continue;
+            if (edge_edges_intersection(newEdge, convert_to_edge_vertices_set(get_boundary_edge_set_of_set(setID)), points_to_vector2d_map)) continue;
 
             // add edge
             int newEdgeID = getNewEdgeID();
@@ -1087,7 +1218,7 @@ public:
 
     pcl::PointCloud<pcl::PointXYZ>::Ptr boundary_point_cloud()
     {
-        return point_to_vector3d_cloud(compute_boundary_point_list());
+        return point_to_vector3d_cloud(get_boundary_point_list());
     }
 
     int get_number_of_triangles()
@@ -1125,6 +1256,9 @@ private:
     std::map<int, std::set<int>> set_to_points_map; // each set contains id to points
     std::map<int, std::set<int>> set_to_edges_map; // each set contains id to edges
     std::map<int, std::set<int>> set_to_triangles_map; // each set contains id to triangles
+    std::map<int, std::set<int>> set_to_boundary_edge_set_map; // each set contains id to boundary edges
+    std::map<int, std::set<int>> set_to_boundary_point_set_map; // each set contains id to boundary points
+    std::map<int, std::map<int, int>> set_to_edge_count_map; // each map contains edge count
     
         // edge
     int next_edge_id = 0;
@@ -1211,7 +1345,7 @@ private:
             // add points
             pcl::toPCLPointCloud2(*cloud, boundary_mesh.cloud);
             // get boundary edges
-            std::vector<int> boundary_edge_list = app_.compute_boundary_edge_list();
+            std::vector<int> boundary_edge_list = app_.get_boundary_edge_list();
             // add edges
             for (int edge_id : boundary_edge_list)
             {
