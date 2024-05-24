@@ -166,12 +166,7 @@ public:
         std::string pose_file_path = "/home/jiahao/datasets/bag2pcd_output/mission2_reverse/slam_poses/slam_poss_graph.slam";
         DataLoader<VilensPointT> data_loader(pcd_file_folder, pose_file_path);
         int i1 = 0;
-        new_cloud = data_loader.get_cloud(i1);
-
-
-        // loop
-        i = 0;
-        
+        new_cloud = data_loader.get_cloud(i1);        
     }
 
     // want boundary edge and points to prevent overlapping triangles
@@ -234,6 +229,9 @@ public:
 
         // update set list
         set_list.push_back(newSetID);
+
+        // update set color map
+        set_to_color_map[newSetID] = {rand() % 256, rand() % 256, rand() % 256};
 
         // return
         return newSetID;
@@ -922,22 +920,24 @@ public:
         return cloud;
     }
 
-    pcl::PointCloud<pcl::PointXYZI>::Ptr point_to_vector3d_set_colored_cloud(std::vector<int> point_indices)
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr point_to_vector3d_set_colored_cloud(std::vector<int> point_indices)
     {
-        pcl::PointCloud<pcl::PointXYZI>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZI>);
+        pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
         for (int point_id : point_indices)
         {
-            pcl::PointXYZI point;
+            pcl::PointXYZRGB point;
             point.x = point_to_vector3d_map[point_id][0];
             point.y = point_to_vector3d_map[point_id][1];
             point.z = point_to_vector3d_map[point_id][2];
-            point.intensity = *point_to_sets_map[point_id].begin();
+            point.r = set_to_color_map[*point_to_sets_map[point_id].begin()].at(0);
+            point.g = set_to_color_map[*point_to_sets_map[point_id].begin()].at(1);
+            point.b = set_to_color_map[*point_to_sets_map[point_id].begin()].at(2);
             cloud->push_back(point);
         }
         return cloud;
     }
 
-    pcl::PointCloud<pcl::PointXYZI>::Ptr point_to_vector3d_set_colored_cloud()
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr point_to_vector3d_set_colored_cloud()
     {
         return point_to_vector3d_set_colored_cloud(point_list);
     }
@@ -955,7 +955,7 @@ public:
 
     
 private:
-    std::size_t i;
+    std::size_t i = 1000;
     typename pcl::PointCloud<VilensPointT>::Ptr new_cloud;
 
     // settings
@@ -978,6 +978,7 @@ private:
         // set
     int next_set_id = 0;
     std::vector<int> set_list;
+    std::map<int, std::array<int, 3>> set_to_color_map; // map to intensity
     std::map<int, std::set<int>> set_to_points_map; // each set contains id to points
     std::map<int, std::set<int>> set_to_edges_map; // each set contains id to edges
     std::map<int, std::set<int>> set_to_triangles_map; // each set contains id to triangles
@@ -1016,7 +1017,7 @@ public:
 
         // boundary edges
         pcl::PolygonMesh boundary_mesh;
-        viewer_->addPolylineFromPolygonMesh(mesh, "boundary_edges");
+        viewer_->addPolylineFromPolygonMesh(boundary_mesh, "boundary_edges");
 
         // colored cloud
         pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
@@ -1080,17 +1081,19 @@ private:
             // mesh
             viewer_->removeShape("polyline");
             viewer_->addPolylineFromPolygonMesh(mesh, "polyline");
+            viewer_->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, 0.1, 0.1, 0.1, "polyline");
+            viewer_->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, 1, "polyline");
 
             // boundary edges
             viewer_->removeShape("boundary_edges");
             viewer_->addPolylineFromPolygonMesh(boundary_mesh, "boundary_edges");
-            viewer_->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, 1.0, 1.0, 0.0, "boundary_edges");
-            viewer_->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, 5, "boundary_edges");
+            viewer_->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, 0.2, 0.2, 0.2, "boundary_edges");
+            viewer_->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, 2, "boundary_edges");
 
             // set colored cloud
-            pcl::PointCloud<pcl::PointXYZI>::Ptr intensity_cloud = app_.point_to_vector3d_set_colored_cloud();
-            pcl::visualization::PointCloudColorHandlerGenericField<pcl::PointXYZI> intensity_handler(intensity_cloud, "intensity");
-            viewer_->updatePointCloud<pcl::PointXYZI>(intensity_cloud, intensity_handler, "cloud");
+            pcl::PointCloud<pcl::PointXYZRGB>::Ptr intensity_cloud = app_.point_to_vector3d_set_colored_cloud();
+            pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> intensity_handler(intensity_cloud);
+            viewer_->updatePointCloud<pcl::PointXYZRGB>(intensity_cloud, intensity_handler, "cloud");
             viewer_->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 6, "cloud");
         }
     }  
