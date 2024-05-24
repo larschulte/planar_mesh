@@ -805,8 +805,8 @@ public:
         std::map<int, std::set<int>> set_to_searched_points_map = group_points_by_set(searched_boundary_points_set);
 
         // record size and distance
-        std::map<int, int> size_to_small_set_map;
-        std::map<double, int> distance_to_set_map;
+        std::map<int, int> small_set_to_size_map;
+        std::map<int, double> set_to_distance_map;
         for (const auto& pair : set_to_searched_points_map)
         {
             // set id and points
@@ -814,41 +814,62 @@ public:
             std::set<int> searched_boundary_points_in_current_set = pair.second;
             int set_size = set_to_points_map[setID].size(); 
 
-            // if small set
-            if (set_size < 10)
-            {
-                size_to_small_set_map[set_size] = setID;
-            }
-            // if large set then check distance
-            else 
+            // if large set, record distance
+            if (set_size > 10)
             {
                 Eigen::Vector3d rayPlaneIntersectionPoint = ray_set_intersection(Eigen::Vector3d(0, 0, 0), thisPointVEC, setID);
                 double distance = (thisPointVEC - rayPlaneIntersectionPoint).norm();
-                distance_to_set_map[abs(distance)] = setID;
+                set_to_distance_map[setID] = abs(distance);
+            }
+            // if small set, record size
+            else 
+            {
+                small_set_to_size_map[setID] = set_size;
+            }
+        }
+
+        // find the smallest distance and largest size
+        int smallest_distance_key;
+        double smallest_distance_value = std::numeric_limits<double>::max();
+        for (const auto& pair : set_to_distance_map)
+        {
+            if (pair.second < smallest_distance_value) 
+            {
+                smallest_distance_key = pair.first;
+                smallest_distance_value = pair.second;
+            }
+        }
+        int largest_size_key;
+        int largest_size_value = 0;
+        for (const auto& pair : small_set_to_size_map)
+        {
+            if (pair.second > largest_size_value) 
+            {
+                largest_size_key = pair.first;
+                largest_size_value = pair.second;
             }
         }
 
         // compute the set to add to
         int setID;
-        std::set<int> searched_boundary_points_in_current_set;
-        
-        double shortest_distance = distance_to_set_map.begin()->first;
-        if (shortest_distance < distance_threshold) 
+        if (smallest_distance_value < distance_threshold)
         {
-            setID = distance_to_set_map.begin()->second; // choose the closest set
-            searched_boundary_points_in_current_set = set_to_searched_points_map[setID];
+            setID = smallest_distance_key;
+            
         }
-        else if (size_to_small_set_map.size() > 0)
+        else if (largest_size_value > 0)
         {
-            setID = size_to_small_set_map.end()->second; // choose the largest small set
-            searched_boundary_points_in_current_set = set_to_searched_points_map[setID];
+            setID = largest_size_key;
         }
         else
         {
-            setID = getNewSetID(); // create a new set
+            setID = getNewSetID(); 
             add_point(newPointID, setID, thisPointVEC);
             return;
         }
+
+        // get the searched points in the set
+        std::set<int> searched_boundary_points_in_current_set = set_to_searched_points_map[setID];
 
         // add point
         add_point(newPointID, setID, thisPointVEC);
