@@ -66,34 +66,34 @@ public:
         flann_last_id++;
     }
 
-    void deletePoint(int point_id)
-    {
-        // find index
-        int index = -1;
-        for (auto i = 0; i < index_to_pointID.size(); i++)
-        {
-            if (index_to_pointID[i] == point_id)
-            {
-                index = i;
-                break;
-            }
-        }
+    // void deletePoint(int point_id)
+    // {
+    //     // find index
+    //     int index = -1;
+    //     for (auto i = 0; i < index_to_pointID.size(); i++)
+    //     {
+    //         if (index_to_pointID[i] == point_id)
+    //         {
+    //             index = i;
+    //             break;
+    //         }
+    //     }
 
-        // if not found, return
-        if (index == -1) return;
+    //     // if not found, return
+    //     if (index == -1) return;
 
-        // delete from data storage
-        flann_data_storage.erase(flann_data_storage.begin() + index * 3, flann_data_storage.begin() + index * 3 + 3);
+    //     // delete from data storage
+    //     flann_data_storage.erase(flann_data_storage.begin() + index * 3, flann_data_storage.begin() + index * 3 + 3);
 
-        // delete from index
-        index_to_pointID.erase(index_to_pointID.begin() + index);
+    //     // delete from index
+    //     index_to_pointID.erase(index_to_pointID.begin() + index);
 
-        // delete from flann
-        flann_tree.removePoint(index);
+    //     // delete from flann
+    //     flann_tree.removePoint(index);
 
-        // update id
-        flann_last_id--;
-    }
+    //     // update id
+    //     flann_last_id--;
+    // }
     
     std::set<int> radiusSearch(Eigen::Vector3d searchPoint, double radius)
     {
@@ -297,9 +297,9 @@ public:
                 }
                 if (!is_boundary) 
                 {
-                    // bool erased = global_boundary_point_set.find(smaller_id) != global_boundary_point_set.end();
                     global_boundary_point_set.erase(smaller_id);
                     
+                    // bool erased = global_boundary_point_set.erase(smaller_id);
                     // if (erased) flann.deletePoint(smaller_id);
                 }
 
@@ -314,9 +314,9 @@ public:
                 }
                 if (!is_boundary) 
                 {
-                    // bool erased = global_boundary_point_set.find(larger_id) != global_boundary_point_set.end();
                     global_boundary_point_set.erase(larger_id);
 
+                    // bool erased = global_boundary_point_set.erase(larger_id);
                     // if (erased) flann.deletePoint(larger_id);
                 }
             }
