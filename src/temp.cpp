@@ -12,51 +12,40 @@
 // #include "point_type/BagPointT.hpp"
 #include "point_type/VilensPointT.hpp"
 
-template <typename PointT>
+
 class flann3d
 {
 public:
-    flann3d()
-        :
-        flann_tree(flann::KDTreeIndexParams(1))
-        {};
+    flann3d() : flann_tree(flann::KDTreeIndexParams(1)){};
     
-    void set_input(std::map<int, Eigen::Vector3d>& point_to_vector3d_map, std::set<int>& boundary_points_set)
+    void set_input(std::set<int> point_set, std::map<int, Eigen::Vector3d> point_to_vector3d_map)
     {
+        // reserve
+        flann_data_storage.reserve(point_set.size() * 3);
+        index_to_pointID.reserve(point_set.size());
+
         // compute data storage
-        for (int point_id : boundary_points_set)
+        for (int point_id : point_set)
         {
             flann_data_storage.push_back(point_to_vector3d_map[point_id][0]);
             flann_data_storage.push_back(point_to_vector3d_map[point_id][1]);
             flann_data_storage.push_back(point_to_vector3d_map[point_id][2]);
+            index_to_pointID.push_back(point_id);
         }
 
         // record
-        flann_last_id = boundary_points_set.size() - 1;
+        flann_last_id = point_set.size() - 1;
 
         // add to flann
-        flann_tree.buildIndex(flann::Matrix<double>(flann_data_storage.data(), boundary_points_set.size(), 3));
+        flann_tree.buildIndex(flann::Matrix<double>(flann_data_storage.data(), point_set.size(), 3));
     }
     
-    void set_input(typename pcl::PointCloud<PointT>::Ptr point_cloud)
+    std::set<int> radiusSearch(Eigen::Vector3d searchPoint, double radius)
     {
-        // compute data storage
-        for (const auto& point : point_cloud->points)
-        {
-            flann_data_storage.push_back(point.x);
-            flann_data_storage.push_back(point.y);
-            flann_data_storage.push_back(point.z);
-        }
+        // initialize
+        std::vector<int> searched_indices;
+        std::vector<double> searched_dists;
 
-        // record
-        flann_last_id = point_cloud->size() - 1;
-
-        // add to flann
-        flann_tree.buildIndex(flann::Matrix<double>(flann_data_storage.data(), point_cloud->size(), 3));
-    }
-    
-    void radiusSearch(Eigen::Vector3d searchPoint, std::vector<int>& search_indices, std::vector<double>& search_dists, double radius)
-    {
         // convert to vector
         std::vector<double> query_point = {searchPoint[0], searchPoint[1], searchPoint[2]}; 
 
@@ -68,25 +57,18 @@ public:
         flann_tree.radiusSearch(flann::Matrix<double>(query_point.data(), 1, 3), list_of_search_indices, list_of_search_dists, radius * radius, flann::SearchParams(-1, 0));
 
         // extract
-        search_indices = list_of_search_indices[0];
-        search_dists = list_of_search_dists[0];
-    }
+        searched_indices = list_of_search_indices[0];
+        searched_dists = list_of_search_dists[0];
 
-    void radiusSearch(PointT searchPoint, std::vector<int>& search_indices, std::vector<double>& search_dists, double radius)
-    {
-        // convert to vector
-        std::vector<double> query_point = {searchPoint.x, searchPoint.y, searchPoint.z};
+        // convert to id
+        std::set<int> searched_ids;
+        for (const int& index : searched_indices)
+        {
+            searched_ids.insert(index_to_pointID[index]);
+        }
 
-        // intialize
-        std::vector<std::vector<int>> list_of_search_indices(1, std::vector<int>());
-        std::vector<std::vector<double>> list_of_search_dists(1, std::vector<double>());
-
-        // search
-        flann_tree.radiusSearch(flann::Matrix<double>(query_point.data(), 1, 3), list_of_search_indices, list_of_search_dists, radius * radius, flann::SearchParams(-1, 0));
-
-        // extract
-        search_indices = list_of_search_indices[0];
-        search_dists = list_of_search_dists[0];
+        // return
+        return searched_ids;
     }
 
     void addPoints(Eigen::Vector3d new_point)
@@ -103,31 +85,13 @@ public:
         flann_last_id++;
     }
 
-    void addPoints(PointT new_point)
-    {
-        // convert to vector
-        flann_data_storage.push_back(new_point.x);
-        flann_data_storage.push_back(new_point.y);
-        flann_data_storage.push_back(new_point.z);
-
-        // add
-        flann_tree.addPoints(flann::Matrix<double>(flann_data_storage.data() + flann_data_storage.size() - 3, 1, 3));
-
-        // update id
-        flann_last_id++;
-    }
-
-    void removePoint(int id)
-    {
-        flann_tree.removePoint(id);
-    }
-
     int flann_last_id;
 
 private:
     std::vector<double> flann_data_storage;
-
     flann::Index<flann::L2_Simple<double>> flann_tree;
+
+    std::vector<int> index_to_pointID; // index to point id correspondence
 };
 
 
@@ -993,12 +957,9 @@ public:
         // get new point id
         int newPointID = getNewPointID();
         
-        // setup kdtreeflann (search boundary points only)
+        // if empty, can not set up radius search, add point to new set
         std::vector<int> boundary_point_list = get_boundary_point_list();
-        pcl::PointCloud<pcl::PointXYZ>::Ptr kdcloud = point_to_vector3d_cloud(boundary_point_list);
-
-        // if empty cloud, can not set up radius search, add point to new set
-        if (kdcloud->size() == 0)
+        if (boundary_point_list.size() == 0)
         {
             int newSetID = getNewSetID();
             add_point(newPointID, newSetID, thisPointVEC, thisPointOriginVEC);
@@ -1008,23 +969,10 @@ public:
         // radius search size
         double search_size = 0.2;
 
-        // perform radius search
-        pcl::KdTreeFLANN<pcl::PointXYZ> kdtree;
-        kdtree.setInputCloud(kdcloud);
-        std::vector<int> search_indices;
-        std::vector<float> search_dists;
-        pcl::PointXYZ thisPointPCL;
-        thisPointPCL.x = thisPointVEC[0];
-        thisPointPCL.y = thisPointVEC[1];
-        thisPointPCL.z = thisPointVEC[2];
-        kdtree.radiusSearch(thisPointPCL, search_size, search_indices, search_dists, 0);
-
-        // convert search_indices to point_id
-        std::set<int> searched_boundary_points_set;
-        for (int search_index : search_indices)
-        {
-            searched_boundary_points_set.insert(boundary_point_list[search_index]);
-        }
+        // perform flann3d radius search
+        flann3d flann;
+        flann.set_input(get_boundary_point_set(), point_to_vector3d_map);
+        std::set<int> searched_boundary_points_set = flann.radiusSearch(thisPointVEC, search_size);
 
         // if no searched results, add point to new set
         if (searched_boundary_points_set.size() == 0)
