@@ -209,7 +209,7 @@ public:
 
         // add to set
         set_to_points_map[setID].insert(newPointID);
-        point_to_sets_map[newPointID].insert(setID);
+        point_to_set_map[newPointID] = setID;
 
         // add boundary point
         add_boundary_point(newPointID, setID);
@@ -375,10 +375,7 @@ public:
         // process
         for (int point_id : point_set)
         {
-            for (int set_id : point_to_sets_map[point_id])
-            {
-                points_grouped_by_set[set_id].insert(point_id);
-            }
+            points_grouped_by_set[point_to_set_map[point_id]].insert(point_id);
         }
 
         // return
@@ -971,7 +968,7 @@ public:
             // update if not available (todo - update if not accurate enough)
             if (point_to_intersection_vector3d_map.find(point_id) == point_to_intersection_vector3d_map.end())
             {
-                point_to_intersection_vector3d_map[point_id] = point_set_intersection(point_id, setID);
+            point_to_intersection_vector3d_map[point_id] = point_set_intersection(point_id, setID);
             }
 
             // get intersection point
@@ -1281,9 +1278,9 @@ public:
             point.x = point_to_vector3d_map[point_id][0];
             point.y = point_to_vector3d_map[point_id][1];
             point.z = point_to_vector3d_map[point_id][2];
-            point.r = set_to_color_map[*point_to_sets_map[point_id].begin()].at(0);
-            point.g = set_to_color_map[*point_to_sets_map[point_id].begin()].at(1);
-            point.b = set_to_color_map[*point_to_sets_map[point_id].begin()].at(2);
+            point.r = set_to_color_map[point_to_set_map[point_id]].at(0);
+            point.g = set_to_color_map[point_to_set_map[point_id]].at(1);
+            point.b = set_to_color_map[point_to_set_map[point_id]].at(2);
             cloud->push_back(point);
         }
         return cloud;
@@ -1320,7 +1317,7 @@ private:
     std::map<int, Eigen::Vector3d> point_to_origin_vector3d_map;
     std::map<int, Eigen::Vector3d> point_to_intersection_vector3d_map;
     std::map<int, Eigen::Vector3d> point_to_vector3d_map;
-    std::map<int, std::set<int>> point_to_sets_map;
+    std::map<int, int> point_to_set_map;
     std::map<int, std::set<int>> point_to_edges_map;
 
         // triangle
