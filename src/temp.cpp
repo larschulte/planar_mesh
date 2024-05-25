@@ -871,6 +871,25 @@ public:
         return false;
     }
 
+    bool edge_edges_intersection(std::array<int, 2> edgeA, std::set<int> edgeB_set, std::map<int, Eigen::Vector2d> points_to_vector2d_map)
+    {
+        for (const auto& edgeB_ID : edgeB_set)
+        {
+            // if intersected at end points, don't count
+            std::array<int, 2> edgeB = edge_to_point_map[edgeB_ID];
+            if (edgeA[0] == edgeB[0] || edgeA[0] == edgeB[1] || edgeA[1] == edgeB[0] || edgeA[1] == edgeB[1]) continue;
+
+            // intersection check
+            Eigen::Vector2d pointA0 = points_to_vector2d_map[edgeA[0]];
+            Eigen::Vector2d pointA1 = points_to_vector2d_map[edgeA[1]];
+            Eigen::Vector2d pointB0 = points_to_vector2d_map[edgeB[0]];
+            Eigen::Vector2d pointB1 = points_to_vector2d_map[edgeB[1]];
+            if (doIntersect(pointA0, pointA1, pointB0, pointB1)) return true;
+        }
+
+        return false;
+    }
+
     bool triangle_contains_point(std::array<int, 3> triangle, std::set<int> point_set, std::map<int, Eigen::Vector2d> points_to_vector2d_map)
     {
         for (int point_id : point_set)
@@ -1219,7 +1238,6 @@ public:
 
         // existing edges between searched points (boundary)
         std::set<int> existing_boundary_edge_set = extract_existing_edge_between_points(searched_boundary_points_in_current_set, get_boundary_edge_set_of_set(setID));
-        std::set<std::array<int, 2>> existing_boundary_edge_vertices_set = convert_to_edge_vertices_set(existing_boundary_edge_set);
 
 
         // to add a new point to mesh
@@ -1234,7 +1252,7 @@ public:
             std::array<int, 2> newEdge = {point_id, newPointID};
 
             // skip if intersected with any boundary edge of the current set
-            if (edge_edges_intersection(newEdge, convert_to_edge_vertices_set(get_boundary_edge_set_of_set(setID)), points_to_vector2d_map)) continue;
+            if (edge_edges_intersection(newEdge, get_boundary_edge_set_of_set(setID), points_to_vector2d_map)) continue;
 
             // add edge
             int newEdgeID = getNewEdgeID();
@@ -1245,11 +1263,11 @@ public:
         }
 
         // add triangle
-        for (const auto& existing_edge_vertices : existing_boundary_edge_vertices_set)
+        for (const auto& edgeID : existing_boundary_edge_set)
         {   
             // skip if not both points are used
-            int i1 = existing_edge_vertices[0];
-            int i2 = existing_edge_vertices[1];
+            int i1 = edge_to_point_map[edgeID][0];
+            int i2 = edge_to_point_map[edgeID][1];
             bool i1_used = searched_boundary_points_used.find(i1) != searched_boundary_points_used.end();
             bool i2_used = searched_boundary_points_used.find(i2) != searched_boundary_points_used.end();
             if (!i1_used || !i2_used) continue;
