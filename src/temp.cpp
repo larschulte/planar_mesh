@@ -1073,14 +1073,14 @@ public:
         std::map<int, std::set<int>> set_to_searched_points_map = group_points_by_set(searched_boundary_points_set);
 
         // record size and distance
-        std::map<int, int> small_set_to_size_map;
+        std::map<int, std::size_t> small_set_to_size_map;
         std::map<int, double> set_to_distance_map;
         for (const auto& pair : set_to_searched_points_map)
         {
             // set id and points
             int setID = pair.first;
             std::set<int> searched_boundary_points_in_current_set = pair.second;
-            int set_size = set_to_points_map[setID].size(); 
+            std::size_t set_size = set_to_points_map[setID].size(); 
 
             // if large set, record distance
             if (set_size > fit_plane_threshold)
@@ -1108,7 +1108,7 @@ public:
             }
         }
         int largest_size_key;
-        int largest_size_value = 0;
+        std::size_t largest_size_value = 0;
         for (const auto& pair : small_set_to_size_map)
         {
             if (pair.second > largest_size_value) 
