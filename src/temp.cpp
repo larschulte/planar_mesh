@@ -190,7 +190,7 @@ public:
         point_to_origin_vector3d_map[newPointID] = origin;
 
         // update plane estimation https://stats.stackexchange.com/questions/26123/efficient-method-technique-to-update-covariance-matrix
-        // compute
+            // compute
         double old_size = static_cast<double>(set_to_points_map[setID].size()); // use double since will involve division later
         double new_size = old_size + 1;
         Eigen::Vector3d old_mean = set_to_mean_map[setID];
@@ -200,7 +200,7 @@ public:
         Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> solver(new_covariance_matrix);
         Eigen::Matrix3d eigenvectors = solver.eigenvectors();
         Eigen::Vector3d normal = eigenvectors.col(0); // Assuming the smallest eigenvalue corresponds to the normal
-        // store
+            // store
         point_to_mean_used_map[newPointID] = old_mean;
         set_to_mean_map[setID] = new_mean;
         set_to_covariance_matrix_map[setID] = new_covariance_matrix;
@@ -291,11 +291,7 @@ public:
         // if enough points, update intersection point
         if (set_to_points_map[setID].size() >= fit_plane_threshold)
         {
-            Eigen::Vector3d origin = point_to_origin_vector3d_map[pointID];
-            Eigen::Vector3d endPoint = point_to_vector3d_map[pointID];
-            Eigen::Vector3d mean = set_to_mean_map[setID];
-            Eigen::Vector3d normal = set_to_normal_map[setID];
-            point_to_intersection_vector3d_map[pointID] = ray_plane_intersection(origin, endPoint, mean, normal);
+            point_to_intersection_vector3d_map[pointID] = point_set_intersection(pointID, setID);
         }
     }
 
@@ -963,6 +959,36 @@ public:
         // return
         return points_to_vector2d_map;
     }
+    
+    std::map<int, Eigen::Vector2d> project_boundary_points_of_set_to_set_plane(int setID)
+    {
+        // initialize
+        std::map<int, Eigen::Vector2d> points_to_vector2d_map;
+
+        // process
+        for (int point_id : set_to_boundary_point_set_map[setID])
+        {
+            // update if not available (todo - update if not accurate enough)
+            if (point_to_intersection_vector3d_map.find(point_id) == point_to_intersection_vector3d_map.end())
+            {
+                point_to_intersection_vector3d_map[point_id] = point_set_intersection(point_id, setID);
+            }
+
+            // get intersection point
+            Eigen::Vector3d rayPlaneIntersectionPoint = point_to_intersection_vector3d_map[point_id];
+
+            // project intersection points to plane
+            Eigen::Matrix3d eigenvectors = set_to_eigenvectors_map[setID];
+            Eigen::Matrix<double, 3, 2> projection_matrix = eigenvectors.rightCols<2>();
+            Eigen::Vector2d projected_point = (projection_matrix.transpose() * rayPlaneIntersectionPoint).head<2>();
+
+            // store
+            points_to_vector2d_map[point_id] = projected_point;
+        }
+
+        // return
+        return points_to_vector2d_map;
+    }
 
     // extract set from set
     std::set<int> intersection_of_sets(std::set<int> setA, std::set<int> setB)
@@ -997,6 +1023,19 @@ public:
 
         // return
         return intersection;
+    }
+
+    Eigen::Vector3d point_set_intersection(int pointID, int setID)
+    {
+        // compute
+        Eigen::Vector3d rayOrigin = point_to_origin_vector3d_map[pointID];
+        Eigen::Vector3d rayEndPoint = point_to_vector3d_map[pointID];
+        Eigen::Vector3d mean = set_to_mean_map[setID];
+        Eigen::Vector3d normal = set_to_normal_map[setID];
+        Eigen::Vector3d rayPlaneIntersectionPoint = ray_plane_intersection(rayOrigin, rayEndPoint, mean, normal);
+
+        // return
+        return rayPlaneIntersectionPoint;
     }
 
     // ray set intersection 
@@ -1089,7 +1128,10 @@ public:
             // if large set, record distance
             if (set_size > fit_plane_threshold)
             {
-                Eigen::Vector3d rayPlaneIntersectionPoint = ray_set_intersection(Eigen::Vector3d(0, 0, 0), thisPointVEC, setID);
+                Eigen::Vector3d mean = set_to_mean_map[setID];
+                Eigen::Vector3d normal = set_to_normal_map[setID];
+                Eigen::Vector3d rayPlaneIntersectionPoint = ray_plane_intersection(thisPointOriginVEC, thisPointVEC, mean, normal);
+
                 double distance = (thisPointVEC - rayPlaneIntersectionPoint).norm();
                 set_to_distance_map[setID] = abs(distance);
             }
@@ -1147,9 +1189,7 @@ public:
         add_point(newPointID, setID, thisPointVEC, thisPointOriginVEC);
 
         // points_to_vector2d_map
-        std::set<int> points_to_project = get_boundary_point_set_of_set(setID);
-        points_to_project.insert(newPointID);
-        std::map<int, Eigen::Vector2d> points_to_vector2d_map = project_points_to_set_with_range_correction(points_to_project, setID);
+        std::map<int, Eigen::Vector2d> points_to_vector2d_map = project_boundary_points_of_set_to_set_plane(setID);
 
         // existing edges between searched points (boundary)
         std::set<int> existing_boundary_edge_set = extract_existing_edge_between_points(searched_boundary_points_in_current_set, get_boundary_edge_set_of_set(setID));
@@ -1370,7 +1410,7 @@ private:
         if (space_down)
         {
             // step application
-            app_.step();
+            app_.loop();
             // std::cout << "Number of triangles: " << app_.get_number_of_triangles() << std::endl;
 
             // get data from app
