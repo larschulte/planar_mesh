@@ -193,12 +193,22 @@ public:
         set_to_points_map[setID].insert(newPointID);
         point_to_sets_map[newPointID].insert(setID);
 
-        // update set boundary points
-        set_to_boundary_point_set_map[setID].insert(newPointID);
+        // update set plane estimation
+        // compute
+        int size_before_this_point = set_to_points_map[setID].size() - 1;
+        Eigen::Vector3d mean = (set_to_mean_map[setID]*size_before_this_point + thisPoint) / (size_before_this_point+1);
+        Eigen::Matrix3d covariance_matrix = set_to_covariance_matrix_map[setID] + (thisPoint - mean) * (thisPoint - mean).transpose();
+        Eigen::Matrix3d eigenvectors = Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d>(covariance_matrix).eigenvectors();
+        Eigen::Vector3d normal = eigenvectors.col(0);
+        // store
+        point_to_mean_used_map[newPointID] = mean;
+        set_to_mean_map[setID] = mean;
+        set_to_covariance_matrix_map[setID] == covariance_matrix;
+        set_to_eigenvectors_map[setID] = eigenvectors;
+        set_to_normal_map[setID] = normal;
 
-        // update global boundary points
-        bool inserted = global_boundary_point_set.insert(newPointID).second;
-        if (inserted) flann.addPoint(thisPoint, newPointID);
+        // add boundary point
+        add_boundary_point(newPointID, setID);
     }
 
     void add_edge(int newEdgeID, int setID, std::array<int, 2> newEdge)
@@ -214,17 +224,13 @@ public:
         // update set to edge
         set_to_edges_map[setID].insert(newEdgeID);
 
-        // update set boundary edge and points
+        // update set boundary edge
         set_to_edge_count_map[setID][newEdgeID] = 0;
         set_to_boundary_edge_set_map[setID].insert(newEdgeID);
-        set_to_boundary_point_set_map[setID].insert(newEdge[0]);
-        set_to_boundary_point_set_map[setID].insert(newEdge[1]);
-
-        // update global boundary points
-        bool inserted0 = global_boundary_point_set.insert(newEdge[0]).second;
-        bool inserted1 = global_boundary_point_set.insert(newEdge[1]).second;
-        if (inserted0) flann.addPoint(point_to_vector3d_map[newEdge[0]], newEdge[0]);
-        if (inserted1) flann.addPoint(point_to_vector3d_map[newEdge[1]], newEdge[1]);
+    
+        // update boundary points
+        add_boundary_point(newEdge[0], setID);
+        add_boundary_point(newEdge[1], setID);
     }
 
     void add_triangle(int newTriangleID, int newSetID, std::array<int, 3> vertices)
@@ -253,74 +259,58 @@ public:
                 // udpate set boundary edge
                 set_to_boundary_edge_set_map[newSetID].insert(edge_to_point_map_reverse[edge]);
                 
-                // update set boundary points
-                set_to_boundary_point_set_map[newSetID].insert(edge[0]);
-                set_to_boundary_point_set_map[newSetID].insert(edge[1]);
-
-                // update global boundary points
-                bool inserted0 = global_boundary_point_set.insert(edge[0]).second;
-                bool inserted1 = global_boundary_point_set.insert(edge[1]).second;
-                if (inserted0) flann.addPoint(point_to_vector3d_map[edge[0]], edge[0]);
-                if (inserted1) flann.addPoint(point_to_vector3d_map[edge[1]], edge[1]);
+                // update boundary points
+                add_boundary_point(edge[0], newSetID);
+                add_boundary_point(edge[1], newSetID);
             } 
             else
             {
                 // remove from set boundary edge
                 set_to_boundary_edge_set_map[newSetID].erase(edge_to_point_map_reverse[edge]);
 
-                // remove from set boundary points (if the edge point no longer connects to a boundary edge, it is removed from boundary points)
-                for (int point_id : edge)
-                {
-                    bool is_boundary = false;
-                    for (int edge_id : point_to_edges_map[point_id])
-                    {
-                        if (set_to_boundary_edge_set_map[newSetID].find(edge_id) != set_to_boundary_edge_set_map[newSetID].end())
-                        {
-                            is_boundary = true;
-                            break;
-                        }
-                    }
-                    if (!is_boundary) set_to_boundary_point_set_map[newSetID].erase(point_id);
-                }
-
-                // remove from global boundary points (only if the point is not boundary point in any set)
-                bool is_boundary;
-
-                is_boundary = false;
-                for (int set_id : point_to_sets_map[smaller_id])
-                {
-                    if (set_to_boundary_point_set_map[set_id].find(smaller_id) != set_to_boundary_point_set_map[set_id].end())
-                    {
-                        is_boundary = true;
-                        break;
-                    }
-                }
-                if (!is_boundary) 
-                {
-                    global_boundary_point_set.erase(smaller_id);
-                    
-                    // bool erased = global_boundary_point_set.erase(smaller_id);
-                    // if (erased) flann.deletePoint(smaller_id);
-                }
-
-                is_boundary = false;
-                for (int set_id : point_to_sets_map[larger_id])
-                {
-                    if (set_to_boundary_point_set_map[set_id].find(larger_id) != set_to_boundary_point_set_map[set_id].end())
-                    {
-                        is_boundary = true;
-                        break;
-                    }
-                }
-                if (!is_boundary) 
-                {
-                    global_boundary_point_set.erase(larger_id);
-
-                    // bool erased = global_boundary_point_set.erase(larger_id);
-                    // if (erased) flann.deletePoint(larger_id);
-                }
+                // remove from boundary points (if the edge point no longer connects to a boundary edge, it is removed from boundary points)
+                remove_boundary_point(edge[0], newSetID);
+                remove_boundary_point(edge[1], newSetID);
             }
         }
+    }
+
+    void add_boundary_point(int pointID, int setID)
+    {
+        // update local boundary points
+        set_to_boundary_point_set_map[setID].insert(pointID);
+
+        // update global boundary points
+        bool inserted = global_boundary_point_set.insert(pointID).second;
+        if (inserted) flann.addPoint(point_to_vector3d_map[pointID], pointID);
+
+        // if enough points, update intersection point
+        if (set_to_points_map[setID].size() >= fit_plane_threshold)
+        {
+            Eigen::Vector3d origin = point_to_origin_vector3d_map[pointID];
+            Eigen::Vector3d endPoint = point_to_vector3d_map[pointID];
+            Eigen::Vector3d mean = set_to_mean_map[setID];
+            Eigen::Vector3d normal = set_to_normal_map[setID];
+            point_to_intersection_vector3d_map[pointID] = ray_plane_intersection(origin, endPoint, mean, normal);
+        }
+    }
+
+    void remove_boundary_point(int pointID, int setID)
+    {
+        // skip if still boundary
+        for (int edge_id : point_to_edges_map[pointID])
+        {
+            if (set_to_boundary_edge_set_map[setID].find(edge_id) != set_to_boundary_edge_set_map[setID].end()) return;
+        }
+
+        // remove from both local and global boundary points (a point can only be in one set)
+        set_to_boundary_point_set_map[setID].erase(pointID);
+        global_boundary_point_set.erase(pointID);
+
+        // // skip for now
+        // bool erased = global_boundary_point_set.erase(pointID);
+        // if (erased) flann.deletePoint(pointID);
+        
     }
 
     int getNewPointID()
@@ -1093,7 +1083,7 @@ public:
             int set_size = set_to_points_map[setID].size(); 
 
             // if large set, record distance
-            if (set_size > 10)
+            if (set_size > fit_plane_threshold)
             {
                 Eigen::Vector3d rayPlaneIntersectionPoint = ray_set_intersection(Eigen::Vector3d(0, 0, 0), thisPointVEC, setID);
                 double distance = (thisPointVEC - rayPlaneIntersectionPoint).norm();
@@ -1278,11 +1268,13 @@ private:
 
     // settings
     double distance_threshold = 0.05;
+    std::size_t fit_plane_threshold = 10; // may cause error if below 3
 
         // point
     int next_point_id = 0;
     std::vector<int> point_list;
     std::map<int, Eigen::Vector3d> point_to_origin_vector3d_map;
+    std::map<int, Eigen::Vector3d> point_to_intersection_vector3d_map;
     std::map<int, Eigen::Vector3d> point_to_vector3d_map;
     std::map<int, std::set<int>> point_to_sets_map;
     std::map<int, std::set<int>> point_to_edges_map;
@@ -1304,6 +1296,13 @@ private:
     std::map<int, std::set<int>> set_to_boundary_edge_set_map; // each set contains id to boundary edges
     std::map<int, std::set<int>> set_to_boundary_point_set_map; // each set contains id to boundary points
     std::map<int, std::map<int, int>> set_to_edge_count_map; // each map contains edge count
+
+        // plane fitting
+    std::map<int, Eigen::Vector3d> point_to_mean_used_map;
+    std::map<int, Eigen::Vector3d> set_to_mean_map;
+    std::map<int, Eigen::Matrix3d> set_to_covariance_matrix_map;
+    std::map<int, Eigen::Matrix3d> set_to_eigenvectors_map;
+    std::map<int, Eigen::Vector3d> set_to_normal_map;
     
         // edge
     int next_edge_id = 0;
@@ -1367,7 +1366,7 @@ private:
         if (space_down)
         {
             // step application
-            app_.loop();
+            app_.step();
             // std::cout << "Number of triangles: " << app_.get_number_of_triangles() << std::endl;
 
             // get data from app
