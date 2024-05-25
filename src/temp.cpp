@@ -1350,6 +1350,7 @@ private:
     std::vector<int> edge_list;
     std::map<int, std::array<int, 2>> edge_to_point_map;
     std::map<std::array<int, 2>, int> edge_to_point_map_reverse;
+    std::map<int, int> edge_to_set_map;
 
         // boundary
     flann3d flann;
