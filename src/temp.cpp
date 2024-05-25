@@ -1076,96 +1076,111 @@ public:
         return rayPlaneIntersectionPoint;
     }
 
+    Eigen::Vector3d merge_means(const Eigen::Vector3d& mean1, const Eigen::Vector3d& mean2, int size1, int size2) 
+    {
+        return (size1 * mean1 + size2 * mean2) / (size1 + size2);
+    }
+
+    Eigen::Matrix3d merge_covariances(const Eigen::Matrix3d& cov1, const Eigen::Matrix3d& cov2, 
+                                    const Eigen::Vector3d& mean1, const Eigen::Vector3d& mean2, 
+                                    const Eigen::Vector3d& combined_mean, int size1, int size2) 
+    {
+        Eigen::Matrix3d mean_diff1 = (mean1 - combined_mean) * (mean1 - combined_mean).transpose();
+        Eigen::Matrix3d mean_diff2 = (mean2 - combined_mean) * (mean2 - combined_mean).transpose();
+        Eigen::Matrix3d combined_covariance = (size1 * cov1 + size2 * cov2 + size1 * mean_diff1 + size2 * mean_diff2) / (size1 + size2);
+
+        return combined_covariance;
+    }
+
+    Eigen::Vector3d merge_means_of_sets(int setID1, int setID2) 
+    {
+        Eigen::Vector3d mean1 = set_to_mean_map[setID1];
+        Eigen::Vector3d mean2 = set_to_mean_map[setID2];
+        int size1 = set_to_points_map[setID1].size();
+        int size2 = set_to_points_map[setID2].size();
+        return merge_means(mean1, mean2, size1, size2);
+    }
+
+    Eigen::Matrix3d merge_covariances_of_sets(int setID1, int setID2) 
+    {
+        Eigen::Matrix3d cov1 = set_to_covariance_matrix_map[setID1];
+        Eigen::Matrix3d cov2 = set_to_covariance_matrix_map[setID2];
+        Eigen::Vector3d mean1 = set_to_mean_map[setID1];
+        Eigen::Vector3d mean2 = set_to_mean_map[setID2];
+        Eigen::Vector3d combined_mean = merge_means_of_sets(setID1, setID2);
+        int size1 = set_to_points_map[setID1].size();
+        int size2 = set_to_points_map[setID2].size();
+        return merge_covariances(cov1, cov2, mean1, mean2, combined_mean, size1, size2);
+    }
+
     // merge setID2 into setID1
     void merge_sets(int setID1, int setID2) 
     {
-        std::set<int> combined_points;
-        combined_points.insert(set_to_points_map[setID1].begin(), set_to_points_map[setID1].end());
-        combined_points.insert(set_to_points_map[setID2].begin(), set_to_points_map[setID2].end());
-
-        std::set<int> combined_edges;
-        combined_edges.insert(set_to_edges_map[setID1].begin(), set_to_edges_map[setID1].end());
-        combined_edges.insert(set_to_edges_map[setID2].begin(), set_to_edges_map[setID2].end());
-
-        std::set<int> combined_triangles;
-        combined_triangles.insert(set_to_triangles_map[setID1].begin(), set_to_triangles_map[setID1].end());
-        combined_triangles.insert(set_to_triangles_map[setID2].begin(), set_to_triangles_map[setID2].end());
-        
-        std::set<int> combined_boundary_points;
-        combined_boundary_points.insert(set_to_boundary_point_set_map[setID1].begin(), set_to_boundary_point_set_map[setID1].end());
-        combined_boundary_points.insert(set_to_boundary_point_set_map[setID2].begin(), set_to_boundary_point_set_map[setID2].end());
-
-        std::set<int> combined_boundary_edges;
-        combined_boundary_edges.insert(set_to_boundary_edge_set_map[setID1].begin(), set_to_boundary_edge_set_map[setID1].end());
-        combined_boundary_edges.insert(set_to_boundary_edge_set_map[setID2].begin(), set_to_boundary_edge_set_map[setID2].end());
-
-        std::map<int, int> combined_edge_count_map;
-        for (const auto& pair : set_to_edge_count_map[setID1]) combined_edge_count_map[pair.first] = pair.second;
-        for (const auto& pair : set_to_edge_count_map[setID2]) combined_edge_count_map[pair.first] = pair.second;
-
-        // recompute mean covaraince eigenvectors normal
-            // mean
-        Eigen::Vector3d mean = Eigen::Vector3d::Zero();
-        for (int point_id : combined_points)
-        {
-            mean += point_to_vector3d_map[point_id];
-        }
-        mean /= combined_points.size();
-            // covariance matrix
-        Eigen::Matrix3d covariance_matrix = Eigen::Matrix3d::Zero();
-        for (int point_id : combined_points)
-        {
-            Eigen::Vector3d point = point_to_vector3d_map[point_id];
-            covariance_matrix += (point - mean) * (point - mean).transpose();
-        }
-        covariance_matrix /= combined_points.size();
-            // eigenvectors
-        Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> solver(covariance_matrix);
-        Eigen::Matrix3d eigenvectors = solver.eigenvectors();
-            // normal
-        Eigen::Vector3d normal = eigenvectors.col(0);
-
-        // new and old ids
+        // settings
         int newSetID = setID1;
         int oldSetID = setID2;
 
-        // store
-        set_to_points_map[newSetID] = combined_points;
-        set_to_edges_map[newSetID] = combined_edges;
-        set_to_triangles_map[newSetID] = combined_triangles;
-
-        set_to_edge_count_map[newSetID] = combined_edge_count_map;
-        set_to_boundary_edge_set_map[newSetID] = combined_boundary_edges;
-        set_to_boundary_point_set_map[newSetID] = combined_boundary_points;
-
-        set_to_mean_map[newSetID] = mean;
-        set_to_covariance_matrix_map[newSetID] = covariance_matrix;
-        set_to_eigenvectors_map[newSetID] = eigenvectors;
-        set_to_normal_map[newSetID] = normal;
-
-        set_to_color_map[newSetID] = {rand() % 256, rand() % 256, rand() % 256};
+        // initialize merged statistics
+        std::set<int> combined_points;
+        std::set<int> combined_edges;
+        std::set<int> combined_triangles;
+        std::set<int> combined_boundary_points;
+        std::set<int> combined_boundary_edges;
+        std::map<int, int> combined_edge_count_map;
+        Eigen::Vector3d combined_mean;
+        Eigen::Matrix3d combined_covariance_matrix;
+        Eigen::Matrix3d combined_eigenvectors;
+        Eigen::Vector3d combined_normal;
+        std::array<int, 3> combined_color;
         
-        for (int point_id : combined_points) point_to_set_map[point_id] = newSetID;
-        for (int edge_id : combined_edges) edge_to_set_map[edge_id] = newSetID;
-        for (int triangle_id : combined_triangles) triangle_to_set_map[triangle_id] = newSetID;
+        // compute merged statistics
+        combined_points.insert(set_to_points_map[setID1].begin(), set_to_points_map[setID1].end());
+        combined_points.insert(set_to_points_map[setID2].begin(), set_to_points_map[setID2].end());
+        combined_edges.insert(set_to_edges_map[setID1].begin(), set_to_edges_map[setID1].end());
+        combined_edges.insert(set_to_edges_map[setID2].begin(), set_to_edges_map[setID2].end());
+        combined_triangles.insert(set_to_triangles_map[setID1].begin(), set_to_triangles_map[setID1].end());
+        combined_triangles.insert(set_to_triangles_map[setID2].begin(), set_to_triangles_map[setID2].end());
+        combined_boundary_points.insert(set_to_boundary_point_set_map[setID1].begin(), set_to_boundary_point_set_map[setID1].end());
+        combined_boundary_points.insert(set_to_boundary_point_set_map[setID2].begin(), set_to_boundary_point_set_map[setID2].end());
+        combined_boundary_edges.insert(set_to_boundary_edge_set_map[setID1].begin(), set_to_boundary_edge_set_map[setID1].end());
+        combined_boundary_edges.insert(set_to_boundary_edge_set_map[setID2].begin(), set_to_boundary_edge_set_map[setID2].end());
+        for (const auto& pair : set_to_edge_count_map[setID1]) combined_edge_count_map[pair.first] = pair.second;
+        for (const auto& pair : set_to_edge_count_map[setID2]) combined_edge_count_map[pair.first] = pair.second;
+        combined_mean = merge_means_of_sets(setID1, setID2);
+        combined_covariance_matrix = merge_covariances_of_sets(setID1, setID2);
+        combined_eigenvectors = Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d>(combined_covariance_matrix).eigenvectors();
+        combined_normal = combined_eigenvectors.col(0);
+        combined_color = {rand() % 256, rand() % 256, rand() % 256};
 
-        // remove
+        // remove old statistics
         set_to_points_map.erase(oldSetID);
         set_to_edges_map.erase(oldSetID);
         set_to_triangles_map.erase(oldSetID);
-
         set_to_edge_count_map.erase(oldSetID);
         set_to_boundary_edge_set_map.erase(oldSetID);
         set_to_boundary_point_set_map.erase(oldSetID);
-        
         set_to_mean_map.erase(oldSetID);
         set_to_covariance_matrix_map.erase(oldSetID);
         set_to_eigenvectors_map.erase(oldSetID);
         set_to_normal_map.erase(oldSetID);
-
         set_to_color_map.erase(oldSetID);
-
         set_list.erase(std::remove(set_list.begin(), set_list.end(), oldSetID), set_list.end());
+
+        // store merged statistics
+        set_to_points_map[newSetID] = combined_points;
+        set_to_edges_map[newSetID] = combined_edges;
+        set_to_triangles_map[newSetID] = combined_triangles;
+        set_to_edge_count_map[newSetID] = combined_edge_count_map;
+        set_to_boundary_edge_set_map[newSetID] = combined_boundary_edges;
+        set_to_boundary_point_set_map[newSetID] = combined_boundary_points;
+        set_to_mean_map[newSetID] = combined_mean;
+        set_to_covariance_matrix_map[newSetID] = combined_covariance_matrix;
+        set_to_eigenvectors_map[newSetID] = combined_eigenvectors;
+        set_to_normal_map[newSetID] = combined_normal;
+        set_to_color_map[newSetID] = combined_color;
+        for (int point_id : combined_points) point_to_set_map[point_id] = newSetID;
+        for (int edge_id : combined_edges) edge_to_set_map[edge_id] = newSetID;
+        for (int triangle_id : combined_triangles) triangle_to_set_map[triangle_id] = newSetID;        
     }
 
     void step()
@@ -1239,6 +1254,7 @@ public:
         // if the eigenvalue i.e. spread in the normal direction is small, merge the two sets
         // find the smallest two distance and their key
 
+        // check if the searched set should be merged
         int setID;
         bool merged = false;
         if (set_to_distance_map.size() >= 2)
@@ -1262,32 +1278,12 @@ public:
                 }
             }    
 
-            // compute eigenvalue of the combined set
-            std::set<int> combined_set;
-            combined_set.insert(set_to_points_map[key1].begin(), set_to_points_map[key1].end());
-            combined_set.insert(set_to_points_map[key2].begin(), set_to_points_map[key2].end());
-
-            // compute eigenvalue of the combined set
-            Eigen::Vector3d mean = Eigen::Vector3d::Zero();
-            for (int point_id : combined_set)
-            {
-                mean += point_to_vector3d_map[point_id];
-            }
-            mean /= combined_set.size();
-
-            Eigen::Matrix3d covariance_matrix = Eigen::Matrix3d::Zero();
-            for (int point_id : combined_set)
-            {
-                Eigen::Vector3d point = point_to_vector3d_map[point_id];
-                covariance_matrix += (point - mean) * (point - mean).transpose();
-            }
-            covariance_matrix /= combined_set.size();
-
-            Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> eigen_solver(covariance_matrix);
-            double eigenvalue = eigen_solver.eigenvalues()[0];
+            // compute eigenvalue of the merged set
+            Eigen::Matrix3d new_covariance_matrix = merge_covariances_of_sets(key1, key2);
+            double eigenvalue = Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d>(new_covariance_matrix).eigenvalues()[0];
 
             // if the eigenvalue is small, merge the two sets
-            double eigenvalue_threshold = 10e-5;
+            double eigenvalue_threshold = 15e-5;
             if (eigenvalue < eigenvalue_threshold)
             {
                 // merge the two sets
@@ -1568,7 +1564,16 @@ private:
         if (space_down)
         {
             // step application
-            app_.loop();
+            app_.step();
+            app_.step();
+            app_.step();
+            app_.step();
+            app_.step();
+            app_.step();
+            app_.step();
+            app_.step();
+            app_.step();
+            app_.step();
             // std::cout << "Number of triangles: " << app_.get_number_of_triangles() << std::endl;
 
             // get data from app
