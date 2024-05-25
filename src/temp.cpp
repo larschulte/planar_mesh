@@ -189,23 +189,27 @@ public:
         point_to_vector3d_map[newPointID] = thisPoint;
         point_to_origin_vector3d_map[newPointID] = origin;
 
+        // update plane estimation https://stats.stackexchange.com/questions/26123/efficient-method-technique-to-update-covariance-matrix
+        // compute
+        double old_size = static_cast<double>(set_to_points_map[setID].size()); // use double since will involve division later
+        double new_size = old_size + 1;
+        Eigen::Vector3d old_mean = set_to_mean_map[setID];
+        Eigen::Vector3d new_mean = (old_mean * old_size + thisPoint) / new_size;
+        Eigen::Matrix3d old_covariance_matrix = set_to_covariance_matrix_map[setID];
+        Eigen::Matrix3d new_covariance_matrix = (old_size / new_size) * old_covariance_matrix + (old_size / (new_size * new_size)) * (thisPoint - new_mean) * (thisPoint - new_mean).transpose();
+        Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> solver(new_covariance_matrix);
+        Eigen::Matrix3d eigenvectors = solver.eigenvectors();
+        Eigen::Vector3d normal = eigenvectors.col(0); // Assuming the smallest eigenvalue corresponds to the normal
+        // store
+        point_to_mean_used_map[newPointID] = old_mean;
+        set_to_mean_map[setID] = new_mean;
+        set_to_covariance_matrix_map[setID] = new_covariance_matrix;
+        set_to_eigenvectors_map[setID] = eigenvectors;
+        set_to_normal_map[setID] = normal;
+
         // add to set
         set_to_points_map[setID].insert(newPointID);
         point_to_sets_map[newPointID].insert(setID);
-
-        // update set plane estimation
-        // compute
-        int size_before_this_point = set_to_points_map[setID].size() - 1;
-        Eigen::Vector3d mean = (set_to_mean_map[setID]*size_before_this_point + thisPoint) / (size_before_this_point+1);
-        Eigen::Matrix3d covariance_matrix = set_to_covariance_matrix_map[setID] + (thisPoint - mean) * (thisPoint - mean).transpose();
-        Eigen::Matrix3d eigenvectors = Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d>(covariance_matrix).eigenvectors();
-        Eigen::Vector3d normal = eigenvectors.col(0);
-        // store
-        point_to_mean_used_map[newPointID] = mean;
-        set_to_mean_map[setID] = mean;
-        set_to_covariance_matrix_map[setID] == covariance_matrix;
-        set_to_eigenvectors_map[setID] = eigenvectors;
-        set_to_normal_map[setID] = normal;
 
         // add boundary point
         add_boundary_point(newPointID, setID);
