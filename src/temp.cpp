@@ -1183,164 +1183,25 @@ public:
         for (int triangle_id : combined_triangles) triangle_to_set_map[triangle_id] = newSetID;        
     }
 
-    void step()
+    std::set<int> extract_points_by_setID(std::set<int> point_set, int setID)
     {
-        // for each point in new cloud
-        if (i >= new_cloud->size()) return;
-        std::cout << "Processing point " << i << " / " << new_cloud->size() << std::endl;
-        Eigen::Vector3d thisPointVEC = new_cloud->points[i].getVector3fMap().cast<double>();
-        Eigen::Vector3d thisPointOriginVEC = Eigen::Vector3d(0, 0, 0);
-        i ++;
-        
-        // get new point id
-        int newPointID = getNewPointID();
-        
-        // if empty, can not set up radius search, add point to new set
-        if (global_boundary_point_set.size() == 0)
+        // initialize
+        std::set<int> out_point_set;
+
+        // process
+        for (int point_id : point_set)
         {
-            int newSetID = getNewSetID();
-            add_point(newPointID, newSetID, thisPointVEC, thisPointOriginVEC);
-            return;
+            if (point_to_set_map[point_id] == setID) out_point_set.insert(point_id);
         }
 
-        // radius search size
-        double search_size = 0.2;
+        // return
+        return out_point_set;
+    }
 
-        // perform flann3d radius search
-        std::set<int> searched_boundary_points_set = flann.radiusSearch(thisPointVEC, search_size);
-        searched_boundary_points_set = intersection_of_sets(searched_boundary_points_set, global_boundary_point_set);
 
-        // if no searched results, add point to new set
-        if (searched_boundary_points_set.size() == 0)
-        {
-            int newSetID = getNewSetID();
-            add_point(newPointID, newSetID, thisPointVEC, thisPointOriginVEC);
-            return;
-        }
-
-        // for each sets of searched points
-        std::map<int, std::set<int>> set_to_searched_points_map = group_points_by_set(searched_boundary_points_set);
-
-        // record size and distance
-        std::map<int, std::size_t> small_set_to_size_map;
-        std::map<int, double> set_to_distance_map;
-        for (const auto& pair : set_to_searched_points_map)
-        {
-            // set id and points
-            int setID = pair.first;
-            std::set<int> searched_boundary_points_in_current_set = pair.second;
-            std::size_t set_size = set_to_points_map[setID].size(); 
-
-            // if large set, record distance
-            if (set_size > fit_plane_threshold)
-            {
-                Eigen::Vector3d mean = set_to_mean_map[setID];
-                Eigen::Vector3d normal = set_to_normal_map[setID];
-                Eigen::Vector3d rayPlaneIntersectionPoint = ray_plane_intersection(thisPointOriginVEC, thisPointVEC, mean, normal);
-
-                double distance = (thisPointVEC - rayPlaneIntersectionPoint).norm();
-                set_to_distance_map[setID] = abs(distance);
-            }
-            // if small set, record size
-            else 
-            {
-                small_set_to_size_map[setID] = set_size;
-            }
-        }
-
-        // first print the eigenvalue of existing plane to get an idea
-        // list out all sets that are within distance
-        // compute the covariance matrix and eigenvalue of the combined set, 
-        // if the eigenvalue i.e. spread in the normal direction is small, merge the two sets
-        // find the smallest two distance and their key
-
-        // check if the searched set should be merged
-        int setID;
-        bool merged = false;
-        if (set_to_distance_map.size() >= 2)
-        {
-            // Initialize to maximum double values
-            double minDistance = std::numeric_limits<double>::max();
-            double secondMinDistance = std::numeric_limits<double>::max();
-            int key1 = -1;
-            int key2 = -1;
-
-            // Iterate through the map to find the smallest and second smallest distances
-            for (const auto& pair : set_to_distance_map) {
-                if (pair.second < minDistance) {
-                    secondMinDistance = minDistance;
-                    minDistance = pair.second;
-                    key2 = key1;
-                    key1 = pair.first;
-                } else if (pair.second < secondMinDistance) {
-                    secondMinDistance = pair.second;
-                    key2 = pair.first;
-                }
-            }    
-
-            // compute eigenvalue of the merged set
-            Eigen::Matrix3d new_covariance_matrix = merge_covariances_of_sets(key1, key2);
-            double eigenvalue = Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d>(new_covariance_matrix).eigenvalues()[0];
-
-            // if the eigenvalue is small, merge the two sets
-            double eigenvalue_threshold = 15e-5;
-            if (eigenvalue < eigenvalue_threshold)
-            {
-                // merge the two sets
-                merge_sets(key1, key2);
-                setID = key1;
-                merged = true;
-            }
-        }
-        
-        if (!merged)
-        {
-            // find the smallest distance and largest size
-            int smallest_distance_key;
-            double smallest_distance_value = std::numeric_limits<double>::max();
-            for (const auto& pair : set_to_distance_map)
-            {
-                if (pair.second < smallest_distance_value) 
-                {
-                    smallest_distance_key = pair.first;
-                    smallest_distance_value = pair.second;
-                }
-            }
-            int largest_size_key;
-            std::size_t largest_size_value = 0;
-            for (const auto& pair : small_set_to_size_map)
-            {
-                if (pair.second > largest_size_value) 
-                {
-                    largest_size_key = pair.first;
-                    largest_size_value = pair.second;
-                }
-            }
-
-            // compute the set to add to
-            if (smallest_distance_value < distance_threshold)
-            {
-                setID = smallest_distance_key;
-                
-            }
-            else if (largest_size_value > 0)
-            {
-                setID = largest_size_key;
-            }
-            else
-            {
-                setID = getNewSetID(); 
-                add_point(newPointID, setID, thisPointVEC, thisPointOriginVEC);
-                return;
-            }
-        }
-
-        // get the searched points in the set
-        std::set<int> searched_boundary_points_in_current_set = set_to_searched_points_map[setID];
-
-        // add point
-        add_point(newPointID, setID, thisPointVEC, thisPointOriginVEC);
-
+    // creates edges and triangles that connects the new point to the set
+    void connect_point_to_set(int newPointID, int setID, std::set<int> searched_boundary_points_in_current_set)
+    {
         // points_to_vector2d_map
         std::map<int, Eigen::Vector2d> points_to_vector2d_map = project_boundary_points_of_set_to_set_plane(setID);
 
@@ -1391,6 +1252,139 @@ public:
             int newTriangleID = getNewTriangleID();
             add_triangle(newTriangleID, setID, newTriangle);
         }
+    }
+
+    void step()
+    {
+        // for each point in new cloud
+        if (i >= new_cloud->size()) return;
+        std::cout << "Processing point " << i << " / " << new_cloud->size() << std::endl;
+        Eigen::Vector3d thisPointVEC = new_cloud->points[i].getVector3fMap().cast<double>();
+        Eigen::Vector3d thisPointOriginVEC = Eigen::Vector3d(0, 0, 0);
+        i ++;
+        
+        // get new point id
+        int newPointID = getNewPointID();
+        
+        // if empty, can not set up radius search, add point to new set
+        if (global_boundary_point_set.size() == 0)
+        {
+            int newSetID = getNewSetID();
+            add_point(newPointID, newSetID, thisPointVEC, thisPointOriginVEC);
+            return;
+        }
+
+        // radius search size
+        double search_size = 0.2;
+
+        // perform flann3d radius search
+        std::set<int> searched_boundary_points_set = flann.radiusSearch(thisPointVEC, search_size);
+        searched_boundary_points_set = intersection_of_sets(searched_boundary_points_set, global_boundary_point_set);
+
+        // if no searched results, add point to new set
+        if (searched_boundary_points_set.size() == 0)
+        {
+            int newSetID = getNewSetID();
+            add_point(newPointID, newSetID, thisPointVEC, thisPointOriginVEC);
+            return;
+        }
+
+        // from searched points identify neighboring sets
+        std::set<int> neighboring_sets; 
+        for (int point_id : searched_boundary_points_set)
+        {
+            neighboring_sets.insert(point_to_set_map[point_id]);
+        }
+
+        // try merging the neighboring sets
+        while (true) 
+        {
+            // get all possible pairs to merge
+            std::set<std::pair<int, int>> pairs_set;
+            for (int setID1 : neighboring_sets) 
+            {
+                for (int setID2 : neighboring_sets) 
+                {
+                    if (setID1 >= setID2) continue;
+                    pairs_set.insert(std::make_pair(setID1, setID2));
+                }
+            }
+            
+            // try to merge pairs
+            bool again = false;
+            for (const auto& pairs : pairs_set) 
+            {
+                // skip if can't merge
+                Eigen::Matrix3d covariance_matrix = merge_covariances_of_sets(pairs.first, pairs.second);
+                double eigenvalue = Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d>(covariance_matrix).eigenvalues()[0];
+                if (eigenvalue > merged_eigenvalue_threshold) continue;
+
+                // merge second id into first one
+                merge_sets(pairs.first, pairs.second);
+                neighboring_sets.erase(pairs.second);
+
+                // once merged, restart
+                again = true;
+                break;
+            }
+            if (!again) break;
+        }
+
+        // split neighboring sets into sets with plane and sets without plane (by size)
+        std::set<int> sets_with_plane;
+        std::set<int> sets_without_plane;
+        for (int setID : neighboring_sets)
+        {
+            if (set_to_points_map[setID].size() > fit_plane_threshold) sets_with_plane.insert(setID);
+            else sets_without_plane.insert(setID);
+        }
+        
+        // for sets with plane, find the set that is closest to the point
+        int closest_setID;
+        double closest_distance = std::numeric_limits<double>::max();
+        for (int setID : sets_with_plane)
+        {
+            // compute distance
+            Eigen::Vector3d mean = set_to_mean_map[setID];
+            Eigen::Vector3d normal = set_to_normal_map[setID];
+            Eigen::Vector3d rayPlaneIntersectionPoint = ray_plane_intersection(thisPointOriginVEC, thisPointVEC, mean, normal);
+            double distance = (thisPointVEC - rayPlaneIntersectionPoint).norm();
+
+            // update if closer
+            if (distance < closest_distance)
+            {
+                closest_distance = distance;
+                closest_setID = setID;
+            }
+        }
+        if (closest_distance < distance_threshold)
+        {
+            add_point(newPointID, closest_setID, thisPointVEC, thisPointOriginVEC);            
+            connect_point_to_set(newPointID, closest_setID, extract_points_by_setID(searched_boundary_points_set, closest_setID));
+            return;
+        }
+
+        // else, find the set with the largest size
+        int largest_setID;
+        std::size_t largest_size = 0;
+        for (int setID : sets_without_plane)
+        {
+            if (set_to_points_map[setID].size() > largest_size)
+            {
+                largest_size = set_to_points_map[setID].size();
+                largest_setID = setID;
+            }
+        }
+        if (largest_size > 0)
+        {
+            add_point(newPointID, largest_setID, thisPointVEC, thisPointOriginVEC);
+            connect_point_to_set(newPointID, largest_setID, extract_points_by_setID(searched_boundary_points_set, largest_setID));
+            return;
+        }
+
+        // else, add the point to a new set
+        int newSetID = getNewSetID();
+        add_point(newPointID, newSetID, thisPointVEC, thisPointOriginVEC);
     }
 
     void loop()
@@ -1466,6 +1460,7 @@ private:
     // settings
     double distance_threshold = 0.05;
     std::size_t fit_plane_threshold = 10; // may cause error if below 3
+    double merged_eigenvalue_threshold = 15e-5;
 
         // point
     int next_point_id = 0;
@@ -1564,16 +1559,7 @@ private:
         if (space_down)
         {
             // step application
-            app_.step();
-            app_.step();
-            app_.step();
-            app_.step();
-            app_.step();
-            app_.step();
-            app_.step();
-            app_.step();
-            app_.step();
-            app_.step();
+            app_.loop();
             // std::cout << "Number of triangles: " << app_.get_number_of_triangles() << std::endl;
 
             // get data from app
