@@ -965,11 +965,14 @@ public:
         // process
         for (int point_id : set_to_boundary_point_set_map[setID])
         {
-            // update if not available (todo - update if not accurate enough)
-            if (point_to_intersection_vector3d_map.find(point_id) == point_to_intersection_vector3d_map.end())
-            {
+            // // update if not available (todo - update if not accurate enough)
+            // if (point_to_intersection_vector3d_map.find(point_id) == point_to_intersection_vector3d_map.end())
+            // {
+            //     point_to_intersection_vector3d_map[point_id] = point_set_intersection(point_id, setID);
+            // }
+
+            // always update for now
             point_to_intersection_vector3d_map[point_id] = point_set_intersection(point_id, setID);
-            }
 
             // get intersection point
             Eigen::Vector3d rayPlaneIntersectionPoint = point_to_intersection_vector3d_map[point_id];
@@ -1073,6 +1076,97 @@ public:
         return rayPlaneIntersectionPoint;
     }
 
+    // merge setID2 into setID1
+    void merge_sets(int setID1, int setID2) 
+    {
+        std::set<int> combined_points;
+        combined_points.insert(set_to_points_map[setID1].begin(), set_to_points_map[setID1].end());
+        combined_points.insert(set_to_points_map[setID2].begin(), set_to_points_map[setID2].end());
+
+        std::set<int> combined_edges;
+        combined_edges.insert(set_to_edges_map[setID1].begin(), set_to_edges_map[setID1].end());
+        combined_edges.insert(set_to_edges_map[setID2].begin(), set_to_edges_map[setID2].end());
+
+        std::set<int> combined_triangles;
+        combined_triangles.insert(set_to_triangles_map[setID1].begin(), set_to_triangles_map[setID1].end());
+        combined_triangles.insert(set_to_triangles_map[setID2].begin(), set_to_triangles_map[setID2].end());
+        
+        std::set<int> combined_boundary_points;
+        combined_boundary_points.insert(set_to_boundary_point_set_map[setID1].begin(), set_to_boundary_point_set_map[setID1].end());
+        combined_boundary_points.insert(set_to_boundary_point_set_map[setID2].begin(), set_to_boundary_point_set_map[setID2].end());
+
+        std::set<int> combined_boundary_edges;
+        combined_boundary_edges.insert(set_to_boundary_edge_set_map[setID1].begin(), set_to_boundary_edge_set_map[setID1].end());
+        combined_boundary_edges.insert(set_to_boundary_edge_set_map[setID2].begin(), set_to_boundary_edge_set_map[setID2].end());
+
+        std::map<int, int> combined_edge_count_map;
+        for (const auto& pair : set_to_edge_count_map[setID1]) combined_edge_count_map[pair.first] = pair.second;
+        for (const auto& pair : set_to_edge_count_map[setID2]) combined_edge_count_map[pair.first] = pair.second;
+
+        // recompute mean covaraince eigenvectors normal
+            // mean
+        Eigen::Vector3d mean = Eigen::Vector3d::Zero();
+        for (int point_id : combined_points)
+        {
+            mean += point_to_vector3d_map[point_id];
+        }
+        mean /= combined_points.size();
+            // covariance matrix
+        Eigen::Matrix3d covariance_matrix = Eigen::Matrix3d::Zero();
+        for (int point_id : combined_points)
+        {
+            Eigen::Vector3d point = point_to_vector3d_map[point_id];
+            covariance_matrix += (point - mean) * (point - mean).transpose();
+        }
+        covariance_matrix /= combined_points.size();
+            // eigenvectors
+        Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> solver(covariance_matrix);
+        Eigen::Matrix3d eigenvectors = solver.eigenvectors();
+            // normal
+        Eigen::Vector3d normal = eigenvectors.col(0);
+
+        // new and old ids
+        int newSetID = setID1;
+        int oldSetID = setID2;
+
+        // store
+        set_to_points_map[newSetID] = combined_points;
+        set_to_edges_map[newSetID] = combined_edges;
+        set_to_triangles_map[newSetID] = combined_triangles;
+
+        set_to_edge_count_map[newSetID] = combined_edge_count_map;
+        set_to_boundary_edge_set_map[newSetID] = combined_boundary_edges;
+        set_to_boundary_point_set_map[newSetID] = combined_boundary_points;
+
+        set_to_mean_map[newSetID] = mean;
+        set_to_covariance_matrix_map[newSetID] = covariance_matrix;
+        set_to_eigenvectors_map[newSetID] = eigenvectors;
+        set_to_normal_map[newSetID] = normal;
+
+        set_to_color_map[newSetID] = {rand() % 256, rand() % 256, rand() % 256};
+        
+        for (int point_id : combined_points) point_to_set_map[point_id] = newSetID;
+        for (int edge_id : combined_edges) edge_to_set_map[edge_id] = newSetID;
+        for (int triangle_id : combined_triangles) triangle_to_set_map[triangle_id] = newSetID;
+
+        // remove
+        set_to_points_map.erase(oldSetID);
+        set_to_edges_map.erase(oldSetID);
+        set_to_triangles_map.erase(oldSetID);
+
+        set_to_edge_count_map.erase(oldSetID);
+        set_to_boundary_edge_set_map.erase(oldSetID);
+        set_to_boundary_point_set_map.erase(oldSetID);
+        
+        set_to_mean_map.erase(oldSetID);
+        set_to_covariance_matrix_map.erase(oldSetID);
+        set_to_eigenvectors_map.erase(oldSetID);
+        set_to_normal_map.erase(oldSetID);
+
+        set_to_color_map.erase(oldSetID);
+
+        set_list.erase(std::remove(set_list.begin(), set_list.end(), oldSetID), set_list.end());
+    }
 
     void step()
     {
@@ -1139,44 +1233,110 @@ public:
             }
         }
 
-        // find the smallest distance and largest size
-        int smallest_distance_key;
-        double smallest_distance_value = std::numeric_limits<double>::max();
-        for (const auto& pair : set_to_distance_map)
-        {
-            if (pair.second < smallest_distance_value) 
-            {
-                smallest_distance_key = pair.first;
-                smallest_distance_value = pair.second;
-            }
-        }
-        int largest_size_key;
-        std::size_t largest_size_value = 0;
-        for (const auto& pair : small_set_to_size_map)
-        {
-            if (pair.second > largest_size_value) 
-            {
-                largest_size_key = pair.first;
-                largest_size_value = pair.second;
-            }
-        }
+        // first print the eigenvalue of existing plane to get an idea
+        // list out all sets that are within distance
+        // compute the covariance matrix and eigenvalue of the combined set, 
+        // if the eigenvalue i.e. spread in the normal direction is small, merge the two sets
+        // find the smallest two distance and their key
 
-        // compute the set to add to
         int setID;
-        if (smallest_distance_value < distance_threshold)
+        bool merged = false;
+        if (set_to_distance_map.size() >= 2)
         {
-            setID = smallest_distance_key;
-            
+            // Initialize to maximum double values
+            double minDistance = std::numeric_limits<double>::max();
+            double secondMinDistance = std::numeric_limits<double>::max();
+            int key1 = -1;
+            int key2 = -1;
+
+            // Iterate through the map to find the smallest and second smallest distances
+            for (const auto& pair : set_to_distance_map) {
+                if (pair.second < minDistance) {
+                    secondMinDistance = minDistance;
+                    minDistance = pair.second;
+                    key2 = key1;
+                    key1 = pair.first;
+                } else if (pair.second < secondMinDistance) {
+                    secondMinDistance = pair.second;
+                    key2 = pair.first;
+                }
+            }    
+
+            // compute eigenvalue of the combined set
+            std::set<int> combined_set;
+            combined_set.insert(set_to_points_map[key1].begin(), set_to_points_map[key1].end());
+            combined_set.insert(set_to_points_map[key2].begin(), set_to_points_map[key2].end());
+
+            // compute eigenvalue of the combined set
+            Eigen::Vector3d mean = Eigen::Vector3d::Zero();
+            for (int point_id : combined_set)
+            {
+                mean += point_to_vector3d_map[point_id];
+            }
+            mean /= combined_set.size();
+
+            Eigen::Matrix3d covariance_matrix = Eigen::Matrix3d::Zero();
+            for (int point_id : combined_set)
+            {
+                Eigen::Vector3d point = point_to_vector3d_map[point_id];
+                covariance_matrix += (point - mean) * (point - mean).transpose();
+            }
+            covariance_matrix /= combined_set.size();
+
+            Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> eigen_solver(covariance_matrix);
+            double eigenvalue = eigen_solver.eigenvalues()[0];
+
+            // if the eigenvalue is small, merge the two sets
+            double eigenvalue_threshold = 10e-5;
+            if (eigenvalue < eigenvalue_threshold)
+            {
+                // merge the two sets
+                merge_sets(key1, key2);
+                setID = key1;
+                merged = true;
+            }
         }
-        else if (largest_size_value > 0)
+        
+        if (!merged)
         {
-            setID = largest_size_key;
-        }
-        else
-        {
-            setID = getNewSetID(); 
-            add_point(newPointID, setID, thisPointVEC, thisPointOriginVEC);
-            return;
+            // find the smallest distance and largest size
+            int smallest_distance_key;
+            double smallest_distance_value = std::numeric_limits<double>::max();
+            for (const auto& pair : set_to_distance_map)
+            {
+                if (pair.second < smallest_distance_value) 
+                {
+                    smallest_distance_key = pair.first;
+                    smallest_distance_value = pair.second;
+                }
+            }
+            int largest_size_key;
+            std::size_t largest_size_value = 0;
+            for (const auto& pair : small_set_to_size_map)
+            {
+                if (pair.second > largest_size_value) 
+                {
+                    largest_size_key = pair.first;
+                    largest_size_value = pair.second;
+                }
+            }
+
+            // compute the set to add to
+            if (smallest_distance_value < distance_threshold)
+            {
+                setID = smallest_distance_key;
+                
+            }
+            else if (largest_size_value > 0)
+            {
+                setID = largest_size_key;
+            }
+            else
+            {
+                setID = getNewSetID(); 
+                add_point(newPointID, setID, thisPointVEC, thisPointOriginVEC);
+                return;
+            }
         }
 
         // get the searched points in the set
