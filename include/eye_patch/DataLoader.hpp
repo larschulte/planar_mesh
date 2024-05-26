@@ -130,6 +130,14 @@ template <typename PointT>
 class DataLoader
 {
 public:
+    DataLoader(){}
+
+    void load_dataset(std::string pcd_file_folder, std::string pose_file_path)
+    {
+        pcd_file_list_ = read_under_folder(pcd_file_folder);
+        file_to_pose_map_ = create_file_to_pose_map(pcd_file_list_, pose_file_path);
+    }
+
     DataLoader(std::string pcd_file_folder, std::string pose_file_path)
     {
         pcd_file_list_ = read_under_folder(pcd_file_folder);

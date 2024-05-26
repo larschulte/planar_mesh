@@ -144,38 +144,6 @@ template <typename PointT>
 class Application
 {
 public:
-    Application() 
-    {
-        /* 
-        - when a new point comes in, check intersected triangle
-        - if have intersection
-            - from the intersected triangle, retrieve the set
-            - from the set, check relation of the point with the set
-            - cases
-                - within - add the point to the set and to the triangle
-                - in front of - move to "no intersection" process
-                - behind
-                    - remove the triangle from the set
-                    - recompute boundary edge and edge points
-                    - for each point within the triangle, re-add them to the map
-        - if no intersection with any triangles
-            - perform radius search on edge points
-                - from the edge points identify the set / planes
-                - if new point does not match found planes
-                    - add the new point as new set
-                - if new point match found planes
-                    - form edge to the found edge points
-                    - form triangle between the new point and any two edge points that have a boundary edge between them
-                    - the triangle is added to the set and the boundary edge and points are recomputed
-        */
-
-        // input data
-        std::string pcd_file_folder = "/home/jiahao/datasets/bag2pcd_output/mission2_reverse/slam_clouds/";
-        std::string pose_file_path = "/home/jiahao/datasets/bag2pcd_output/mission2_reverse/slam_poses/slam_poss_graph.slam";
-        DataLoader<VilensPointT> data_loader(pcd_file_folder, pose_file_path);
-        int i1 = 0;
-        new_cloud = data_loader.get_cloud(i1);        
-    }
 
     // want boundary edge and points to prevent overlapping triangles
     // to add a new point to mesh
@@ -1416,17 +1384,42 @@ public:
         add_point(newPointID, newSetID, thisPointVEC, thisPointOriginVEC);
     }
 
+
+    typename pcl::PointCloud<PointT>::Ptr 
+    transform_cloud_to_global(typename pcl::PointCloud<PointT>::Ptr cloud, Eigen::Affine3d pose_eigen)
+    {
+        // transform point cloud
+        typename pcl::PointCloud<PointT>::Ptr transformed_cloud (new pcl::PointCloud<PointT> ());
+        pcl::transformPointCloud (*cloud, *transformed_cloud, pose_eigen);
+        return transformed_cloud;
+    }
+
     void step()
     {
-        // for each point in new cloud
-        if (i >= new_cloud->size()) return;
-        std::cout << "Processing point " << i << " / " << new_cloud->size() << std::endl;
-        Eigen::Vector3d thisPointVEC = new_cloud->points[i].getVector3fMap().cast<double>();
-        Eigen::Vector3d thisPointOriginVEC = Eigen::Vector3d(0, 0, 0);
-        i ++;
+        // if all points are processed
+        if (ith_cloud == -1 || ith_point >= pointcloud->size()) 
+        {
+            // next cloud
+            ith_cloud++;
+            ith_point = 0;
+
+            // load data
+            auto pointcloud_local = data_loader.get_cloud(ith_cloud);
+            auto pose = data_loader.get_pose(ith_cloud);
+            pointcloud = transform_cloud_to_global(pointcloud_local, pose);
+            origin = pose.translation();
+        }
+        std::cout << "Processing point " << ith_point << " / " << pointcloud->size() << " in pointcloud " << ith_cloud << std::endl;
+
+        // get point
+        Eigen::Vector3d thisPointVEC = pointcloud->points[ith_point].getVector3fMap().cast<double>();
+        Eigen::Vector3d thisPointOriginVEC = origin;
+        ith_point ++;
         
         // get new point id
         int newPointID = getNewPointID();
+        
+        // add point by triangle intersection
         
         // add point by radius search
         add_point_by_radius_search(newPointID, thisPointVEC, thisPointOriginVEC);
@@ -1434,13 +1427,45 @@ public:
 
     void loop()
     {
+        step();
+
         // finish all points in step
-        while (i < new_cloud->size())
+        while (ith_point < pointcloud->size())
         {
             step();
         }
     }
 
+    Application() 
+    {
+        /* 
+        - when a new point comes in, check intersected triangle
+        - if have intersection
+            - from the intersected triangle, retrieve the set
+            - from the set, check relation of the point with the set
+            - cases
+                - within - add the point to the set and to the triangle
+                - in front of - move to "no intersection" process
+                - behind
+                    - remove the triangle from the set
+                    - recompute boundary edge and edge points
+                    - for each point within the triangle, re-add them to the map
+        - if no intersection with any triangles
+            - perform radius search on edge points
+                - from the edge points identify the set / planes
+                - if new point does not match found planes
+                    - add the new point as new set
+                - if new point match found planes
+                    - form edge to the found edge points
+                    - form triangle between the new point and any two edge points that have a boundary edge between them
+                    - the triangle is added to the set and the boundary edge and points are recomputed
+        */
+
+        // input data
+        std::string pcd_file_folder = "/home/jiahao/datasets/bag2pcd_output/mission2_reverse/slam_clouds/";
+        std::string pose_file_path = "/home/jiahao/datasets/bag2pcd_output/mission2_reverse/slam_poses/slam_poss_graph.slam";
+        data_loader.load_dataset(pcd_file_folder, pose_file_path);
+    }
 
     std::map<int, Eigen::Vector3d> get_point_to_vector3d_map() {return point_to_vector3d_map;};
     std::map<int, std::array<int, 2>> get_edge_to_vertices_map() {return edge_to_point_map;};
@@ -1499,8 +1524,14 @@ public:
 
     
 private:
-    std::size_t i = 0;
-    typename pcl::PointCloud<VilensPointT>::Ptr new_cloud;
+    // data
+    DataLoader<VilensPointT> data_loader;
+    typename pcl::PointCloud<VilensPointT>::Ptr pointcloud;
+    Eigen::Vector3d origin;
+
+    int ith_cloud = -1;
+    std::size_t ith_point = -1;
+    
 
     // settings
     double distance_threshold = 0.05;
