@@ -1522,6 +1522,14 @@ public:
         return triangle_to_vertices_map.size();
     }
 
+    void change_color()
+    {
+        for (int setID : set_list)
+        {
+            set_to_color_map[setID] = {rand() % 256, rand() % 256, rand() % 256};
+        }
+    }
+
     
 private:
     // data
@@ -1630,26 +1638,8 @@ private:
 
     pcl::visualization::PCLVisualizer::Ptr viewer_;
     
-    void keyboard_callback(const pcl::visualization::KeyboardEvent &event, void*) 
+    void update_display()
     {
-        if (event.getKeySym() == "space" && event.keyDown())
-        {
-            app_.step();
-            app_.step();
-            app_.step();
-            app_.step();
-            app_.step();
-            app_.step();
-            app_.step();
-            app_.step();
-            app_.step();
-            app_.step();
-        }
-        if (event.getKeySym() == "1" && event.keyDown())
-        {
-            app_.step();
-        }
-
         // get data from app
         std::map<int, Eigen::Vector3d> point_to_vector3d_map = app_.get_point_to_vector3d_map();
         std::map<int, std::array<int, 2>> edge_to_vertices_map = app_.get_edge_to_vertices_map();
@@ -1701,6 +1691,41 @@ private:
         pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> intensity_handler(intensity_cloud);
         viewer_->updatePointCloud<pcl::PointXYZRGB>(intensity_cloud, intensity_handler, "cloud");
         viewer_->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 6, "cloud");
+    }
+
+    void keyboard_callback(const pcl::visualization::KeyboardEvent &event, void*) 
+    {
+        // std::cout << "key pressed: " << event.getKeySym() << std::endl;
+
+        if (event.getKeySym() == "space" && event.keyDown())
+        {
+            app_.step();
+            app_.step();
+            app_.step();
+            app_.step();
+            app_.step();
+            app_.step();
+            app_.step();
+            app_.step();
+            app_.step();
+            app_.step();
+            update_display();
+        }
+        if (event.getKeySym() == "1" && event.keyDown())
+        {
+            app_.step();
+            update_display();
+        }
+        if (event.getKeySym() == "0" && event.keyDown())
+        {
+            app_.loop();
+            update_display();
+        }
+        if (event.getKeySym() == "Tab" && event.keyDown())
+        {
+            app_.change_color();
+            update_display();
+        }
     }  
 };
 
