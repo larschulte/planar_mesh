@@ -1015,7 +1015,8 @@ public:
         Eigen::Vector3d rayDirection = (rayEndPoint - rayOrigin).normalized();
         if (planeNormal.dot(rayDirection) == 0)
         {
-            return Eigen::Vector3d(NAN, NAN, NAN);
+            // terminate programe by throwing an error
+            throw std::invalid_argument("Ray and plane are perpendicular");
         }
 
         // compute intersection
@@ -1403,8 +1404,8 @@ public:
             ith_point = 0;
 
             // load data
-            auto pointcloud_local = data_loader.get_cloud(ith_cloud);
-            auto pose = data_loader.get_pose(ith_cloud);
+            typename pcl::PointCloud<PointT>::Ptr pointcloud_local = data_loader.get_cloud(ith_cloud);
+            Eigen::Affine3d pose = data_loader.get_pose(ith_cloud);
             pointcloud = transform_cloud_to_global(pointcloud_local, pose);
             origin = pose.translation();
         }
