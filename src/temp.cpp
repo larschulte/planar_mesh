@@ -1469,7 +1469,8 @@ public:
 
     std::map<int, Eigen::Vector3d> get_point_to_vector3d_map() {return point_to_vector3d_map;};
     std::map<int, std::array<int, 2>> get_edge_to_vertices_map() {return edge_to_point_map;};
-    
+    std::map<int, std::array<int, 3>> get_triangle_to_vertices_map() {return triangle_to_vertices_map;};
+
     pcl::PointCloud<pcl::PointXYZ>::Ptr point_to_vector3d_cloud()
     {
         return point_to_vector3d_cloud(point_list);
@@ -1614,6 +1615,10 @@ public:
         viewer_->initCameraParameters();
         viewer_->addCoordinateSystem(1);
 
+        // triangle mesh
+        pcl::PolygonMesh triangle_mesh;
+        viewer_->addPolygonMesh(triangle_mesh, "triangle_mesh");
+
         // mesh
         pcl::PolygonMesh mesh;
         viewer_->addPolylineFromPolygonMesh(mesh, "polyline");
@@ -1643,8 +1648,23 @@ private:
         // get data from app
         std::map<int, Eigen::Vector3d> point_to_vector3d_map = app_.get_point_to_vector3d_map();
         std::map<int, std::array<int, 2>> edge_to_vertices_map = app_.get_edge_to_vertices_map();
+        std::map<int, std::array<int, 3>> triangle_to_vertices_map = app_.get_triangle_to_vertices_map();
         pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = app_.point_to_vector3d_cloud();
         pcl::PointCloud<pcl::PointXYZ>::Ptr boundary_point_cloud = app_.boundary_point_cloud();
+
+        // triangle faces
+        pcl::PolygonMesh triangle_mesh;
+        // add points
+        pcl::toPCLPointCloud2(*cloud, triangle_mesh.cloud);
+        // add triangles
+        for (const auto& pair : triangle_to_vertices_map)
+        {
+            pcl::Vertices triangle;
+            triangle.vertices.push_back(pair.second[0]);
+            triangle.vertices.push_back(pair.second[1]);
+            triangle.vertices.push_back(pair.second[2]);
+            triangle_mesh.polygons.push_back(triangle);
+        }
 
         // mesh
         pcl::PolygonMesh mesh;
@@ -1673,6 +1693,10 @@ private:
             edge.vertices.push_back(edge_to_vertices_map[edge_id][1]);
             boundary_mesh.polygons.push_back(edge);
         }
+
+        // triangle mesh
+        viewer_->removeShape("triangle_mesh");
+        viewer_->addPolygonMesh(triangle_mesh, "triangle_mesh");
 
         // mesh
         viewer_->removeShape("polyline");
