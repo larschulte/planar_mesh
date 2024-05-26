@@ -3,7 +3,6 @@
 // #include "eye_patch/Algorithm.hpp"
 #include <pcl/common/transforms.h>
 #include <pcl/kdtree/kdtree_flann.h>
-#include "eye_patch/BVH.hpp"
 
 // #include "eye_patch/Visualization.hpp"
 #include <pcl/point_types.h>
@@ -12,6 +11,257 @@
 // #include "point_type/BagPointT.hpp"
 #include "point_type/VilensPointT.hpp"
 
+
+// https://www.scratchapixel.com/lessons/3d-basic-rendering/ray-tracing-rendering-a-triangle/moller-trumbore-ray-triangle-intersection.html
+bool rayTriangleIntersect(
+    const Eigen::Vector3d& orig, const Eigen::Vector3d& dir,
+    const Eigen::Vector3d& v0, const Eigen::Vector3d& v1, const Eigen::Vector3d& v2,
+    Eigen::Vector3d& outIntersection)
+{
+    const double EPSILON = 1e-8;
+    Eigen::Vector3d edge1 = v1 - v0;
+    Eigen::Vector3d edge2 = v2 - v0;
+    
+    // compute determinant
+    Eigen::Vector3d pvec = dir.cross(edge2);
+    double det = edge1.dot(pvec);
+    if (std::fabs(det) < EPSILON) {
+        return false; // This ray is parallel to this triangle.
+    }
+
+    // compute inverse determinant
+    double invDet = 1.0 / det;
+
+    // compute u
+    Eigen::Vector3d tvec = orig - v0;
+    double u = tvec.dot(pvec) * invDet;
+    if (u < 0.0 || u > 1.0) return false;
+    
+    // compute v
+    Eigen::Vector3d qvec = tvec.cross(edge1);
+    double v = dir.dot(qvec) * invDet;
+    if (v < 0.0 || u + v > 1.0) return false;
+
+    // compute t
+    double t = edge2.dot(qvec) * invDet;
+    if (t < EPSILON) return false; // This means that there is a line intersection but not a ray intersection.
+
+    // comptue intersection
+    outIntersection = orig + dir * t;
+    return true;
+}
+
+// https://chatgpt.com/share/96c43118-6cb4-4549-9478-2725dee3b44d
+struct BoundingBox 
+{
+    Eigen::Vector3d min = Eigen::Vector3d::Constant(std::numeric_limits<double>::infinity());
+    Eigen::Vector3d max = Eigen::Vector3d::Constant(-std::numeric_limits<double>::infinity());
+
+    BoundingBox(){};
+
+    void expand(const Eigen::Vector3d& point) 
+    {
+        min = min.cwiseMin(point);
+        max = max.cwiseMax(point);
+    }
+
+    bool intersect(const Eigen::Vector3d& orig, const Eigen::Vector3d& dir, double& tMin, double& tMax) const 
+    {
+        for (int i = 0; i < 3; ++i) 
+        {
+            double invD = 1.0 / dir[i];
+            double t0 = (min[i] - orig[i]) * invD;
+            double t1 = (max[i] - orig[i]) * invD;
+            if (invD < 0.0) std::swap(t0, t1);
+            tMin = std::max(tMin, t0);
+            tMax = std::min(tMax, t1);
+            if (tMax <= tMin) return false;
+        }
+        return true;
+    }
+
+    bool intersect(const Eigen::Vector3d& orig, const Eigen::Vector3d& dir) const 
+    {
+        double tMin = -std::numeric_limits<double>::infinity();
+        double tMax = std::numeric_limits<double>::infinity();
+        return intersect(orig, dir, tMin, tMax);
+    }
+};
+
+class TriangleBVH
+{
+    struct Node 
+    {
+        // bounding box, for intersection test
+        BoundingBox box;
+
+        // if not leaf - store children
+        std::shared_ptr<Node> left;
+        std::shared_ptr<Node> right;
+        bool isLeaf() const {return !left && !right;}
+
+        // if leaf - store triangle ids
+        std::set<int> triangleIDs;
+    };
+
+public:
+    TriangleBVH(){};
+
+    void addData(std::vector<int> _triangle_list, std::map<int, std::array<int, 3>> _triangle_to_indices_map, std::map<int, Eigen::Vector3d> _point_to_vector3d_map)
+    {
+        // store
+        triangle_list = _triangle_list;
+        triangle_to_indices_map = _triangle_to_indices_map;
+        point_to_vector3d_map = _point_to_vector3d_map;
+    }
+
+    void build()
+    {
+        root = buildHierarchy(triangle_list, 0, triangle_list.size());
+    }
+    
+    void addTriangle() {}
+
+    std::set<int> intersectionSearch(Eigen::Vector3d origin, Eigen::Vector3d endPoint)
+    {
+        // initialize
+        std::set<int> intersected_triangleIDs;
+
+        // process
+        Eigen::Vector3d dir = (endPoint - origin).normalized();
+        std::set<int> triangleIDs = intersectHierarchy(root, origin, dir);
+        
+        // print triangleIDs
+        for (int triangleID : triangleIDs)
+        {
+            std::cout << triangleID << std::endl;
+        }
+
+        for (int triangleID : triangleIDs)
+        {
+            int point0_id = triangle_to_indices_map[triangleID][0];
+            int point1_id = triangle_to_indices_map[triangleID][1];
+            int point2_id = triangle_to_indices_map[triangleID][2];
+            Eigen::Vector3d v0 = point_to_vector3d_map[point0_id];
+            Eigen::Vector3d v1 = point_to_vector3d_map[point1_id];
+            Eigen::Vector3d v2 = point_to_vector3d_map[point2_id];
+            Eigen::Vector3d intersection;
+            if (rayTriangleIntersect(origin, dir, v0, v1, v2, intersection)) intersected_triangleIDs.insert(triangleID);
+        }
+
+        // return
+        return intersected_triangleIDs;
+    }
+
+
+    // data
+    std::vector<int> triangle_list;
+    std::map<int, std::array<int, 3>> triangle_to_indices_map;
+    std::map<int, Eigen::Vector3d> point_to_vector3d_map;
+    std::shared_ptr<Node> root;
+
+    std::shared_ptr<Node> buildHierarchy(std::vector<int> triangle_list, int start, int end)
+    {
+        // initialized
+        auto node = std::make_shared<Node>();
+        
+        // compute current bounding box
+        for (int i = start; i < end; ++i) 
+        {
+            // get each point
+            int triangle_id = triangle_list[i];
+            int point0_id = triangle_to_indices_map[triangle_id][0];
+            int point1_id = triangle_to_indices_map[triangle_id][1];
+            int point2_id = triangle_to_indices_map[triangle_id][2];
+            Eigen::Vector3d v0 = point_to_vector3d_map[point0_id];
+            Eigen::Vector3d v1 = point_to_vector3d_map[point1_id];
+            Eigen::Vector3d v2 = point_to_vector3d_map[point2_id];
+
+            // expand
+            node->box.expand(v0);
+            node->box.expand(v1);
+            node->box.expand(v2);
+        }
+
+        // store different thing in the node depending on if it is a leaf or not
+        bool isLeaf = end - start <= 4;
+        // not leaf
+        if (!isLeaf) 
+        { 
+            // find the longest axis
+            Eigen::Vector3d diagonal_line = node->box.max - node->box.min;
+            int axis = 0;
+            if (diagonal_line[1] > diagonal_line[axis]) axis = 1;
+            if (diagonal_line[2] > diagonal_line[axis]) axis = 2;
+
+            // sort the list by the center of the triangles along the axis
+            int mid = (start + end) / 2;
+            std::nth_element(triangle_list.begin() + start, triangle_list.begin() + mid, triangle_list.begin() + end, 
+            [&](const int& triangle_a, const int& triangle_b) 
+            {
+                // compute triangle a center
+                Eigen::Vector3d centerA = Eigen::Vector3d::Zero();
+                centerA += point_to_vector3d_map[triangle_to_indices_map[triangle_a][0]];
+                centerA += point_to_vector3d_map[triangle_to_indices_map[triangle_a][1]];
+                centerA += point_to_vector3d_map[triangle_to_indices_map[triangle_a][2]];
+                centerA /= 3.0;
+
+                // compute triangle b center
+                Eigen::Vector3d centerB = Eigen::Vector3d::Zero();
+                centerB += point_to_vector3d_map[triangle_to_indices_map[triangle_b][0]];
+                centerB += point_to_vector3d_map[triangle_to_indices_map[triangle_b][1]];
+                centerB += point_to_vector3d_map[triangle_to_indices_map[triangle_b][2]];
+                centerB /= 3.0;
+
+                // compare axis value
+                return centerA[axis] < centerB[axis];
+            });
+
+            // recursive build children nodes
+            node->left = buildHierarchy(triangle_list, start, mid);
+            node->right = buildHierarchy(triangle_list, mid, end);
+        }
+        // is leaf
+        else 
+        {
+            // store triangle id
+            for (int i = start; i < end; ++i) 
+            {
+                node->triangleIDs.insert(triangle_list[i]);
+            }
+        }
+
+        // return
+        return node;
+    }
+
+    // return a list of triangle ids that could intersect with the ray
+    std::set<int> intersectHierarchy(const std::shared_ptr<Node>& node, Eigen::Vector3d orig, Eigen::Vector3d dir) 
+    {
+        // check intersection with current box
+        bool intersected = node->box.intersect(orig, dir);
+        
+        // return the list of triangle ids that could intersect with the ray
+        if (intersected)
+        {
+            if (node->isLeaf())
+            {
+                return node->triangleIDs;
+            }
+            else
+            {
+                std::set<int> triangles_left = intersectHierarchy(node->left, orig, dir);
+                std::set<int> triangles_right = intersectHierarchy(node->right, orig, dir);
+                triangles_left.insert(triangles_right.begin(), triangles_right.end());
+                return triangles_left;
+            }
+        }
+        else
+        {
+            return std::set<int>();
+        }
+    }
+};
 
 class flann3d
 {
@@ -1420,6 +1670,35 @@ public:
         int newPointID = getNewPointID();
         
         // add point by triangle intersection
+        // skip for the first pointcloud
+        if (ith_cloud > 0)
+        {
+            // Perform intersection test
+            TriangleBVH bvhRoot;
+            bvhRoot.addData(triangle_list, triangle_to_vertices_map, point_to_vector3d_map);
+            bvhRoot.build();
+            std::set<int> searched_triangles = bvhRoot.intersectionSearch(thisPointOriginVEC, thisPointVEC);
+            std::cout << "Searched triangles: ";
+            for (int triangle_id : searched_triangles) std::cout << triangle_id << " ";    
+            std::cout << std::endl;
+        }
+        
+            // get list of intersected triangle by the point
+        
+
+            // from the list find the set
+
+            // compute the intersection distance to the sets
+            // positive means in front of sets
+            // negative means behind the sets
+
+            // for any sets that have a negative distance, this means the triangle is penerated by the point
+            // remove the triangle, recompute boundary edge and points, re-add the points associated with the triangle to the map, re-add any points that is cut off, add the new point
+            // when re-adding the points associated with the triangle, make sure the new formed triangle do not contain the new point
+
+            // for any sets that have a positive distance, ignore them
+
+            // for any sets that have a zero distance, add the point to the set, add the point to the triangle
         
         // add point by radius search
         add_point_by_radius_search(newPointID, thisPointVEC, thisPointOriginVEC);
