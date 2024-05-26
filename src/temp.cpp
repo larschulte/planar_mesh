@@ -1591,12 +1591,23 @@ private:
     
     void keyboard_callback(const pcl::visualization::KeyboardEvent &event, void*) 
     {
-        bool space_down = event.getKeySym() == "space" && event.keyDown();
-        if (space_down)
+        if (event.getKeySym() == "space" && event.keyDown())
         {
-            // step application
-            app_.loop();
-            // std::cout << "Number of triangles: " << app_.get_number_of_triangles() << std::endl;
+            app_.step();
+            app_.step();
+            app_.step();
+            app_.step();
+            app_.step();
+            app_.step();
+            app_.step();
+            app_.step();
+            app_.step();
+            app_.step();
+        }
+        if (event.getKeySym() == "1" && event.keyDown())
+        {
+            app_.step();
+        }
 
             // get data from app
             std::map<int, Eigen::Vector3d> point_to_vector3d_map = app_.get_point_to_vector3d_map();
@@ -1649,7 +1660,6 @@ private:
             pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> intensity_handler(intensity_cloud);
             viewer_->updatePointCloud<pcl::PointXYZRGB>(intensity_cloud, intensity_handler, "cloud");
             viewer_->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 6, "cloud");
-        }
     }  
 };
 
