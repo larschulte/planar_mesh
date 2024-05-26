@@ -1284,18 +1284,8 @@ public:
         }
     }
 
-    void step()
+    void add_point_by_radius_search(int newPointID, Eigen::Vector3d thisPointVEC, Eigen::Vector3d thisPointOriginVEC)
     {
-        // for each point in new cloud
-        if (i >= new_cloud->size()) return;
-        std::cout << "Processing point " << i << " / " << new_cloud->size() << std::endl;
-        Eigen::Vector3d thisPointVEC = new_cloud->points[i].getVector3fMap().cast<double>();
-        Eigen::Vector3d thisPointOriginVEC = Eigen::Vector3d(0, 0, 0);
-        i ++;
-        
-        // get new point id
-        int newPointID = getNewPointID();
-        
         // if empty, can not set up radius search, add point to new set
         if (global_boundary_point_set.size() == 0)
         {
@@ -1415,6 +1405,22 @@ public:
         // else, add the point to a new set
         int newSetID = getNewSetID();
         add_point(newPointID, newSetID, thisPointVEC, thisPointOriginVEC);
+    }
+
+    void step()
+    {
+        // for each point in new cloud
+        if (i >= new_cloud->size()) return;
+        std::cout << "Processing point " << i << " / " << new_cloud->size() << std::endl;
+        Eigen::Vector3d thisPointVEC = new_cloud->points[i].getVector3fMap().cast<double>();
+        Eigen::Vector3d thisPointOriginVEC = Eigen::Vector3d(0, 0, 0);
+        i ++;
+        
+        // get new point id
+        int newPointID = getNewPointID();
+        
+        // add point by radius search
+        add_point_by_radius_search(newPointID, thisPointVEC, thisPointOriginVEC);
     }
 
     void loop()
