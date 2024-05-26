@@ -1921,6 +1921,8 @@ private:
     Application<PointT>& app_;
 
     pcl::visualization::PCLVisualizer::Ptr viewer_;
+
+    bool show_triangle = false;
     
     void update_display()
     {
@@ -1974,8 +1976,22 @@ private:
         }
 
         // triangle mesh
-        viewer_->removeShape("triangle_mesh");
-        viewer_->addPolygonMesh(triangle_mesh, "triangle_mesh");
+        if (show_triangle)
+        {
+            // add shape
+            if (!viewer_->updatePolygonMesh(triangle_mesh, "triangle_mesh"))
+            {
+                viewer_->addPolygonMesh(triangle_mesh, "triangle_mesh");
+            }
+        }
+        else
+        {
+            // remove shape
+            if (viewer_->updatePolygonMesh(triangle_mesh, "triangle_mesh"))
+            {
+                viewer_->removeShape("triangle_mesh");
+            }
+        }
 
         // mesh
         viewer_->removeShape("polyline");
@@ -2027,6 +2043,12 @@ private:
         if (event.getKeySym() == "Tab" && event.keyDown())
         {
             app_.change_color();
+            update_display();
+        }
+        if (event.getKeySym() == "t" && event.keyDown())
+        {
+            // toggle triangle visibility
+            show_triangle = !show_triangle;
             update_display();
         }
     }  
