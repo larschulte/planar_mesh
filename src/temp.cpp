@@ -946,8 +946,7 @@ public:
             // intersection point
             Eigen::Vector3d rayOrigin = point_to_origin_vector3d_map[point_id];
             Eigen::Vector3d rayEndPoint = point_to_vector3d_map[point_id];
-            Eigen::Vector3d rayDirection = rayEndPoint.normalized();
-            Eigen::Vector3d rayPlaneIntersectionPoint = ray_plane_intersection(rayOrigin, rayDirection, mean, normal);
+            Eigen::Vector3d rayPlaneIntersectionPoint = ray_plane_intersection(rayOrigin, rayEndPoint, mean, normal);
 
             // project intersected points to plane
             Eigen::Matrix<double, 3, 2> projection_matrix = eigenvectors.rightCols<2>();
@@ -1013,7 +1012,7 @@ public:
     Eigen::Vector3d ray_plane_intersection(Eigen::Vector3d rayOrigin, Eigen::Vector3d rayEndPoint, Eigen::Vector3d planeMean, Eigen::Vector3d planeNormal)
     {   
         // if perpendicular, return NaN
-        Eigen::Vector3d rayDirection = rayEndPoint.normalized();
+        Eigen::Vector3d rayDirection = (rayEndPoint - rayOrigin).normalized();
         if (planeNormal.dot(rayDirection) == 0)
         {
             return Eigen::Vector3d(NAN, NAN, NAN);
@@ -1065,14 +1064,14 @@ public:
         Eigen::Vector3d normal = eigensolver.eigenvectors().col(0);
 
         // correct normal direction
-        Eigen::Vector3d rayDirection = rayEndPoint.normalized();
+        Eigen::Vector3d rayDirection = (rayEndPoint - rayOrigin).normalized();
         if (normal.dot(rayDirection) > 0)
         {
             normal = -normal;
         }
 
         // intersection point
-        Eigen::Vector3d rayPlaneIntersectionPoint = ray_plane_intersection(rayOrigin, rayDirection, mean, normal);
+        Eigen::Vector3d rayPlaneIntersectionPoint = ray_plane_intersection(rayOrigin, rayEndPoint, mean, normal);
 
         // return
         return rayPlaneIntersectionPoint;
