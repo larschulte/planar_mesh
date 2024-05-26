@@ -197,6 +197,7 @@ public:
             set_to_mean_map[setID] = thisPoint;
             set_to_covariance_matrix_map[setID] = Eigen::Matrix3d::Zero();
             set_to_eigenvectors_map[setID] = Eigen::Matrix3d::Identity();
+            set_to_eigenvalues_map[setID] = Eigen::Vector3d::Zero();
             set_to_normal_map[setID] = Eigen::Vector3d(0, 0, 1);
         }
         else
@@ -210,12 +211,14 @@ public:
             Eigen::Matrix3d new_covariance_matrix = (old_size / new_size) * old_covariance_matrix + (old_size / (new_size * new_size)) * (thisPoint - new_mean) * (thisPoint - new_mean).transpose();
             Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> solver(new_covariance_matrix);
             Eigen::Matrix3d eigenvectors = solver.eigenvectors();
+            Eigen::Vector3d eigenvalues = solver.eigenvalues();
             Eigen::Vector3d normal = eigenvectors.col(0); // Assuming the smallest eigenvalue corresponds to the normal
             // store
             point_to_mean_used_map[newPointID] = old_mean;
             set_to_mean_map[setID] = new_mean;
             set_to_covariance_matrix_map[setID] = new_covariance_matrix;
             set_to_eigenvectors_map[setID] = eigenvectors;
+            set_to_eigenvalues_map[setID] = eigenvalues;
             set_to_normal_map[setID] = normal;
         }
 
@@ -1161,6 +1164,7 @@ public:
         Eigen::Vector3d combined_mean;
         Eigen::Matrix3d combined_covariance_matrix;
         Eigen::Matrix3d combined_eigenvectors;
+        Eigen::Vector3d combined_eigenvalues;
         Eigen::Vector3d combined_normal;
         std::array<int, 3> combined_color;
         
@@ -1179,7 +1183,10 @@ public:
         for (const auto& pair : set_to_edge_count_map[setID2]) combined_edge_count_map[pair.first] = pair.second;
         combined_mean = merge_means_of_sets(setID1, setID2);
         combined_covariance_matrix = merge_covariances_of_sets(setID1, setID2);
-        combined_eigenvectors = Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d>(combined_covariance_matrix).eigenvectors();
+
+        Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> solver(combined_covariance_matrix);
+        combined_eigenvectors = solver.eigenvectors();
+        combined_eigenvalues = solver.eigenvalues();
         combined_normal = combined_eigenvectors.col(0);
         combined_color = {rand() % 256, rand() % 256, rand() % 256};
 
@@ -1193,6 +1200,7 @@ public:
         set_to_mean_map.erase(oldSetID);
         set_to_covariance_matrix_map.erase(oldSetID);
         set_to_eigenvectors_map.erase(oldSetID);
+        set_to_eigenvalues_map.erase(oldSetID);
         set_to_normal_map.erase(oldSetID);
         set_to_color_map.erase(oldSetID);
         set_list.erase(std::remove(set_list.begin(), set_list.end(), oldSetID), set_list.end());
@@ -1207,6 +1215,7 @@ public:
         set_to_mean_map[newSetID] = combined_mean;
         set_to_covariance_matrix_map[newSetID] = combined_covariance_matrix;
         set_to_eigenvectors_map[newSetID] = combined_eigenvectors;
+        set_to_eigenvalues_map[newSetID] = combined_eigenvalues;
         set_to_normal_map[newSetID] = combined_normal;
         set_to_color_map[newSetID] = combined_color;
         for (int point_id : combined_points) point_to_set_map[point_id] = newSetID;
@@ -1530,6 +1539,7 @@ private:
     std::map<int, Eigen::Vector3d> set_to_mean_map;
     std::map<int, Eigen::Matrix3d> set_to_covariance_matrix_map;
     std::map<int, Eigen::Matrix3d> set_to_eigenvectors_map;
+    std::map<int, Eigen::Vector3d> set_to_eigenvalues_map;
     std::map<int, Eigen::Vector3d> set_to_normal_map;
     
         // edge
