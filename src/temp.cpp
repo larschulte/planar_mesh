@@ -2010,6 +2010,55 @@ public:
         return cloud;
     }
 
+    std::tuple<int, int, int> valueToJet(float value) {
+        // Ensure value is within [0, 1]
+        if (value < 0.0f) value = 0.0f;
+        if (value > 1.0f) value = 1.0f;
+
+        float r = 0, g = 0, b = 0;
+
+        if (value < 0.25f) {
+            r = 0;
+            g = 4 * value;
+            b = 1;
+        } else if (value < 0.5f) {
+            r = 0;
+            g = 1;
+            b = 1 - 4 * (value - 0.25f);
+        } else if (value < 0.75f) {
+            r = 4 * (value - 0.5f);
+            g = 1;
+            b = 0;
+        } else {
+            r = 1;
+            g = 1 - 4 * (value - 0.75f);
+            b = 0;
+        }
+
+        return std::make_tuple(static_cast<int>(r * 255), static_cast<int>(g * 255), static_cast<int>(b * 255));
+    }
+
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr point_to_vector3d_set_distance_cloud()
+    {
+        compute_projected_point_to_vector3d_map();
+
+        pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+        for (int point_id : point_list)
+        {
+            pcl::PointXYZRGB point;
+            point.x = point_to_vector3d_map.at(point_id)[0];
+            point.y = point_to_vector3d_map.at(point_id)[1];
+            point.z = point_to_vector3d_map.at(point_id)[2];
+            double value = projected_points_distance_map.at(point_id) / 0.05;
+            std::tuple<int, int, int> color = valueToJet(value);
+            point.r = std::get<0>(color);
+            point.g = std::get<1>(color);
+            point.b = std::get<2>(color);
+            cloud->push_back(point);
+        }
+        return cloud;
+    }
+
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr projected_point_to_vector3d_set_colored_cloud()
     {
         compute_projected_point_to_vector3d_map();
@@ -2028,6 +2077,27 @@ public:
         }
         return cloud;
     }
+
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr projected_point_to_vector3d_set_distance_cloud()
+    {
+        compute_projected_point_to_vector3d_map();
+
+        pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+        for (int point_id : point_list)
+        {
+            pcl::PointXYZRGB point;
+            point.x = projected_points_to_vector3d_map.at(point_id)[0];
+            point.y = projected_points_to_vector3d_map.at(point_id)[1];
+            point.z = projected_points_to_vector3d_map.at(point_id)[2];
+            double value = projected_points_distance_map.at(point_id) / 0.05;
+            std::tuple<int, int, int> color = valueToJet(value);
+            point.r = std::get<0>(color);
+            point.g = std::get<1>(color);
+            point.b = std::get<2>(color);
+            cloud->push_back(point);
+        }
+        return cloud;
+    }
     
     void compute_projected_point_to_vector3d_map()
     {
@@ -2040,8 +2110,12 @@ public:
             // get projected point
             Eigen::Vector3d rayPlaneIntersectionPoint = point_set_intersection(point_id, setID);
 
+            // compute distance
+            double distance = (point_to_vector3d_map.at(point_id) - rayPlaneIntersectionPoint).norm();
+
             // store
             projected_points_to_vector3d_map[point_id] = rayPlaneIntersectionPoint;   
+            projected_points_distance_map[point_id] = distance;
         }
     }
 
@@ -2126,6 +2200,7 @@ private:
 
         // projected points
     std::map<int, Eigen::Vector3d> projected_points_to_vector3d_map;
+    std::map<int, double> projected_points_distance_map;
 };
 
 
@@ -2179,6 +2254,7 @@ private:
 
     bool show_triangle = false;
     bool show_projected_point = false;
+    bool show_error_color = false;
     
     void update_display()
     {
@@ -2186,11 +2262,25 @@ private:
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr intensity_cloud;
         if (show_projected_point)
         {
-            intensity_cloud = app_.projected_point_to_vector3d_set_colored_cloud();
+            if (show_error_color) 
+            {
+                intensity_cloud = app_.projected_point_to_vector3d_set_distance_cloud();
+            }
+            else
+            {
+                intensity_cloud = app_.projected_point_to_vector3d_set_colored_cloud();
+            }
         }
         else
         {
-            intensity_cloud = app_.point_to_vector3d_set_colored_cloud();
+            if (show_error_color) 
+            {
+                intensity_cloud = app_.point_to_vector3d_set_distance_cloud();
+            }
+            else
+            {
+                intensity_cloud = app_.point_to_vector3d_set_colored_cloud();
+            }
         }
         std::map<int, std::array<int, 2>> edge_to_vertices_map = app_.get_edge_to_vertices_map();
         std::map<int, std::array<int, 3>> triangle_to_vertices_map = app_.get_triangle_to_vertices_map();
@@ -2317,6 +2407,12 @@ private:
         {
             // toggle projected point 
             show_projected_point = !show_projected_point;
+            update_display();
+        }
+        if (event.getKeySym() == "z" && event.keyDown())
+        {
+            // toggle set color and error color
+            show_error_color = !show_error_color;
             update_display();
         }
     }  
