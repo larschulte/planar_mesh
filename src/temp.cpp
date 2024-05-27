@@ -471,6 +471,23 @@ public:
     // 2. perform delaunay triangulation using the boundary points and the new point
     // 3. add the edge and triangles connected to the new point to the original mesh
 
+
+    Eigen::Vector3d merge_means(const Eigen::Vector3d& mean1, const Eigen::Vector3d& mean2, int size1, int size2) 
+    {
+        return (size1 * mean1 + size2 * mean2) / (size1 + size2);
+    }
+
+    Eigen::Matrix3d merge_covariances(const Eigen::Matrix3d& cov1, const Eigen::Matrix3d& cov2, 
+                                    const Eigen::Vector3d& mean1, const Eigen::Vector3d& mean2, 
+                                    const Eigen::Vector3d& combined_mean, int size1, int size2) 
+    {
+        Eigen::Matrix3d mean_diff1 = (mean1 - combined_mean) * (mean1 - combined_mean).transpose();
+        Eigen::Matrix3d mean_diff2 = (mean2 - combined_mean) * (mean2 - combined_mean).transpose();
+        Eigen::Matrix3d combined_covariance = (size1 * cov1 + size2 * cov2 + size1 * mean_diff1 + size2 * mean_diff2) / (size1 + size2);
+
+        return combined_covariance;
+    }
+
     void add_point(int newPointID, int setID, Eigen::Vector3d thisPoint, Eigen::Vector3d origin)
     {
         // add eigen
@@ -496,21 +513,22 @@ public:
         }
         else
         {
-            // plane statistics (https://stats.stackexchange.com/questions/26123/efficient-method-technique-to-update-covariance-matrix)
-            double old_size = static_cast<double>(set_to_points_map.at(setID).size()); // use double since will involve division later
-            double new_size = old_size + 1;
-            Eigen::Vector3d old_mean = set_to_mean_map.at(setID);
-            Eigen::Vector3d new_mean = (old_mean * old_size + thisPoint) / new_size;
-            Eigen::Matrix3d old_covariance_matrix = set_to_covariance_matrix_map.at(setID);
-            Eigen::Matrix3d new_covariance_matrix = (old_size / new_size) * old_covariance_matrix + (old_size / (new_size * new_size)) * (thisPoint - new_mean) * (thisPoint - new_mean).transpose();
-            Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> solver(new_covariance_matrix);
+            int size1 = set_to_points_map.at(setID).size();
+            int size2 = 1;
+            Eigen::Vector3d mean1 = set_to_mean_map.at(setID);
+            Eigen::Vector3d mean2 = thisPoint;
+            Eigen::Vector3d new_mean = merge_means(mean1, mean2, size1, size2);
+            Eigen::Matrix3d cov1 = set_to_covariance_matrix_map.at(setID);
+            Eigen::Matrix3d cov2 = Eigen::Matrix3d::Zero();
+            Eigen::Matrix3d new_cov = merge_covariances(cov1, cov2, mean1, mean2, new_mean, size1, size2);
+            Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> solver(new_cov);
             Eigen::Matrix3d eigenvectors = solver.eigenvectors();
             Eigen::Vector3d eigenvalues = solver.eigenvalues();
             Eigen::Vector3d normal = eigenvectors.col(0); // Assuming the smallest eigenvalue corresponds to the normal
             // normal should points towards the origin
             if (normal.dot(origin - thisPoint) < 0) normal *= -1;
             set_to_mean_map.at(setID) = new_mean;
-            set_to_covariance_matrix_map.at(setID) = new_covariance_matrix;
+            set_to_covariance_matrix_map.at(setID) = new_cov;
             set_to_eigenvectors_map.at(setID) = eigenvectors;
             set_to_eigenvalues_map.at(setID) = eigenvalues;
             set_to_normal_map.at(setID) = normal;
@@ -1421,22 +1439,6 @@ public:
 
         // return
         return rayPlaneIntersectionPoint;
-    }
-
-    Eigen::Vector3d merge_means(const Eigen::Vector3d& mean1, const Eigen::Vector3d& mean2, int size1, int size2) 
-    {
-        return (size1 * mean1 + size2 * mean2) / (size1 + size2);
-    }
-
-    Eigen::Matrix3d merge_covariances(const Eigen::Matrix3d& cov1, const Eigen::Matrix3d& cov2, 
-                                    const Eigen::Vector3d& mean1, const Eigen::Vector3d& mean2, 
-                                    const Eigen::Vector3d& combined_mean, int size1, int size2) 
-    {
-        Eigen::Matrix3d mean_diff1 = (mean1 - combined_mean) * (mean1 - combined_mean).transpose();
-        Eigen::Matrix3d mean_diff2 = (mean2 - combined_mean) * (mean2 - combined_mean).transpose();
-        Eigen::Matrix3d combined_covariance = (size1 * cov1 + size2 * cov2 + size1 * mean_diff1 + size2 * mean_diff2) / (size1 + size2);
-
-        return combined_covariance;
     }
 
     Eigen::Vector3d merge_means_of_sets(int setID1, int setID2) 
