@@ -529,6 +529,20 @@ public:
         return merge_covariances(cov1, cov2, mean1, mean2, size1, size2);
     }
 
+    std::array<int, 3> sortThreeInts(int a, int b, int c) {
+        std::array<int, 3> sorted = {a, b, c};
+        if (sorted[0] > sorted[1]) std::swap(sorted[0], sorted[1]);
+        if (sorted[0] > sorted[2]) std::swap(sorted[0], sorted[2]);
+        if (sorted[1] > sorted[2]) std::swap(sorted[1], sorted[2]);
+        return sorted;
+    }
+
+    std::array<int, 2> sortTwoInts(int a, int b) {
+        std::array<int, 2> sorted = {a, b};
+        if (sorted[0] > sorted[1]) std::swap(sorted[0], sorted[1]);
+        return sorted;
+    }
+
     void add_point(int newPointID, int setID, Eigen::Vector3d thisPoint, Eigen::Vector3d origin)
     {
         // add eigen
@@ -581,6 +595,9 @@ public:
 
     void add_edge(int newEdgeID, int setID, std::array<int, 2> newEdge)
     {
+        // sort edge
+        newEdge = sortTwoInts(newEdge[0], newEdge[1]);
+
         // update edge to point 
         edge_to_point_map.at(newEdgeID) = newEdge;
         edge_to_point_map_reverse[newEdge] = newEdgeID;
@@ -604,8 +621,12 @@ public:
 
     void add_triangle(int newTriangleID, int setID, std::array<int, 3> vertices)
     {
+        // sort vertices
+        vertices = sortThreeInts(vertices[0], vertices[1], vertices[2]);
+
         // add triangle to vertices map
         triangle_to_vertices_map.at(newTriangleID) = vertices;
+        triangle_to_vertices_map_reverse[vertices] = newTriangleID;
 
         // add triangle to set map
         set_to_triangles_map.at(setID).insert(newTriangleID);
@@ -743,6 +764,7 @@ public:
         // initialize
         triangle_list.push_back(newTriangleID);
         triangle_to_vertices_map[newTriangleID] = {};
+        triangle_to_vertices_map_reverse;
         triangle_to_set_map[newTriangleID] = -999;
         triangle_to_points_map[newTriangleID] = {};
 
@@ -1603,8 +1625,11 @@ public:
         std::set<int> searched_boundary_points_used;
         for (int point_id : searched_boundary_points_in_current_set)
         {
-            // new edge
-            std::array<int, 2> newEdge = {point_id, newPointID};
+            // new edge, smaller id first
+            std::array<int, 2> newEdge = {std::min(newPointID, point_id), std::max(newPointID, point_id)};
+
+            // skip if edge already exists
+            if (edge_to_point_map_reverse.find(newEdge) != edge_to_point_map_reverse.end()) continue;
 
             // skip if intersected with any boundary edge of the current set
             if (edge_edges_intersection(newEdge, get_boundary_edge_set_of_set(setID), points_to_vector2d_map)) continue;
@@ -1627,8 +1652,11 @@ public:
             bool i2_used = searched_boundary_points_used.find(i2) != searched_boundary_points_used.end();
             if (!i1_used || !i2_used) continue;
 
-            // new triangle
-            std::array<int, 3> newTriangle = {i1, i2, newPointID};
+            // new triangle, smaller id first
+            std::array<int, 3> newTriangle = sortThreeInts(newPointID, i1, i2);
+
+            // skip if triangle already exists
+            if (triangle_to_vertices_map_reverse.find(newTriangle) != triangle_to_vertices_map_reverse.end()) continue;
 
             // skip if triangle contains other boundary points
             if (triangle_contains_point(newTriangle, searched_boundary_points_in_current_set, points_to_vector2d_map)) continue;
@@ -2020,6 +2048,7 @@ private:
     int next_triangle_id = 0;
     std::vector<int> triangle_list;
     std::map<int, std::array<int, 3>> triangle_to_vertices_map;
+    std::map<std::array<int, 3>, int> triangle_to_vertices_map_reverse;
     std::map<int, int> triangle_to_set_map;
     std::map<int, std::set<int>> triangle_to_points_map;
     
