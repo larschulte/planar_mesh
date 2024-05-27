@@ -2387,6 +2387,21 @@ private:
             app_.step();
             update_display();
         }
+        if (event.getKeySym() == "2" && event.keyDown())
+        {
+            for (int i = 0; i < 10; i++) app_.step();
+            update_display();
+        }
+        if (event.getKeySym() == "3" && event.keyDown())
+        {
+            for (int i = 0; i < 100; i++) app_.step();
+            update_display();
+        }
+        if (event.getKeySym() == "4" && event.keyDown())
+        {
+            for (int i = 0; i < 1000; i++) app_.step();
+            update_display();
+        }
         if (event.getKeySym() == "0" && event.keyDown())
         {
             app_.loop();
