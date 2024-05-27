@@ -1993,95 +1993,15 @@ public:
     std::map<int, std::array<int, 2>> get_edge_to_vertices_map() {return edge_to_point_map;};
     std::map<int, std::array<int, 3>> get_triangle_to_vertices_map() {return triangle_to_vertices_map;};
 
-    pcl::PointCloud<pcl::PointXYZ>::Ptr point_to_vector3d_cloud()
-    {
-        return point_to_vector3d_cloud(point_list);
-    }
-
-    pcl::PointCloud<pcl::PointXYZ>::Ptr point_to_vector3d_cloud(std::vector<int> point_indices)
-    {
-        pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
-        for (int point_id : point_indices)
-        {
-            pcl::PointXYZ point;
-            point.x = point_to_vector3d_map.at(point_id)[0];
-            point.y = point_to_vector3d_map.at(point_id)[1];
-            point.z = point_to_vector3d_map.at(point_id)[2];
-            cloud->push_back(point);
-        }
-        return cloud;
-    }
-
-    pcl::PointCloud<pcl::PointXYZ>::Ptr projected_point_to_vector3d_cloud()
-    {
-        return projected_point_to_vector3d_cloud(point_list);
-    }
-
-    pcl::PointCloud<pcl::PointXYZ>::Ptr projected_point_to_vector3d_cloud(std::vector<int> point_indices)
-    {
-        pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
-        for (int point_id : point_indices)
-        {
-            pcl::PointXYZ point;
-            // if point exists
-            if (projected_points_to_vector3d_map.find(point_id) != projected_points_to_vector3d_map.end())
-            {
-                point.x = projected_points_to_vector3d_map.at(point_id)[0];
-                point.y = projected_points_to_vector3d_map.at(point_id)[1];
-                point.z = projected_points_to_vector3d_map.at(point_id)[2];
-            }
-            else
-            {
-                point.x = point_to_vector3d_map.at(point_id)[0];
-                point.y = point_to_vector3d_map.at(point_id)[1];
-                point.z = point_to_vector3d_map.at(point_id)[2];
-            }
-            cloud->push_back(point);
-        }
-        return cloud;
-    }
-
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr point_to_vector3d_set_colored_cloud(std::vector<int> point_indices)
-    {
-        pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
-        for (int point_id : point_indices)
-        {
-            pcl::PointXYZRGB point;
-            point.x = point_to_vector3d_map.at(point_id)[0];
-            point.y = point_to_vector3d_map.at(point_id)[1];
-            point.z = point_to_vector3d_map.at(point_id)[2];
-            point.r = set_to_color_map.at(point_to_set_map.at(point_id)).at(0);
-            point.g = set_to_color_map.at(point_to_set_map.at(point_id)).at(1);
-            point.b = set_to_color_map.at(point_to_set_map.at(point_id)).at(2);
-            cloud->push_back(point);
-        }
-        return cloud;
-    }
-
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr point_to_vector3d_set_colored_cloud()
     {
-        return point_to_vector3d_set_colored_cloud(point_list);
-    }
-
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr projected_point_to_vector3d_set_colored_cloud(std::vector<int> point_indices)
-    {
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
-        for (int point_id : point_indices)
+        for (int point_id : point_list)
         {
             pcl::PointXYZRGB point;
-            // if point exists
-            if (projected_points_to_vector3d_map.find(point_id) != projected_points_to_vector3d_map.end())
-            {
-                point.x = projected_points_to_vector3d_map.at(point_id)[0];
-                point.y = projected_points_to_vector3d_map.at(point_id)[1];
-                point.z = projected_points_to_vector3d_map.at(point_id)[2];
-            }
-            else
-            {
-                point.x = point_to_vector3d_map.at(point_id)[0];
-                point.y = point_to_vector3d_map.at(point_id)[1];
-                point.z = point_to_vector3d_map.at(point_id)[2];
-            }
+            point.x = point_to_vector3d_map.at(point_id)[0];
+            point.y = point_to_vector3d_map.at(point_id)[1];
+            point.z = point_to_vector3d_map.at(point_id)[2];
             point.r = set_to_color_map.at(point_to_set_map.at(point_id)).at(0);
             point.g = set_to_color_map.at(point_to_set_map.at(point_id)).at(1);
             point.b = set_to_color_map.at(point_to_set_map.at(point_id)).at(2);
@@ -2092,23 +2012,28 @@ public:
 
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr projected_point_to_vector3d_set_colored_cloud()
     {
-        return projected_point_to_vector3d_set_colored_cloud(point_list);
+        compute_projected_point_to_vector3d_map();
+
+        pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+        for (int point_id : point_list)
+        {
+            pcl::PointXYZRGB point;
+            point.x = projected_points_to_vector3d_map.at(point_id)[0];
+            point.y = projected_points_to_vector3d_map.at(point_id)[1];
+            point.z = projected_points_to_vector3d_map.at(point_id)[2];
+            point.r = set_to_color_map.at(point_to_set_map.at(point_id)).at(0);
+            point.g = set_to_color_map.at(point_to_set_map.at(point_id)).at(1);
+            point.b = set_to_color_map.at(point_to_set_map.at(point_id)).at(2);
+            cloud->push_back(point);
+        }
+        return cloud;
     }
     
-
-    pcl::PointCloud<pcl::PointXYZ>::Ptr boundary_point_cloud()
-    {
-        return point_to_vector3d_cloud(get_boundary_point_list());
-    }
-
     void compute_projected_point_to_vector3d_map()
     {
         // for each point
         for (int point_id : point_list)
         {
-            // print
-            std::cout << "Computing projected point for point " << point_id << " / " << point_list.size() << std::endl;
-
             // get set id
             int setID = point_to_set_map.at(point_id);
 
@@ -2118,12 +2043,6 @@ public:
             // store
             projected_points_to_vector3d_map[point_id] = rayPlaneIntersectionPoint;   
         }
-    }
-
-    // get projected point
-    std::map<int, Eigen::Vector3d> get_projected_point_to_vector3d_map()
-    {
-        return projected_points_to_vector3d_map;
     }
 
     int get_number_of_triangles()
@@ -2264,16 +2183,13 @@ private:
     void update_display()
     {
         // get data from app
-        pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr intensity_cloud;
         if (show_projected_point)
         {
-            cloud = app_.projected_point_to_vector3d_cloud();
             intensity_cloud = app_.projected_point_to_vector3d_set_colored_cloud();
         }
         else
         {
-            cloud = app_.point_to_vector3d_cloud();
             intensity_cloud = app_.point_to_vector3d_set_colored_cloud();
         }
         std::map<int, std::array<int, 2>> edge_to_vertices_map = app_.get_edge_to_vertices_map();
@@ -2283,7 +2199,7 @@ private:
         // triangle faces
         pcl::PolygonMesh triangle_mesh;
         // add points
-        pcl::toPCLPointCloud2(*cloud, triangle_mesh.cloud);
+        pcl::toPCLPointCloud2(*intensity_cloud, triangle_mesh.cloud);
         // add triangles
         for (const auto& pair : triangle_to_vertices_map)
         {
@@ -2297,7 +2213,7 @@ private:
         // mesh
         pcl::PolygonMesh mesh;
         // add points
-        pcl::toPCLPointCloud2(*cloud, mesh.cloud); 
+        pcl::toPCLPointCloud2(*intensity_cloud, mesh.cloud); 
         // add edges
         for (const auto& pair : edge_to_vertices_map)
         {
@@ -2310,7 +2226,7 @@ private:
         // boundary mesh
         pcl::PolygonMesh boundary_mesh;
         // add points
-        pcl::toPCLPointCloud2(*cloud, boundary_mesh.cloud);
+        pcl::toPCLPointCloud2(*intensity_cloud, boundary_mesh.cloud);
         // get boundary edges
         std::vector<int> boundary_edge_list = app_.get_boundary_edge_list();
         // add edges
@@ -2403,13 +2319,6 @@ private:
             show_projected_point = !show_projected_point;
             update_display();
         }
-        if (event.getKeySym() == "z" && event.keyDown())
-        {
-            app_.compute_projected_point_to_vector3d_map();
-            show_projected_point = true;
-            update_display();
-        }
-        
     }  
 };
 
