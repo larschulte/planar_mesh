@@ -86,6 +86,18 @@ struct BoundingBox
         double tMax = std::numeric_limits<double>::infinity();
         return intersect(orig, dir, tMin, tMax);
     }
+
+    int get_longest_axis()
+    {
+        // compute
+        Eigen::Vector3d diagonal_line = max - min;
+        int axis = 0;
+        if (diagonal_line[1] > diagonal_line[axis]) axis = 1;
+        if (diagonal_line[2] > diagonal_line[axis]) axis = 2;
+
+        // return
+        return axis;
+    }
 };
 
 class TriangleBVH
@@ -95,17 +107,22 @@ class TriangleBVH
         // bounding box, for intersection test
         BoundingBox box;
 
-        // if not leaf - store children
+        // as branch node
+        double split_value;
+        int split_axis;
         std::shared_ptr<Node> left;
         std::shared_ptr<Node> right;
+        
+        // as leaf node
         bool isLeaf() const {return !left && !right;}
-
-        // if leaf - store triangle ids
         std::set<int> triangleIDs;
     };
 
 public:
-    TriangleBVH(){};
+    TriangleBVH()
+    {
+        build();
+    }
 
     void addData(std::vector<int> _triangle_list, std::map<int, std::array<int, 3>> _triangle_to_indices_map, std::map<int, Eigen::Vector3d> _point_to_vector3d_map)
     {
@@ -117,10 +134,35 @@ public:
 
     void build()
     {
-        root = buildHierarchy(triangle_list, 0, triangle_list.size());
+        root = build_node(triangle_list);
     }
     
-    void addTriangle() {}
+    void addTriangle(int triangleID, std::array<int, 3> indices, Eigen::Vector3d v0, Eigen::Vector3d v1, Eigen::Vector3d v2)
+    {
+        // add triangle data
+        triangle_list.push_back(triangleID);
+        triangle_to_indices_map[triangleID] = indices;
+        point_to_vector3d_map[indices[0]] = v0;
+        point_to_vector3d_map[indices[1]] = v1;
+        point_to_vector3d_map[indices[2]] = v2;
+        triangle_to_center_vector3d_map[triangleID] = (v0 + v1 + v2) / 3.0;
+
+        // if rebuild threshold reached
+        if (triangle_list.size() > size_at_last_rebuild * rebuild_threshold)
+        {
+            // rebuild
+            build();
+            size_at_last_rebuild = triangle_list.size();
+        }
+        else
+        {
+            // add to existing
+            addTriangleToNode(root, triangleID);
+        }
+    }
+
+    double rebuild_threshold = 2;
+    int size_at_last_rebuild = 0;
 
     std::set<int> intersectionSearch(Eigen::Vector3d origin, Eigen::Vector3d endPoint)
     {
@@ -130,13 +172,6 @@ public:
         // process
         Eigen::Vector3d dir = (endPoint - origin).normalized();
         std::set<int> triangleIDs = intersectHierarchy(root, origin, dir);
-        
-        // print triangleIDs
-        for (int triangleID : triangleIDs)
-        {
-            std::cout << triangleID << std::endl;
-        }
-
         for (int triangleID : triangleIDs)
         {
             int point0_id = triangle_to_indices_map.at(triangleID)[0];
@@ -158,107 +193,148 @@ public:
     std::vector<int> triangle_list;
     std::map<int, std::array<int, 3>> triangle_to_indices_map;
     std::map<int, Eigen::Vector3d> point_to_vector3d_map;
+    std::map<int, Eigen::Vector3d> triangle_to_center_vector3d_map;
     std::shared_ptr<Node> root;
 
-    std::shared_ptr<Node> buildHierarchy(std::vector<int> triangle_list, int start, int end)
+    // nth_element sort
+    double sort_triangle_list_in_axis(std::vector<int>& triangle_list, int axis, int start, int mid, int end)
+    {
+        // partial sort
+        std::nth_element(triangle_list.begin() + start, triangle_list.begin() + mid, triangle_list.begin() + end, 
+            [&](const int& triangle_a, const int& triangle_b) 
+            {
+                // compare center in axis
+                Eigen::Vector3d centerA = triangle_to_center_vector3d_map.at(triangle_a);
+                Eigen::Vector3d centerB = triangle_to_center_vector3d_map.at(triangle_b);
+                return centerA[axis] < centerB[axis];
+            });
+
+        // return split value
+        return triangle_to_center_vector3d_map.at(triangle_list[mid])[axis];
+    }
+
+    void expand_node_box(std::shared_ptr<Node> node, int triangle_id)
+    {
+        // expand
+        Eigen::Vector3d v0 = point_to_vector3d_map.at(triangle_to_indices_map.at(triangle_id)[0]);
+        Eigen::Vector3d v1 = point_to_vector3d_map.at(triangle_to_indices_map.at(triangle_id)[1]);
+        Eigen::Vector3d v2 = point_to_vector3d_map.at(triangle_to_indices_map.at(triangle_id)[2]);
+        node->box.expand(v0);
+        node->box.expand(v1);
+        node->box.expand(v2);
+    }
+
+    void convert_leaf_to_branch(std::shared_ptr<Node> node)
+    {
+        // get current triangle list
+        std::vector<int> triangle_list(node->triangleIDs.begin(), node->triangleIDs.end());
+
+        // compute mid
+        int start = 0;
+        int end = triangle_list.size();
+        int mid = (start + end) / 2;
+
+        // find the longest axis
+        int axis = node->box.get_longest_axis();
+        node->split_axis = axis;
+
+        // sort along axis
+        double split_value = sort_triangle_list_in_axis(triangle_list, axis, start, mid, end);
+        node->split_value = split_value;
+
+        // recursive build children nodes
+        node->left = build_node(std::vector<int>(triangle_list.begin(), triangle_list.begin() + mid));
+        node->right = build_node(std::vector<int>(triangle_list.begin() + mid, triangle_list.end()));
+
+        // clear current triangle list
+        node->triangleIDs.clear();
+    }
+
+    std::shared_ptr<Node> build_node(std::vector<int> triangle_list)
     {
         // initialized
         auto node = std::make_shared<Node>();
         
-        // compute current bounding box
-        for (int i = start; i < end; ++i) 
+        // add triangles
+        for (int triangle_id : triangle_list) 
         {
-            // get each point
-            int triangle_id = triangle_list[i];
-            int point0_id = triangle_to_indices_map.at(triangle_id)[0];
-            int point1_id = triangle_to_indices_map.at(triangle_id)[1];
-            int point2_id = triangle_to_indices_map.at(triangle_id)[2];
-            Eigen::Vector3d v0 = point_to_vector3d_map.at(point0_id);
-            Eigen::Vector3d v1 = point_to_vector3d_map.at(point1_id);
-            Eigen::Vector3d v2 = point_to_vector3d_map.at(point2_id);
-
-            // expand
-            node->box.expand(v0);
-            node->box.expand(v1);
-            node->box.expand(v2);
+            expand_node_box(node, triangle_id);
+            node->triangleIDs.insert(triangle_id);
+            triangle_to_center_vector3d_map[triangle_id] = compute_triangle_center(triangle_id);
         }
 
-        // store different thing in the node depending on if it is a leaf or not
-        bool isLeaf = end - start <= 4;
-        // not leaf
-        if (!isLeaf) 
-        { 
-            // find the longest axis
-            Eigen::Vector3d diagonal_line = node->box.max - node->box.min;
-            int axis = 0;
-            if (diagonal_line[1] > diagonal_line[axis]) axis = 1;
-            if (diagonal_line[2] > diagonal_line[axis]) axis = 2;
-
-            // sort the list by the center of the triangles along the axis
-            int mid = (start + end) / 2;
-            std::nth_element(triangle_list.begin() + start, triangle_list.begin() + mid, triangle_list.begin() + end, 
-            [&](const int& triangle_a, const int& triangle_b) 
-            {
-                // compute triangle a center
-                Eigen::Vector3d centerA = Eigen::Vector3d::Zero();
-                centerA += point_to_vector3d_map.at(triangle_to_indices_map.at(triangle_a)[0]);
-                centerA += point_to_vector3d_map.at(triangle_to_indices_map.at(triangle_a)[1]);
-                centerA += point_to_vector3d_map.at(triangle_to_indices_map.at(triangle_a)[2]);
-                centerA /= 3.0;
-
-                // compute triangle b center
-                Eigen::Vector3d centerB = Eigen::Vector3d::Zero();
-                centerB += point_to_vector3d_map.at(triangle_to_indices_map.at(triangle_b)[0]);
-                centerB += point_to_vector3d_map.at(triangle_to_indices_map.at(triangle_b)[1]);
-                centerB += point_to_vector3d_map.at(triangle_to_indices_map.at(triangle_b)[2]);
-                centerB /= 3.0;
-
-                // compare axis value
-                return centerA[axis] < centerB[axis];
-            });
-
-            // recursive build children nodes
-            node->left = buildHierarchy(triangle_list, start, mid);
-            node->right = buildHierarchy(triangle_list, mid, end);
-        }
-        // is leaf
-        else 
-        {
-            // store triangle id
-            for (int i = start; i < end; ++i) 
-            {
-                node->triangleIDs.insert(triangle_list[i]);
-            }
-        }
+        // convert to branch if too many triangles
+        if (node->triangleIDs.size() > 4) convert_leaf_to_branch(node);
 
         // return
         return node;
     }
+
+    Eigen::Vector3d compute_triangle_center(int triangleID)
+    {
+        int point0_id = triangle_to_indices_map.at(triangleID)[0];
+        int point1_id = triangle_to_indices_map.at(triangleID)[1];
+        int point2_id = triangle_to_indices_map.at(triangleID)[2];
+        Eigen::Vector3d v0 = point_to_vector3d_map.at(point0_id);
+        Eigen::Vector3d v1 = point_to_vector3d_map.at(point1_id);
+        Eigen::Vector3d v2 = point_to_vector3d_map.at(point2_id);
+        return (v0 + v1 + v2) / 3.0;
+    }
+
+
+    void addTriangleToNode(std::shared_ptr<Node> node, int triangleID)
+    {
+        // leaf node
+        if (node->isLeaf())
+        {
+            // expand box
+            expand_node_box(node, triangleID);
+
+            // add to leaf
+            node->triangleIDs.insert(triangleID);
+
+            // convert to branch if too many triangles
+            if (node->triangleIDs.size() > 4) convert_leaf_to_branch(node);
+        }
+        // branch node
+        else
+        {
+            // expand box
+            expand_node_box(node, triangleID);
+
+            // process to left or right 
+            // (since using stored split axis and value instead of rebalancing, tree efficency is lowered)
+            if (triangle_to_center_vector3d_map.at(triangleID)[node->split_axis] < node->split_value)
+            {
+                addTriangleToNode(node->left, triangleID);
+            }
+            else 
+            {
+                addTriangleToNode(node->right, triangleID);
+            }
+        }
+    }
+
 
     // return a list of triangle ids that could intersect with the ray
     std::set<int> intersectHierarchy(const std::shared_ptr<Node>& node, Eigen::Vector3d orig, Eigen::Vector3d dir) 
     {
         // check intersection with current box
         bool intersected = node->box.intersect(orig, dir);
+        if (!intersected) return std::set<int>();
         
-        // return the list of triangle ids that could intersect with the ray
-        if (intersected)
+        // if leaf node
+        if (node->isLeaf())
         {
-            if (node->isLeaf())
-            {
-                return node->triangleIDs;
-            }
-            else
-            {
-                std::set<int> triangles_left = intersectHierarchy(node->left, orig, dir);
-                std::set<int> triangles_right = intersectHierarchy(node->right, orig, dir);
-                triangles_left.insert(triangles_right.begin(), triangles_right.end());
-                return triangles_left;
-            }
+            return node->triangleIDs;
         }
+        // if branch node
         else
         {
-            return std::set<int>();
+            std::set<int> triangles_left = intersectHierarchy(node->left, orig, dir);
+            std::set<int> triangles_right = intersectHierarchy(node->right, orig, dir);
+            triangles_left.insert(triangles_right.begin(), triangles_right.end());
+            return triangles_left;
         }
     }
 };
@@ -513,6 +589,9 @@ public:
                 remove_boundary_point(edge[1], setID);
             }
         }
+
+        // add to bvh
+        bvhRoot.addTriangle(newTriangleID, vertices, point_to_vector3d_map.at(vertices[0]), point_to_vector3d_map.at(vertices[1]), point_to_vector3d_map.at(vertices[2]));
     }
 
     void add_boundary_point(int pointID, int setID)
@@ -1705,18 +1784,16 @@ public:
         int newPointID = getNewPointID();
         
         // add point by triangle intersection
+        // build at the start of second cloud
         // skip for the first pointcloud
-        if (ith_cloud > 0)
-        {
-            // Perform intersection test
-            TriangleBVH bvhRoot;
-            bvhRoot.addData(triangle_list, triangle_to_vertices_map, point_to_vector3d_map);
-            bvhRoot.build();
-            std::set<int> searched_triangles = bvhRoot.intersectionSearch(thisPointOriginVEC, thisPointVEC);
-            std::cout << "Searched triangles: ";
-            for (int triangle_id : searched_triangles) std::cout << triangle_id << " ";    
-            std::cout << std::endl;
-        }
+        // Perform intersection test
+        // if there are triangles
+
+        // get list of intersected triangle by the point
+        std::set<int> searched_triangles = bvhRoot.intersectionSearch(thisPointOriginVEC, thisPointVEC);
+        std::cout << "intersects triangles: ";
+        for (int triangle_id : searched_triangles) std::cout << triangle_id << " ";    
+        std::cout << std::endl;
         
             // get list of intersected triangle by the point
         
@@ -1905,6 +1982,9 @@ private:
         // boundary
     flann3d flann;
     std::set<int> global_boundary_point_set;
+
+        // triangle intersection
+    TriangleBVH bvhRoot;
 };
 
 
