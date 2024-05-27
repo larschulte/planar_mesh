@@ -1843,7 +1843,7 @@ public:
     void step()
     {
         // if all points are processed
-        if (ith_cloud == -1 || ith_point >= pointcloud->size()) 
+        if (ith_point >= ith_size) 
         {
             // next cloud
             ith_cloud++;
@@ -1854,6 +1854,8 @@ public:
             Eigen::Affine3d pose = data_loader.get_pose(ith_cloud);
             pointcloud = transform_cloud_to_global(pointcloud_local, pose);
             origin = pose.translation();
+
+            ith_size = pointcloud->size();
         }
 
         // get point
@@ -2060,6 +2062,7 @@ private:
 
     int ith_cloud = -1;
     std::size_t ith_point = -1;
+    std::size_t ith_size = -2;
     
 
     // settings
