@@ -1881,6 +1881,7 @@ public:
             // add the point to the set
             add_point(newPointID, setID, thisPointVEC, thisPointOriginVEC);
             std::cout << ith_point << " / " << pointcloud->size() << " of pointcloud " << ith_cloud << " added to set " << setID << std::endl;
+            point_added_to_set = true;
 
             // add the point to the triangle
             for (int triangleID : set_to_searched_triangle_map.at(setID))
