@@ -479,13 +479,54 @@ public:
 
     Eigen::Matrix3d merge_covariances(const Eigen::Matrix3d& cov1, const Eigen::Matrix3d& cov2, 
                                     const Eigen::Vector3d& mean1, const Eigen::Vector3d& mean2, 
-                                    const Eigen::Vector3d& combined_mean, int size1, int size2) 
+                                    int size1, int size2) 
     {
+        Eigen::Vector3d combined_mean = merge_means(mean1, mean2, size1, size2);
         Eigen::Matrix3d mean_diff1 = (mean1 - combined_mean) * (mean1 - combined_mean).transpose();
         Eigen::Matrix3d mean_diff2 = (mean2 - combined_mean) * (mean2 - combined_mean).transpose();
         Eigen::Matrix3d combined_covariance = (size1 * cov1 + size2 * cov2 + size1 * mean_diff1 + size2 * mean_diff2) / (size1 + size2);
 
         return combined_covariance;
+    }
+
+    Eigen::Vector3d merge_means_of_sets(int setID1, int setID2) 
+    {
+        Eigen::Vector3d mean1 = set_to_mean_map.at(setID1);
+        Eigen::Vector3d mean2 = set_to_mean_map.at(setID2);
+        int size1 = set_to_points_map.at(setID1).size();
+        int size2 = set_to_points_map.at(setID2).size();
+        return merge_means(mean1, mean2, size1, size2);
+    }
+
+    Eigen::Vector3d merge_means_between_set_and_point(int setID, Eigen::Vector3d point)
+    {
+        Eigen::Vector3d mean1 = set_to_mean_map.at(setID);
+        Eigen::Vector3d mean2 = point;
+        int size1 = set_to_points_map.at(setID).size();
+        int size2 = 1;
+        return merge_means(mean1, mean2, size1, size2);
+    }
+
+    Eigen::Matrix3d merge_covariances_of_sets(int setID1, int setID2) 
+    {
+        Eigen::Matrix3d cov1 = set_to_covariance_matrix_map.at(setID1);
+        Eigen::Matrix3d cov2 = set_to_covariance_matrix_map.at(setID2);
+        Eigen::Vector3d mean1 = set_to_mean_map.at(setID1);
+        Eigen::Vector3d mean2 = set_to_mean_map.at(setID2);
+        int size1 = set_to_points_map.at(setID1).size();
+        int size2 = set_to_points_map.at(setID2).size();
+        return merge_covariances(cov1, cov2, mean1, mean2, size1, size2);
+    }
+
+    Eigen::Matrix3d merge_covariances_between_set_and_point(int setID, Eigen::Vector3d point)
+    {
+        Eigen::Matrix3d cov1 = set_to_covariance_matrix_map.at(setID);
+        Eigen::Matrix3d cov2 = Eigen::Matrix3d::Zero(); 
+        Eigen::Vector3d mean1 = set_to_mean_map.at(setID);
+        Eigen::Vector3d mean2 = point;
+        int size1 = set_to_points_map.at(setID).size();
+        int size2 = 1;
+        return merge_covariances(cov1, cov2, mean1, mean2, size1, size2);
     }
 
     void add_point(int newPointID, int setID, Eigen::Vector3d thisPoint, Eigen::Vector3d origin)
@@ -520,7 +561,7 @@ public:
             Eigen::Vector3d new_mean = merge_means(mean1, mean2, size1, size2);
             Eigen::Matrix3d cov1 = set_to_covariance_matrix_map.at(setID);
             Eigen::Matrix3d cov2 = Eigen::Matrix3d::Zero();
-            Eigen::Matrix3d new_cov = merge_covariances(cov1, cov2, mean1, mean2, new_mean, size1, size2);
+            Eigen::Matrix3d new_cov = merge_covariances(cov1, cov2, mean1, mean2, size1, size2);
             Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> solver(new_cov);
             Eigen::Matrix3d eigenvectors = solver.eigenvectors();
             Eigen::Vector3d eigenvalues = solver.eigenvalues();
@@ -1441,27 +1482,6 @@ public:
         return rayPlaneIntersectionPoint;
     }
 
-    Eigen::Vector3d merge_means_of_sets(int setID1, int setID2) 
-    {
-        Eigen::Vector3d mean1 = set_to_mean_map.at(setID1);
-        Eigen::Vector3d mean2 = set_to_mean_map.at(setID2);
-        int size1 = set_to_points_map.at(setID1).size();
-        int size2 = set_to_points_map.at(setID2).size();
-        return merge_means(mean1, mean2, size1, size2);
-    }
-
-    Eigen::Matrix3d merge_covariances_of_sets(int setID1, int setID2) 
-    {
-        Eigen::Matrix3d cov1 = set_to_covariance_matrix_map.at(setID1);
-        Eigen::Matrix3d cov2 = set_to_covariance_matrix_map.at(setID2);
-        Eigen::Vector3d mean1 = set_to_mean_map.at(setID1);
-        Eigen::Vector3d mean2 = set_to_mean_map.at(setID2);
-        Eigen::Vector3d combined_mean = merge_means_of_sets(setID1, setID2);
-        int size1 = set_to_points_map.at(setID1).size();
-        int size2 = set_to_points_map.at(setID2).size();
-        return merge_covariances(cov1, cov2, mean1, mean2, combined_mean, size1, size2);
-    }
-
     // merge setID2 into setID1
     void merge_sets(int setID1, int setID2, int newSetID) 
     {
@@ -1702,9 +1722,15 @@ public:
         double closest_distance = std::numeric_limits<double>::max();
         for (int setID : sets_with_plane)
         {
+            // use mean and normal of the set with the point added
+            Eigen::Vector3d mean = merge_means_between_set_and_point(setID, thisPointVEC);
+            Eigen::Matrix3d cov = merge_covariances_between_set_and_point(setID, thisPointVEC);
+
+            // use eigen solver to get normal
+            Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> eigensolver(cov);
+            Eigen::Vector3d normal = eigensolver.eigenvectors().col(0);
+
             // compute distance
-            Eigen::Vector3d mean = set_to_mean_map.at(setID);
-            Eigen::Vector3d normal = set_to_normal_map.at(setID);
             Eigen::Vector3d rayPlaneIntersectionPoint = ray_plane_intersection(thisPointOriginVEC, thisPointVEC, mean, normal);
             double distance = (thisPointVEC - rayPlaneIntersectionPoint).norm();
 
