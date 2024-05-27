@@ -746,10 +746,9 @@ public:
         int newEdgeID = next_edge_id;
         next_edge_id ++;
 
-        // initialize
+        // initialize (skip edge_to_point_map_reverse as can't be initialized)
         edge_list.push_back(newEdgeID);
         edge_to_point_map[newEdgeID] = {};
-        edge_to_point_map_reverse; // can't initialize
         edge_to_set_map[newEdgeID] = -999;
 
         // return
@@ -761,10 +760,9 @@ public:
         int newTriangleID = next_triangle_id;
         next_triangle_id ++;
 
-        // initialize
+        // initialize (skip triangle_to_vertices_map_reverse as can't be initialized)
         triangle_list.push_back(newTriangleID);
         triangle_to_vertices_map[newTriangleID] = {};
-        triangle_to_vertices_map_reverse;
         triangle_to_set_map[newTriangleID] = -999;
         triangle_to_points_map[newTriangleID] = {};
 
@@ -1774,7 +1772,7 @@ public:
         }
 
         // from the merged sets, find the set that is closest to the point
-        int closest_setID;
+        int closest_setID = -1;
         double closest_distance = std::numeric_limits<double>::max();
         for (int setID : sets_to_merge)
         {
@@ -1797,7 +1795,7 @@ public:
                 closest_setID = setID;
             }
         }
-        if (closest_distance < distance_threshold)
+        if (closest_setID != -1 && closest_distance < distance_threshold)
         {
             add_point(newPointID, closest_setID, thisPointVEC, thisPointOriginVEC);            
             connect_point_to_set(newPointID, closest_setID, extract_points_by_setID(searched_boundary_points_set, closest_setID));
@@ -1805,7 +1803,7 @@ public:
         }
 
         // else, find the set with the largest size
-        int largest_setID;
+        int largest_setID = -1;
         std::size_t largest_size = 0;
         for (int setID : sets_without_plane)
         {
@@ -1815,7 +1813,7 @@ public:
                 largest_setID = setID;
             }
         }
-        if (largest_size > 0)
+        if (largest_setID != -1)
         {
             add_point(newPointID, largest_setID, thisPointVEC, thisPointOriginVEC);
             connect_point_to_set(newPointID, largest_setID, extract_points_by_setID(searched_boundary_points_set, largest_setID));
