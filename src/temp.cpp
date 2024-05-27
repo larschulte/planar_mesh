@@ -310,7 +310,8 @@ public:
         index_to_pointID.push_back(point_id);
 
         // add to flann
-        flann_tree.addPoints(flann::Matrix<double>(flann_data_storage.data() + flann_data_storage.size() - 3, 1, 3));
+        flann_tree.addPoints(flann::Matrix<double>(flann_data_storage.data() + flann_data_storage.size() - 3, 1, 3)); // addPoints introduces randomness to radiusSearch, since flann tree randomize something
+        // flann_tree.buildIndex(flann::Matrix<double>(flann_data_storage.data(), flann_data_storage.size() / 3, 3));
 
         // update id
         flann_last_id++;
@@ -2090,6 +2091,11 @@ private:
 using InputPointT = VilensPointT;
 int main()
 {
+    std::srand(42); // Fixed seed
+    // test by print
+    std::cout << std::rand() << std::endl;
+
+
     // application
     Application<InputPointT> app;
 
