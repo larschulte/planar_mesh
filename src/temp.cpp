@@ -543,7 +543,7 @@ public:
         return sorted;
     }
 
-    void add_point(int newPointID, int setID, Eigen::Vector3d thisPoint, Eigen::Vector3d origin)
+    void add_point_to_set(int newPointID, int setID, Eigen::Vector3d thisPoint, Eigen::Vector3d origin)
     {
         // add eigen
         point_to_vector3d_map.at(newPointID) = thisPoint;
@@ -551,7 +551,6 @@ public:
 
         // add point to set
         point_to_set_map.at(newPointID) = setID;
-        add_boundary_point(newPointID, setID);
 
         // if first point to a set
         if (set_to_points_map.find(setID) == set_to_points_map.end())
@@ -1608,6 +1607,9 @@ public:
     // creates edges and triangles that connects the new point to the set
     void connect_point_to_set(int newPointID, int setID, std::set<int> searched_boundary_points_in_current_set)
     {
+        // add point as boundary point
+        add_boundary_point(newPointID, setID);
+
         // points_to_vector2d_map
         std::map<int, Eigen::Vector2d> points_to_vector2d_map = project_boundary_points_of_set_to_set_plane(setID);
 
@@ -1671,7 +1673,8 @@ public:
         if (global_boundary_point_set.size() == 0)
         {
             int newSetID = getNewSetID();
-            add_point(newPointID, newSetID, thisPointVEC, thisPointOriginVEC);
+            add_point_to_set(newPointID, newSetID, thisPointVEC, thisPointOriginVEC);
+            add_boundary_point(newPointID, newSetID);
             return;
         }
 
@@ -1686,7 +1689,8 @@ public:
         if (searched_boundary_points_set.size() == 0)
         {
             int newSetID = getNewSetID();
-            add_point(newPointID, newSetID, thisPointVEC, thisPointOriginVEC);
+            add_point_to_set(newPointID, newSetID, thisPointVEC, thisPointOriginVEC);
+            add_boundary_point(newPointID, newSetID);
             return;
         }
 
@@ -1797,7 +1801,7 @@ public:
         }
         if (closest_setID != -1 && closest_distance < distance_threshold)
         {
-            add_point(newPointID, closest_setID, thisPointVEC, thisPointOriginVEC);            
+            add_point_to_set(newPointID, closest_setID, thisPointVEC, thisPointOriginVEC);            
             connect_point_to_set(newPointID, closest_setID, extract_points_by_setID(searched_boundary_points_set, closest_setID));
             return;
         }
@@ -1815,14 +1819,15 @@ public:
         }
         if (largest_setID != -1)
         {
-            add_point(newPointID, largest_setID, thisPointVEC, thisPointOriginVEC);
+            add_point_to_set(newPointID, largest_setID, thisPointVEC, thisPointOriginVEC);
             connect_point_to_set(newPointID, largest_setID, extract_points_by_setID(searched_boundary_points_set, largest_setID));
             return;
         }
 
         // else, add the point to a new set
         int newSetID = getNewSetID();
-        add_point(newPointID, newSetID, thisPointVEC, thisPointOriginVEC);
+        add_point_to_set(newPointID, newSetID, thisPointVEC, thisPointOriginVEC);
+        add_boundary_point(newPointID, newSetID);
     }
 
 
@@ -1905,7 +1910,7 @@ public:
         for (int setID : set_with_point_within_it)
         {
             // add the point to the set
-            add_point(newPointID, setID, thisPointVEC, thisPointOriginVEC);
+            add_point_to_set(newPointID, setID, thisPointVEC, thisPointOriginVEC);
             std::cout << ith_point << " / " << pointcloud->size() << " of pointcloud " << ith_cloud << " added to set " << setID << std::endl;
             point_added_to_set = true;
 
