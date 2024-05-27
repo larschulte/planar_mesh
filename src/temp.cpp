@@ -507,6 +507,8 @@ public:
             Eigen::Matrix3d eigenvectors = solver.eigenvectors();
             Eigen::Vector3d eigenvalues = solver.eigenvalues();
             Eigen::Vector3d normal = eigenvectors.col(0); // Assuming the smallest eigenvalue corresponds to the normal
+            // normal should points towards the origin
+            if (normal.dot(origin - thisPoint) < 0) normal *= -1;
             set_to_mean_map.at(setID) = new_mean;
             set_to_covariance_matrix_map.at(setID) = new_covariance_matrix;
             set_to_eigenvectors_map.at(setID) = eigenvectors;
@@ -1766,7 +1768,6 @@ public:
             pointcloud = transform_cloud_to_global(pointcloud_local, pose);
             origin = pose.translation();
         }
-        std::cout << "Processing point " << ith_point << " / " << pointcloud->size() << " in pointcloud " << ith_cloud << std::endl;
 
         // get point
         Eigen::Vector3d thisPointVEC = pointcloud->points[ith_point].getVector3fMap().cast<double>();
@@ -1775,38 +1776,85 @@ public:
         
         // get new point id
         int newPointID = getNewPointID();
-        
-        // add point by triangle intersection
-        // build at the start of second cloud
-        // skip for the first pointcloud
-        // Perform intersection test
-        // if there are triangles
+
+
+        // ------------- add point by triangle intersection
 
         // get list of intersected triangle by the point
         std::set<int> searched_triangles = bvhRoot.intersectionSearch(thisPointOriginVEC, thisPointVEC);
-        std::cout << "intersects triangles: ";
-        for (int triangle_id : searched_triangles) std::cout << triangle_id << " ";    
-        std::cout << std::endl;
+
+        // group the triangles by set
+        std::map<int, std::set<int>> set_to_searched_triangle_map;
+        for (int triangleID : searched_triangles)
+        {
+            int setID = triangle_to_set_map.at(triangleID);
+            set_to_searched_triangle_map[setID].insert(triangleID);
+        }
+
+        // compute the intersection distance to the sets (distance measured in plane normal direction)
+        std::map<int, double> set_distance_map;
+        for (const auto& pair : set_to_searched_triangle_map)
+        {
+            int setID = pair.first;
+            Eigen::Vector3d mean = set_to_mean_map.at(setID);
+            Eigen::Vector3d normal = set_to_normal_map.at(setID);
+            Eigen::Vector3d rayPlaneIntersectionPoint = ray_plane_intersection(thisPointOriginVEC, thisPointVEC, mean, normal);
+            double distance = (thisPointVEC - rayPlaneIntersectionPoint).dot(normal);
+            set_distance_map[setID] = distance;
+        }
+
+        // split the sets into three categories
+        std::set<int> set_with_point_before_it;
+        std::set<int> set_with_point_within_it;
+        std::set<int> set_with_point_behind_it;
+        for (const auto& pair : set_distance_map)
+        {
+            int setID = pair.first;
+            double distance = pair.second;
+            if (distance > distance_threshold) set_with_point_before_it.insert(setID);
+            else if (distance < -distance_threshold) set_with_point_behind_it.insert(setID);
+            else set_with_point_within_it.insert(setID);
+        }
         
-            // get list of intersected triangle by the point
-        
+        bool point_added_to_set = false;
 
-            // from the list find the set
+        // process point within set set
+        // todo - if there are multiple sets with point within it, merge them
+        for (int setID : set_with_point_within_it)
+        {
+            // add the point to the set
+            add_point(newPointID, setID, thisPointVEC, thisPointOriginVEC);
+            std::cout << ith_point << " / " << pointcloud->size() << " of pointcloud " << ith_cloud << " added to set " << setID << std::endl;
 
-            // compute the intersection distance to the sets
-            // positive means in front of sets
-            // negative means behind the sets
+            // add the point to the triangle
+            for (int triangleID : set_to_searched_triangle_map.at(setID))
+            {
+                triangle_to_points_map.at(triangleID).insert(newPointID);
+            }
+        }
 
-            // for any sets that have a negative distance, this means the triangle is penerated by the point
-            // remove the triangle, recompute boundary edge and points, re-add the points associated with the triangle to the map, re-add any points that is cut off, add the new point
-            // when re-adding the points associated with the triangle, make sure the new formed triangle do not contain the new point
+        // process point behind set set
 
-            // for any sets that have a positive distance, ignore them
+        // for each set that the point is behind
 
-            // for any sets that have a zero distance, add the point to the set, add the point to the triangle
-        
-        // add point by radius search
-        add_point_by_radius_search(newPointID, thisPointVEC, thisPointOriginVEC);
+        // find the triangle penetrated by the point
+
+        // remove the triangle
+
+        // get the list of points inside the triangle
+
+        // get the list of points that are cut off by the triangle
+
+        // re add the list points by radius search, while avoid covering the new point
+
+
+
+        // ------------- add point by radius search
+        if (!point_added_to_set)
+        {
+            add_point_by_radius_search(newPointID, thisPointVEC, thisPointOriginVEC);
+            std::cout << ith_point << " / " << pointcloud->size() << " of pointcloud " << ith_cloud << " added by radius search" << std::endl;
+        }
     }
 
     void loop()
