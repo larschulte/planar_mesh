@@ -1699,14 +1699,51 @@ public:
             neighboring_sets.insert(point_to_set_map.at(point_id));
         }
 
-        // try merging the neighboring sets
+        // split neighboring sets into sets with plane and sets without plane (by size)
+        std::set<int> sets_with_plane;
+        std::set<int> sets_without_plane;
+        for (int setID : neighboring_sets)
+        {
+            if (set_to_points_map.at(setID).size() > fit_plane_threshold) sets_with_plane.insert(setID);
+            else sets_without_plane.insert(setID);
+        }
+        
+        // for sets with plane, compute the point to set intersection distance
+        std::map<int, double> set_distance_map;
+        for (int setID : sets_with_plane)
+        {
+            // use mean and normal of the set with the point added
+            Eigen::Vector3d mean = merge_means_between_set_and_point(setID, thisPointVEC);
+            Eigen::Matrix3d cov = merge_covariances_between_set_and_point(setID, thisPointVEC);
+
+            // use eigen solver to get normal
+            Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> eigensolver(cov);
+            Eigen::Vector3d normal = eigensolver.eigenvectors().col(0);
+
+            // compute distance
+            Eigen::Vector3d rayPlaneIntersectionPoint = ray_plane_intersection(thisPointOriginVEC, thisPointVEC, mean, normal);
+            double distance = (thisPointVEC - rayPlaneIntersectionPoint).norm();
+
+            // store
+            set_distance_map[setID] = distance;
+        }
+
+        // extract the set within distance threshold
+        std::set<int> sets_within_threshold;
+        for (const auto& pair : set_distance_map)
+        {
+            if (pair.second < distance_threshold) sets_within_threshold.insert(pair.first);
+        }
+
+        // try merge the sets_within_threshold (only merge if the new point can connect to both sets)
+        std::set<int> sets_to_merge = sets_within_threshold;
         while (true) 
         {
             // get all possible pairs to merge
             std::set<std::pair<int, int>> pairs_set;
-            for (int setID1 : neighboring_sets) 
+            for (int setID1 : sets_to_merge) 
             {
-                for (int setID2 : neighboring_sets) 
+                for (int setID2 : sets_to_merge) 
                 {
                     if (setID1 >= setID2) continue;
                     pairs_set.insert(std::make_pair(setID1, setID2));
@@ -1725,9 +1762,9 @@ public:
                 // merge sets
                 int newSetID = getNewSetID();
                 merge_sets(pairs.first, pairs.second, newSetID);
-                neighboring_sets.erase(pairs.first);
-                neighboring_sets.erase(pairs.second);
-                neighboring_sets.insert(newSetID);
+                sets_to_merge.erase(pairs.first);
+                sets_to_merge.erase(pairs.second);
+                sets_to_merge.insert(newSetID);
 
                 // once merged, restart
                 again = true;
@@ -1736,19 +1773,10 @@ public:
             if (!again) break;
         }
 
-        // split neighboring sets into sets with plane and sets without plane (by size)
-        std::set<int> sets_with_plane;
-        std::set<int> sets_without_plane;
-        for (int setID : neighboring_sets)
-        {
-            if (set_to_points_map.at(setID).size() > fit_plane_threshold) sets_with_plane.insert(setID);
-            else sets_without_plane.insert(setID);
-        }
-        
-        // for sets with plane, find the set that is closest to the point
+        // from the merged sets, find the set that is closest to the point
         int closest_setID;
         double closest_distance = std::numeric_limits<double>::max();
-        for (int setID : sets_with_plane)
+        for (int setID : sets_to_merge)
         {
             // use mean and normal of the set with the point added
             Eigen::Vector3d mean = merge_means_between_set_and_point(setID, thisPointVEC);
