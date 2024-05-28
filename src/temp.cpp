@@ -2050,7 +2050,7 @@ public:
         std::set<int> set_with_point_before_it;
         std::set<int> set_with_point_within_it;
         std::set<int> set_with_point_behind_it;
-        double split_distance_threshold = 0.03;
+        double split_distance_threshold = distance_threshold;
         for (const auto& pair : set_distance_map)
         {
             int setID = pair.first;
