@@ -666,6 +666,129 @@ public:
 
         // add to bvh
         bvhRoot.addTriangle(newTriangleID, vertices, point_to_vector3d_map.at(vertices[0]), point_to_vector3d_map.at(vertices[1]), point_to_vector3d_map.at(vertices[2]));
+        global_triangle_set.insert(newTriangleID);
+    }
+
+    std::set<int> remove_edge(int edgeID)
+    {
+        // initialize
+        std::set<int> isolated_points;
+
+        // get edge 
+        std::array<int, 2> newEdge = edge_to_point_map.at(edgeID);
+
+        // get setID
+        int setID = edge_to_set_map.at(edgeID);
+
+        // remove edge to point map
+        edge_to_point_map.erase(edgeID);
+        edge_to_point_map_reverse.erase(newEdge);
+
+        // update point to edge map
+        point_to_edges_map.at(newEdge[0]).erase(edgeID);
+        point_to_edges_map.at(newEdge[1]).erase(edgeID);
+
+        // collect isolated points
+        if (point_to_edges_map.at(newEdge[0]).empty()) 
+        {
+            isolated_points.insert(newEdge[0]);
+            remove_boundary_point(newEdge[0], setID);
+        }
+        if (point_to_edges_map.at(newEdge[1]).empty()) 
+        {
+            isolated_points.insert(newEdge[1]);
+            remove_boundary_point(newEdge[1], setID);
+        }
+        
+        // remove set to edge map
+        set_to_edges_map.at(setID).erase(edgeID);
+        edge_to_set_map.erase(edgeID);
+
+        // remove set boundary edge
+        set_to_edge_count_map.at(setID).erase(edgeID);
+        set_to_boundary_edge_set_map.at(setID).erase(edgeID);
+
+        // remove from edge list
+        edge_list.erase(std::remove(edge_list.begin(), edge_list.end(), edgeID), edge_list.end());
+
+        // return
+        return isolated_points;
+    }
+
+    std::set<int> penetrate_triangle(int triangleID)
+    {
+        // initialize
+        std::set<int> points_to_re_add;
+
+        // get triangle vertices
+        std::array<int, 3> vertices = triangle_to_vertices_map.at(triangleID);
+
+        // get set id
+        int setID = triangle_to_set_map.at(triangleID);
+
+        // remove triangle to vertices map
+        triangle_to_vertices_map.erase(triangleID);
+        triangle_to_vertices_map_reverse.erase(vertices);
+
+        // remove triangle to set map
+        triangle_to_set_map.erase(triangleID);
+        set_to_triangles_map.at(setID).erase(triangleID);
+
+        // collect points within triangle
+        points_to_re_add = triangle_to_points_map.at(triangleID);
+
+        // remove triangle to points map
+        triangle_to_points_map.erase(triangleID);
+
+        // remove from triangle list
+        triangle_list.erase(std::remove(triangle_list.begin(), triangle_list.end(), triangleID), triangle_list.end());
+
+        // update boundary edge and points
+        for (int i = 0; i < 3; i++)
+        {
+            // get correct edge order
+            int smaller_id = std::min(vertices[i], vertices[(i + 1) % 3]);
+            int larger_id = std::max(vertices[i], vertices[(i + 1) % 3]);
+            std::array<int, 2> edge = {smaller_id, larger_id};
+
+            // decrement count
+            int& count = set_to_edge_count_map.at(setID)[edge_to_point_map_reverse[edge]];
+            count --;
+
+            // cases
+            if (count < 0)
+            {
+                throw std::runtime_error("Edge count is negative");
+            }
+            else if (count == 0)
+            {
+                // remove edge
+                std::set<int> sub_points_to_re_add = remove_edge(edge_to_point_map_reverse[edge]);
+
+                // collect isolated point id to re-add
+                points_to_re_add.insert(sub_points_to_re_add.begin(), sub_points_to_re_add.end());
+            }
+            else if (count == 1)
+            {
+                // udpate set boundary edge
+                set_to_boundary_edge_set_map.at(setID).insert(edge_to_point_map_reverse[edge]);
+                
+                // update boundary points
+                add_boundary_point(edge[0], setID);
+                add_boundary_point(edge[1], setID);
+            } 
+            else
+            {
+                // no update is needed
+            }
+        }
+
+        // // todo - remove from bvh 
+        // bvhRoot.removeTriangle(triangleID);
+        global_triangle_set.erase(triangleID);
+
+        // return
+        return points_to_re_add;
     }
 
     void add_boundary_point(int pointID, int setID)
@@ -1870,7 +1993,8 @@ public:
         // ------------- add point by triangle intersection
 
         // get list of intersected triangle by the point
-        std::set<int> searched_triangles = bvhRoot.intersectionSearch(thisPointOriginVEC, thisPointVEC);
+        std::set<int> candidate_searched_triangles = bvhRoot.intersectionSearch(thisPointOriginVEC, thisPointVEC); // may include deleted triangles
+        std::set<int> searched_triangles = intersection_of_sets(candidate_searched_triangles, global_triangle_set);
 
         // group the triangles by set
         std::map<int, std::set<int>> set_to_searched_triangle_map;
@@ -1896,13 +2020,23 @@ public:
         std::set<int> set_with_point_before_it;
         std::set<int> set_with_point_within_it;
         std::set<int> set_with_point_behind_it;
+        double split_distance_threshold = 0.03;
         for (const auto& pair : set_distance_map)
         {
             int setID = pair.first;
             double distance = pair.second;
-            if (distance > distance_threshold) set_with_point_before_it.insert(setID);
-            else if (distance < -distance_threshold) set_with_point_behind_it.insert(setID);
-            else set_with_point_within_it.insert(setID);
+            if (distance > split_distance_threshold) 
+            {
+                set_with_point_before_it.insert(setID);
+            }
+            else if (distance < -split_distance_threshold) 
+            {
+                set_with_point_behind_it.insert(setID);
+            }
+            else 
+            {
+                set_with_point_within_it.insert(setID);
+            }
         }
         
         bool point_added_to_set = false;
@@ -1923,28 +2057,45 @@ public:
             }
         }
 
-        // process point behind set set
-
-        // for each set that the point is behind
-
-        // find the triangle penetrated by the point
-
-        // remove the triangle
-
-        // get the list of points inside the triangle
-
-        // get the list of points that are cut off by the triangle
-
-        // re add the list points by radius search, while avoid covering the new point
-
-
-
-        // ------------- add point by radius search
         if (!point_added_to_set)
         {
             add_point_by_radius_search(newPointID, thisPointVEC, thisPointOriginVEC);
             std::cout << ith_point << " / " << pointcloud->size() << " of pointcloud " << ith_cloud << " added by radius search" << std::endl;
         }
+
+        // process point behind set set
+
+        // get the set of triangles that are penetrated by the point
+        std::set<int> penetrated_triangles;
+        for (int setID : set_with_point_behind_it)
+        {
+            penetrated_triangles.insert(set_to_searched_triangle_map.at(setID).begin(), set_to_searched_triangle_map.at(setID).end());
+        }
+
+        // collect the list of points that are within the penetrated triangles, and isolated by the triangle
+        std::set<int> points_to_re_add;
+        for (int triangleID : penetrated_triangles)
+        {
+            // penetrate triangles
+            std::set<int> sub_points_to_re_add = penetrate_triangle(triangleID);
+
+            // collect points to re-add
+            points_to_re_add.insert(sub_points_to_re_add.begin(), sub_points_to_re_add.end());
+        }
+
+        // re add the list points by radius search
+        // todo - while avoid covering the new point
+        for (int pointID : points_to_re_add)
+        {
+            std::cout << "---------------------------------------------------------------------------------------------------- re-adding point " << pointID << " by radius search" << std::endl;
+            Eigen::Vector3d pointVEC = point_to_vector3d_map.at(pointID);
+            Eigen::Vector3d pointOriginVEC = point_to_origin_vector3d_map.at(pointID);
+            add_point_by_radius_search(pointID, pointVEC, pointOriginVEC);
+        }
+
+
+        // todo - process point before set set
+
     }
 
     void loop()
@@ -2197,6 +2348,7 @@ private:
 
         // triangle intersection
     TriangleBVH bvhRoot;
+    std::set<int> global_triangle_set;
 
         // projected points
     std::map<int, Eigen::Vector3d> projected_points_to_vector3d_map;
