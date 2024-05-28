@@ -691,13 +691,27 @@ public:
         // collect isolated points
         if (point_to_edges_map.at(newEdge[0]).empty()) 
         {
-            isolated_points.insert(newEdge[0]);
-            remove_boundary_point(newEdge[0], setID);
+            int pointID = newEdge[0];
+            // remove point from all sets
+            point_to_set_map.at(pointID) = -999;
+            point_to_edges_map.at(pointID).clear();
+            set_to_points_map.at(setID).erase(pointID);
+            set_to_boundary_point_set_map.at(setID).erase(pointID);
+            global_boundary_point_set.erase(pointID);
+            // add point to isolated points
+            isolated_points.insert(pointID);
         }
         if (point_to_edges_map.at(newEdge[1]).empty()) 
         {
-            isolated_points.insert(newEdge[1]);
-            remove_boundary_point(newEdge[1], setID);
+            int pointID = newEdge[1];
+            // remove point from all sets
+            point_to_set_map.at(pointID) = -999;
+            point_to_edges_map.at(pointID).clear();
+            set_to_points_map.at(setID).erase(pointID);
+            set_to_boundary_point_set_map.at(setID).erase(pointID);
+            global_boundary_point_set.erase(pointID);
+            // add point to isolated points
+            isolated_points.insert(pointID);
         }
         
         // remove set to edge map
