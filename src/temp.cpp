@@ -2376,22 +2376,6 @@ public:
         viewer_->initCameraParameters();
         viewer_->addCoordinateSystem(1);
 
-        // triangle mesh
-        pcl::PolygonMesh triangle_mesh;
-        viewer_->addPolygonMesh(triangle_mesh, "triangle_mesh");
-
-        // mesh
-        pcl::PolygonMesh mesh;
-        viewer_->addPolylineFromPolygonMesh(mesh, "polyline");
-
-        // boundary edges
-        pcl::PolygonMesh boundary_mesh;
-        viewer_->addPolylineFromPolygonMesh(boundary_mesh, "boundary_edges");
-
-        // colored cloud
-        pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
-        viewer_->addPointCloud(cloud, "cloud");
-
         // register keyboard callback
         viewer_->registerKeyboardCallback(&InteractiveViewer::keyboard_callback, *this, nullptr);
 
@@ -2404,116 +2388,86 @@ private:
 
     pcl::visualization::PCLVisualizer::Ptr viewer_;
 
-    bool show_triangle = false;
+    bool show_pointcloud = true;
+    bool show_triangle = true;
+    bool show_edge = true;
+
     bool show_projected_point = false;
     bool show_error_color = false;
     
     void update_display()
     {
-        // get data from app
-        pcl::PointCloud<pcl::PointXYZRGB>::Ptr intensity_cloud;
+        // data
+        pcl::PointCloud<pcl::PointXYZRGB>::Ptr point_cloud;
         if (show_projected_point)
         {
             if (show_error_color) 
             {
-                intensity_cloud = app_.projected_point_to_vector3d_set_distance_cloud();
+                point_cloud = app_.projected_point_to_vector3d_set_distance_cloud();
             }
             else
             {
-                intensity_cloud = app_.projected_point_to_vector3d_set_colored_cloud();
+                point_cloud = app_.projected_point_to_vector3d_set_colored_cloud();
             }
         }
         else
         {
             if (show_error_color) 
             {
-                intensity_cloud = app_.point_to_vector3d_set_distance_cloud();
+                point_cloud = app_.point_to_vector3d_set_distance_cloud();
             }
             else
             {
-                intensity_cloud = app_.point_to_vector3d_set_colored_cloud();
+                point_cloud = app_.point_to_vector3d_set_colored_cloud();
             }
         }
-        std::map<int, std::array<int, 2>> edge_to_vertices_map = app_.get_edge_to_vertices_map();
         std::map<int, std::array<int, 3>> triangle_to_vertices_map = app_.get_triangle_to_vertices_map();
-        
-
-        // triangle faces
-        pcl::PolygonMesh triangle_mesh;
-        // add points
-        pcl::toPCLPointCloud2(*intensity_cloud, triangle_mesh.cloud);
-        // add triangles
-        for (const auto& pair : triangle_to_vertices_map)
-        {
-            pcl::Vertices triangle;
-            triangle.vertices.push_back(pair.second[0]);
-            triangle.vertices.push_back(pair.second[1]);
-            triangle.vertices.push_back(pair.second[2]);
-            triangle_mesh.polygons.push_back(triangle);
-        }
-
-        // mesh
-        pcl::PolygonMesh mesh;
-        // add points
-        pcl::toPCLPointCloud2(*intensity_cloud, mesh.cloud); 
-        // add edges
-        for (const auto& pair : edge_to_vertices_map)
-        {
-            pcl::Vertices edge;
-            edge.vertices.push_back(pair.second[0]);
-            edge.vertices.push_back(pair.second[1]);
-            mesh.polygons.push_back(edge);
-        }
-
-        // boundary mesh
-        pcl::PolygonMesh boundary_mesh;
-        // add points
-        pcl::toPCLPointCloud2(*intensity_cloud, boundary_mesh.cloud);
-        // get boundary edges
+        std::map<int, std::array<int, 2>> edge_to_vertices_map = app_.get_edge_to_vertices_map();
         std::vector<int> boundary_edge_list = app_.get_boundary_edge_list();
-        // add edges
-        for (int edge_id : boundary_edge_list)
-        {
-            pcl::Vertices edge;
-            edge.vertices.push_back(edge_to_vertices_map.at(edge_id)[0]);
-            edge.vertices.push_back(edge_to_vertices_map.at(edge_id)[1]);
-            boundary_mesh.polygons.push_back(edge);
-        }
 
+        // point cloud
+        viewer_->removeShape("point_cloud");
+        if (show_pointcloud)
+        {
+            pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> color_handler(point_cloud);
+            viewer_->addPointCloud<pcl::PointXYZRGB>(point_cloud, color_handler, "point_cloud");
+            viewer_->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 6, "point_cloud");
+        }
+        
         // triangle mesh
+        viewer_->removeShape("triangle_mesh");
         if (show_triangle)
         {
-            // add shape
-            if (!viewer_->updatePolygonMesh(triangle_mesh, "triangle_mesh"))
+            pcl::PolygonMesh triangle_mesh;
+            pcl::toPCLPointCloud2(*point_cloud, triangle_mesh.cloud);
+            for (const auto& pair : triangle_to_vertices_map)
             {
-                viewer_->addPolygonMesh(triangle_mesh, "triangle_mesh");
+                pcl::Vertices triangle;
+                triangle.vertices.push_back(pair.second[0]);
+                triangle.vertices.push_back(pair.second[1]);
+                triangle.vertices.push_back(pair.second[2]);
+                triangle_mesh.polygons.push_back(triangle);
             }
+            viewer_->addPolygonMesh(triangle_mesh, "triangle_mesh");
         }
-        else
-        {
-            // remove shape
-            if (viewer_->updatePolygonMesh(triangle_mesh, "triangle_mesh"))
-            {
-                viewer_->removeShape("triangle_mesh");
-            }
-        }
-
-        // mesh
-        viewer_->removeShape("polyline");
-        viewer_->addPolylineFromPolygonMesh(mesh, "polyline");
-        viewer_->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, 0.1, 0.1, 0.1, "polyline");
-        viewer_->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, 0.3, "polyline");
 
         // boundary edges
-        viewer_->removeShape("boundary_edges");
-        viewer_->addPolylineFromPolygonMesh(boundary_mesh, "boundary_edges");
-        viewer_->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, 0.2, 0.2, 0.2, "boundary_edges");
-        viewer_->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, 2, "boundary_edges");
-
-        // set colored cloud
-        pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> intensity_handler(intensity_cloud);
-        viewer_->updatePointCloud<pcl::PointXYZRGB>(intensity_cloud, intensity_handler, "cloud");
-        viewer_->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 6, "cloud");
+        viewer_->removeShape("boundary_edges");        
+        if (show_edge)
+        {
+            pcl::PolygonMesh boundary_mesh;
+            pcl::toPCLPointCloud2(*point_cloud, boundary_mesh.cloud);
+            for (int edge_id : boundary_edge_list)
+            {
+                pcl::Vertices edge;
+                edge.vertices.push_back(edge_to_vertices_map.at(edge_id)[0]);
+                edge.vertices.push_back(edge_to_vertices_map.at(edge_id)[1]);
+                boundary_mesh.polygons.push_back(edge);
+            }
+            viewer_->addPolylineFromPolygonMesh(boundary_mesh, "boundary_edges");
+            viewer_->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, 0.2, 0.2, 0.2, "boundary_edges");
+            viewer_->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, 2, "boundary_edges");
+        }
     }
 
     void keyboard_callback(const pcl::visualization::KeyboardEvent &event, void*) 
@@ -2564,9 +2518,21 @@ private:
             app_.change_color();
             update_display();
         }
-        if (event.getKeySym() == "t" && event.keyDown())
+        if (event.getKeySym() == "comma" && event.keyDown())
         {
-            // toggle triangle visibility
+            // toggle show point cloud
+            show_pointcloud = !show_pointcloud;
+            update_display();
+        }
+        if (event.getKeySym() == "period" && event.keyDown())
+        {
+            // toggle show edge
+            show_edge = !show_edge;
+            update_display();
+        }
+        if (event.getKeySym() == "slash" && event.keyDown())
+        {
+            // toggle show triangle
             show_triangle = !show_triangle;
             update_display();
         }
