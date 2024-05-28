@@ -1791,8 +1791,10 @@ public:
     }
 
     // try merge sets
-    std::set<int> try_merge_sets(std::set<int> sets_to_merge)
+    std::map<int, int> try_merge_sets(std::set<int>& sets_to_merge)
     {
+        std::map<int, int> merge_map;
+
         while (true) 
         {
             // get all possible pairs to merge
@@ -1821,6 +1823,8 @@ public:
                 sets_to_merge.erase(pairs.first);
                 sets_to_merge.erase(pairs.second);
                 sets_to_merge.insert(newSetID);
+                merge_map[pairs.first] = newSetID;
+                merge_map[pairs.second] = newSetID;
 
                 // once merged, restart
                 again = true;
@@ -1830,7 +1834,7 @@ public:
         }
 
         // return
-        return sets_to_merge;
+        return merge_map;
     }
 
     void add_point_by_radius_search(int newPointID, Eigen::Vector3d thisPointVEC, Eigen::Vector3d thisPointOriginVEC)
@@ -1904,7 +1908,8 @@ public:
         }
 
         // try merge the sets_within_threshold (only merge if the new point can connect to both sets)
-        std::set<int> merged_sets = try_merge_sets(sets_within_threshold);
+        std::set<int> merged_sets = sets_within_threshold;
+        try_merge_sets(merged_sets);
 
         // from the merged sets, find the set that is closest to the point
         int closest_setID = -1;
@@ -2047,22 +2052,71 @@ public:
             }
         }
         
+        // process point within set set
         bool point_added_to_set = false;
 
-        // process point within set set
-        // todo - if there are multiple sets with point within it, merge them
-        for (int setID : set_with_point_within_it)
-        {
-            // add the point to the set
-            add_point_to_set(newPointID, setID, thisPointVEC, thisPointOriginVEC);
-            std::cout << ith_point << " / " << pointcloud->size() << " of pointcloud " << ith_cloud << " added to set " << setID << std::endl;
-            point_added_to_set = true;
+        // try merge them
+        std::set<int> merged_set = set_with_point_within_it;
+        std::map<int, int> merge_map = try_merge_sets(merged_set);
 
-            // add the point to the triangle
-            for (int triangleID : set_to_searched_triangle_map.at(setID))
+        // update the set_to_searched_triangle_map using the merge map
+        while (true)
+        {
+            bool restart = false;
+
+            for (const auto& pair : merge_map)
             {
-                triangle_to_points_map.at(triangleID).insert(newPointID);
+                // skip if the key is already handled
+                if (set_to_searched_triangle_map.find(pair.first) == set_to_searched_triangle_map.end()) continue;
+
+                // change the key
+                std::set<int> content = set_to_searched_triangle_map.at(pair.first);
+                set_to_searched_triangle_map.erase(pair.first);
+                set_to_searched_triangle_map[pair.second] = content;
+
+                // restart
+                restart = true;
+                break;
             }
+
+            if (!restart) break;
+        }
+        
+
+        // find the set with the smallest distance
+        int smallest_setID = -1;
+        double smallest_distance = std::numeric_limits<double>::max();
+        for (int setID : merged_set)
+        {
+            // if the set does not have distance, it is new, compute its distance
+            if (set_distance_map.find(setID) == set_distance_map.end())
+            {
+                Eigen::Vector3d mean = set_to_mean_map.at(setID);
+                Eigen::Vector3d normal = set_to_normal_map.at(setID);
+                Eigen::Vector3d rayPlaneIntersectionPoint = ray_plane_intersection(thisPointOriginVEC, thisPointVEC, mean, normal);
+                double distance = (thisPointVEC - rayPlaneIntersectionPoint).dot(normal);
+                set_distance_map[setID] = distance;
+            }
+
+            // update if smaller
+            if (std::abs(set_distance_map.at(setID)) < smallest_distance)
+            {
+                smallest_distance = set_distance_map.at(setID);
+                smallest_setID = setID;
+            }
+        }
+
+        // if the smallest set is within threshold, add the point to the set
+        if (smallest_setID != -1 && std::abs(smallest_distance) < distance_threshold)
+        {
+            add_point_to_set(newPointID, smallest_setID, thisPointVEC, thisPointOriginVEC);
+            std::cout << ith_point << " / " << pointcloud->size() << " of pointcloud " << ith_cloud << " added to set " << smallest_setID << std::endl;
+
+            // add the point to the triangle (if multiple, add to first)
+            int triangleID = *set_to_searched_triangle_map.at(smallest_setID).begin();
+            triangle_to_points_map.at(triangleID).insert(newPointID);
+
+            point_added_to_set = true;
         }
 
         if (!point_added_to_set)
