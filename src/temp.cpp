@@ -2473,6 +2473,8 @@ private:
 
     bool show_projected_point = false;
     bool show_error_color = false;
+
+    bool show_wireframe = true;
     
     void update_display()
     {
@@ -2546,6 +2548,16 @@ private:
             viewer_->addPolylineFromPolygonMesh(boundary_mesh, "boundary_edges");
             viewer_->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, 1, 1, 1, "boundary_edges");
             viewer_->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, 2, "boundary_edges");
+        }
+
+        // display mode
+        if (show_wireframe)
+        {
+            viewer_->setRepresentationToWireframeForAllActors();
+        }
+        else
+        {
+            viewer_->setRepresentationToSurfaceForAllActors();
         }
     }
 
@@ -2625,6 +2637,12 @@ private:
         {
             // toggle set color and error color
             show_error_color = !show_error_color;
+            update_display();
+        }
+        if (event.getKeySym() == "v" && event.keyDown())
+        {
+            // toggle wireframe
+            show_wireframe = !show_wireframe;
             update_display();
         }
     }  
