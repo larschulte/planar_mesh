@@ -1624,6 +1624,85 @@ public:
         return rayPlaneIntersectionPoint;
     }
 
+    std::set<int> extract_points_by_setID(std::set<int> point_set, int setID)
+    {
+        // initialize
+        std::set<int> out_point_set;
+
+        // process
+        for (int point_id : point_set)
+        {
+            if (point_to_set_map.at(point_id) == setID) out_point_set.insert(point_id);
+        }
+
+        // return
+        return out_point_set;
+    }
+
+
+    // creates edges and triangles that connects the new point to the set
+    void connect_point_to_set(int newPointID, int setID, std::set<int> searched_boundary_points_in_current_set)
+    {
+        // add point as boundary point
+        add_boundary_point(newPointID, setID);
+
+        // points_to_vector2d_map
+        std::map<int, Eigen::Vector2d> points_to_vector2d_map = project_boundary_points_of_set_to_set_plane(setID);
+
+        // existing edges between searched points (boundary)
+        std::set<int> existing_boundary_edge_set = extract_existing_edge_between_points(searched_boundary_points_in_current_set, get_boundary_edge_set_of_set(setID));
+
+
+        // to add a new point to mesh
+        // - form edge to boundary point of the mesh, skip if the edge intersects any existing boundary edge
+        // - form triangle if two used boundary points have a boundary edge between them, skip if the triangle contains other boundary points
+
+        // add edge
+        std::set<int> searched_boundary_points_used;
+        for (int point_id : searched_boundary_points_in_current_set)
+        {
+            // new edge, smaller id first
+            std::array<int, 2> newEdge = {std::min(newPointID, point_id), std::max(newPointID, point_id)};
+
+            // skip if edge already exists
+            if (edge_to_point_map_reverse.find(newEdge) != edge_to_point_map_reverse.end()) continue;
+
+            // skip if intersected with any boundary edge of the current set
+            if (edge_edges_intersection(newEdge, get_boundary_edge_set_of_set(setID), points_to_vector2d_map)) continue;
+
+            // add edge
+            int newEdgeID = getNewEdgeID();
+            add_edge(newEdgeID, setID, newEdge);
+
+            // add to used
+            searched_boundary_points_used.insert(point_id);
+        }
+
+        // add triangle
+        for (const auto& edgeID : existing_boundary_edge_set)
+        {   
+            // skip if not both points are used
+            int i1 = edge_to_point_map.at(edgeID)[0];
+            int i2 = edge_to_point_map.at(edgeID)[1];
+            bool i1_used = searched_boundary_points_used.find(i1) != searched_boundary_points_used.end();
+            bool i2_used = searched_boundary_points_used.find(i2) != searched_boundary_points_used.end();
+            if (!i1_used || !i2_used) continue;
+
+            // new triangle, smaller id first
+            std::array<int, 3> newTriangle = sortThreeInts(newPointID, i1, i2);
+
+            // skip if triangle already exists
+            if (triangle_to_vertices_map_reverse.find(newTriangle) != triangle_to_vertices_map_reverse.end()) continue;
+
+            // skip if triangle contains other boundary points
+            if (triangle_contains_point(newTriangle, searched_boundary_points_in_current_set, points_to_vector2d_map)) continue;
+
+            // add triangle
+            int newTriangleID = getNewTriangleID();
+            add_triangle(newTriangleID, setID, newTriangle);
+        }
+    }
+
     // merge setID2 into setID1
     void merge_sets(int setID1, int setID2, int newSetID) 
     {
@@ -1711,83 +1790,47 @@ public:
         for (int triangle_id : combined_triangles) triangle_to_set_map.at(triangle_id) = newSetID;
     }
 
-    std::set<int> extract_points_by_setID(std::set<int> point_set, int setID)
+    // try merge sets
+    std::set<int> try_merge_sets(std::set<int> sets_to_merge)
     {
-        // initialize
-        std::set<int> out_point_set;
-
-        // process
-        for (int point_id : point_set)
+        while (true) 
         {
-            if (point_to_set_map.at(point_id) == setID) out_point_set.insert(point_id);
+            // get all possible pairs to merge
+            std::set<std::pair<int, int>> pairs_set;
+            for (int setID1 : sets_to_merge) 
+            {
+                for (int setID2 : sets_to_merge) 
+                {
+                    if (setID1 >= setID2) continue;
+                    pairs_set.insert(std::make_pair(setID1, setID2));
+                }
+            }
+            
+            // try to merge pairs
+            bool again = false;
+            for (const auto& pairs : pairs_set) 
+            {
+                // skip if can't merge
+                Eigen::Matrix3d covariance_matrix = merge_covariances_of_sets(pairs.first, pairs.second);
+                double eigenvalue = Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d>(covariance_matrix).eigenvalues()[0];
+                if (eigenvalue > merged_eigenvalue_threshold) continue;
+
+                // merge sets
+                int newSetID = getNewSetID();
+                merge_sets(pairs.first, pairs.second, newSetID);
+                sets_to_merge.erase(pairs.first);
+                sets_to_merge.erase(pairs.second);
+                sets_to_merge.insert(newSetID);
+
+                // once merged, restart
+                again = true;
+                break;
+            }
+            if (!again) break;
         }
 
         // return
-        return out_point_set;
-    }
-
-
-    // creates edges and triangles that connects the new point to the set
-    void connect_point_to_set(int newPointID, int setID, std::set<int> searched_boundary_points_in_current_set)
-    {
-        // add point as boundary point
-        add_boundary_point(newPointID, setID);
-
-        // points_to_vector2d_map
-        std::map<int, Eigen::Vector2d> points_to_vector2d_map = project_boundary_points_of_set_to_set_plane(setID);
-
-        // existing edges between searched points (boundary)
-        std::set<int> existing_boundary_edge_set = extract_existing_edge_between_points(searched_boundary_points_in_current_set, get_boundary_edge_set_of_set(setID));
-
-
-        // to add a new point to mesh
-        // - form edge to boundary point of the mesh, skip if the edge intersects any existing boundary edge
-        // - form triangle if two used boundary points have a boundary edge between them, skip if the triangle contains other boundary points
-
-        // add edge
-        std::set<int> searched_boundary_points_used;
-        for (int point_id : searched_boundary_points_in_current_set)
-        {
-            // new edge, smaller id first
-            std::array<int, 2> newEdge = {std::min(newPointID, point_id), std::max(newPointID, point_id)};
-
-            // skip if edge already exists
-            if (edge_to_point_map_reverse.find(newEdge) != edge_to_point_map_reverse.end()) continue;
-
-            // skip if intersected with any boundary edge of the current set
-            if (edge_edges_intersection(newEdge, get_boundary_edge_set_of_set(setID), points_to_vector2d_map)) continue;
-
-            // add edge
-            int newEdgeID = getNewEdgeID();
-            add_edge(newEdgeID, setID, newEdge);
-
-            // add to used
-            searched_boundary_points_used.insert(point_id);
-        }
-
-        // add triangle
-        for (const auto& edgeID : existing_boundary_edge_set)
-        {   
-            // skip if not both points are used
-            int i1 = edge_to_point_map.at(edgeID)[0];
-            int i2 = edge_to_point_map.at(edgeID)[1];
-            bool i1_used = searched_boundary_points_used.find(i1) != searched_boundary_points_used.end();
-            bool i2_used = searched_boundary_points_used.find(i2) != searched_boundary_points_used.end();
-            if (!i1_used || !i2_used) continue;
-
-            // new triangle, smaller id first
-            std::array<int, 3> newTriangle = sortThreeInts(newPointID, i1, i2);
-
-            // skip if triangle already exists
-            if (triangle_to_vertices_map_reverse.find(newTriangle) != triangle_to_vertices_map_reverse.end()) continue;
-
-            // skip if triangle contains other boundary points
-            if (triangle_contains_point(newTriangle, searched_boundary_points_in_current_set, points_to_vector2d_map)) continue;
-
-            // add triangle
-            int newTriangleID = getNewTriangleID();
-            add_triangle(newTriangleID, setID, newTriangle);
-        }
+        return sets_to_merge;
     }
 
     void add_point_by_radius_search(int newPointID, Eigen::Vector3d thisPointVEC, Eigen::Vector3d thisPointOriginVEC)
@@ -1861,47 +1904,12 @@ public:
         }
 
         // try merge the sets_within_threshold (only merge if the new point can connect to both sets)
-        std::set<int> sets_to_merge = sets_within_threshold;
-        while (true) 
-        {
-            // get all possible pairs to merge
-            std::set<std::pair<int, int>> pairs_set;
-            for (int setID1 : sets_to_merge) 
-            {
-                for (int setID2 : sets_to_merge) 
-                {
-                    if (setID1 >= setID2) continue;
-                    pairs_set.insert(std::make_pair(setID1, setID2));
-                }
-            }
-            
-            // try to merge pairs
-            bool again = false;
-            for (const auto& pairs : pairs_set) 
-            {
-                // skip if can't merge
-                Eigen::Matrix3d covariance_matrix = merge_covariances_of_sets(pairs.first, pairs.second);
-                double eigenvalue = Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d>(covariance_matrix).eigenvalues()[0];
-                if (eigenvalue > merged_eigenvalue_threshold) continue;
-
-                // merge sets
-                int newSetID = getNewSetID();
-                merge_sets(pairs.first, pairs.second, newSetID);
-                sets_to_merge.erase(pairs.first);
-                sets_to_merge.erase(pairs.second);
-                sets_to_merge.insert(newSetID);
-
-                // once merged, restart
-                again = true;
-                break;
-            }
-            if (!again) break;
-        }
+        std::set<int> merged_sets = try_merge_sets(sets_within_threshold);
 
         // from the merged sets, find the set that is closest to the point
         int closest_setID = -1;
         double closest_distance = std::numeric_limits<double>::max();
-        for (int setID : sets_to_merge)
+        for (int setID : merged_sets)
         {
             // use mean and normal of the set with the point added
             Eigen::Vector3d mean = merge_means_between_set_and_point(setID, thisPointVEC);
