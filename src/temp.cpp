@@ -1866,8 +1866,8 @@ public:
         double search_size = 0.2;
 
         // perform flann3d radius search
-        std::set<int> searched_boundary_points_set = flann.radiusSearch(thisPointVEC, search_size);
-        searched_boundary_points_set = intersection_of_sets(searched_boundary_points_set, global_boundary_point_set);
+        std::set<int> candidate_searched_boundary_points_set = flann.radiusSearch(thisPointVEC, search_size);
+        std::set<int> searched_boundary_points_set = intersection_of_sets(candidate_searched_boundary_points_set, global_boundary_point_set);
 
         // if no searched results, add point to new set
         if (searched_boundary_points_set.size() == 0)
@@ -1952,7 +1952,10 @@ public:
         if (closest_setID != -1 && closest_distance < distance_threshold)
         {
             add_point_to_set(newPointID, closest_setID, thisPointVEC, thisPointOriginVEC);            
-            connect_point_to_set(newPointID, closest_setID, extract_points_by_setID(searched_boundary_points_set, closest_setID));
+
+            // somewhere above, the boundary point set is changed, thus need to recompute
+            std::set<int> searched_boundary_points_in_current_set = intersection_of_sets(candidate_searched_boundary_points_set, get_boundary_point_set_of_set(closest_setID));
+            connect_point_to_set(newPointID, closest_setID, searched_boundary_points_in_current_set);
             return;
         }
 
