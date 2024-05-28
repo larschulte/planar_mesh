@@ -2465,7 +2465,7 @@ private:
                 boundary_mesh.polygons.push_back(edge);
             }
             viewer_->addPolylineFromPolygonMesh(boundary_mesh, "boundary_edges");
-            viewer_->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, 0.2, 0.2, 0.2, "boundary_edges");
+            viewer_->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, 1, 1, 1, "boundary_edges");
             viewer_->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, 2, "boundary_edges");
         }
     }
