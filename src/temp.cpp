@@ -5,7 +5,7 @@
 #include "point_type/VilensPointT.hpp"
 #include "eye_patch/DataLoader.hpp"
 #include "eye_patch/TriangleBVH.hpp"
-#include "eye_patch/flann3d.hpp"
+#include "eye_patch/KDTree.hpp"
 
 // application class
 template <typename PointT>
@@ -360,7 +360,7 @@ public:
 
         // update global boundary points
         bool inserted = global_boundary_point_set.insert(pointID).second;
-        if (inserted) flann.addPoint(point_to_vector3d_map.at(pointID), pointID);
+        if (inserted) kdtree.addPoint(point_to_vector3d_map.at(pointID), pointID);
     }
 
     void remove_boundary_point(int pointID, int setID)
@@ -377,7 +377,7 @@ public:
 
         // // skip for now
         // bool erased = global_boundary_point_set.erase(pointID);
-        // if (erased) flann.deletePoint(pointID);
+        // if (erased) kdtree.deletePoint(pointID);
         
     }
 
@@ -1413,8 +1413,8 @@ public:
         // radius search size
         double search_size = 0.2;
 
-        // perform flann3d radius search
-        std::set<int> candidate_searched_boundary_points_set = flann.radiusSearch(thisPointVEC, search_size);
+        // perform kdtree radius search
+        std::set<int> candidate_searched_boundary_points_set = kdtree.radiusSearch(thisPointVEC, search_size);
         std::set<int> searched_boundary_points_set = intersection_of_sets(candidate_searched_boundary_points_set, global_boundary_point_set);
 
         // if no searched results, add point to new set
@@ -1972,7 +1972,7 @@ private:
     std::map<int, int> edge_to_set_map;
 
         // boundary
-    flann3d flann;
+    KDTree kdtree;
     std::set<int> global_boundary_point_set;
 
         // triangle intersection
