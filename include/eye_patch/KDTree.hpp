@@ -68,7 +68,7 @@ public:
         return node;
     }
 
-    void addPointToNode(std::shared_ptr<Node> node, int point_id, int depth)
+    void addPointToNode(std::shared_ptr<Node>& node, int point_id, int depth)
     {
         // leaf node
         if (node == nullptr)
