@@ -1912,6 +1912,15 @@ public:
         }
     }
 
+    void kdtree_rebuild()
+    {
+        kdtree.rebuild();
+    }
+
+    void kdtree_print_tree()
+    {
+        kdtree.print_tree();
+    }
     
 private:
     // data
@@ -2194,6 +2203,17 @@ private:
             // toggle wireframe
             show_wireframe = !show_wireframe;
             update_display();
+        }
+        if (event.getKeySym() == "b" && event.keyDown())
+        {
+            // rebuild kdtree
+            app_.kdtree_rebuild();
+            std::cout << "kdtree rebuilt" << std::endl;
+        }
+        if (event.getKeySym() == "n" && event.keyDown())
+        {
+            // print tree
+            app_.kdtree_print_tree();
         }
     }  
 };

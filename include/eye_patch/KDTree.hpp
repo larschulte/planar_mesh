@@ -164,6 +164,24 @@ public:
         return result;
     }
 
+    void print_tree()
+    {
+        std::cout << "Printing tree" << std::endl;
+        print_node(root);
+    }
+
+    void print_node(std::shared_ptr<Node> node)
+    {
+        if (node == nullptr)
+        {
+            return;
+        }
+
+        std::cout << "Node: " << node->pointID << std::endl;
+        print_node(node->left);
+        print_node(node->right);
+    }
+
     std::vector<int> point_list;
     std::map<int, Eigen::Vector3d> point_to_vector3d_map;
     std::shared_ptr<Node> root;
