@@ -1496,12 +1496,11 @@ public:
                 closest_setID = setID;
             }
         }
+        // somewhere above, the global and local boundary points sets are not in sync
         if (closest_setID != -1 && closest_distance < distance_threshold)
         {
-            add_point_to_set(newPointID, closest_setID, thisPointVEC, thisPointOriginVEC);            
-
-            // somewhere above, the boundary point set is changed, thus need to recompute
             std::set<int> searched_boundary_points_in_current_set = intersection_of_sets(candidate_searched_boundary_points_set, get_boundary_point_set_of_set(closest_setID));
+            add_point_to_set(newPointID, closest_setID, thisPointVEC, thisPointOriginVEC);
             connect_point_to_set(newPointID, closest_setID, searched_boundary_points_in_current_set);
             return;
         }
@@ -1519,8 +1518,9 @@ public:
         }
         if (largest_setID != -1)
         {
+            std::set<int> searched_boundary_points_in_current_set = intersection_of_sets(candidate_searched_boundary_points_set, get_boundary_point_set_of_set(largest_setID));
             add_point_to_set(newPointID, largest_setID, thisPointVEC, thisPointOriginVEC);
-            connect_point_to_set(newPointID, largest_setID, extract_points_by_setID(searched_boundary_points_set, largest_setID));
+            connect_point_to_set(newPointID, largest_setID, searched_boundary_points_in_current_set);
             return;
         }
 
