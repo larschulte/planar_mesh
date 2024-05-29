@@ -62,7 +62,7 @@ public:
 
             node->pointID = point_list[mid];
             node->left = build_node(std::vector<int>(point_list.begin(), point_list.begin() + mid), depth + 1);
-            node->right = build_node(std::vector<int>(point_list.begin() + mid, point_list.end()), depth + 1);
+            node->right = build_node(std::vector<int>(point_list.begin() + mid + 1, point_list.end()), depth + 1);
         }
 
         return node;
