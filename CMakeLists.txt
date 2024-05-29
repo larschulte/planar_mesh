@@ -50,7 +50,7 @@ install(TARGETS
 )
 
 # add executable
-add_executable(temp src/temp.cpp)
+add_executable(temp src/temp.cpp src/TriangleBVH.cpp)
 target_link_libraries (temp ${PCL_LIBRARIES} ${PYTHON_LIBRARIES} delaunator)
 target_include_directories(temp
   PUBLIC
