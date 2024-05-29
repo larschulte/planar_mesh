@@ -1546,7 +1546,7 @@ public:
         if (ith_point >= ith_size) 
         {
             // next cloud
-            ith_cloud++;
+            ith_cloud += 10;
             ith_point = 0;
 
             // load data
@@ -1555,7 +1555,7 @@ public:
             pointcloud = transform_cloud_to_global(pointcloud_local, pose);
             origin = pose.translation();
 
-            ith_size = pointcloud->size();
+            ith_size = pointcloud->size() / 10;
 
             // shuffle the pointcloud
             std::random_shuffle(pointcloud->points.begin(), pointcloud->points.end());
@@ -1732,7 +1732,7 @@ public:
         step();
 
         // finish all points in step
-        while (ith_point < pointcloud->size())
+        while (ith_point < ith_size)
         {
             step();
         }
