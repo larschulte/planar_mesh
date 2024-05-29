@@ -99,7 +99,7 @@ public:
         point_to_vector3d_map[point_id] = new_point;
 
         // conditional rebuild
-        if (point_list.size() > size_at_last_rebuild * rebuild_threshold)
+        if (point_list.size() >= size_at_last_rebuild * rebuild_threshold)
         {
             rebuild();
             size_at_last_rebuild = point_list.size();
