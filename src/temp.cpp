@@ -2009,6 +2009,9 @@ public:
             origin = pose.translation();
 
             ith_size = pointcloud->size();
+
+            // shuffle the pointcloud
+            std::random_shuffle(pointcloud->points.begin(), pointcloud->points.end());
         }
 
         // get point
