@@ -213,8 +213,9 @@ public:
         }
 
         // add to bvh
-        bvhRoot.addTriangle(newTriangleID, vertices, point_to_vector3d_map.at(vertices[0]), point_to_vector3d_map.at(vertices[1]), point_to_vector3d_map.at(vertices[2]));
-        global_triangle_set.insert(newTriangleID);
+        bool inserted = global_triangle_set.insert(newTriangleID).second;
+        if (inserted) bvhRoot.addTriangle(newTriangleID, vertices, point_to_vector3d_map.at(vertices[0]), point_to_vector3d_map.at(vertices[1]), point_to_vector3d_map.at(vertices[2]));
+        
     }
 
     std::set<int> remove_edge(int edgeID)
@@ -350,8 +351,8 @@ public:
         }
 
         // // todo - remove from bvh 
-        // bvhRoot.removeTriangle(triangleID);
-        global_triangle_set.erase(triangleID);
+        bool erased = global_triangle_set.erase(triangleID);
+        if (erased) bvhRoot.deleteTriangle(triangleID);
 
         // return
         return points_to_re_add;
@@ -1572,8 +1573,8 @@ public:
         // ------------- add point by triangle intersection
 
         // get list of intersected triangle by the point
-        std::set<int> candidate_searched_triangles = bvhRoot.intersectionSearch(thisPointOriginVEC, thisPointVEC); // may include deleted triangles
-        std::set<int> searched_triangles = intersection_of_sets(candidate_searched_triangles, global_triangle_set);
+        std::set<int> searched_triangles = bvhRoot.intersectionSearch(thisPointOriginVEC, thisPointVEC); // may include deleted triangles
+        // std::set<int> searched_triangles = intersection_of_sets(candidate_searched_triangles, global_triangle_set);
 
         // group the triangles by set
         std::map<int, std::set<int>> set_to_searched_triangle_map;

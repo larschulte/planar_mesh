@@ -47,6 +47,7 @@ private:
     void convert_leaf_to_branch(std::shared_ptr<Node> node);
     std::shared_ptr<Node> build_node(std::vector<int> triangle_list);
     void addTriangleToNode(std::shared_ptr<Node> node, int triangleID);
+    void deleteTriangleFromNode(std::shared_ptr<Node> node, int triangleID);
 
     double rebuild_threshold;
     std::vector<int> triangle_list;
@@ -61,6 +62,7 @@ public:
     void addData(std::vector<int> _triangle_list, std::map<int, std::array<int, 3>> _triangle_to_indices_map, std::map<int, Eigen::Vector3d> _point_to_vector3d_map);
     void rebuild();
     void addTriangle(int triangleID, std::array<int, 3> indices, Eigen::Vector3d v0, Eigen::Vector3d v1, Eigen::Vector3d v2);
+    void deleteTriangle(int triangleID);
     std::set<int> intersectionSearch(Eigen::Vector3d origin, Eigen::Vector3d endPoint);
 };
 

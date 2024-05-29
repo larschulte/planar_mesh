@@ -181,6 +181,34 @@ void TriangleBVH::addTriangleToNode(std::shared_ptr<Node> node, int triangleID)
     }
 }
 
+void TriangleBVH::deleteTriangleFromNode(std::shared_ptr<Node> node, int triangleID)
+{
+    if (node->isLeaf())
+    {
+        node->triangleIDs.erase(triangleID);
+    }
+    else
+    {
+        if (triangle_to_center_vector3d_map.at(triangleID)[node->split_axis] < node->split_value)
+        {
+            deleteTriangleFromNode(node->left, triangleID);
+        }
+        else
+        {
+            deleteTriangleFromNode(node->right, triangleID);
+        }
+    }
+}
+
+void TriangleBVH::deleteTriangle(int triangleID)
+{
+    // delete from triangle list using erase-remove idiom
+    triangle_list.erase(std::remove(triangle_list.begin(), triangle_list.end(), triangleID), triangle_list.end());
+    
+    // delete from BVH
+    deleteTriangleFromNode(root, triangleID);
+}
+
 TriangleBVH::TriangleBVH()
     : rebuild_threshold(2),
       size_at_last_rebuild(0)
