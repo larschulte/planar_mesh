@@ -1,15 +1,9 @@
-#include "eye_patch/DataLoader.hpp"
-
-// #include "eye_patch/Algorithm.hpp"
 #include <pcl/common/transforms.h>
-#include <pcl/kdtree/kdtree_flann.h>
-
-// #include "eye_patch/Visualization.hpp"
 #include <pcl/point_types.h>
 #include <pcl/visualization/pcl_visualizer.h>
 
-// #include "point_type/BagPointT.hpp"
 #include "point_type/VilensPointT.hpp"
+#include "eye_patch/DataLoader.hpp"
 #include "eye_patch/TriangleBVH.hpp"
 #include "eye_patch/flann3d.hpp"
 
