@@ -245,7 +245,9 @@ public:
             point_to_edges_map.at(pointID).clear();
             set_to_points_map.at(setID).erase(pointID);
             set_to_boundary_point_set_map.at(setID).erase(pointID);
-            global_boundary_point_set.erase(pointID);
+            
+            bool erased = global_boundary_point_set.erase(pointID);
+            if (erased) kdtree.deletePoint(pointID);
             // add point to isolated points
             isolated_points.insert(pointID);
         }
@@ -257,7 +259,9 @@ public:
             point_to_edges_map.at(pointID).clear();
             set_to_points_map.at(setID).erase(pointID);
             set_to_boundary_point_set_map.at(setID).erase(pointID);
-            global_boundary_point_set.erase(pointID);
+            
+            bool erased = global_boundary_point_set.erase(pointID);
+            if (erased) kdtree.deletePoint(pointID);
             // add point to isolated points
             isolated_points.insert(pointID);
         }
@@ -373,12 +377,8 @@ public:
 
         // remove from both local and global boundary points (a point can only be in one set)
         set_to_boundary_point_set_map.at(setID).erase(pointID);
-        global_boundary_point_set.erase(pointID);
-
-        // // skip for now
-        // bool erased = global_boundary_point_set.erase(pointID);
-        // if (erased) kdtree.deletePoint(pointID);
-        
+        bool erased = global_boundary_point_set.erase(pointID);
+        if (erased) kdtree.deletePoint(pointID);
     }
 
     int getNewPointID()
@@ -1414,8 +1414,7 @@ public:
         double search_size = 0.2;
 
         // perform kdtree radius search
-        std::set<int> candidate_searched_boundary_points_set = kdtree.radiusSearch(thisPointVEC, search_size);
-        std::set<int> searched_boundary_points_set = intersection_of_sets(candidate_searched_boundary_points_set, global_boundary_point_set);
+        std::set<int> searched_boundary_points_set = kdtree.radiusSearch(thisPointVEC, search_size);
 
         // if no searched results, add point to new set
         if (searched_boundary_points_set.size() == 0)
@@ -1499,7 +1498,7 @@ public:
         // somewhere above, the global and local boundary points sets are not in sync
         if (closest_setID != -1 && closest_distance < distance_threshold)
         {
-            std::set<int> searched_boundary_points_in_current_set = intersection_of_sets(candidate_searched_boundary_points_set, get_boundary_point_set_of_set(closest_setID));
+            std::set<int> searched_boundary_points_in_current_set = intersection_of_sets(searched_boundary_points_set, get_boundary_point_set_of_set(closest_setID));
             add_point_to_set(newPointID, closest_setID, thisPointVEC, thisPointOriginVEC);
             connect_point_to_set(newPointID, closest_setID, searched_boundary_points_in_current_set);
             return;
@@ -1518,7 +1517,7 @@ public:
         }
         if (largest_setID != -1)
         {
-            std::set<int> searched_boundary_points_in_current_set = intersection_of_sets(candidate_searched_boundary_points_set, get_boundary_point_set_of_set(largest_setID));
+            std::set<int> searched_boundary_points_in_current_set = intersection_of_sets(searched_boundary_points_set, get_boundary_point_set_of_set(largest_setID));
             add_point_to_set(newPointID, largest_setID, thisPointVEC, thisPointOriginVEC);
             connect_point_to_set(newPointID, largest_setID, searched_boundary_points_in_current_set);
             return;

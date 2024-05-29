@@ -12,6 +12,7 @@ struct Node {
     int pointID;
     std::shared_ptr<Node> left;
     std::shared_ptr<Node> right;
+    bool deleted = false;
 };
 
 
@@ -70,14 +71,20 @@ public:
 
     void addPointToNode(std::shared_ptr<Node>& node, int point_id, int depth)
     {
-        // leaf node
+        // null node
         if (node == nullptr)
         {
             node = std::make_shared<Node>();
             node->pointID = point_id;
             return;
         }
-        // branch node
+        // branch/leaf node
+        else if (node->pointID == point_id)
+        {
+            node->deleted = false;
+            return;
+        }
+        // children nodes
         else
         {
             int axis = depth % 3;
@@ -94,6 +101,9 @@ public:
 
     void addPoint(Eigen::Vector3d new_point, int point_id)
     {
+        // skip if point already exist
+        if (std::find(point_list.begin(), point_list.end(), point_id) != point_list.end()) return;
+
         // store data
         point_list.push_back(point_id);
         point_to_vector3d_map[point_id] = new_point;
@@ -124,7 +134,7 @@ public:
         // current node
         if ((point_to_vector3d_map.at(node->pointID) - target).norm() <= radius)
         {
-            result.insert(node->pointID);
+            if (!node->deleted) result.insert(node->pointID);
         }
 
         // children nodes   
@@ -162,6 +172,51 @@ public:
 
         // return
         return result;
+    }
+
+    std::shared_ptr<Node> search(std::shared_ptr<Node> node, int pointID, int depth) 
+    {
+        // null node
+        if (node == nullptr) 
+        {
+            return nullptr;
+        }
+
+        // current node
+        if (node->pointID == pointID) 
+        {
+            return node;
+        }
+
+        // children nodes
+        int axis = depth % 3;
+        if (point_to_vector3d_map.at(pointID)[axis] < point_to_vector3d_map.at(node->pointID)[axis])
+        {
+            return search(node->left, pointID, depth + 1);
+        } 
+        else
+        {
+            return search(node->right, pointID, depth + 1);
+        }
+    }
+
+    void deletePoint(int pointID)
+    {
+        // error check
+        if (point_to_vector3d_map.find(pointID) == point_to_vector3d_map.end())
+        {
+            throw std::invalid_argument("PointID given does not have corresponding vector3d data.");
+        }
+
+        // delete from point_list
+        point_list.erase(std::remove(point_list.begin(), point_list.end(), pointID), point_list.end());
+
+        // delete from tree
+        auto node = search(root, pointID, 0);
+        if (node != nullptr)
+        {
+            node->deleted = true;
+        }
     }
 
     void print_tree()
