@@ -44,7 +44,8 @@ void flann3d::addPoint(Eigen::Vector3d new_point, int point_id)
     index_to_pointID.push_back(point_id);
 
     // add to flann
-    flann_tree.addPoints(flann::Matrix<double>(flann_data_storage.data() + flann_data_storage.size() - 3, 1, 3));
+    // flann_tree.addPoints(flann::Matrix<double>(flann_data_storage.data() + flann_data_storage.size() - 3, 1, 3));
+    flann_tree.buildIndex(flann::Matrix<double>(flann_data_storage.data(), flann_data_storage.size() / 3, 3));
 
     // update id
     flann_last_id++;
