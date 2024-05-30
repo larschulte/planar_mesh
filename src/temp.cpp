@@ -19,12 +19,28 @@ public:
 
     int getNewSetID()
     {
-        // get id
-        int newSetID = next_set_id;
-        next_set_id ++;
+        return next_set_id ++;
+    }
 
-        // initialize
-        set_to_color_map[newSetID] = {};
+    int getNewPointID()
+    {
+        return next_point_id ++;
+    }
+
+    int getNewEdgeID()
+    {
+        return next_edge_id ++;
+    }
+
+    int getNewTriangleID()
+    {
+        return next_triangle_id ++;
+    }
+
+    void add_set(int newSetID)
+    {
+        set_list.push_back(newSetID);
+        set_to_color_map[newSetID] = {rand() % 256, rand() % 256, rand() % 256};
         set_to_points_map[newSetID] = {};
         set_to_edges_map[newSetID] = {};
         set_to_triangles_map[newSetID] = {};
@@ -35,69 +51,18 @@ public:
         set_to_normal_map[newSetID] = Eigen::Vector3d(0, 0, 1);
         boundary_edge_of_set[newSetID] = {};
         boundary_point_of_set[newSetID] = {};
-
-        // add set
-        set_list.push_back(newSetID);
-        set_to_color_map.at(newSetID) = {rand() % 256, rand() % 256, rand() % 256};
-
-        // return
-        return newSetID;
-    }
-
-    int getNewPointID()
-    {
-        // get id
-        int newPointID = next_point_id;
-        next_point_id ++;
-
-        // initialize
-        point_to_origin_vector3d_map[newPointID] = Eigen::Vector3d(999, 999, 999);
-        point_to_intersection_vector3d_map[newPointID] = Eigen::Vector3d(999, 999, 999);
-        point_to_vector3d_map[newPointID] = Eigen::Vector3d(999, 999, 999);
-        point_to_set_map[newPointID] = -999;
-        point_to_edges_map[newPointID] = {};
-
-        // return
-        return newPointID;
-    }
-
-    int getNewEdgeID()
-    {
-        // get id
-        int newEdgeID = next_edge_id;
-        next_edge_id ++;
-
-        // initialize (skip edge_to_point_map_reverse as can't be initialized)
-        edge_to_point_map[newEdgeID] = {};
-        edge_to_set_map[newEdgeID] = -999;
-
-        // return
-        return newEdgeID;
-    }
-
-    int getNewTriangleID()
-    {
-        // get id
-        int newTriangleID = next_triangle_id;
-        next_triangle_id ++;
-
-        // initialize (skip triangle_to_vertices_map_reverse as can't be initialized)
-        triangle_to_vertices_map[newTriangleID] = {};
-        triangle_to_set_map[newTriangleID] = -999;
-        triangle_to_points_map[newTriangleID] = {};
-
-        // return
-        return newTriangleID;
     }
 
     void add_point(int newPointID, int setID, Eigen::Vector3d thisPoint, Eigen::Vector3d origin)
     {
         point_list.push_back(newPointID);
-        point_to_vector3d_map.at(newPointID) = thisPoint;
-        point_to_origin_vector3d_map.at(newPointID) = origin;
-        point_to_set_map.at(newPointID) = setID;
+        point_to_vector3d_map[newPointID] = thisPoint;
+        point_to_origin_vector3d_map[newPointID] = origin;
+        point_to_edges_map[newPointID] = {};
+        point_to_set_map[newPointID] = setID;
         set_to_points_map.at(setID).insert(newPointID);
         add_to_plane_estimate(newPointID, setID);
+
         update_boundary_point_record(newPointID, setID);
     }
 
@@ -106,9 +71,10 @@ public:
         int setID = triangle_to_set_map.at(triangleID);
 
         point_list.push_back(newPointID);
-        point_to_vector3d_map.at(newPointID) = thisPoint;
-        point_to_origin_vector3d_map.at(newPointID) = origin;
-        point_to_set_map.at(newPointID) = setID;
+        point_to_vector3d_map[newPointID] = thisPoint;
+        point_to_origin_vector3d_map[newPointID] = origin;
+        point_to_edges_map[newPointID] = {};
+        point_to_set_map[newPointID] = setID;
         set_to_points_map.at(setID).insert(newPointID);
         add_to_plane_estimate(newPointID, setID);
         // update_boundary_point_record(newPointID, setID);
@@ -122,12 +88,13 @@ public:
         int pointID2 = vertices[1];
 
         edge_list.push_back(newEdgeID);
-        edge_to_point_map.at(newEdgeID) = vertices;
+        edge_to_point_map[newEdgeID] = vertices;
         edge_to_point_map_reverse[vertices] = newEdgeID;
         point_to_edges_map.at(pointID1).insert(newEdgeID);
         point_to_edges_map.at(pointID2).insert(newEdgeID);
         set_to_edges_map.at(setID).insert(newEdgeID);
-        edge_to_set_map.at(newEdgeID) = setID;
+        edge_to_set_map[newEdgeID] = setID;
+
         edge_to_edge_count_map[newEdgeID] = 0;
         update_boundary_edge_record(newEdgeID, setID);
         update_boundary_point_record(pointID1, setID);
@@ -148,10 +115,11 @@ public:
         int edgeID3 = edge_to_point_map_reverse.at(edge3);
 
         triangle_list.push_back(newTriangleID);
-        triangle_to_vertices_map.at(newTriangleID) = vertices;
+        triangle_to_vertices_map[newTriangleID] = vertices;
         triangle_to_vertices_map_reverse[vertices] = newTriangleID;
+        triangle_to_points_map[newTriangleID] = {};
+        triangle_to_set_map[newTriangleID] = setID;
         set_to_triangles_map.at(setID).insert(newTriangleID);
-        triangle_to_set_map.at(newTriangleID) = setID;
 
         edge_to_edge_count_map.at(edgeID1) ++;
         edge_to_edge_count_map.at(edgeID2) ++;
@@ -165,6 +133,23 @@ public:
 
         bool inserted = global_triangle_set.insert(newTriangleID).second;
         if (inserted) bvhRoot.addTriangle(newTriangleID, vertices, point_to_vector3d_map.at(pointID1), point_to_vector3d_map.at(pointID2), point_to_vector3d_map.at(pointID3));
+    }
+
+    void remove_set(int setID)
+    {
+        // remove
+        set_list.erase(std::remove(set_list.begin(), set_list.end(), setID), set_list.end());
+        set_to_color_map.erase(setID);
+        set_to_points_map.erase(setID);
+        set_to_edges_map.erase(setID);
+        set_to_triangles_map.erase(setID);
+        set_to_mean_map.erase(setID);
+        set_to_covariance_matrix_map.erase(setID);
+        set_to_eigenvectors_map.erase(setID);
+        set_to_eigenvalues_map.erase(setID);
+        set_to_normal_map.erase(setID);
+        boundary_edge_of_set.erase(setID);
+        boundary_point_of_set.erase(setID);
     }
 
     void remove_point(int pointID)
@@ -645,31 +630,8 @@ public:
         combined_color = {rand() % 256, rand() % 256, rand() % 256};
 
         // remove old statistics
-        set_to_points_map.erase(setID1);
-        set_to_edges_map.erase(setID1);
-        set_to_triangles_map.erase(setID1);
-        set_to_mean_map.erase(setID1);
-        set_to_covariance_matrix_map.erase(setID1);
-        set_to_eigenvectors_map.erase(setID1);
-        set_to_eigenvalues_map.erase(setID1);
-        set_to_normal_map.erase(setID1);
-        set_to_color_map.erase(setID1);
-        set_list.erase(std::remove(set_list.begin(), set_list.end(), setID1), set_list.end());
-        boundary_edge_of_set.erase(setID1);
-        boundary_point_of_set.erase(setID1);
-
-        set_to_points_map.erase(setID2);
-        set_to_edges_map.erase(setID2);
-        set_to_triangles_map.erase(setID2);
-        set_to_mean_map.erase(setID2);
-        set_to_covariance_matrix_map.erase(setID2);
-        set_to_eigenvectors_map.erase(setID2);
-        set_to_eigenvalues_map.erase(setID2);
-        set_to_normal_map.erase(setID2);
-        set_to_color_map.erase(setID2);
-        set_list.erase(std::remove(set_list.begin(), set_list.end(), setID2), set_list.end());
-        boundary_edge_of_set.erase(setID2);
-        boundary_point_of_set.erase(setID2);
+        remove_set(setID1);
+        remove_set(setID2);
 
         // store merged statistics
         set_to_points_map.at(newSetID) = combined_points;
@@ -715,6 +677,7 @@ public:
 
                 // merge sets
                 int newSetID = getNewSetID();
+                add_set(newSetID);
                 merge_sets(pairs.first, pairs.second, newSetID);
                 sets_to_merge.erase(pairs.first);
                 sets_to_merge.erase(pairs.second);
@@ -739,6 +702,7 @@ public:
         if (boundary_point_set.size() == 0)
         {
             int newSetID = getNewSetID();
+            add_set(newSetID);
             add_point(newPointID, newSetID, thisPointVEC, thisPointOriginVEC);
             return;
         }
@@ -753,6 +717,7 @@ public:
         if (searched_boundary_points_set.size() == 0)
         {
             int newSetID = getNewSetID();
+            add_set(newSetID);
             add_point(newPointID, newSetID, thisPointVEC, thisPointOriginVEC);
             return;
         }
@@ -857,6 +822,7 @@ public:
 
         // else, add the point to a new set
         int newSetID = getNewSetID();
+        add_set(newSetID);
         add_point(newPointID, newSetID, thisPointVEC, thisPointOriginVEC);
     }
 
