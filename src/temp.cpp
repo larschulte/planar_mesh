@@ -14,51 +14,77 @@ class Application
 {
 public:
 
-    // want boundary edge and points to prevent overlapping triangles
-    // to add a new point to mesh
-    // 1. extract mesh boundary points
-    // 2. perform delaunay triangulation using the boundary points and the new point
-    // 3. add the edge and triangles connected to the new point to the original mesh
-
-
-    Eigen::Vector3d merge_means_of_sets(int setID1, int setID2) 
+    int getNewPointID()
     {
-        Eigen::Vector3d mean1 = set_to_mean_map.at(setID1);
-        Eigen::Vector3d mean2 = set_to_mean_map.at(setID2);
-        int size1 = set_to_points_map.at(setID1).size();
-        int size2 = set_to_points_map.at(setID2).size();
-        return merge_means(mean1, mean2, size1, size2);
+        // get id
+        int newPointID = next_point_id;
+        next_point_id ++;
+
+        // initialize
+        point_list.push_back(newPointID);
+        point_to_origin_vector3d_map[newPointID] = Eigen::Vector3d(999, 999, 999);
+        point_to_intersection_vector3d_map[newPointID] = Eigen::Vector3d(999, 999, 999);
+        point_to_vector3d_map[newPointID] = Eigen::Vector3d(999, 999, 999);
+        point_to_set_map[newPointID] = -999;
+        point_to_edges_map[newPointID] = {};
+
+        // return
+        return newPointID;
     }
 
-    Eigen::Vector3d merge_means_between_set_and_point(int setID, Eigen::Vector3d point)
+    int getNewSetID()
     {
-        Eigen::Vector3d mean1 = set_to_mean_map.at(setID);
-        Eigen::Vector3d mean2 = point;
-        int size1 = set_to_points_map.at(setID).size();
-        int size2 = 1;
-        return merge_means(mean1, mean2, size1, size2);
+        // get id
+        int newSetID = next_set_id;
+        next_set_id ++;
+
+        // initialize
+        set_list.push_back(newSetID);
+        set_to_color_map[newSetID] = {rand() % 256, rand() % 256, rand() % 256};
+        set_to_points_map[newSetID] = {};
+        set_to_edges_map[newSetID] = {};
+        set_to_triangles_map[newSetID] = {};
+        set_to_boundary_edge_set_map[newSetID] = {};
+        set_to_boundary_point_set_map[newSetID] = {};
+        set_to_edge_count_map[newSetID] = {};
+        set_to_mean_map[newSetID] = Eigen::Vector3d::Zero();
+        set_to_covariance_matrix_map[newSetID] = Eigen::Matrix3d::Zero();
+        set_to_eigenvectors_map[newSetID] = Eigen::Matrix3d::Identity();
+        set_to_eigenvalues_map[newSetID] = Eigen::Vector3d::Zero();
+        set_to_normal_map[newSetID] = Eigen::Vector3d(0, 0, 1);
+
+        // return
+        return newSetID;
     }
 
-    Eigen::Matrix3d merge_covariances_of_sets(int setID1, int setID2) 
+    int getNewEdgeID()
     {
-        Eigen::Matrix3d cov1 = set_to_covariance_matrix_map.at(setID1);
-        Eigen::Matrix3d cov2 = set_to_covariance_matrix_map.at(setID2);
-        Eigen::Vector3d mean1 = set_to_mean_map.at(setID1);
-        Eigen::Vector3d mean2 = set_to_mean_map.at(setID2);
-        int size1 = set_to_points_map.at(setID1).size();
-        int size2 = set_to_points_map.at(setID2).size();
-        return merge_covariances(cov1, cov2, mean1, mean2, size1, size2);
-    }
+        // get id
+        int newEdgeID = next_edge_id;
+        next_edge_id ++;
 
-    Eigen::Matrix3d merge_covariances_between_set_and_point(int setID, Eigen::Vector3d point)
+        // initialize (skip edge_to_point_map_reverse as can't be initialized)
+        edge_list.push_back(newEdgeID);
+        edge_to_point_map[newEdgeID] = {};
+        edge_to_set_map[newEdgeID] = -999;
+
+        // return
+        return newEdgeID;
+    }
+    int getNewTriangleID()
     {
-        Eigen::Matrix3d cov1 = set_to_covariance_matrix_map.at(setID);
-        Eigen::Matrix3d cov2 = Eigen::Matrix3d::Zero(); 
-        Eigen::Vector3d mean1 = set_to_mean_map.at(setID);
-        Eigen::Vector3d mean2 = point;
-        int size1 = set_to_points_map.at(setID).size();
-        int size2 = 1;
-        return merge_covariances(cov1, cov2, mean1, mean2, size1, size2);
+        // get id
+        int newTriangleID = next_triangle_id;
+        next_triangle_id ++;
+
+        // initialize (skip triangle_to_vertices_map_reverse as can't be initialized)
+        triangle_list.push_back(newTriangleID);
+        triangle_to_vertices_map[newTriangleID] = {};
+        triangle_to_set_map[newTriangleID] = -999;
+        triangle_to_points_map[newTriangleID] = {};
+
+        // return
+        return newTriangleID;
     }
 
     void add_point_to_set(int newPointID, int setID, Eigen::Vector3d thisPoint, Eigen::Vector3d origin)
@@ -129,6 +155,9 @@ public:
 
         // update set boundary edge
         set_to_edge_count_map.at(setID)[newEdgeID] = 0;
+
+
+        
         set_to_boundary_edge_set_map.at(setID).insert(newEdgeID);
         global_boundary_edge_set.insert(newEdgeID);
     
@@ -356,79 +385,6 @@ public:
         if (erased) kdtree.deletePoint(pointID);
     }
 
-    int getNewPointID()
-    {
-        // get id
-        int newPointID = next_point_id;
-        next_point_id ++;
-
-        // initialize
-        point_list.push_back(newPointID);
-        point_to_origin_vector3d_map[newPointID] = Eigen::Vector3d(999, 999, 999);
-        point_to_intersection_vector3d_map[newPointID] = Eigen::Vector3d(999, 999, 999);
-        point_to_vector3d_map[newPointID] = Eigen::Vector3d(999, 999, 999);
-        point_to_set_map[newPointID] = -999;
-        point_to_edges_map[newPointID] = {};
-
-        // return
-        return newPointID;
-    }
-
-    int getNewSetID()
-    {
-        // get id
-        int newSetID = next_set_id;
-        next_set_id ++;
-
-        // initialize
-        set_list.push_back(newSetID);
-        set_to_color_map[newSetID] = {rand() % 256, rand() % 256, rand() % 256};
-        set_to_points_map[newSetID] = {};
-        set_to_edges_map[newSetID] = {};
-        set_to_triangles_map[newSetID] = {};
-        set_to_boundary_edge_set_map[newSetID] = {};
-        set_to_boundary_point_set_map[newSetID] = {};
-        set_to_edge_count_map[newSetID] = {};
-        set_to_mean_map[newSetID] = Eigen::Vector3d::Zero();
-        set_to_covariance_matrix_map[newSetID] = Eigen::Matrix3d::Zero();
-        set_to_eigenvectors_map[newSetID] = Eigen::Matrix3d::Identity();
-        set_to_eigenvalues_map[newSetID] = Eigen::Vector3d::Zero();
-        set_to_normal_map[newSetID] = Eigen::Vector3d(0, 0, 1);
-
-        // return
-        return newSetID;
-    }
-
-    int getNewEdgeID()
-    {
-        // get id
-        int newEdgeID = next_edge_id;
-        next_edge_id ++;
-
-        // initialize (skip edge_to_point_map_reverse as can't be initialized)
-        edge_list.push_back(newEdgeID);
-        edge_to_point_map[newEdgeID] = {};
-        edge_to_set_map[newEdgeID] = -999;
-
-        // return
-        return newEdgeID;
-    }
-    int getNewTriangleID()
-    {
-        // get id
-        int newTriangleID = next_triangle_id;
-        next_triangle_id ++;
-
-        // initialize (skip triangle_to_vertices_map_reverse as can't be initialized)
-        triangle_list.push_back(newTriangleID);
-        triangle_to_vertices_map[newTriangleID] = {};
-        triangle_to_set_map[newTriangleID] = -999;
-        triangle_to_points_map[newTriangleID] = {};
-
-        // return
-        return newTriangleID;
-    }
-
 
     
 
@@ -628,6 +584,46 @@ public:
             int newTriangleID = getNewTriangleID();
             add_triangle(newTriangleID, setID, newTriangle);
         }
+    }
+
+    Eigen::Vector3d merge_means_of_sets(int setID1, int setID2) 
+    {
+        Eigen::Vector3d mean1 = set_to_mean_map.at(setID1);
+        Eigen::Vector3d mean2 = set_to_mean_map.at(setID2);
+        int size1 = set_to_points_map.at(setID1).size();
+        int size2 = set_to_points_map.at(setID2).size();
+        return merge_means(mean1, mean2, size1, size2);
+    }
+
+    Eigen::Vector3d merge_means_between_set_and_point(int setID, Eigen::Vector3d point)
+    {
+        Eigen::Vector3d mean1 = set_to_mean_map.at(setID);
+        Eigen::Vector3d mean2 = point;
+        int size1 = set_to_points_map.at(setID).size();
+        int size2 = 1;
+        return merge_means(mean1, mean2, size1, size2);
+    }
+
+    Eigen::Matrix3d merge_covariances_of_sets(int setID1, int setID2) 
+    {
+        Eigen::Matrix3d cov1 = set_to_covariance_matrix_map.at(setID1);
+        Eigen::Matrix3d cov2 = set_to_covariance_matrix_map.at(setID2);
+        Eigen::Vector3d mean1 = set_to_mean_map.at(setID1);
+        Eigen::Vector3d mean2 = set_to_mean_map.at(setID2);
+        int size1 = set_to_points_map.at(setID1).size();
+        int size2 = set_to_points_map.at(setID2).size();
+        return merge_covariances(cov1, cov2, mean1, mean2, size1, size2);
+    }
+
+    Eigen::Matrix3d merge_covariances_between_set_and_point(int setID, Eigen::Vector3d point)
+    {
+        Eigen::Matrix3d cov1 = set_to_covariance_matrix_map.at(setID);
+        Eigen::Matrix3d cov2 = Eigen::Matrix3d::Zero(); 
+        Eigen::Vector3d mean1 = set_to_mean_map.at(setID);
+        Eigen::Vector3d mean2 = point;
+        int size1 = set_to_points_map.at(setID).size();
+        int size2 = 1;
+        return merge_covariances(cov1, cov2, mean1, mean2, size1, size2);
     }
 
     // merge setID2 into setID1
