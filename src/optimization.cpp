@@ -49,18 +49,15 @@ private:
     const double sigma_;
 };
 
-
-int main() 
+void fit_plane_to_lidar_points
+    (
+    const std::set<int>& pointIDs, 
+    const std::map<int, Eigen::Vector3d>& point_to_vector3d_map, 
+    const std::map<int, Eigen::Vector3d>& point_to_origin_vector3d_map, 
+    Eigen::Vector3d& plane_normal, 
+    Eigen::Vector3d& plane_position
+    ) 
 {
-    // data
-    Eigen::Vector3d plane_normal(1, 1, 1);
-    Eigen::Vector3d plane_position(0, 0, 0);
-    std::vector<PointData> point_data_list;
-    point_data_list.push_back({{0, 0, 0}, {1, 1, 1}, 1.0});
-    point_data_list.push_back({{1, 0, 0}, {1, 1, 1}, 1.0});
-    point_data_list.push_back({{0, 1, 0}, {1, 1, 1}, 1.0});
-    
-
     // option
     ceres::Solver::Options options;
     options.linear_solver_type = ceres::DENSE_QR;
@@ -68,10 +65,15 @@ int main()
 
     // problem
     ceres::Problem problem;
-    for (const PointData& point_data : point_data_list) 
+    for (int pointID : pointIDs) 
     {
+        Eigen::Vector3d point = point_to_vector3d_map.at(pointID);
+        Eigen::Vector3d origin = point_to_origin_vector3d_map.at(pointID);
+        Eigen::Vector3d direction = (point - origin).normalized();
+        double sigma = 0.01;
+        PointData point_data = {point, direction, sigma};
         PlaneFittingCostFunctor* cost_functor = new PlaneFittingCostFunctor(point_data);
-        ceres::CostFunction* differentiable_cost_functor = new ceres::AutoDiffCostFunction<PlaneFittingCostFunctor, 1, 3, 3>(cost_functor); // problem non analytical, thus autodiff
+        ceres::CostFunction* differentiable_cost_functor = new ceres::AutoDiffCostFunction<PlaneFittingCostFunctor, 1, 3, 3>(cost_functor); // use autodiff first
         problem.AddResidualBlock(differentiable_cost_functor, nullptr, plane_normal.data(), plane_position.data());
     }
 
@@ -85,7 +87,28 @@ int main()
     std::cout << summary.FullReport() << std::endl;
     std::cout << "Optimal normal vector: " << plane_normal.normalized().transpose() << std::endl;
     std::cout << "Optimal point on the plane: " << plane_position.transpose() << std::endl;
+}
 
+
+int main() 
+{
+    // data
+    std::set<int> pointIDs = {0, 1, 2};
+    std::map<int, Eigen::Vector3d> point_to_vector3d_map;
+    point_to_vector3d_map[0] = Eigen::Vector3d(0, 0, 1);
+    point_to_vector3d_map[1] = Eigen::Vector3d(1, 0, 1);
+    point_to_vector3d_map[2] = Eigen::Vector3d(0, 1, 1);
+    std::map<int, Eigen::Vector3d> point_to_origin_vector3d_map;
+    point_to_origin_vector3d_map[0] = Eigen::Vector3d(0, 0, 0);
+    point_to_origin_vector3d_map[1] = Eigen::Vector3d(0, 0, 0);
+    point_to_origin_vector3d_map[2] = Eigen::Vector3d(0, 0, 0);
+
+    // plane
+    Eigen::Vector3d plane_normal(0, 1, 1);
+    Eigen::Vector3d plane_position(0, 0, 0);
+
+    // fit
+    fit_plane_to_lidar_points(pointIDs, point_to_vector3d_map, point_to_origin_vector3d_map, plane_normal, plane_position);
 
     return 0;
 }
