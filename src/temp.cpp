@@ -44,8 +44,6 @@ public:
         set_to_points_map[newSetID] = {};
         set_to_edges_map[newSetID] = {};
         set_to_triangles_map[newSetID] = {};
-        set_to_boundary_edge_set_map[newSetID] = {};
-        set_to_boundary_point_set_map[newSetID] = {};
         set_to_edge_count_map[newSetID] = {};
         set_to_mean_map[newSetID] = Eigen::Vector3d::Zero();
         set_to_covariance_matrix_map[newSetID] = Eigen::Matrix3d::Zero();
@@ -158,7 +156,6 @@ public:
 
 
         
-        set_to_boundary_edge_set_map.at(setID).insert(newEdgeID);
         global_boundary_edge_set.insert(newEdgeID);
     
         // update boundary points
@@ -195,7 +192,6 @@ public:
             if (count <= 1)
             {
                 // udpate set boundary edge
-                set_to_boundary_edge_set_map.at(setID).insert(edge_to_point_map_reverse[edge]);
                 global_boundary_edge_set.insert(edge_to_point_map_reverse[edge]);
                 
                 // update boundary points
@@ -205,7 +201,6 @@ public:
             else
             {
                 // remove from set boundary edge
-                set_to_boundary_edge_set_map.at(setID).erase(edge_to_point_map_reverse[edge]);
                 global_boundary_edge_set.erase(edge_to_point_map_reverse[edge]);
 
                 // remove from boundary points (if the edge point no longer connects to a boundary edge, it is removed from boundary points)
@@ -247,7 +242,6 @@ public:
             point_to_set_map.at(pointID) = -999;
             point_to_edges_map.at(pointID).clear();
             set_to_points_map.at(setID).erase(pointID);
-            set_to_boundary_point_set_map.at(setID).erase(pointID);
             
             bool erased = global_boundary_point_set.erase(pointID);
             if (erased) kdtree.deletePoint(pointID);
@@ -261,7 +255,6 @@ public:
             point_to_set_map.at(pointID) = -999;
             point_to_edges_map.at(pointID).clear();
             set_to_points_map.at(setID).erase(pointID);
-            set_to_boundary_point_set_map.at(setID).erase(pointID);
             
             bool erased = global_boundary_point_set.erase(pointID);
             if (erased) kdtree.deletePoint(pointID);
@@ -275,7 +268,6 @@ public:
 
         // remove set boundary edge
         set_to_edge_count_map.at(setID).erase(edgeID);
-        set_to_boundary_edge_set_map.at(setID).erase(edgeID);
         global_boundary_edge_set.erase(edgeID);
 
         // remove from edge list
@@ -283,6 +275,42 @@ public:
 
         // return
         return isolated_points;
+    }
+
+    std::set<int> get_boundary_point_of_set(int setID)
+    {
+        // initialize
+        std::set<int> boundary_point_of_set;
+
+        // process
+        for (int pointID : set_to_points_map.at(setID))
+        {
+            if (global_boundary_point_set.find(pointID) != global_boundary_point_set.end()) 
+            {
+                boundary_point_of_set.insert(pointID);
+            }
+        }
+
+        // return
+        return boundary_point_of_set;
+    }
+
+    std::set<int> get_boundary_edge_of_set(int setID)
+    {
+        // initialize
+        std::set<int> boundary_edge_of_set;
+
+        // process
+        for (int edgeID : set_to_edges_map.at(setID))
+        {
+            if (global_boundary_edge_set.find(edgeID) != global_boundary_edge_set.end()) 
+            {
+                boundary_edge_of_set.insert(edgeID);
+            }
+        }
+
+        // return
+        return boundary_edge_of_set;
     }
 
     std::set<int> penetrate_triangle(int triangleID)
@@ -341,7 +369,6 @@ public:
             else if (count == 1)
             {
                 // udpate set boundary edge
-                set_to_boundary_edge_set_map.at(setID).insert(edge_to_point_map_reverse[edge]);
                 
                 // update boundary points
                 add_boundary_point(edge[0], setID);
@@ -364,7 +391,6 @@ public:
     void add_boundary_point(int pointID, int setID)
     {
         // update local boundary points
-        set_to_boundary_point_set_map.at(setID).insert(pointID);
 
         // update global boundary points
         bool inserted = global_boundary_point_set.insert(pointID).second;
@@ -376,11 +402,10 @@ public:
         // skip if still boundary
         for (int edge_id : point_to_edges_map.at(pointID))
         {
-            if (set_to_boundary_edge_set_map.at(setID).find(edge_id) != set_to_boundary_edge_set_map.at(setID).end()) return;
+            if (global_boundary_edge_set.find(edge_id) != global_boundary_edge_set.end()) return;
         }
 
         // remove from both local and global boundary points (a point can only be in one set)
-        set_to_boundary_point_set_map.at(setID).erase(pointID);
         bool erased = global_boundary_point_set.erase(pointID);
         if (erased) kdtree.deletePoint(pointID);
     }
@@ -479,7 +504,7 @@ public:
         std::map<int, Eigen::Vector2d> points_to_vector2d_map;
 
         // process
-        for (int point_id : set_to_boundary_point_set_map.at(setID))
+        for (int point_id : get_boundary_point_of_set(setID))
         {
             // // update if not available (todo - update if not accurate enough)
             // if (point_to_intersection_vector3d_map.find(point_id) == point_to_intersection_vector3d_map.end())
@@ -533,7 +558,7 @@ public:
         std::map<int, Eigen::Vector2d> points_to_vector2d_map = project_boundary_points_of_set_to_set_plane(setID);
 
         // existing edges between searched points (boundary)
-        std::set<int> existing_boundary_edge_set = extract_existing_edge_between_points(searched_boundary_points_in_current_set, set_to_boundary_edge_set_map.at(setID));
+        std::set<int> existing_boundary_edge_set = extract_existing_edge_between_points(searched_boundary_points_in_current_set, get_boundary_edge_of_set(setID));
 
 
         // to add a new point to mesh
@@ -551,7 +576,7 @@ public:
             if (edge_to_point_map_reverse.find(newEdge) != edge_to_point_map_reverse.end()) continue;
 
             // skip if intersected with any boundary edge of the current set
-            if (edge_edges_intersection(newEdge, set_to_boundary_edge_set_map.at(setID), points_to_vector2d_map)) continue;
+            if (edge_edges_intersection(newEdge, get_boundary_edge_of_set(setID), points_to_vector2d_map)) continue;
 
             // add edge
             int newEdgeID = getNewEdgeID();
@@ -651,10 +676,6 @@ public:
         if (set_to_edges_map.find(setID2) != set_to_edges_map.end()) combined_edges.insert(set_to_edges_map.at(setID2).begin(), set_to_edges_map.at(setID2).end());
         if (set_to_triangles_map.find(setID1) != set_to_triangles_map.end()) combined_triangles.insert(set_to_triangles_map.at(setID1).begin(), set_to_triangles_map.at(setID1).end());
         if (set_to_triangles_map.find(setID2) != set_to_triangles_map.end()) combined_triangles.insert(set_to_triangles_map.at(setID2).begin(), set_to_triangles_map.at(setID2).end());
-        if (set_to_boundary_point_set_map.find(setID1) != set_to_boundary_point_set_map.end()) combined_boundary_points.insert(set_to_boundary_point_set_map.at(setID1).begin(), set_to_boundary_point_set_map.at(setID1).end());
-        if (set_to_boundary_point_set_map.find(setID2) != set_to_boundary_point_set_map.end()) combined_boundary_points.insert(set_to_boundary_point_set_map.at(setID2).begin(), set_to_boundary_point_set_map.at(setID2).end());
-        if (set_to_boundary_edge_set_map.find(setID1) != set_to_boundary_edge_set_map.end()) combined_boundary_edges.insert(set_to_boundary_edge_set_map.at(setID1).begin(), set_to_boundary_edge_set_map.at(setID1).end());
-        if (set_to_boundary_edge_set_map.find(setID2) != set_to_boundary_edge_set_map.end()) combined_boundary_edges.insert(set_to_boundary_edge_set_map.at(setID2).begin(), set_to_boundary_edge_set_map.at(setID2).end());
         if (set_to_edge_count_map.find(setID1) != set_to_edge_count_map.end()) for (const auto& pair : set_to_edge_count_map.at(setID1)) combined_edge_count_map[pair.first] = pair.second;
         if (set_to_edge_count_map.find(setID2) != set_to_edge_count_map.end()) for (const auto& pair : set_to_edge_count_map.at(setID2)) combined_edge_count_map[pair.first] = pair.second;
         combined_mean = merge_means_of_sets(setID1, setID2);
@@ -671,8 +692,6 @@ public:
         set_to_edges_map.erase(setID1);
         set_to_triangles_map.erase(setID1);
         set_to_edge_count_map.erase(setID1);
-        set_to_boundary_edge_set_map.erase(setID1);
-        set_to_boundary_point_set_map.erase(setID1);
         set_to_mean_map.erase(setID1);
         set_to_covariance_matrix_map.erase(setID1);
         set_to_eigenvectors_map.erase(setID1);
@@ -685,8 +704,6 @@ public:
         set_to_edges_map.erase(setID2);
         set_to_triangles_map.erase(setID2);
         set_to_edge_count_map.erase(setID2);
-        set_to_boundary_edge_set_map.erase(setID2);
-        set_to_boundary_point_set_map.erase(setID2);
         set_to_mean_map.erase(setID2);
         set_to_covariance_matrix_map.erase(setID2);
         set_to_eigenvectors_map.erase(setID2);
@@ -700,8 +717,6 @@ public:
         set_to_edges_map.at(newSetID) = combined_edges;
         set_to_triangles_map.at(newSetID) = combined_triangles;
         set_to_edge_count_map.at(newSetID) = combined_edge_count_map;
-        set_to_boundary_edge_set_map.at(newSetID) = combined_boundary_edges;
-        set_to_boundary_point_set_map.at(newSetID) = combined_boundary_points;
         set_to_mean_map.at(newSetID) = combined_mean;
         set_to_covariance_matrix_map.at(newSetID) = combined_covariance_matrix;
         set_to_eigenvectors_map.at(newSetID) = combined_eigenvectors;
@@ -859,7 +874,7 @@ public:
         // somewhere above, the global and local boundary points sets are not in sync
         if (closest_setID != -1 && closest_distance < distance_threshold)
         {
-            std::set<int> searched_boundary_points_in_current_set = intersection_of_sets(searched_boundary_points_set, set_to_boundary_point_set_map.at(closest_setID));
+            std::set<int> searched_boundary_points_in_current_set = intersection_of_sets(searched_boundary_points_set, get_boundary_point_of_set(closest_setID));
             add_point_to_set(newPointID, closest_setID, thisPointVEC, thisPointOriginVEC);
             connect_point_to_set(newPointID, closest_setID, searched_boundary_points_in_current_set);
             return;
@@ -878,7 +893,7 @@ public:
         }
         if (largest_setID != -1)
         {
-            std::set<int> searched_boundary_points_in_current_set = intersection_of_sets(searched_boundary_points_set, set_to_boundary_point_set_map.at(largest_setID));
+            std::set<int> searched_boundary_points_in_current_set = intersection_of_sets(searched_boundary_points_set, get_boundary_point_of_set(largest_setID));
             add_point_to_set(newPointID, largest_setID, thisPointVEC, thisPointOriginVEC);
             connect_point_to_set(newPointID, largest_setID, searched_boundary_points_in_current_set);
             return;
@@ -1291,8 +1306,6 @@ private:
     std::map<int, std::set<int>> set_to_points_map; // each set contains id to points
     std::map<int, std::set<int>> set_to_edges_map; // each set contains id to edges
     std::map<int, std::set<int>> set_to_triangles_map; // each set contains id to triangles
-    std::map<int, std::set<int>> set_to_boundary_edge_set_map; // each set contains id to boundary edges
-    std::map<int, std::set<int>> set_to_boundary_point_set_map; // each set contains id to boundary points
     std::map<int, std::map<int, int>> set_to_edge_count_map; // each map contains edge count
 
         // plane fitting
