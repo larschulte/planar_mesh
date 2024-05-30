@@ -183,63 +183,52 @@ public:
 
     void add_edge(int newEdgeID, int setID, std::array<int, 2> newEdge)
     {
-        // sort edge
         newEdge = sortTwoInts(newEdge[0], newEdge[1]);
+        int pointID1 = newEdge[0];
+        int pointID2 = newEdge[1];
 
-        // update edge to point 
         edge_to_point_map.at(newEdgeID) = newEdge;
         edge_to_point_map_reverse[newEdge] = newEdgeID;
-
-        // update point to edge
-        point_to_edges_map.at(newEdge[0]).insert(newEdgeID);
-        point_to_edges_map.at(newEdge[1]).insert(newEdgeID);
-
-        // update set to edge
+        point_to_edges_map.at(pointID1).insert(newEdgeID);
+        point_to_edges_map.at(pointID2).insert(newEdgeID);
         set_to_edges_map.at(setID).insert(newEdgeID);
         edge_to_set_map.at(newEdgeID) = setID;
-
-        // update set boundary edge
         edge_to_edge_count_map[newEdgeID] = 0;
-
-        // update type
         update_edge_type(newEdgeID);
-        update_point_type(newEdge[0]);
-        update_point_type(newEdge[1]);
+        update_point_type(pointID1);
+        update_point_type(pointID2);
     }
 
     void add_triangle(int newTriangleID, int setID, std::array<int, 3> vertices)
     {
-        // sort vertices
         vertices = sortThreeInts(vertices[0], vertices[1], vertices[2]);
+        int pointID1 = vertices[0];
+        int pointID2 = vertices[1];
+        int pointID3 = vertices[2];
+        std::array<int, 2> edge1 = {pointID1, pointID2};
+        std::array<int, 2> edge2 = {pointID2, pointID3};
+        std::array<int, 2> edge3 = {pointID1, pointID3};
+        int edgeID1 = edge_to_point_map_reverse.at(edge1);
+        int edgeID2 = edge_to_point_map_reverse.at(edge2);
+        int edgeID3 = edge_to_point_map_reverse.at(edge3);
 
-        // add triangle to vertices map
         triangle_to_vertices_map.at(newTriangleID) = vertices;
         triangle_to_vertices_map_reverse[vertices] = newTriangleID;
-
-        // add triangle to set map
         set_to_triangles_map.at(setID).insert(newTriangleID);
         triangle_to_set_map.at(newTriangleID) = setID;
-
-        // update boundary edge and points
-        for (int i = 0; i < 3; i++)
-        {
-            // get correct edge order
-            int smaller_id = std::min(vertices[i], vertices[(i + 1) % 3]);
-            int larger_id = std::max(vertices[i], vertices[(i + 1) % 3]);
-            std::array<int, 2> edge = {smaller_id, larger_id};
-
-            // increment count
-            int& count = edge_to_edge_count_map.at(edge_to_point_map_reverse[edge]);
-            count ++;
-            
-            update_edge_type(edge_to_point_map_reverse[edge]);
-            update_point_type(edge[0]);
-            update_point_type(edge[1]);
-        }
+        edge_to_edge_count_map.at(edgeID1) ++;
+        edge_to_edge_count_map.at(edgeID2) ++;
+        edge_to_edge_count_map.at(edgeID3) ++;
+        update_edge_type(edgeID1);
+        update_edge_type(edgeID2);
+        update_edge_type(edgeID3);
+        update_point_type(pointID1);
+        update_point_type(pointID2);
+        update_point_type(pointID3);
 
         // add to bvh
         bool inserted = global_triangle_set.insert(newTriangleID).second;
-        if (inserted) bvhRoot.addTriangle(newTriangleID, vertices, point_to_vector3d_map.at(vertices[0]), point_to_vector3d_map.at(vertices[1]), point_to_vector3d_map.at(vertices[2]));
+        if (inserted) bvhRoot.addTriangle(newTriangleID, vertices, point_to_vector3d_map.at(pointID1), point_to_vector3d_map.at(pointID2), point_to_vector3d_map.at(pointID3));
     }
 
     std::set<int> remove_edge(int edgeID)
