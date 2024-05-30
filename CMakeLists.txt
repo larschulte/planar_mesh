@@ -63,6 +63,27 @@ install(TARGETS
   DESTINATION lib/${PROJECT_NAME}
 )
 
+
+
+
+
+find_package(Ceres REQUIRED)
+# add executable
+add_executable(optimization src/optimization.cpp)
+target_link_libraries (optimization ${PCL_LIBRARIES} Ceres::ceres)
+target_include_directories(temp
+  PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>)
+
+
+
+
+
+
+
+
+
 # add add_executable
 add_executable(add_mesh_to_mesh src/add_mesh_to_mesh.cpp)
 target_link_libraries (add_mesh_to_mesh ${PCL_LIBRARIES} ${PYTHON_LIBRARIES} delaunator)
