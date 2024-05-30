@@ -381,24 +381,6 @@ public:
         return out_existing_edge_set;
     }
 
-    bool edge_edges_intersection(std::array<int, 2> edgeA, std::set<std::array<int, 2>> edgeB_set, std::map<int, Eigen::Vector2d> points_to_vector2d_map)
-    {
-        for (const auto& edgeB : edgeB_set)
-        {
-            // if intersected at end points, don't count
-            if (edgeA[0] == edgeB[0] || edgeA[0] == edgeB[1] || edgeA[1] == edgeB[0] || edgeA[1] == edgeB[1]) continue;
-
-            // intersection check
-            Eigen::Vector2d pointA0 = points_to_vector2d_map.at(edgeA[0]);
-            Eigen::Vector2d pointA1 = points_to_vector2d_map.at(edgeA[1]);
-            Eigen::Vector2d pointB0 = points_to_vector2d_map.at(edgeB[0]);
-            Eigen::Vector2d pointB1 = points_to_vector2d_map.at(edgeB[1]);
-            if (doIntersect(pointA0, pointA1, pointB0, pointB1)) return true;
-        }
-
-        return false;
-    }
-
     bool edge_edges_intersection(std::array<int, 2> edgeA, std::set<int> edgeB_set, std::map<int, Eigen::Vector2d> points_to_vector2d_map)
     {
         for (const auto& edgeB_ID : edgeB_set)
