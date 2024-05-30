@@ -275,8 +275,6 @@ public:
     void update_edge_type(int edgeID)
     {
         int count = edge_to_edge_count_map.at(edgeID);
-        int pointID1 = edge_to_point_map.at(edgeID)[0];
-        int pointID2 = edge_to_point_map.at(edgeID)[1];
 
         // is a boundary edge
         bool is_boundary_edge = count == 0 || count == 1;
@@ -303,34 +301,46 @@ public:
 
     void add_to_plane_estimate(int pointID, int setID)
     {
-        // set
-        int size1 = set_to_points_map.at(setID).size();
-        Eigen::Vector3d mean1 = set_to_mean_map.at(setID);
-        Eigen::Matrix3d cov1 = set_to_covariance_matrix_map.at(setID);
+        if (set_to_points_map.at(setID).size() == 1)
+        {
+            // initialize
+            set_to_mean_map.at(setID) = point_to_vector3d_map.at(pointID);
+            set_to_covariance_matrix_map.at(setID) = Eigen::Matrix3d::Zero();
+            set_to_eigenvectors_map.at(setID) = Eigen::Matrix3d::Identity();
+            set_to_eigenvalues_map.at(setID) = Eigen::Vector3d::Zero();
+            set_to_normal_map.at(setID) = Eigen::Vector3d(0, 0, 1);
+        }
+        else
+        {
+            // set
+            int size1 = set_to_points_map.at(setID).size();
+            Eigen::Vector3d mean1 = set_to_mean_map.at(setID);
+            Eigen::Matrix3d cov1 = set_to_covariance_matrix_map.at(setID);
 
-        // point
-        int size2 = 1;
-        Eigen::Vector3d mean2 = point_to_vector3d_map.at(pointID);
-        Eigen::Matrix3d cov2 = Eigen::Matrix3d::Zero();
+            // point
+            int size2 = 1;
+            Eigen::Vector3d mean2 = point_to_vector3d_map.at(pointID);
+            Eigen::Matrix3d cov2 = Eigen::Matrix3d::Zero();
 
-        // set + point
-        Eigen::Vector3d new_mean = merge_means(mean1, mean2, size1, size2);
-        Eigen::Matrix3d new_cov = merge_covariances(cov1, cov2, mean1, mean2, size1, size2);
+            // set + point
+            Eigen::Vector3d new_mean = merge_means(mean1, mean2, size1, size2);
+            Eigen::Matrix3d new_cov = merge_covariances(cov1, cov2, mean1, mean2, size1, size2);
 
-        // plane estimate
-        Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> solver(new_cov);
-        Eigen::Matrix3d new_eigenvectors = solver.eigenvectors();
-        Eigen::Vector3d new_eigenvalues = solver.eigenvalues();
-        Eigen::Vector3d new_normal = new_eigenvectors.col(0); // Assuming the smallest eigenvalue corresponds to the normal
-        Eigen::Vector3d vector_towards_origin = point_to_origin_vector3d_map.at(pointID) - point_to_vector3d_map.at(pointID);
-        if (new_normal.dot(vector_towards_origin) < 0) new_normal *= -1; // normal should points towards the origin
+            // plane estimate
+            Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> solver(new_cov);
+            Eigen::Matrix3d new_eigenvectors = solver.eigenvectors();
+            Eigen::Vector3d new_eigenvalues = solver.eigenvalues();
+            Eigen::Vector3d new_normal = new_eigenvectors.col(0); // Assuming the smallest eigenvalue corresponds to the normal
+            Eigen::Vector3d vector_towards_origin = point_to_origin_vector3d_map.at(pointID) - point_to_vector3d_map.at(pointID);
+            if (new_normal.dot(vector_towards_origin) < 0) new_normal *= -1; // normal should points towards the origin
 
-        // store
-        set_to_mean_map.at(setID) = new_mean;
-        set_to_covariance_matrix_map.at(setID) = new_cov;
-        set_to_eigenvectors_map.at(setID) = new_eigenvectors;
-        set_to_eigenvalues_map.at(setID) = new_eigenvalues;
-        set_to_normal_map.at(setID) = new_normal;
+            // store
+            set_to_mean_map.at(setID) = new_mean;
+            set_to_covariance_matrix_map.at(setID) = new_cov;
+            set_to_eigenvectors_map.at(setID) = new_eigenvectors;
+            set_to_eigenvalues_map.at(setID) = new_eigenvalues;
+            set_to_normal_map.at(setID) = new_normal;
+        }
     }
 
     void remove_from_plane_estimate(int pointID, int setID)
@@ -1106,8 +1116,56 @@ public:
     }
 
     std::map<int, Eigen::Vector3d> get_point_to_vector3d_map() {return point_to_vector3d_map;};
-    std::map<int, std::array<int, 2>> get_edge_to_vertices_map() {return edge_to_point_map;};
-    std::map<int, std::array<int, 3>> get_triangle_to_vertices_map() {return triangle_to_vertices_map;};
+    std::map<int, int> pointID_to_cloud_index_map()
+    {
+        // initialize
+        std::map<int, int> pointID_to_cloud_index;
+
+        // process
+        int cloud_index = 0;
+        for (int point_id : point_list)
+        {
+            pointID_to_cloud_index[point_id] = cloud_index;
+            cloud_index ++;
+        }
+
+        // return
+        return pointID_to_cloud_index;
+    }
+    std::map<int, std::array<int, 2>> get_edge_to_cloud_indices_map() 
+    {
+        // initialize
+        std::map<int, std::array<int, 2>> edge_to_cloud_indices_map;
+
+        // process
+        std::map<int, int> pointID_to_cloud_index = pointID_to_cloud_index_map();
+        for (int edge_id : edge_list)
+        {
+            std::array<int, 2> edge = edge_to_point_map.at(edge_id);
+            std::array<int, 2> cloud_index = {pointID_to_cloud_index.at(edge[0]), pointID_to_cloud_index.at(edge[1])};
+            edge_to_cloud_indices_map[edge_id] = cloud_index;
+        }
+
+        // return
+        return edge_to_cloud_indices_map;
+    };
+    std::map<int, std::array<int, 3>> get_triangle_to_cloud_indices_map() 
+    {
+        // initialize
+        std::map<int, std::array<int, 3>> triangle_to_cloud_index_map;
+
+        // process
+        std::map<int, int> pointID_to_cloud_index = pointID_to_cloud_index_map();
+        for (int triangle_id : triangle_list)
+        {
+            std::array<int, 3> triangle = triangle_to_vertices_map.at(triangle_id);
+            std::array<int, 3> cloud_index = {pointID_to_cloud_index.at(triangle[0]), pointID_to_cloud_index.at(triangle[1]), pointID_to_cloud_index.at(triangle[2])};
+            triangle_to_cloud_index_map[triangle_id] = cloud_index;
+        }
+
+        // return
+        return triangle_to_cloud_index_map;
+    };
     std::set<int> get_boundary_edge_set() {return boundary_edge_set;};
 
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr point_to_vector3d_set_colored_cloud()
@@ -1377,8 +1435,8 @@ private:
                 point_cloud = app_.point_to_vector3d_set_colored_cloud();
             }
         }
-        std::map<int, std::array<int, 3>> triangle_to_vertices_map = app_.get_triangle_to_vertices_map();
-        std::map<int, std::array<int, 2>> edge_to_vertices_map = app_.get_edge_to_vertices_map();
+        std::map<int, std::array<int, 3>> triangle_to_cloud_indices_map = app_.get_triangle_to_cloud_indices_map();
+        std::map<int, std::array<int, 2>> edge_to_cloud_indices_map = app_.get_edge_to_cloud_indices_map();
         std::set<int> boundary_edge_set = app_.get_boundary_edge_set();
 
         // point cloud
@@ -1396,7 +1454,7 @@ private:
         {
             pcl::PolygonMesh triangle_mesh;
             pcl::toPCLPointCloud2(*point_cloud, triangle_mesh.cloud);
-            for (const auto& pair : triangle_to_vertices_map)
+            for (const auto& pair : triangle_to_cloud_indices_map)
             {
                 pcl::Vertices triangle;
                 triangle.vertices.push_back(pair.second[0]);
@@ -1416,8 +1474,8 @@ private:
             for (int edge_id : boundary_edge_set)
             {
                 pcl::Vertices edge;
-                edge.vertices.push_back(edge_to_vertices_map.at(edge_id)[0]);
-                edge.vertices.push_back(edge_to_vertices_map.at(edge_id)[1]);
+                edge.vertices.push_back(edge_to_cloud_indices_map.at(edge_id)[0]);
+                edge.vertices.push_back(edge_to_cloud_indices_map.at(edge_id)[1]);
                 boundary_mesh.polygons.push_back(edge);
             }
             viewer_->addPolylineFromPolygonMesh(boundary_mesh, "boundary_edges");
