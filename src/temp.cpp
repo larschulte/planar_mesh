@@ -155,7 +155,7 @@ public:
 
 
         
-        global_boundary_edge_set.insert(newEdgeID);
+        boundary_edge_set.insert(newEdgeID);
     
         // update boundary points
         add_boundary_point(newEdge[0], setID);
@@ -191,7 +191,7 @@ public:
             if (count <= 1)
             {
                 // udpate set boundary edge
-                global_boundary_edge_set.insert(edge_to_point_map_reverse[edge]);
+                boundary_edge_set.insert(edge_to_point_map_reverse[edge]);
                 
                 // update boundary points
                 add_boundary_point(edge[0], setID);
@@ -200,7 +200,7 @@ public:
             else
             {
                 // remove from set boundary edge
-                global_boundary_edge_set.erase(edge_to_point_map_reverse[edge]);
+                boundary_edge_set.erase(edge_to_point_map_reverse[edge]);
 
                 // remove from boundary points (if the edge point no longer connects to a boundary edge, it is removed from boundary points)
                 remove_boundary_point(edge[0], setID);
@@ -242,7 +242,7 @@ public:
             point_to_edges_map.at(pointID).clear();
             set_to_points_map.at(setID).erase(pointID);
             
-            bool erased = global_boundary_point_set.erase(pointID);
+            bool erased = boundary_point_set.erase(pointID);
             if (erased) kdtree.deletePoint(pointID);
             // add point to isolated points
             isolated_points.insert(pointID);
@@ -255,7 +255,7 @@ public:
             point_to_edges_map.at(pointID).clear();
             set_to_points_map.at(setID).erase(pointID);
             
-            bool erased = global_boundary_point_set.erase(pointID);
+            bool erased = boundary_point_set.erase(pointID);
             if (erased) kdtree.deletePoint(pointID);
             // add point to isolated points
             isolated_points.insert(pointID);
@@ -267,7 +267,7 @@ public:
 
         // remove set boundary edge
         edge_to_edge_count_map.erase(edgeID);
-        global_boundary_edge_set.erase(edgeID);
+        boundary_edge_set.erase(edgeID);
 
         // remove from edge list
         edge_list.erase(std::remove(edge_list.begin(), edge_list.end(), edgeID), edge_list.end());
@@ -284,7 +284,7 @@ public:
         // process
         for (int pointID : set_to_points_map.at(setID))
         {
-            if (global_boundary_point_set.find(pointID) != global_boundary_point_set.end()) 
+            if (boundary_point_set.find(pointID) != boundary_point_set.end()) 
             {
                 boundary_point_of_set.insert(pointID);
             }
@@ -302,7 +302,7 @@ public:
         // process
         for (int edgeID : set_to_edges_map.at(setID))
         {
-            if (global_boundary_edge_set.find(edgeID) != global_boundary_edge_set.end()) 
+            if (boundary_edge_set.find(edgeID) != boundary_edge_set.end()) 
             {
                 boundary_edge_of_set.insert(edgeID);
             }
@@ -392,7 +392,7 @@ public:
         // update local boundary points
 
         // update global boundary points
-        bool inserted = global_boundary_point_set.insert(pointID).second;
+        bool inserted = boundary_point_set.insert(pointID).second;
         if (inserted) kdtree.addPoint(point_to_vector3d_map.at(pointID), pointID);
     }
 
@@ -401,11 +401,11 @@ public:
         // skip if still boundary
         for (int edge_id : point_to_edges_map.at(pointID))
         {
-            if (global_boundary_edge_set.find(edge_id) != global_boundary_edge_set.end()) return;
+            if (boundary_edge_set.find(edge_id) != boundary_edge_set.end()) return;
         }
 
         // remove from both local and global boundary points (a point can only be in one set)
-        bool erased = global_boundary_point_set.erase(pointID);
+        bool erased = boundary_point_set.erase(pointID);
         if (erased) kdtree.deletePoint(pointID);
     }
 
@@ -772,7 +772,7 @@ public:
     void add_point_by_radius_search(int newPointID, Eigen::Vector3d thisPointVEC, Eigen::Vector3d thisPointOriginVEC)
     {
         // if empty, can not set up radius search, add point to new set
-        if (global_boundary_point_set.size() == 0)
+        if (boundary_point_set.size() == 0)
         {
             int newSetID = getNewSetID();
             add_point_to_set(newPointID, newSetID, thisPointVEC, thisPointOriginVEC);
@@ -1133,7 +1133,7 @@ public:
     std::map<int, Eigen::Vector3d> get_point_to_vector3d_map() {return point_to_vector3d_map;};
     std::map<int, std::array<int, 2>> get_edge_to_vertices_map() {return edge_to_point_map;};
     std::map<int, std::array<int, 3>> get_triangle_to_vertices_map() {return triangle_to_vertices_map;};
-    std::set<int> get_boundary_edge_set() {return global_boundary_edge_set;};
+    std::set<int> get_boundary_edge_set() {return boundary_edge_set;};
 
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr point_to_vector3d_set_colored_cloud()
     {
@@ -1318,8 +1318,8 @@ private:
 
         // boundary
     KDTree kdtree;
-    std::set<int> global_boundary_point_set;
-    std::set<int> global_boundary_edge_set;
+    std::set<int> boundary_point_set;
+    std::set<int> boundary_edge_set;
     std::map<int, int> edge_to_edge_count_map; // each map contains edge count
 
         // triangle intersection
