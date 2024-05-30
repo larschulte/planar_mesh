@@ -71,7 +71,7 @@ find_package(Ceres REQUIRED)
 # add executable
 add_executable(optimization src/optimization.cpp)
 target_link_libraries (optimization ${PCL_LIBRARIES} Ceres::ceres)
-target_include_directories(temp
+target_include_directories(optimization
   PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>)
