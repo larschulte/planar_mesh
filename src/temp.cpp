@@ -6,6 +6,7 @@
 #include "eye_patch/DataLoader.hpp"
 #include "eye_patch/TriangleBVH.hpp"
 #include "eye_patch/KDTree.hpp"
+#include "eye_patch/utilities.hpp"
 
 // application class
 template <typename PointT>
@@ -19,23 +20,6 @@ public:
     // 2. perform delaunay triangulation using the boundary points and the new point
     // 3. add the edge and triangles connected to the new point to the original mesh
 
-
-    Eigen::Vector3d merge_means(const Eigen::Vector3d& mean1, const Eigen::Vector3d& mean2, int size1, int size2) 
-    {
-        return (size1 * mean1 + size2 * mean2) / (size1 + size2);
-    }
-
-    Eigen::Matrix3d merge_covariances(const Eigen::Matrix3d& cov1, const Eigen::Matrix3d& cov2, 
-                                    const Eigen::Vector3d& mean1, const Eigen::Vector3d& mean2, 
-                                    int size1, int size2) 
-    {
-        Eigen::Vector3d combined_mean = merge_means(mean1, mean2, size1, size2);
-        Eigen::Matrix3d mean_diff1 = (mean1 - combined_mean) * (mean1 - combined_mean).transpose();
-        Eigen::Matrix3d mean_diff2 = (mean2 - combined_mean) * (mean2 - combined_mean).transpose();
-        Eigen::Matrix3d combined_covariance = (size1 * cov1 + size2 * cov2 + size1 * mean_diff1 + size2 * mean_diff2) / (size1 + size2);
-
-        return combined_covariance;
-    }
 
     Eigen::Vector3d merge_means_of_sets(int setID1, int setID2) 
     {
@@ -75,20 +59,6 @@ public:
         int size1 = set_to_points_map.at(setID).size();
         int size2 = 1;
         return merge_covariances(cov1, cov2, mean1, mean2, size1, size2);
-    }
-
-    std::array<int, 3> sortThreeInts(int a, int b, int c) {
-        std::array<int, 3> sorted = {a, b, c};
-        if (sorted[0] > sorted[1]) std::swap(sorted[0], sorted[1]);
-        if (sorted[0] > sorted[2]) std::swap(sorted[0], sorted[2]);
-        if (sorted[1] > sorted[2]) std::swap(sorted[1], sorted[2]);
-        return sorted;
-    }
-
-    std::array<int, 2> sortTwoInts(int a, int b) {
-        std::array<int, 2> sorted = {a, b};
-        if (sorted[0] > sorted[1]) std::swap(sorted[0], sorted[1]);
-        return sorted;
     }
 
     void add_point_to_set(int newPointID, int setID, Eigen::Vector3d thisPoint, Eigen::Vector3d origin)
@@ -160,6 +130,7 @@ public:
         // update set boundary edge
         set_to_edge_count_map.at(setID)[newEdgeID] = 0;
         set_to_boundary_edge_set_map.at(setID).insert(newEdgeID);
+        global_boundary_edge_set.insert(newEdgeID);
     
         // update boundary points
         add_boundary_point(newEdge[0], setID);
@@ -196,6 +167,7 @@ public:
             {
                 // udpate set boundary edge
                 set_to_boundary_edge_set_map.at(setID).insert(edge_to_point_map_reverse[edge]);
+                global_boundary_edge_set.insert(edge_to_point_map_reverse[edge]);
                 
                 // update boundary points
                 add_boundary_point(edge[0], setID);
@@ -205,6 +177,7 @@ public:
             {
                 // remove from set boundary edge
                 set_to_boundary_edge_set_map.at(setID).erase(edge_to_point_map_reverse[edge]);
+                global_boundary_edge_set.erase(edge_to_point_map_reverse[edge]);
 
                 // remove from boundary points (if the edge point no longer connects to a boundary edge, it is removed from boundary points)
                 remove_boundary_point(edge[0], setID);
@@ -274,6 +247,7 @@ public:
         // remove set boundary edge
         set_to_edge_count_map.at(setID).erase(edgeID);
         set_to_boundary_edge_set_map.at(setID).erase(edgeID);
+        global_boundary_edge_set.erase(edgeID);
 
         // remove from edge list
         edge_list.erase(std::remove(edge_list.begin(), edge_list.end(), edgeID), edge_list.end());
@@ -455,456 +429,8 @@ public:
         return newTriangleID;
     }
 
-    std::map<int, std::set<int>> group_points_by_set(std::set<int> point_set)
-    {
-        // initialize
-        std::map<int, std::set<int>> points_grouped_by_set;
 
-        // process
-        for (int point_id : point_set)
-        {
-            points_grouped_by_set[point_to_set_map.at(point_id)].insert(point_id);
-        }
-
-        // return
-        return points_grouped_by_set;
-    }
-
-    std::set<int> compute_boundary_edge_set_of_set(int setID)
-    {
-        // intialize edge occurrences count
-        std::map<int, int> edge_count;
-        for (int edge_id : set_to_edges_map.at(setID))
-        {
-            edge_count[edge_id] = 0;
-        }
-
-        // for each triangle, increment edge count
-        for (int triangle_id : set_to_triangles_map.at(setID))
-        {
-            std::array<int, 3> vertices = triangle_to_vertices_map.at(triangle_id);
-            for (int i = 0; i < 3; i++)
-            {
-                // get correct edge order
-                int smaller_id = std::min(vertices[i], vertices[(i + 1) % 3]);
-                int larger_id = std::max(vertices[i], vertices[(i + 1) % 3]);
-                std::array<int, 2> edge = {smaller_id, larger_id};
-
-                // increment count
-                edge_count[edge_to_point_map_reverse[edge]] ++;
-            }
-        }
-        
-        // identify boundary edges (edges that are shared by only 0 or 1 triangle)
-        std::set<int> boundary_edge_set;
-        for (const auto& pair : edge_count)
-        {
-            if (pair.second <= 1) 
-            {
-                boundary_edge_set.insert(pair.first);
-            }
-        }
-
-        // return
-        return boundary_edge_set;
-    }
-
-    std::set<int> compute_boundary_point_set_of_set(int setID)
-    {
-        // get boundary edge set
-        std::set<int> boundary_edge_set = compute_boundary_edge_set_of_set(setID);
-
-        // identify boundary points
-        // add points from boundary edges
-        std::set<int> boundary_points_set;
-        for (int edge_id : boundary_edge_set)
-        {
-            std::array<int, 2> vertices = edge_to_point_map.at(edge_id);
-            boundary_points_set.insert(vertices[0]);
-            boundary_points_set.insert(vertices[1]);
-        }
-        // add points that do not have edge in the same set
-        for (int point_id : set_to_points_map.at(setID))
-        {
-            // if point have no edge, add
-            if (point_to_edges_map.find(point_id) == point_to_edges_map.end())
-            {
-                boundary_points_set.insert(point_id);
-            }
-            // if point have edge, non is in the same set, add
-            else
-            {
-                bool one_edge_in_same_set = false;
-                for (int edge_id : point_to_edges_map.at(point_id))
-                {
-                    if (set_to_edges_map.at(setID).find(edge_id) != set_to_edges_map.at(setID).end())
-                    {
-                        one_edge_in_same_set = true;
-                        break;
-                    }
-                }
-                if (!one_edge_in_same_set) boundary_points_set.insert(point_id);
-            }
-        }
-
-        return boundary_points_set;
-    }
-
-    std::set<int> compute_boundary_edge_set()
-    {
-        // initialize
-        std::set<int> boundary_edge_set;
-
-        // process
-        for (int set_id : set_list)
-        {
-            // get boundary edge set of set
-            std::set<int> boundary_edge_set_of_set = compute_boundary_edge_set_of_set(set_id);
-
-            // add to boundary edge set
-            boundary_edge_set.insert(boundary_edge_set_of_set.begin(), boundary_edge_set_of_set.end());
-        }
-
-        // return
-        return boundary_edge_set;
-    }
-
-    std::vector<int> compute_boundary_edge_list()
-    {
-        // get boundary edge set
-        std::set<int> boundary_edge_set = compute_boundary_edge_set();
-
-        // convert to list
-        std::vector<int> boundary_edge_list;
-        for (int edge_id : boundary_edge_set)
-        {
-            boundary_edge_list.push_back(edge_id);
-        }
-
-        // return
-        return boundary_edge_list;
-    }
-
-    std::set<int> compute_boundary_point_set()
-    {
-        // get boundary edge set
-        std::set<int> boundary_edge_set = compute_boundary_edge_set();
-
-        // identify boundary points
-        // add points from boundary edges
-        std::set<int> boundary_points_set;
-        for (int edge_id : boundary_edge_set)
-        {
-            std::array<int, 2> vertices = edge_to_point_map.at(edge_id);
-            boundary_points_set.insert(vertices[0]);
-            boundary_points_set.insert(vertices[1]);
-        }
-        // add points that do not have edge 
-        for (int point_id : point_list)
-        {
-            if (point_to_edges_map.find(point_id) == point_to_edges_map.end())
-            {
-                boundary_points_set.insert(point_id);
-            }
-        }
-
-        return boundary_points_set;
-    }
-
-    // compute boundary point list
-    std::vector<int> compute_boundary_point_list()
-    {
-        // get boundary point set
-        std::set<int> boundary_points_set = compute_boundary_point_set();
-
-        // convert to list
-        std::vector<int> boundary_points_list;
-        for (int point_id : boundary_points_set)
-        {
-            boundary_points_list.push_back(point_id);
-        }
-
-        // return
-        return boundary_points_list;
-    }
-
-    std::set<int> get_boundary_edge_set_of_set(int setID)
-    {
-        if (set_to_boundary_edge_set_map.find(setID) == set_to_boundary_edge_set_map.end())
-        {
-            return std::set<int>();
-        }
-        else
-        {
-            return set_to_boundary_edge_set_map.at(setID);
-        }
-    }
-        
-    std::set<int> get_boundary_edge_set()
-    {
-        // initialize
-        std::set<int> boundary_edge_set;
-
-        // process
-        for (int set_id : set_list)
-        {
-            // get boundary edge set of set
-            std::set<int> boundary_edge_set_of_set = get_boundary_edge_set_of_set(set_id);
-
-            // add to boundary edge set
-            boundary_edge_set.insert(boundary_edge_set_of_set.begin(), boundary_edge_set_of_set.end());
-        }
-
-        // return
-        return boundary_edge_set;
-    }
-
-    std::vector<int> get_boundary_edge_list()
-    {
-        // get boundary edge set
-        std::set<int> boundary_edge_set = get_boundary_edge_set();
-
-        // convert to list
-        std::vector<int> boundary_edge_list;
-        for (int edge_id : boundary_edge_set)
-        {
-            boundary_edge_list.push_back(edge_id);
-        }
-
-        // return
-        return boundary_edge_list;
-    }
-
-    std::set<int> get_boundary_point_set_of_set(int setID)
-    {
-        return set_to_boundary_point_set_map.at(setID);
-    }
     
-    std::set<int> get_boundary_point_set()
-    {
-        // initialize
-        std::set<int> boundary_points_set;
-
-        // process
-        for (int set_id : set_list)
-        {
-            // get boundary point set of set
-            std::set<int> boundary_point_set_of_set = get_boundary_point_set_of_set(set_id);
-
-            // add to boundary point set
-            boundary_points_set.insert(boundary_point_set_of_set.begin(), boundary_point_set_of_set.end());
-        }
-
-        // return
-        return boundary_points_set;
-    }
-
-    std::vector<int> get_boundary_point_list()
-    {
-        // get boundary point set
-        std::set<int> boundary_points_set = get_boundary_point_set();
-
-        // convert to list
-        std::vector<int> boundary_points_list;
-        for (int point_id : boundary_points_set)
-        {
-            boundary_points_list.push_back(point_id);
-        }
-
-        // return
-        return boundary_points_list;
-    }
-
-    void fit_plane_to_points(std::set<int> point_ids, Eigen::Vector3d& mean, Eigen::Vector3d& normal)
-    {
-        // compute mean
-        mean = Eigen::Vector3d::Zero();
-        for (int point_id : point_ids)
-        {
-            mean += point_to_vector3d_map.at(point_id);
-        }
-        mean /= point_ids.size();
-
-        // compute covariance matrix
-        Eigen::Matrix3d covariance_matrix = Eigen::Matrix3d::Zero();
-        for (int point_id : point_ids)
-        {
-            Eigen::Vector3d point = point_to_vector3d_map.at(point_id);
-            covariance_matrix += (point - mean) * (point - mean).transpose();
-        }
-
-        // decompose to get normal
-        Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> eigensolver(covariance_matrix);
-        normal = eigensolver.eigenvectors().col(0);
-    }
-
-
-
-    // Function to compute the mean of the points
-    Eigen::Vector3d computeMean(const std::vector<Eigen::Vector3d>& points) 
-    {
-        // compute
-        Eigen::Vector3d mean = Eigen::Vector3d::Zero();
-        for (const auto& point : points) 
-        {
-            mean += point;
-        }
-        mean /= points.size();
-
-        // return
-        return mean;
-    }
-
-    // Function to center the points
-    std::vector<Eigen::Vector3d> centerPoints(const std::vector<Eigen::Vector3d>& points, const Eigen::Vector3d& mean) 
-    {
-        // compute
-        std::vector<Eigen::Vector3d> centered_points;
-        for (const auto& point : points) 
-        {
-            centered_points.push_back(point - mean);
-        }
-
-        // return
-        return centered_points;
-    }
-
-    // Function to compute the covariance matrix
-    Eigen::Matrix3d computeCovarianceMatrix(const std::vector<Eigen::Vector3d>& centered_points) 
-    {
-        // comptute
-        Eigen::Matrix3d covariance_matrix = Eigen::Matrix3d::Zero();
-        for (const auto& point : centered_points) 
-        {
-            covariance_matrix += point * point.transpose();
-        }
-        covariance_matrix /= centered_points.size();
-
-        // return
-        return covariance_matrix;
-    }
-
-    // Function to project points onto the plane
-    std::vector<Eigen::Vector2d> projectPoints(const std::vector<Eigen::Vector3d>& centered_points, const Eigen::Matrix3d& eigenvectors) 
-    {
-        // compute
-        Eigen::Matrix<double, 3, 2> plane_basis = eigenvectors.rightCols<2>();  // Use the last two eigenvectors
-        std::vector<Eigen::Vector2d> projections;
-        for (const auto& point : centered_points) 
-        {
-            projections.push_back((plane_basis.transpose() * point).head<2>());
-        }
-
-        // return
-        return projections;
-    }
-    
-    Eigen::Vector3d get_set_mean(int setID)
-    {
-        // initialize
-        Eigen::Vector3d mean = Eigen::Vector3d::Zero();
-
-        // process
-        for (int point_id : set_to_points_map.at(setID))
-        {
-            mean += point_to_vector3d_map.at(point_id);
-        }
-        mean /= set_to_points_map.at(setID).size();
-
-        // return
-        return mean;
-    }
-
-    Eigen::Matrix3d  get_set_eigenvectors(int setID)
-    {
-        // mean
-        Eigen::Vector3d mean = Eigen::Vector3d::Zero();
-        for (int point_id : set_to_points_map.at(setID))
-        {
-            mean += point_to_vector3d_map.at(point_id);
-        }
-        mean /= set_to_points_map.at(setID).size();
-
-        // covariance matrix
-        Eigen::Matrix3d covariance_matrix = Eigen::Matrix3d::Zero();
-        for (int point_id : set_to_points_map.at(setID))
-        {
-            Eigen::Vector3d point = point_to_vector3d_map.at(point_id);
-            covariance_matrix += (point - mean) * (point - mean).transpose();
-        }
-        covariance_matrix /= set_to_points_map.at(setID).size();
-
-        // eigen decomposition
-        Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> eigen_solver(covariance_matrix);
-        Eigen::Matrix3d eigenvectors = eigen_solver.eigenvectors();
-    
-        // return
-        return eigenvectors;
-    }
-
-    // Function to find the orientation of the ordered triplet (p, q, r).
-    int orientation(const Eigen::Vector2d &p, const Eigen::Vector2d &q, const Eigen::Vector2d &r) {
-        double val = (q.y() - p.y()) * (r.x() - q.x()) - (q.x() - p.x()) * (r.y() - q.y());
-        if (val == 0) return 0;           // collinear
-        return (val > 0) ? 1 : 2;         // clock or counterclockwise
-    }
-
-    // Function to check if point q lies on segment pr excluding endpoints.
-    bool onSegment(const Eigen::Vector2d &p, const Eigen::Vector2d &q, const Eigen::Vector2d &r) {
-        if (q.x() < std::max(p.x(), r.x()) && q.x() > std::min(p.x(), r.x()) &&
-            q.y() < std::max(p.y(), r.y()) && q.y() > std::min(p.y(), r.y()))
-            return true;
-        return false;
-    }
-
-    // Function to check if two segments (p1, q1) and (p2, q2) intersect.
-    bool doIntersect(const Eigen::Vector2d &p1, const Eigen::Vector2d &q1, const Eigen::Vector2d &p2, const Eigen::Vector2d &q2) {
-        // Find the four orientations needed for the general and special cases
-        int o1 = orientation(p1, q1, p2);
-        int o2 = orientation(p1, q1, q2);
-        int o3 = orientation(p2, q2, p1);
-        int o4 = orientation(p2, q2, q1);
-
-        // General case
-        if (o1 != o2 && o3 != o4)
-            return true;
-
-        // Special cases
-        // p1, q1 and p2 are collinear and p2 lies on segment p1q1
-        if (o1 == 0 && onSegment(p1, p2, q1)) return false;
-
-        // p1, q1 and q2 are collinear and q2 lies on segment p1q1
-        if (o2 == 0 && onSegment(p1, q2, q1)) return false;
-
-        // p2, q2 and p1 are collinear and p1 lies on segment p2q2
-        if (o3 == 0 && onSegment(p2, p1, q2)) return false;
-
-        // p2, q2 and q1 are collinear and q1 lies on segment p2q2
-        if (o4 == 0 && onSegment(p2, q1, q2)) return false;
-
-        return false; // Doesn't fall in any of the above cases
-    }
-
-
-    // point_in_triangle - generated by copilot
-    bool point_in_triangle(Eigen::Vector2d point, Eigen::Vector2d v0, Eigen::Vector2d v1, Eigen::Vector2d v2) {
-        Eigen::Vector2d v0v1 = v1 - v0;
-        Eigen::Vector2d v0v2 = v2 - v0;
-        Eigen::Vector2d v0p = point - v0;
-
-        double dot00 = v0v2.dot(v0v2);
-        double dot01 = v0v2.dot(v0v1);
-        double dot02 = v0v2.dot(v0p);
-        double dot11 = v0v1.dot(v0v1);
-        double dot12 = v0v1.dot(v0p);
-
-        double invDenom = 1 / (dot00 * dot11 - dot01 * dot01);
-        double u = (dot11 * dot02 - dot01 * dot12) * invDenom;
-        double v = (dot00 * dot12 - dot01 * dot02) * invDenom;
-
-        // Return true if point is in triangle
-        return (u >= 0) && (v >= 0) && (u + v <= 1);
-    }
 
     std::set<int> extract_existing_edge_between_points(std::set<int> candidate_point_set, std::set<int> candidate_edge_set)
     {
@@ -991,85 +517,6 @@ public:
         return false;
     }
     
-
-
-    // convert to edge vertices set
-    std::set<std::array<int, 2>> convert_to_edge_vertices_set(std::set<int> edge_set)
-    {
-        // initialize
-        std::set<std::array<int, 2>> edge_vertices_set;
-
-        // process
-        for (int edge_id : edge_set)
-        {
-            edge_vertices_set.insert(edge_to_point_map.at(edge_id));
-        }
-
-        // return
-        return edge_vertices_set;
-    }
-
-    // project points to plane
-    std::map<int, Eigen::Vector2d> project_points_to_plane(std::set<int> point_set, Eigen::Matrix<double, 3, 2> projection_matrix)
-    {
-        // initialize
-        std::map<int, Eigen::Vector2d> points_to_vector2d_map;
-
-        // process
-        for (int point_id : point_set)
-        {
-            Eigen::Vector3d point = point_to_vector3d_map.at(point_id);
-            Eigen::Vector2d projection = (projection_matrix.transpose() * point).head<2>();
-            points_to_vector2d_map[point_id] = projection;
-        }
-
-        // return
-        return points_to_vector2d_map;
-    }
-
-    // project points to set
-    std::map<int, Eigen::Vector2d> project_points_to_set(std::set<int> point_set, int setID)
-    {
-        // get set eigenvectors
-        Eigen::Matrix3d eigenvectors = get_set_eigenvectors(setID);
-
-        // project points to plane
-        Eigen::Matrix<double, 3, 2> projection_matrix = eigenvectors.rightCols<2>();
-        std::map<int, Eigen::Vector2d> points_to_vector2d_map = project_points_to_plane(point_set, projection_matrix);
-
-        // return
-        return points_to_vector2d_map;
-    }
-
-    // project points to set with range correction
-    std::map<int, Eigen::Vector2d> project_points_to_set_with_range_correction(std::set<int> point_set, int setID)
-    {
-        // initialize
-        std::map<int, Eigen::Vector2d> points_to_vector2d_map;
-
-        // get set eigenvectors
-        Eigen::Matrix3d eigenvectors = get_set_eigenvectors(setID);
-        Eigen::Vector3d mean = get_set_mean(setID);
-        Eigen::Vector3d normal = eigenvectors.col(0);
-
-        // for each point
-        for (int point_id : point_set)
-        {
-            // intersection point
-            Eigen::Vector3d rayOrigin = point_to_origin_vector3d_map.at(point_id);
-            Eigen::Vector3d rayEndPoint = point_to_vector3d_map.at(point_id);
-            Eigen::Vector3d rayPlaneIntersectionPoint = ray_plane_intersection(rayOrigin, rayEndPoint, mean, normal);
-
-            // project intersected points to plane
-            Eigen::Matrix<double, 3, 2> projection_matrix = eigenvectors.rightCols<2>();
-            Eigen::Vector2d projected_point = (projection_matrix.transpose() * rayPlaneIntersectionPoint).head<2>();
-            points_to_vector2d_map[point_id] = projected_point;
-        }
-
-        // return
-        return points_to_vector2d_map;
-    }
-    
     std::map<int, Eigen::Vector2d> project_boundary_points_of_set_to_set_plane(int setID)
     {
         // initialize
@@ -1085,7 +532,11 @@ public:
             // }
 
             // get intersection point
-            Eigen::Vector3d rayPlaneIntersectionPoint = point_set_intersection(point_id, setID);
+            Eigen::Vector3d rayOrigin = point_to_origin_vector3d_map.at(point_id);
+            Eigen::Vector3d rayEndPoint = point_to_vector3d_map.at(point_id);
+            Eigen::Vector3d mean = set_to_mean_map.at(setID);
+            Eigen::Vector3d normal = set_to_normal_map.at(setID);
+            Eigen::Vector3d rayPlaneIntersectionPoint = ray_plane_intersection(rayOrigin, rayEndPoint, mean, normal);
 
             // project intersection points to plane
             Eigen::Matrix3d eigenvectors = set_to_eigenvectors_map.at(setID);
@@ -1115,93 +566,6 @@ public:
         // return
         return setOut;
     }
-    
-
-    // ray plane intersection
-    Eigen::Vector3d ray_plane_intersection(Eigen::Vector3d rayOrigin, Eigen::Vector3d rayEndPoint, Eigen::Vector3d planeMean, Eigen::Vector3d planeNormal)
-    {   
-        // if perpendicular, return NaN
-        Eigen::Vector3d rayDirection = (rayEndPoint - rayOrigin).normalized();
-        if (planeNormal.dot(rayDirection) == 0)
-        {
-            // terminate programe by throwing an error
-            throw std::invalid_argument("Ray and plane are perpendicular");
-        }
-
-        // compute intersection
-        double distance = (planeMean - rayOrigin).dot(planeNormal) / rayDirection.dot(planeNormal);
-        Eigen::Vector3d intersection = rayOrigin + rayDirection * distance;
-
-        // return
-        return intersection;
-    }
-
-    Eigen::Vector3d point_set_intersection(int pointID, int setID)
-    {
-        // compute
-        Eigen::Vector3d rayOrigin = point_to_origin_vector3d_map.at(pointID);
-        Eigen::Vector3d rayEndPoint = point_to_vector3d_map.at(pointID);
-        Eigen::Vector3d mean = set_to_mean_map.at(setID);
-        Eigen::Vector3d normal = set_to_normal_map.at(setID);
-        Eigen::Vector3d rayPlaneIntersectionPoint = ray_plane_intersection(rayOrigin, rayEndPoint, mean, normal);
-
-        // return
-        return rayPlaneIntersectionPoint;
-    }
-
-    // ray set intersection 
-    Eigen::Vector3d ray_set_intersection(Eigen::Vector3d rayOrigin, Eigen::Vector3d rayEndPoint, int setID)
-    {
-        // mean
-        std::set<int> point_ids = set_to_points_map.at(setID);
-        Eigen::Vector3d mean = Eigen::Vector3d::Zero();
-        for (int point_id : point_ids)
-        {
-            mean += point_to_vector3d_map.at(point_id);
-        }
-        mean /= point_ids.size();
-
-        // covariance matrix
-        Eigen::Matrix3d covariance_matrix = Eigen::Matrix3d::Zero();
-        for (int point_id : point_ids)
-        {
-            Eigen::Vector3d point = point_to_vector3d_map.at(point_id);
-            covariance_matrix += (point - mean) * (point - mean).transpose();
-        }
-
-        // normal
-        Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> eigensolver(covariance_matrix);
-        Eigen::Vector3d normal = eigensolver.eigenvectors().col(0);
-
-        // correct normal direction
-        Eigen::Vector3d rayDirection = (rayEndPoint - rayOrigin).normalized();
-        if (normal.dot(rayDirection) > 0)
-        {
-            normal = -normal;
-        }
-
-        // intersection point
-        Eigen::Vector3d rayPlaneIntersectionPoint = ray_plane_intersection(rayOrigin, rayEndPoint, mean, normal);
-
-        // return
-        return rayPlaneIntersectionPoint;
-    }
-
-    std::set<int> extract_points_by_setID(std::set<int> point_set, int setID)
-    {
-        // initialize
-        std::set<int> out_point_set;
-
-        // process
-        for (int point_id : point_set)
-        {
-            if (point_to_set_map.at(point_id) == setID) out_point_set.insert(point_id);
-        }
-
-        // return
-        return out_point_set;
-    }
-
 
     // creates edges and triangles that connects the new point to the set
     void connect_point_to_set(int newPointID, int setID, std::set<int> searched_boundary_points_in_current_set)
@@ -1213,7 +577,7 @@ public:
         std::map<int, Eigen::Vector2d> points_to_vector2d_map = project_boundary_points_of_set_to_set_plane(setID);
 
         // existing edges between searched points (boundary)
-        std::set<int> existing_boundary_edge_set = extract_existing_edge_between_points(searched_boundary_points_in_current_set, get_boundary_edge_set_of_set(setID));
+        std::set<int> existing_boundary_edge_set = extract_existing_edge_between_points(searched_boundary_points_in_current_set, set_to_boundary_edge_set_map.at(setID));
 
 
         // to add a new point to mesh
@@ -1231,7 +595,7 @@ public:
             if (edge_to_point_map_reverse.find(newEdge) != edge_to_point_map_reverse.end()) continue;
 
             // skip if intersected with any boundary edge of the current set
-            if (edge_edges_intersection(newEdge, get_boundary_edge_set_of_set(setID), points_to_vector2d_map)) continue;
+            if (edge_edges_intersection(newEdge, set_to_boundary_edge_set_map.at(setID), points_to_vector2d_map)) continue;
 
             // add edge
             int newEdgeID = getNewEdgeID();
@@ -1499,7 +863,7 @@ public:
         // somewhere above, the global and local boundary points sets are not in sync
         if (closest_setID != -1 && closest_distance < distance_threshold)
         {
-            std::set<int> searched_boundary_points_in_current_set = intersection_of_sets(searched_boundary_points_set, get_boundary_point_set_of_set(closest_setID));
+            std::set<int> searched_boundary_points_in_current_set = intersection_of_sets(searched_boundary_points_set, set_to_boundary_point_set_map.at(closest_setID));
             add_point_to_set(newPointID, closest_setID, thisPointVEC, thisPointOriginVEC);
             connect_point_to_set(newPointID, closest_setID, searched_boundary_points_in_current_set);
             return;
@@ -1518,7 +882,7 @@ public:
         }
         if (largest_setID != -1)
         {
-            std::set<int> searched_boundary_points_in_current_set = intersection_of_sets(searched_boundary_points_set, get_boundary_point_set_of_set(largest_setID));
+            std::set<int> searched_boundary_points_in_current_set = intersection_of_sets(searched_boundary_points_set, set_to_boundary_point_set_map.at(largest_setID));
             add_point_to_set(newPointID, largest_setID, thisPointVEC, thisPointOriginVEC);
             connect_point_to_set(newPointID, largest_setID, searched_boundary_points_in_current_set);
             return;
@@ -1531,14 +895,6 @@ public:
     }
 
 
-    typename pcl::PointCloud<PointT>::Ptr 
-    transform_cloud_to_global(typename pcl::PointCloud<PointT>::Ptr cloud, Eigen::Affine3d pose_eigen)
-    {
-        // transform point cloud
-        typename pcl::PointCloud<PointT>::Ptr transformed_cloud (new pcl::PointCloud<PointT> ());
-        pcl::transformPointCloud (*cloud, *transformed_cloud, pose_eigen);
-        return transformed_cloud;
-    }
 
     void step()
     {
@@ -1552,7 +908,7 @@ public:
             // load data
             typename pcl::PointCloud<PointT>::Ptr pointcloud_local = data_loader.get_cloud(ith_cloud);
             Eigen::Affine3d pose = data_loader.get_pose(ith_cloud);
-            pointcloud = transform_cloud_to_global(pointcloud_local, pose);
+            pointcloud = transform_cloud_to_global<PointT>(pointcloud_local, pose);
             origin = pose.translation();
 
             ith_size = pointcloud->size() / 10;
@@ -1772,6 +1128,7 @@ public:
     std::map<int, Eigen::Vector3d> get_point_to_vector3d_map() {return point_to_vector3d_map;};
     std::map<int, std::array<int, 2>> get_edge_to_vertices_map() {return edge_to_point_map;};
     std::map<int, std::array<int, 3>> get_triangle_to_vertices_map() {return triangle_to_vertices_map;};
+    std::set<int> get_boundary_edge_set() {return global_boundary_edge_set;};
 
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr point_to_vector3d_set_colored_cloud()
     {
@@ -1788,34 +1145,6 @@ public:
             cloud->push_back(point);
         }
         return cloud;
-    }
-
-    std::tuple<int, int, int> valueToJet(float value) {
-        // Ensure value is within [0, 1]
-        if (value < 0.0f) value = 0.0f;
-        if (value > 1.0f) value = 1.0f;
-
-        float r = 0, g = 0, b = 0;
-
-        if (value < 0.25f) {
-            r = 0;
-            g = 4 * value;
-            b = 1;
-        } else if (value < 0.5f) {
-            r = 0;
-            g = 1;
-            b = 1 - 4 * (value - 0.25f);
-        } else if (value < 0.75f) {
-            r = 4 * (value - 0.5f);
-            g = 1;
-            b = 0;
-        } else {
-            r = 1;
-            g = 1 - 4 * (value - 0.75f);
-            b = 0;
-        }
-
-        return std::make_tuple(static_cast<int>(r * 255), static_cast<int>(g * 255), static_cast<int>(b * 255));
     }
 
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr point_to_vector3d_set_distance_cloud()
@@ -1888,7 +1217,11 @@ public:
             int setID = point_to_set_map.at(point_id);
 
             // get projected point
-            Eigen::Vector3d rayPlaneIntersectionPoint = point_set_intersection(point_id, setID);
+            Eigen::Vector3d rayOrigin = point_to_origin_vector3d_map.at(point_id);
+            Eigen::Vector3d rayEndPoint = point_to_vector3d_map.at(point_id);
+            Eigen::Vector3d mean = set_to_mean_map.at(setID);
+            Eigen::Vector3d normal = set_to_normal_map.at(setID);
+            Eigen::Vector3d rayPlaneIntersectionPoint = ray_plane_intersection(rayOrigin, rayEndPoint, mean, normal);
 
             // compute distance
             double distance = (point_to_vector3d_map.at(point_id) - rayPlaneIntersectionPoint).norm();
@@ -1983,6 +1316,7 @@ private:
         // boundary
     KDTree kdtree;
     std::set<int> global_boundary_point_set;
+    std::set<int> global_boundary_edge_set;
 
         // triangle intersection
     TriangleBVH bvhRoot;
@@ -2063,7 +1397,7 @@ private:
         }
         std::map<int, std::array<int, 3>> triangle_to_vertices_map = app_.get_triangle_to_vertices_map();
         std::map<int, std::array<int, 2>> edge_to_vertices_map = app_.get_edge_to_vertices_map();
-        std::vector<int> boundary_edge_list = app_.get_boundary_edge_list();
+        std::set<int> boundary_edge_set = app_.get_boundary_edge_set();
 
         // point cloud
         viewer_->removeShape("point_cloud");
@@ -2097,7 +1431,7 @@ private:
         {
             pcl::PolygonMesh boundary_mesh;
             pcl::toPCLPointCloud2(*point_cloud, boundary_mesh.cloud);
-            for (int edge_id : boundary_edge_list)
+            for (int edge_id : boundary_edge_set)
             {
                 pcl::Vertices edge;
                 edge.vertices.push_back(edge_to_vertices_map.at(edge_id)[0]);
