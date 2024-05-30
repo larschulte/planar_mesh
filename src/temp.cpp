@@ -99,6 +99,20 @@ public:
         update_point_type(newPointID);
     }
 
+    void store_point_in_triangle(int newPointID, int triangleID, Eigen::Vector3d thisPoint, Eigen::Vector3d origin)
+    {
+        int setID = triangle_to_set_map.at(triangleID);
+
+        point_list.push_back(newPointID);
+        point_to_vector3d_map.at(newPointID) = thisPoint;
+        point_to_origin_vector3d_map.at(newPointID) = origin;
+        point_to_set_map.at(newPointID) = setID;
+        set_to_points_map.at(setID).insert(newPointID);
+        add_to_plane_estimate(newPointID, setID);
+        // update_point_type(newPointID);
+        triangle_to_points_map.at(triangleID).insert(newPointID);
+    }
+
     void add_edge(int newEdgeID, int setID, std::array<int, 2> vertices)
     {
         vertices = sortTwoInts(vertices[0], vertices[1]);
@@ -1052,12 +1066,10 @@ public:
         // if the smallest set is within threshold, add the point to the set
         if (smallest_setID != -1 && std::abs(smallest_distance) < distance_threshold)
         {
-            add_point(newPointID, smallest_setID, thisPointVEC, thisPointOriginVEC);
-            std::cout << ith_point << " / " << pointcloud->size() << " of pointcloud " << ith_cloud << " added to set " << smallest_setID << std::endl;
-
-            // add the point to the triangle (if multiple, add to first)
+            // if multiple, add to first
             int triangleID = *set_to_searched_triangle_map.at(smallest_setID).begin();
-            triangle_to_points_map.at(triangleID).insert(newPointID);
+            store_point_in_triangle(newPointID, triangleID, thisPointVEC, thisPointOriginVEC);
+            std::cout << ith_point << " / " << pointcloud->size() << " of pointcloud " << ith_cloud << " added to set " << smallest_setID << std::endl;
 
             point_added_to_set = true;
         }
