@@ -4,6 +4,11 @@
 #include <ceres/ceres.h>
 #include <ceres/rotation.h>
 
+// cost functor -> a function that computes residuals
+// cost function -> differentiable cost functor
+// loss function -> weight scaling of residual, like huber, soft_l1, cauchy, etc.
+// residual -> sum of squared residuals is minimized
+
 struct PointData 
 {
     Eigen::Vector3d point;
@@ -13,27 +18,28 @@ struct PointData
 
 struct PlaneFittingCostFunctor 
 {
-    PlaneFittingCostFunctor(const Eigen::Vector3d& point, const Eigen::Vector3d& direction, double sigma)
-        : point_(point), direction_(direction), sigma_(sigma) {}
+    PlaneFittingCostFunctor(PointData point_data) : point_(point_data.point), direction_(point_data.direction.normalized()), sigma_(point_data.sigma) {}
 
     template <typename T>
-    bool operator()(const T* const plane_normal, const T* const plane_point, T* residual) const 
+    bool operator()(const T* const plane_normal, const T* const plane_position, T* residual) const 
     {
-        Eigen::Matrix<T, 3, 1> n(plane_normal[0], plane_normal[1], plane_normal[2]);
-        Eigen::Matrix<T, 3, 1> p0(plane_point[0], plane_point[1], plane_point[2]);
+        // plane
+        Eigen::Matrix<T, 3, 1> p0(plane_position[0], plane_position[1], plane_position[2]);
+        Eigen::Matrix<T, 3, 1> n0(plane_normal[0], plane_normal[1], plane_normal[2]);
+        n0.normalize();
 
-        n.normalize();
-
+        // point
         Eigen::Matrix<T, 3, 1> p(point_.cast<T>());
         Eigen::Matrix<T, 3, 1> u(direction_.cast<T>());
+        
+        // intersection distance 
+        T d = (n0.dot(p0 - p)) / (n0.dot(u));
 
-        T t = (n.dot(p0 - p)) / (n.dot(u));
-        Eigen::Matrix<T, 3, 1> intersection_point = p + t * u;
+        // scaled intersection distance
+        T d_effective = d / T(sigma_);
 
-        T d_eff = (intersection_point - p).norm();
-
-        residual[0] = d_eff / T(sigma_);
-
+        // return residual
+        residual[0] = d_effective;
         return true;
     }
 
@@ -46,40 +52,40 @@ private:
 
 int main() 
 {
-    std::vector<PointData> points = 
-    {
-        {{1, 2, 3}, {1, 0, 0}, 0.1},
-        {{4, 5, 6}, {0, 1, 0}, 0.2},
-        {{7, 8, 9}, {0, 0, 1}, 0.3}
-    };
+    // data
+    Eigen::Vector3d plane_normal(1, 1, 1);
+    Eigen::Vector3d plane_position(0, 0, 0);
+    std::vector<PointData> point_data_list;
+    point_data_list.push_back({{0, 0, 0}, {1, 1, 1}, 1.0});
+    point_data_list.push_back({{1, 0, 0}, {1, 1, 1}, 1.0});
+    point_data_list.push_back({{0, 1, 0}, {1, 1, 1}, 1.0});
+    
 
-    Eigen::Vector3d initial_normal(1, 1, 1);
-    Eigen::Vector3d initial_point_on_plane(0, 0, 0);
-
-    initial_normal.normalize();
-
-    ceres::Problem problem;
-    for (const auto& point_data : points) 
-    {
-        problem.AddResidualBlock(
-            new ceres::AutoDiffCostFunction<PlaneFittingCostFunctor, 1, 3, 3>(
-                new PlaneFittingCostFunctor(point_data.point, point_data.direction, point_data.sigma)),
-            nullptr,
-            initial_normal.data(),
-            initial_point_on_plane.data()
-        );
-    }
-
+    // option
     ceres::Solver::Options options;
     options.linear_solver_type = ceres::DENSE_QR;
     options.minimizer_progress_to_stdout = true;
+
+    // problem
+    ceres::Problem problem;
+    for (const PointData& point_data : point_data_list) 
+    {
+        PlaneFittingCostFunctor* cost_functor = new PlaneFittingCostFunctor(point_data);
+        ceres::CostFunction* differentiable_cost_functor = new ceres::AutoDiffCostFunction<PlaneFittingCostFunctor, 1, 3, 3>(cost_functor); // problem non analytical, thus autodiff
+        problem.AddResidualBlock(differentiable_cost_functor, nullptr, plane_normal.data(), plane_position.data());
+    }
+
+    // summary
     ceres::Solver::Summary summary;
 
+    // solve
     ceres::Solve(options, &problem, &summary);
 
+    // output
     std::cout << summary.FullReport() << std::endl;
-    std::cout << "Optimal normal vector: " << initial_normal.transpose() << std::endl;
-    std::cout << "Optimal point on the plane: " << initial_point_on_plane.transpose() << std::endl;
+    std::cout << "Optimal normal vector: " << plane_normal.normalized().transpose() << std::endl;
+    std::cout << "Optimal point on the plane: " << plane_position.transpose() << std::endl;
+
 
     return 0;
 }
