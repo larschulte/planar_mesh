@@ -545,16 +545,6 @@ public:
         // add point as boundary point
         update_point_type(newPointID);
 
-        // check if newPointID is boundary point
-        if (boundary_point_set.find(newPointID) != boundary_point_set.end()) 
-        {
-            std::cout << "IS boundary point" << std::endl;
-        }
-        else
-        {
-            std::cout << "NOT boundary point" << std::endl;
-        }
-
         // points_to_vector2d_map
         std::map<int, Eigen::Vector2d> points_to_vector2d_map = project_boundary_points_of_set_to_set_plane(setID);
 
@@ -915,7 +905,7 @@ public:
             pointcloud = transform_cloud_to_global<PointT>(pointcloud_local, pose);
             origin = pose.translation();
 
-            ith_size = pointcloud->size();
+            ith_size = pointcloud->size()/10;
 
             // shuffle the pointcloud
             std::random_shuffle(pointcloud->points.begin(), pointcloud->points.end());
@@ -1069,7 +1059,7 @@ public:
             // if multiple, add to first
             int triangleID = *set_to_searched_triangle_map.at(smallest_setID).begin();
             store_point_in_triangle(newPointID, triangleID, thisPointVEC, thisPointOriginVEC);
-            std::cout << ith_point << " / " << pointcloud->size() << " of pointcloud " << ith_cloud << " added to set " << smallest_setID << std::endl;
+            std::cout << ith_point << " / " << ith_size << " of pointcloud " << ith_cloud << " added to set " << smallest_setID << std::endl;
 
             point_added_to_set = true;
         }
@@ -1077,7 +1067,7 @@ public:
         if (!point_added_to_set)
         {
             add_point_by_radius_search(newPointID, thisPointVEC, thisPointOriginVEC);
-            std::cout << ith_point << " / " << pointcloud->size() << " of pointcloud " << ith_cloud << " added by radius search" << std::endl;
+            std::cout << ith_point << " / " << ith_size << " of pointcloud " << ith_cloud << " added by radius search" << std::endl;
         }
 
 
