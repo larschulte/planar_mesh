@@ -35,6 +35,9 @@ include_directories(${delaunator_INCLUDE_DIRS})
 find_package(PythonLibs REQUIRED)
 include_directories(${PYTHON_INCLUDE_DIRS})
 
+# ceres solver
+find_package(Ceres REQUIRED)
+
 # add executable
 add_executable(main src/main.cpp)
 target_link_libraries (main ${PCL_LIBRARIES} ${PYTHON_LIBRARIES} delaunator)
@@ -51,7 +54,7 @@ install(TARGETS
 
 # add executable
 add_executable(temp src/temp.cpp src/TriangleBVH.cpp src/flann3d.cpp)
-target_link_libraries (temp ${PCL_LIBRARIES} ${PYTHON_LIBRARIES} delaunator)
+target_link_libraries (temp ${PCL_LIBRARIES} ${PYTHON_LIBRARIES} delaunator Ceres::ceres)
 target_include_directories(temp
   PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -67,7 +70,7 @@ install(TARGETS
 
 
 
-find_package(Ceres REQUIRED)
+
 # add executable
 add_executable(optimization src/optimization.cpp)
 target_link_libraries (optimization ${PCL_LIBRARIES} Ceres::ceres)
