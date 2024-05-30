@@ -131,6 +131,54 @@ public:
             // set to point
             set_to_points_map.at(setID).insert(newPointID);
         }
+
+        update_point_type(newPointID);
+    }
+
+    void update_point_type(int pointID)
+    {
+        // is isolated
+        bool isolated = point_to_edges_map.at(pointID).empty();
+        // is connected to boundary edge
+        bool connected_to_boundary_edge = false;
+        for (int edge_id : point_to_edges_map.at(pointID))
+        {
+            if (boundary_edge_set.find(edge_id) != boundary_edge_set.end())
+            {
+                connected_to_boundary_edge = true;
+                break;
+            }
+        }
+
+        // update
+        if (isolated || connected_to_boundary_edge)
+        {
+            bool inserted = boundary_point_set.insert(pointID).second;
+            if (inserted) kdtree.addPoint(point_to_vector3d_map.at(pointID), pointID);
+        }
+        else
+        {
+            bool erased = boundary_point_set.erase(pointID);
+            if (erased) kdtree.deletePoint(pointID);
+        }
+    }
+
+    void update_edge_type(int edgeID)
+    {
+        int count = edge_to_edge_count_map.at(edgeID);
+        int pointID1 = edge_to_point_map.at(edgeID)[0];
+        int pointID2 = edge_to_point_map.at(edgeID)[1];
+
+        // is a boundary edge
+        bool is_boundary_edge = count == 0 || count == 1;
+        if (is_boundary_edge)
+        {
+            boundary_edge_set.insert(edgeID);            
+        }
+        else
+        {
+            boundary_edge_set.erase(edgeID);
+        }
     }
 
     void add_edge(int newEdgeID, int setID, std::array<int, 2> newEdge)
@@ -153,13 +201,10 @@ public:
         // update set boundary edge
         edge_to_edge_count_map[newEdgeID] = 0;
 
-
-        
-        boundary_edge_set.insert(newEdgeID);
-    
-        // update boundary points
-        add_boundary_point(newEdge[0], setID);
-        add_boundary_point(newEdge[1], setID);
+        // update type
+        update_edge_type(newEdgeID);
+        update_point_type(newEdge[0]);
+        update_point_type(newEdge[1]);
     }
 
     void add_triangle(int newTriangleID, int setID, std::array<int, 3> vertices)
@@ -186,32 +231,15 @@ public:
             // increment count
             int& count = edge_to_edge_count_map.at(edge_to_point_map_reverse[edge]);
             count ++;
-
-            // cases
-            if (count <= 1)
-            {
-                // udpate set boundary edge
-                boundary_edge_set.insert(edge_to_point_map_reverse[edge]);
-                
-                // update boundary points
-                add_boundary_point(edge[0], setID);
-                add_boundary_point(edge[1], setID);
-            } 
-            else
-            {
-                // remove from set boundary edge
-                boundary_edge_set.erase(edge_to_point_map_reverse[edge]);
-
-                // remove from boundary points (if the edge point no longer connects to a boundary edge, it is removed from boundary points)
-                remove_boundary_point(edge[0], setID);
-                remove_boundary_point(edge[1], setID);
-            }
+            
+            update_edge_type(edge_to_point_map_reverse[edge]);
+            update_point_type(edge[0]);
+            update_point_type(edge[1]);
         }
 
         // add to bvh
         bool inserted = global_triangle_set.insert(newTriangleID).second;
         if (inserted) bvhRoot.addTriangle(newTriangleID, vertices, point_to_vector3d_map.at(vertices[0]), point_to_vector3d_map.at(vertices[1]), point_to_vector3d_map.at(vertices[2]));
-        
     }
 
     std::set<int> remove_edge(int edgeID)
@@ -352,30 +380,17 @@ public:
             int& count = edge_to_edge_count_map.at(edge_to_point_map_reverse[edge]);
             count --;
 
-            // cases
-            if (count < 0)
-            {
-                throw std::runtime_error("Edge count is negative");
-            }
-            else if (count == 0)
+            update_edge_type(edge_to_point_map_reverse[edge]);
+            update_point_type(edge[0]);
+            update_point_type(edge[1]);
+            
+            if (count == 0)
             {
                 // remove edge
                 std::set<int> sub_points_to_re_add = remove_edge(edge_to_point_map_reverse[edge]);
 
                 // collect isolated point id to re-add
                 points_to_re_add.insert(sub_points_to_re_add.begin(), sub_points_to_re_add.end());
-            }
-            else if (count == 1)
-            {
-                // udpate set boundary edge
-                
-                // update boundary points
-                add_boundary_point(edge[0], setID);
-                add_boundary_point(edge[1], setID);
-            } 
-            else
-            {
-                // no update is needed
             }
         }
 
@@ -387,27 +402,7 @@ public:
         return points_to_re_add;
     }
 
-    void add_boundary_point(int pointID, int setID)
-    {
-        // update local boundary points
 
-        // update global boundary points
-        bool inserted = boundary_point_set.insert(pointID).second;
-        if (inserted) kdtree.addPoint(point_to_vector3d_map.at(pointID), pointID);
-    }
-
-    void remove_boundary_point(int pointID, int setID)
-    {
-        // skip if still boundary
-        for (int edge_id : point_to_edges_map.at(pointID))
-        {
-            if (boundary_edge_set.find(edge_id) != boundary_edge_set.end()) return;
-        }
-
-        // remove from both local and global boundary points (a point can only be in one set)
-        bool erased = boundary_point_set.erase(pointID);
-        if (erased) kdtree.deletePoint(pointID);
-    }
 
 
     
@@ -551,7 +546,7 @@ public:
     void connect_point_to_set(int newPointID, int setID, std::set<int> searched_boundary_points_in_current_set)
     {
         // add point as boundary point
-        add_boundary_point(newPointID, setID);
+        update_point_type(newPointID);
 
         // points_to_vector2d_map
         std::map<int, Eigen::Vector2d> points_to_vector2d_map = project_boundary_points_of_set_to_set_plane(setID);
@@ -776,7 +771,6 @@ public:
         {
             int newSetID = getNewSetID();
             add_point_to_set(newPointID, newSetID, thisPointVEC, thisPointOriginVEC);
-            add_boundary_point(newPointID, newSetID);
             return;
         }
 
@@ -791,7 +785,6 @@ public:
         {
             int newSetID = getNewSetID();
             add_point_to_set(newPointID, newSetID, thisPointVEC, thisPointOriginVEC);
-            add_boundary_point(newPointID, newSetID);
             return;
         }
 
@@ -896,7 +889,6 @@ public:
         // else, add the point to a new set
         int newSetID = getNewSetID();
         add_point_to_set(newPointID, newSetID, thisPointVEC, thisPointOriginVEC);
-        add_boundary_point(newPointID, newSetID);
     }
 
 
