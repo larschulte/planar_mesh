@@ -44,7 +44,6 @@ public:
         set_to_points_map[newSetID] = {};
         set_to_edges_map[newSetID] = {};
         set_to_triangles_map[newSetID] = {};
-        set_to_edge_count_map[newSetID] = {};
         set_to_mean_map[newSetID] = Eigen::Vector3d::Zero();
         set_to_covariance_matrix_map[newSetID] = Eigen::Matrix3d::Zero();
         set_to_eigenvectors_map[newSetID] = Eigen::Matrix3d::Identity();
@@ -152,7 +151,7 @@ public:
         edge_to_set_map.at(newEdgeID) = setID;
 
         // update set boundary edge
-        set_to_edge_count_map.at(setID)[newEdgeID] = 0;
+        edge_to_edge_count_map[newEdgeID] = 0;
 
 
         
@@ -185,7 +184,7 @@ public:
             std::array<int, 2> edge = {smaller_id, larger_id};
 
             // increment count
-            int& count = set_to_edge_count_map.at(setID)[edge_to_point_map_reverse[edge]];
+            int& count = edge_to_edge_count_map.at(edge_to_point_map_reverse[edge]);
             count ++;
 
             // cases
@@ -267,7 +266,7 @@ public:
         edge_to_set_map.erase(edgeID);
 
         // remove set boundary edge
-        set_to_edge_count_map.at(setID).erase(edgeID);
+        edge_to_edge_count_map.erase(edgeID);
         global_boundary_edge_set.erase(edgeID);
 
         // remove from edge list
@@ -350,7 +349,7 @@ public:
             std::array<int, 2> edge = {smaller_id, larger_id};
 
             // decrement count
-            int& count = set_to_edge_count_map.at(setID)[edge_to_point_map_reverse[edge]];
+            int& count = edge_to_edge_count_map.at(edge_to_point_map_reverse[edge]);
             count --;
 
             // cases
@@ -676,8 +675,6 @@ public:
         if (set_to_edges_map.find(setID2) != set_to_edges_map.end()) combined_edges.insert(set_to_edges_map.at(setID2).begin(), set_to_edges_map.at(setID2).end());
         if (set_to_triangles_map.find(setID1) != set_to_triangles_map.end()) combined_triangles.insert(set_to_triangles_map.at(setID1).begin(), set_to_triangles_map.at(setID1).end());
         if (set_to_triangles_map.find(setID2) != set_to_triangles_map.end()) combined_triangles.insert(set_to_triangles_map.at(setID2).begin(), set_to_triangles_map.at(setID2).end());
-        if (set_to_edge_count_map.find(setID1) != set_to_edge_count_map.end()) for (const auto& pair : set_to_edge_count_map.at(setID1)) combined_edge_count_map[pair.first] = pair.second;
-        if (set_to_edge_count_map.find(setID2) != set_to_edge_count_map.end()) for (const auto& pair : set_to_edge_count_map.at(setID2)) combined_edge_count_map[pair.first] = pair.second;
         combined_mean = merge_means_of_sets(setID1, setID2);
         combined_covariance_matrix = merge_covariances_of_sets(setID1, setID2);
 
@@ -691,7 +688,6 @@ public:
         set_to_points_map.erase(setID1);
         set_to_edges_map.erase(setID1);
         set_to_triangles_map.erase(setID1);
-        set_to_edge_count_map.erase(setID1);
         set_to_mean_map.erase(setID1);
         set_to_covariance_matrix_map.erase(setID1);
         set_to_eigenvectors_map.erase(setID1);
@@ -703,7 +699,6 @@ public:
         set_to_points_map.erase(setID2);
         set_to_edges_map.erase(setID2);
         set_to_triangles_map.erase(setID2);
-        set_to_edge_count_map.erase(setID2);
         set_to_mean_map.erase(setID2);
         set_to_covariance_matrix_map.erase(setID2);
         set_to_eigenvectors_map.erase(setID2);
@@ -716,7 +711,6 @@ public:
         set_to_points_map.at(newSetID) = combined_points;
         set_to_edges_map.at(newSetID) = combined_edges;
         set_to_triangles_map.at(newSetID) = combined_triangles;
-        set_to_edge_count_map.at(newSetID) = combined_edge_count_map;
         set_to_mean_map.at(newSetID) = combined_mean;
         set_to_covariance_matrix_map.at(newSetID) = combined_covariance_matrix;
         set_to_eigenvectors_map.at(newSetID) = combined_eigenvectors;
@@ -1306,7 +1300,7 @@ private:
     std::map<int, std::set<int>> set_to_points_map; // each set contains id to points
     std::map<int, std::set<int>> set_to_edges_map; // each set contains id to edges
     std::map<int, std::set<int>> set_to_triangles_map; // each set contains id to triangles
-    std::map<int, std::map<int, int>> set_to_edge_count_map; // each map contains edge count
+    
 
         // plane fitting
     std::map<int, Eigen::Vector3d> set_to_mean_map;
@@ -1326,6 +1320,7 @@ private:
     KDTree kdtree;
     std::set<int> global_boundary_point_set;
     std::set<int> global_boundary_edge_set;
+    std::map<int, int> edge_to_edge_count_map; // each map contains edge count
 
         // triangle intersection
     TriangleBVH bvhRoot;
