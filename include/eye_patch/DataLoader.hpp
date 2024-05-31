@@ -31,6 +31,12 @@ read_under_folder(std::string pcd_file_folder)
     // sort
     std::sort(pcd_file_list.begin(), pcd_file_list.end());
 
+    // // print
+    // for (std::string pcd_file : pcd_file_list)
+    // {
+    //     std::cout << pcd_file << std::endl;
+    // }
+
     // return 
     return pcd_file_list;
 }
@@ -53,6 +59,9 @@ find_pose(std::string pcd_file, std::string pose_file)
     while (std::getline(pose_stream, line))
     {
         std::istringstream iss(line);
+
+        // std::cout << line << std::endl;
+
         std::string type;
         iss >> type;
         if (type == "VERTEX_SE3:QUAT_TIME")
@@ -61,6 +70,8 @@ find_pose(std::string pcd_file, std::string pose_file)
             double x, y, z, qx, qy, qz, qw;
             int timestamp_sec, timestamp_nsec;
             iss >> vertex_id >> x >> y >> z >> qx >> qy >> qz >> qw >> timestamp_sec >> timestamp_nsec;
+
+            // std::cout << "timestamp: " << timestamp_sec << " " << timestamp_nsec << std::endl;
 
             if (timestamp_sec == std::stoi(sec_str) && timestamp_nsec == std::stoi(nsec_str))
             {
@@ -79,9 +90,11 @@ find_pose(std::string pcd_file, std::string pose_file)
     }
     if (!pose_found)
     {
-        std::cout << "pose not found" << std::endl;
+        std::cout << "pose not found for time " << sec_str << " " << nsec_str << std::endl;
         return Eigen::Isometry3d::Identity();
     }
+
+    std::cout << "found pose for time " << sec_str << " " << nsec_str << std::endl;
 
     // convert pose to eigen::isometry3d
     Eigen::Affine3d pose_eigen = Eigen::Isometry3d::Identity();
