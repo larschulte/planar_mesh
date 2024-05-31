@@ -805,9 +805,7 @@ public:
 
 
     void step()
-    {
-        kdtree.print_size();
-        
+    {        
         // if all points are processed
         if (ith_point >= ith_size) 
         {
