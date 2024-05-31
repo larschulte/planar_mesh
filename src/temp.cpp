@@ -1175,10 +1175,10 @@ public:
             int setID = point_to_set_map.at(point_id);
 
             // no plane
-            if (set_to_points_map.at(setID).size() < fit_plane_threshold)
+            if (set_to_points_map.at(setID).size() < 2*fit_plane_threshold)
             {
                 // store
-                projected_points_to_vector3d_map[point_id] = point_to_origin_vector3d_map.at(point_id);   
+                projected_points_to_vector3d_map[point_id] = point_to_vector3d_map.at(point_id);   
                 projected_points_distance_map[point_id] = 0;
             }
             // have plane
