@@ -232,7 +232,7 @@ void TriangleBVH::rebuild()
     root = build_node(triangle_list);
 }
 
-void TriangleBVH::addTriangle(int triangleID, std::array<int, 3> indices, Eigen::Vector3d v0, Eigen::Vector3d v1, Eigen::Vector3d v2)
+void TriangleBVH::addTriangle(int triangleID, std::array<int, 3> indices, const Eigen::Vector3d& v0, const Eigen::Vector3d& v1, const Eigen::Vector3d& v2)
 {
     triangle_list.push_back(triangleID);
     triangle_to_indices_map[triangleID] = indices;

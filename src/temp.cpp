@@ -444,10 +444,10 @@ public:
     
     Eigen::Vector2d project_point_to_set_plane(int pointID, int setID)
     {
-        Eigen::Vector3d rayOrigin = point_to_origin_vector3d_map.at(pointID);
-        Eigen::Vector3d rayEndPoint = point_to_vector3d_map.at(pointID);
-        Eigen::Vector3d mean = set_to_mean_map.at(setID);
-        Eigen::Vector3d normal = set_to_normal_map.at(setID);
+        const Eigen::Vector3d& rayOrigin = point_to_origin_vector3d_map.at(pointID);
+        const Eigen::Vector3d& rayEndPoint = point_to_vector3d_map.at(pointID);
+        const Eigen::Vector3d& mean = set_to_mean_map.at(setID);
+        const Eigen::Vector3d& normal = set_to_normal_map.at(setID);
         Eigen::Matrix3d eigenvectors = set_to_eigenvectors_map.at(setID);
         Eigen::Matrix<double, 3, 2> projection_matrix = eigenvectors.rightCols<2>();
         Eigen::Vector3d rayPlaneIntersectionPoint = ray_plane_intersection(rayOrigin, rayEndPoint, mean, normal);
@@ -1176,10 +1176,10 @@ public:
             else
             {
                 // get projected point
-                Eigen::Vector3d rayOrigin = point_to_origin_vector3d_map.at(point_id);
-                Eigen::Vector3d rayEndPoint = point_to_vector3d_map.at(point_id);
-                Eigen::Vector3d mean = set_to_mean_map.at(setID);
-                Eigen::Vector3d normal = set_to_normal_map.at(setID);
+                const Eigen::Vector3d& rayOrigin = point_to_origin_vector3d_map.at(point_id);
+                const Eigen::Vector3d& rayEndPoint = point_to_vector3d_map.at(point_id);
+                const Eigen::Vector3d& mean = set_to_mean_map.at(setID);
+                const Eigen::Vector3d& normal = set_to_normal_map.at(setID);
                 Eigen::Vector3d rayPlaneIntersectionPoint = ray_plane_intersection(rayOrigin, rayEndPoint, mean, normal);
 
                 // compute distance

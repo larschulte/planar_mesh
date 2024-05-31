@@ -61,7 +61,7 @@ public:
     TriangleBVH();
     void addData(std::vector<int> _triangle_list, std::map<int, std::array<int, 3>> _triangle_to_indices_map, std::map<int, Eigen::Vector3d> _point_to_vector3d_map);
     void rebuild();
-    void addTriangle(int triangleID, std::array<int, 3> indices, Eigen::Vector3d v0, Eigen::Vector3d v1, Eigen::Vector3d v2);
+    void addTriangle(int triangleID, std::array<int, 3> indices, const Eigen::Vector3d& v0, const Eigen::Vector3d& v1, const Eigen::Vector3d& v2);
     void deleteTriangle(int triangleID);
     std::set<int> intersectionSearch(Eigen::Vector3d origin, Eigen::Vector3d endPoint);
 };
