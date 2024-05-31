@@ -74,6 +74,7 @@ public:
         point_to_vector3d_map[newPointID] = thisPoint;
         point_to_origin_vector3d_map[newPointID] = origin;
         point_to_edges_map[newPointID] = {};
+        point_to_storing_triangle_map[newPointID] = triangleID;
         point_to_set_map[newPointID] = setID;
         set_to_points_map.at(setID).insert(newPointID);
         add_to_plane_estimate(newPointID, setID);
@@ -165,6 +166,7 @@ public:
         point_to_origin_vector3d_map.erase(pointID);
         point_to_set_map.erase(pointID);
         set_to_points_map.at(setID).erase(pointID);
+        point_to_storing_triangle_map.erase(pointID);
         remove_from_plane_estimate(pointID, setID);
 
         // update boundary
@@ -241,7 +243,7 @@ public:
         if (edge_to_edge_count_map.at(edgeID2) == 0) remove_edge(edgeID2);
         if (edge_to_edge_count_map.at(edgeID3) == 0) remove_edge(edgeID3);
 
-        // if the removal of triangle causes a point to be isolated, remove the point
+        // // if the removal of triangle causes a point to be isolated, remove the point
         for (int pointID : points_within_triangles) remove_point(pointID);
     }
 
@@ -249,6 +251,15 @@ public:
     {
         // if point is removed
         if (point_to_set_map.find(pointID) == point_to_set_map.end())
+        {
+            bool erased = boundary_point_set.erase(pointID);
+            boundary_point_of_set.at(setID).erase(pointID);
+            if (erased) kdtree.deletePoint(pointID);
+            return;
+        }
+
+        // if point is stored in triangle
+        if (point_to_storing_triangle_map.find(pointID) != point_to_storing_triangle_map.end())
         {
             bool erased = boundary_point_set.erase(pointID);
             boundary_point_of_set.at(setID).erase(pointID);
@@ -1236,6 +1247,7 @@ private:
     std::map<int, Eigen::Vector3d> point_to_vector3d_map;
     std::map<int, int> point_to_set_map;
     std::map<int, std::set<int>> point_to_edges_map;
+    std::map<int, int> point_to_storing_triangle_map;
 
         // triangle
     int next_triangle_id = 0;
