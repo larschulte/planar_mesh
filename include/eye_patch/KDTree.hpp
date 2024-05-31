@@ -123,7 +123,7 @@ public:
         // rebuild();
     }
 
-    void radiusSearch(std::shared_ptr<Node> node, const Eigen::Vector3d& target, double radius_squared, int depth, std::set<int>& result)
+    void radiusSearch(std::shared_ptr<Node> node, const Eigen::Vector3d& target, double radius, int depth, std::set<int>& result)
     {
         // null node
         if (node == nullptr)
@@ -132,7 +132,7 @@ public:
         }
 
         // current node
-        if ((point_to_vector3d_map.at(node->pointID) - target).squaredNorm() <= radius_squared)
+        if ((point_to_vector3d_map.at(node->pointID) - target).norm() <= radius)
         {
             if (!node->deleted) result.insert(node->pointID);
         }
@@ -143,18 +143,18 @@ public:
 
         if (diff < 0)
         {
-            radiusSearch(node->left, target, radius_squared, depth + 1, result);
-            if (fabs(diff) <= radius_squared)
+            radiusSearch(node->left, target, radius, depth + 1, result);
+            if (fabs(diff) <= radius)
             {
-                radiusSearch(node->right, target, radius_squared, depth + 1, result);
+                radiusSearch(node->right, target, radius, depth + 1, result);
             }
         }
         else
         {
-            radiusSearch(node->right, target, radius_squared, depth + 1, result);
-            if (fabs(diff) <= radius_squared)
+            radiusSearch(node->right, target, radius, depth + 1, result);
+            if (fabs(diff) <= radius)
             {
-                radiusSearch(node->left, target, radius_squared, depth + 1, result);
+                radiusSearch(node->left, target, radius, depth + 1, result);
             }
         }
 
@@ -168,7 +168,7 @@ public:
         std::set<int> result;
 
         // search
-        radiusSearch(root, target, radius*radius, 0, result);
+        radiusSearch(root, target, radius, 0, result);
 
         // return
         return result;
