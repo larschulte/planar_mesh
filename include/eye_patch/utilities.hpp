@@ -73,19 +73,19 @@ std::array<int, 2> sortTwoInts(int a, int b) {
 }
 
 
+// // Function to check if point q lies on segment pr excluding endpoints.
+// bool onSegment(const Eigen::Vector2d &p, const Eigen::Vector2d &q, const Eigen::Vector2d &r) {
+//     if (q.x() < std::max(p.x(), r.x()) && q.x() > std::min(p.x(), r.x()) &&
+//         q.y() < std::max(p.y(), r.y()) && q.y() > std::min(p.y(), r.y()))
+//         return true;
+//     return false;
+// }
+
 // Function to find the orientation of the ordered triplet (p, q, r).
 int orientation(const Eigen::Vector2d &p, const Eigen::Vector2d &q, const Eigen::Vector2d &r) {
     double val = (q.y() - p.y()) * (r.x() - q.x()) - (q.x() - p.x()) * (r.y() - q.y());
     if (val == 0) return 0;           // collinear
     return (val > 0) ? 1 : 2;         // clock or counterclockwise
-}
-
-// Function to check if point q lies on segment pr excluding endpoints.
-bool onSegment(const Eigen::Vector2d &p, const Eigen::Vector2d &q, const Eigen::Vector2d &r) {
-    if (q.x() < std::max(p.x(), r.x()) && q.x() > std::min(p.x(), r.x()) &&
-        q.y() < std::max(p.y(), r.y()) && q.y() > std::min(p.y(), r.y()))
-        return true;
-    return false;
 }
 
 // Function to check if two segments (p1, q1) and (p2, q2) intersect.
@@ -100,20 +100,21 @@ bool doIntersect(const Eigen::Vector2d &p1, const Eigen::Vector2d &q1, const Eig
     if (o1 != o2 && o3 != o4)
         return true;
 
-    // Special cases
-    // p1, q1 and p2 are collinear and p2 lies on segment p1q1
-    if (o1 == 0 && onSegment(p1, p2, q1)) return false;
+    return false;
+    // // Special cases
+    // // p1, q1 and p2 are collinear and p2 lies on segment p1q1
+    // if (o1 == 0 && onSegment(p1, p2, q1)) return false;
 
-    // p1, q1 and q2 are collinear and q2 lies on segment p1q1
-    if (o2 == 0 && onSegment(p1, q2, q1)) return false;
+    // // p1, q1 and q2 are collinear and q2 lies on segment p1q1
+    // if (o2 == 0 && onSegment(p1, q2, q1)) return false;
 
-    // p2, q2 and p1 are collinear and p1 lies on segment p2q2
-    if (o3 == 0 && onSegment(p2, p1, q2)) return false;
+    // // p2, q2 and p1 are collinear and p1 lies on segment p2q2
+    // if (o3 == 0 && onSegment(p2, p1, q2)) return false;
 
-    // p2, q2 and q1 are collinear and q1 lies on segment p2q2
-    if (o4 == 0 && onSegment(p2, q1, q2)) return false;
+    // // p2, q2 and q1 are collinear and q1 lies on segment p2q2
+    // if (o4 == 0 && onSegment(p2, q1, q2)) return false;
 
-    return false; // Doesn't fall in any of the above cases
+    // return false; // Doesn't fall in any of the above cases
 }
 
 // ray plane intersection
