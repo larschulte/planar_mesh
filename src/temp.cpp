@@ -381,75 +381,67 @@ public:
         return out_existing_edge_set;
     }
 
-    bool edge_edges_intersection(const std::array<int, 2>& edgeA, const std::set<int>& edgeB_set, const std::map<int, Eigen::Vector2d>& points_to_vector2d_map)
+    // check if edge intersects any existing boundary edge of set
+    bool edge_set_intersection(const std::array<int, 2>& newEdge, int setID)
     {
-        for (const auto& edgeB_ID : edgeB_set)
-        {
-            // if intersected at end points, don't count
-            const std::array<int, 2>& edgeB = edge_to_point_map.at(edgeB_ID);
-            if (edgeA[0] == edgeB[0] || edgeA[0] == edgeB[1] || edgeA[1] == edgeB[0] || edgeA[1] == edgeB[1]) continue;
+        int newPointID1 = newEdge[0];
+        int newPointID2 = newEdge[1];
+        Eigen::Vector2d newPoint1_2D = project_point_to_set_plane(newPointID1, setID);
+        Eigen::Vector2d newPoint2_2D = project_point_to_set_plane(newPointID2, setID);
 
-            // intersection check
-            Eigen::Vector2d pointA0 = points_to_vector2d_map.at(edgeA[0]);
-            Eigen::Vector2d pointA1 = points_to_vector2d_map.at(edgeA[1]);
-            Eigen::Vector2d pointB0 = points_to_vector2d_map.at(edgeB[0]);
-            Eigen::Vector2d pointB1 = points_to_vector2d_map.at(edgeB[1]);
-            if (doIntersect(pointA0, pointA1, pointB0, pointB1)) return true;
+        for (int boundary_edgeID : boundary_edge_of_set.at(setID))
+        {
+            const std::array<int, 2>& boundaryEdge = edge_to_point_map.at(boundary_edgeID);
+            int boundaryPointID1 = boundaryEdge[0];
+            int boundaryPointID2 = boundaryEdge[1];
+            Eigen::Vector2d boundaryPoint1_2D = project_point_to_set_plane(boundaryPointID1, setID);
+            Eigen::Vector2d boundaryPoint2_2D = project_point_to_set_plane(boundaryPointID2, setID);
+
+            // intersect at ends
+            if (newPointID1 == boundaryPointID1 || newPointID1 == boundaryPointID2 || newPointID2 == boundaryPointID1 || newPointID2 == boundaryPointID2) continue;
+
+            // intersect at middle
+            if (doIntersect(newPoint1_2D, newPoint2_2D, boundaryPoint1_2D, boundaryPoint2_2D)) return true;
         }
 
         return false;
     }
 
-    bool triangle_contains_point(const std::array<int, 3>& triangle, const std::set<int>& point_set, const std::map<int, Eigen::Vector2d>& points_to_vector2d_map)
+    // check if triangle contains any boundary point of set
+    bool triangle_set_intersection(const std::array<int, 3>& triangle, int setID)
     {
-        for (int point_id : point_set)
-        {
-            // if contained at end points, don't count
-            if (point_id == triangle[0] || point_id == triangle[1] || point_id == triangle[2]) continue;
+        int vertexID1 = triangle[0];
+        int vertexID2 = triangle[1];
+        int vertexID3 = triangle[2];
+        Eigen::Vector2d vertex1_2D = project_point_to_set_plane(vertexID1, setID);
+        Eigen::Vector2d vertex2_2D = project_point_to_set_plane(vertexID2, setID);
+        Eigen::Vector2d vertex3_2D = project_point_to_set_plane(vertexID3, setID);
 
-            // containment check
-            Eigen::Vector2d point = points_to_vector2d_map.at(point_id);
-            Eigen::Vector2d a = points_to_vector2d_map.at(triangle[0]);
-            Eigen::Vector2d b = points_to_vector2d_map.at(triangle[1]);
-            Eigen::Vector2d c = points_to_vector2d_map.at(triangle[2]);
-            if (point_in_triangle(point, a, b, c)) return true;
+        for (int boundary_pointID : boundary_point_of_set.at(setID))
+        {
+            Eigen::Vector2d boundary_point_2D = project_point_to_set_plane(boundary_pointID, setID);
+
+            // contain at ends
+            if (boundary_pointID == vertexID1 || boundary_pointID == vertexID2 || boundary_pointID == vertexID3) continue;
+
+            // contain at middle
+            if (point_in_triangle(boundary_point_2D, vertex1_2D, vertex2_2D, vertex3_2D)) return true;
         }
     
         return false;
     }
     
-    std::map<int, Eigen::Vector2d> project_boundary_points_of_set_to_set_plane(int setID)
+    Eigen::Vector2d project_point_to_set_plane(int pointID, int setID)
     {
-        // initialize
-        std::map<int, Eigen::Vector2d> points_to_vector2d_map;
-
-        // process
-        for (int point_id : boundary_point_of_set.at(setID))
-        {
-            // // update if not available (todo - update if not accurate enough)
-            // if (point_to_intersection_vector3d_map.find(point_id) == point_to_intersection_vector3d_map.end())
-            // {
-            //     point_to_intersection_vector3d_map.at(point_id) = point_set_intersection(point_id, setID);
-            // }
-
-            // get intersection point
-            Eigen::Vector3d rayOrigin = point_to_origin_vector3d_map.at(point_id);
-            Eigen::Vector3d rayEndPoint = point_to_vector3d_map.at(point_id);
-            Eigen::Vector3d mean = set_to_mean_map.at(setID);
-            Eigen::Vector3d normal = set_to_normal_map.at(setID);
-            Eigen::Vector3d rayPlaneIntersectionPoint = ray_plane_intersection(rayOrigin, rayEndPoint, mean, normal);
-
-            // project intersection points to plane
-            Eigen::Matrix3d eigenvectors = set_to_eigenvectors_map.at(setID);
-            Eigen::Matrix<double, 3, 2> projection_matrix = eigenvectors.rightCols<2>();
-            Eigen::Vector2d projected_point = (projection_matrix.transpose() * rayPlaneIntersectionPoint).head<2>();
-
-            // store
-            points_to_vector2d_map[point_id] = projected_point;
-        }
-
-        // return
-        return points_to_vector2d_map;
+        Eigen::Vector3d rayOrigin = point_to_origin_vector3d_map.at(pointID);
+        Eigen::Vector3d rayEndPoint = point_to_vector3d_map.at(pointID);
+        Eigen::Vector3d mean = set_to_mean_map.at(setID);
+        Eigen::Vector3d normal = set_to_normal_map.at(setID);
+        Eigen::Matrix3d eigenvectors = set_to_eigenvectors_map.at(setID);
+        Eigen::Matrix<double, 3, 2> projection_matrix = eigenvectors.rightCols<2>();
+        Eigen::Vector3d rayPlaneIntersectionPoint = ray_plane_intersection(rayOrigin, rayEndPoint, mean, normal);
+        Eigen::Vector2d projected_point = (projection_matrix.transpose() * rayPlaneIntersectionPoint).head<2>();
+        return projected_point;
     }
 
     // extract set from set
@@ -469,21 +461,16 @@ public:
     }
 
     // creates edges and triangles that connects the new point to the set
-    void connect_point_to_set(int newPointID, int setID, const std::set<int>& searched_boundary_points_in_current_set)
+    // to add a new point to mesh
+    // - form edge to boundary point of the mesh, skip if the edge intersects any existing boundary edge
+    // - form triangle if two used boundary points have a boundary edge between them, skip if the triangle contains other boundary points
+    void connect_point_to_set(int newPointID, int setID, const std::set<int>& searched_boundary_points)
     {
-        // add point as boundary point
-        update_boundary_point_record(newPointID, setID);
+        const std::set<int>& boundary_point_of_current_set = boundary_point_of_set.at(setID);
+        const std::set<int>& boundary_edge_of_current_set = boundary_edge_of_set.at(setID);
 
-        // points_to_vector2d_map
-        std::map<int, Eigen::Vector2d> points_to_vector2d_map = project_boundary_points_of_set_to_set_plane(setID);
-
-        // existing edges between searched points (boundary)
-        std::set<int> existing_boundary_edge_set = extract_existing_edge_between_points(searched_boundary_points_in_current_set, boundary_edge_of_set.at(setID));
-
-
-        // to add a new point to mesh
-        // - form edge to boundary point of the mesh, skip if the edge intersects any existing boundary edge
-        // - form triangle if two used boundary points have a boundary edge between them, skip if the triangle contains other boundary points
+        std::set<int> searched_boundary_points_in_current_set = intersection_of_sets(searched_boundary_points, boundary_point_of_current_set);
+        std::set<int> searched_boundary_edge_in_current_set = extract_existing_edge_between_points(searched_boundary_points_in_current_set, boundary_edge_of_current_set);
 
         // add edge
         std::set<int> searched_boundary_points_used;
@@ -492,11 +479,9 @@ public:
             // new edge, smaller id first
             std::array<int, 2> newEdge = {std::min(newPointID, point_id), std::max(newPointID, point_id)};
 
-            // skip if edge already exists
-            if (edge_to_point_map_reverse.find(newEdge) != edge_to_point_map_reverse.end()) continue;
-
             // skip if intersected with any boundary edge of the current set
-            if (edge_edges_intersection(newEdge, boundary_edge_of_set.at(setID), points_to_vector2d_map)) continue;
+            bool intersected = edge_set_intersection(newEdge, setID);
+            if (intersected) continue;
 
             // add edge
             int newEdgeID = getNewEdgeID();
@@ -507,7 +492,7 @@ public:
         }
 
         // add triangle
-        for (const auto& edgeID : existing_boundary_edge_set)
+        for (const auto& edgeID : searched_boundary_edge_in_current_set)
         {   
             // skip if not both points are used
             int i1 = edge_to_point_map.at(edgeID)[0];
@@ -523,7 +508,7 @@ public:
             if (triangle_to_vertices_map_reverse.find(newTriangle) != triangle_to_vertices_map_reverse.end()) continue;
 
             // skip if triangle contains other boundary points
-            if (triangle_contains_point(newTriangle, searched_boundary_points_in_current_set, points_to_vector2d_map)) continue;
+            if (triangle_set_intersection(newTriangle, setID)) continue;
 
             // add triangle
             int newTriangleID = getNewTriangleID();
@@ -771,9 +756,8 @@ public:
         // somewhere above, the global and local boundary points sets are not in sync
         if (closest_setID != -1 && closest_distance < distance_threshold)
         {
-            std::set<int> searched_boundary_points_in_current_set = intersection_of_sets(searched_boundary_points_set, boundary_point_of_set.at(closest_setID));
             add_point(newPointID, closest_setID, thisPointVEC, thisPointOriginVEC);
-            connect_point_to_set(newPointID, closest_setID, searched_boundary_points_in_current_set);
+            connect_point_to_set(newPointID, closest_setID, searched_boundary_points_set);
             return;
         }
 
