@@ -1170,19 +1170,30 @@ public:
             // get set id
             int setID = point_to_set_map.at(point_id);
 
-            // get projected point
-            Eigen::Vector3d rayOrigin = point_to_origin_vector3d_map.at(point_id);
-            Eigen::Vector3d rayEndPoint = point_to_vector3d_map.at(point_id);
-            Eigen::Vector3d mean = set_to_mean_map.at(setID);
-            Eigen::Vector3d normal = set_to_normal_map.at(setID);
-            Eigen::Vector3d rayPlaneIntersectionPoint = ray_plane_intersection(rayOrigin, rayEndPoint, mean, normal);
+            // no plane
+            if (set_to_points_map.at(setID).size() < fit_plane_threshold)
+            {
+                // store
+                projected_points_to_vector3d_map[point_id] = point_to_origin_vector3d_map.at(point_id);   
+                projected_points_distance_map[point_id] = 0;
+            }
+            // have plane
+            else
+            {
+                // get projected point
+                Eigen::Vector3d rayOrigin = point_to_origin_vector3d_map.at(point_id);
+                Eigen::Vector3d rayEndPoint = point_to_vector3d_map.at(point_id);
+                Eigen::Vector3d mean = set_to_mean_map.at(setID);
+                Eigen::Vector3d normal = set_to_normal_map.at(setID);
+                Eigen::Vector3d rayPlaneIntersectionPoint = ray_plane_intersection(rayOrigin, rayEndPoint, mean, normal);
 
-            // compute distance
-            double distance = (point_to_vector3d_map.at(point_id) - rayPlaneIntersectionPoint).norm();
+                // compute distance
+                double distance = (point_to_vector3d_map.at(point_id) - rayPlaneIntersectionPoint).norm();
 
-            // store
-            projected_points_to_vector3d_map[point_id] = rayPlaneIntersectionPoint;   
-            projected_points_distance_map[point_id] = distance;
+                // store
+                projected_points_to_vector3d_map[point_id] = rayPlaneIntersectionPoint;   
+                projected_points_distance_map[point_id] = distance;
+            }
         }
     }
 
