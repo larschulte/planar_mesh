@@ -6,10 +6,27 @@
 #include <Eigen/Dense>
 #include <memory>
 
+struct Point
+{
+    int pointID;
+    Eigen::Vector3d position;
+
+    // overload == operator for std::remove
+    bool operator==(const Point& other) const
+    {
+        return pointID == other.pointID;
+    }
+
+    // overload < operator for std::set
+    bool operator<(const Point& other) const
+    {
+        return pointID < other.pointID;
+    }
+};
 
 struct Node {
     Node(){}
-    int pointID;
+    Point point;
     std::shared_ptr<Node> left;
     std::shared_ptr<Node> right;
     bool deleted = false;
@@ -29,18 +46,16 @@ public:
         root = build_node(point_list, 0);
     }
 
-    void sort_points_in_axis(std::vector<int>& point_list, int axis, int start, int mid, int end)
+    void sort_points_in_axis(std::vector<Point>& point_list, int axis, int start, int mid, int end)
     {
         std::nth_element(point_list.begin() + start, point_list.begin() + mid, point_list.begin() + end, 
-            [&](const int& point_a, const int& point_b) 
+            [&](const Point& point_a, const Point& point_b) 
             {
-                Eigen::Vector3d vector_a = point_to_vector3d_map.at(point_a);
-                Eigen::Vector3d vector_b = point_to_vector3d_map.at(point_b);
-                return vector_a[axis] < vector_b[axis];
+                return point_a.position[axis] < point_b.position[axis];
             });
     }
 
-    std::shared_ptr<Node> build_node(std::vector<int> point_list, int depth)
+    std::shared_ptr<Node> build_node(std::vector<Point> point_list, int depth)
     {
         auto node = std::make_shared<Node>();
         
@@ -51,7 +66,7 @@ public:
         }
         else if (size == 1)
         {
-            node->pointID = point_list[0];
+            node->point = point_list[0];
         }
         else
         {
@@ -61,25 +76,25 @@ public:
             int mid = end / 2;
             sort_points_in_axis(point_list, axis, start, mid, end);
 
-            node->pointID = point_list[mid];
-            node->left = build_node(std::vector<int>(point_list.begin(), point_list.begin() + mid), depth + 1);
-            node->right = build_node(std::vector<int>(point_list.begin() + mid + 1, point_list.end()), depth + 1);
+            node->point = point_list[mid];
+            node->left = build_node(std::vector<Point>(point_list.begin(), point_list.begin() + mid), depth + 1);
+            node->right = build_node(std::vector<Point>(point_list.begin() + mid + 1, point_list.end()), depth + 1);
         }
 
         return node;
     }
 
-    void addPointToNode(std::shared_ptr<Node>& node, int point_id, int depth)
+    void addPointToNode(std::shared_ptr<Node>& node, Point point, int depth)
     {
         // null node
         if (node == nullptr)
         {
             node = std::make_shared<Node>();
-            node->pointID = point_id;
+            node->point = point;
             return;
         }
         // branch/leaf node
-        else if (node->pointID == point_id)
+        else if (node->point == point)
         {
             node->deleted = false;
             return;
@@ -88,25 +103,28 @@ public:
         else
         {
             int axis = depth % 3;
-            if (point_to_vector3d_map.at(point_id)[axis] < point_to_vector3d_map.at(node->pointID)[axis])
+            if (point.position[axis] < node->point.position[axis])
             {
-                addPointToNode(node->left, point_id, depth + 1);
+                addPointToNode(node->left, point, depth + 1);
             }
             else
             {
-                addPointToNode(node->right, point_id, depth + 1);
+                addPointToNode(node->right, point, depth + 1);
             }
         }
     }
 
-    void addPoint(Eigen::Vector3d new_point, int point_id)
+    void addPoint(int point_id, Eigen::Vector3d new_point)
     {
+        Point point;
+        point.pointID = point_id;
+        point.position = new_point;
+
         // skip if point already exist
-        if (std::find(point_list.begin(), point_list.end(), point_id) != point_list.end()) return;
+        if (std::find(point_list.begin(), point_list.end(), point) != point_list.end()) return;
 
         // store data
-        point_list.push_back(point_id);
-        point_to_vector3d_map[point_id] = new_point;
+        point_list.push_back(point);
 
         // conditional rebuild
         if (point_list.size() >= size_at_last_rebuild * rebuild_threshold)
@@ -116,7 +134,7 @@ public:
         }
         else
         {
-            addPointToNode(root, point_id, 0);
+            addPointToNode(root, point, 0);
         }
         
         // // always rebuild
@@ -132,14 +150,14 @@ public:
         }
 
         // current node
-        if ((point_to_vector3d_map.at(node->pointID) - target).squaredNorm() <= radius_squared)
+        if ((node->point.position - target).squaredNorm() <= radius_squared)
         {
-            if (!node->deleted) result.insert(node->pointID);
+            if (!node->deleted) result.insert(node->point.pointID);
         }
 
         // children nodes   
         int axis = depth % 3;
-        double diff = target[axis] - point_to_vector3d_map.at(node->pointID)[axis];
+        double diff = target[axis] - node->point.position[axis];
 
         if (diff < 0)
         {
@@ -174,7 +192,7 @@ public:
         return result;
     }
 
-    std::shared_ptr<Node> search(std::shared_ptr<Node> node, int pointID, int depth) 
+    std::shared_ptr<Node> search(std::shared_ptr<Node> node, Point point, int depth) 
     {
         // null node
         if (node == nullptr) 
@@ -183,36 +201,34 @@ public:
         }
 
         // current node
-        if (node->pointID == pointID) 
+        if (node->point == point) 
         {
             return node;
         }
 
         // children nodes
         int axis = depth % 3;
-        if (point_to_vector3d_map.at(pointID)[axis] < point_to_vector3d_map.at(node->pointID)[axis])
+        if (point.position[axis] < node->point.position[axis])
         {
-            return search(node->left, pointID, depth + 1);
+            return search(node->left, point, depth + 1);
         } 
         else
         {
-            return search(node->right, pointID, depth + 1);
+            return search(node->right, point, depth + 1);
         }
     }
 
-    void deletePoint(int pointID)
+    void deletePoint(int pointID, Eigen::Vector3d new_point)
     {
-        // error check
-        if (point_to_vector3d_map.find(pointID) == point_to_vector3d_map.end())
-        {
-            throw std::invalid_argument("PointID given does not have corresponding vector3d data.");
-        }
+        Point point;
+        point.pointID = pointID;
+        point.position = new_point;
 
         // delete from point_list
-        point_list.erase(std::remove(point_list.begin(), point_list.end(), pointID), point_list.end());
+        point_list.erase(std::remove(point_list.begin(), point_list.end(), point), point_list.end());
 
         // delete from tree
-        auto node = search(root, pointID, 0);
+        auto node = search(root, point, 0);
         if (node != nullptr)
         {
             node->deleted = true;
@@ -232,7 +248,7 @@ public:
             return;
         }
 
-        std::cout << "Node: " << node->pointID << std::endl;
+        std::cout << "Node: " << node->point.pointID << std::endl;
         print_node(node->left);
         print_node(node->right);
     }
@@ -242,7 +258,7 @@ public:
         std::cout << "Size: " << point_list.size() << std::endl;
     }
 
-    std::vector<int> point_list;
+    std::vector<Point> point_list;
     std::map<int, Eigen::Vector3d> point_to_vector3d_map;
     std::shared_ptr<Node> root;
     std::size_t size_at_last_rebuild;

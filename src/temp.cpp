@@ -162,15 +162,13 @@ public:
 
         // remove
         point_list.erase(std::remove(point_list.begin(), point_list.end(), pointID), point_list.end());
+        point_to_set_map.erase(pointID);
+        update_boundary_point_record(pointID, setID); // update boundary before point to vector3d map is erased
         point_to_vector3d_map.erase(pointID);
         point_to_origin_vector3d_map.erase(pointID);
-        point_to_set_map.erase(pointID);
         set_to_points_map.at(setID).erase(pointID);
         point_to_storing_triangle_map.erase(pointID);
-        remove_from_plane_estimate(pointID, setID);
-
-        // update boundary
-        update_boundary_point_record(pointID, setID);
+        remove_from_plane_estimate(pointID, setID);        
         
         // add to free points
         free_points_queue.push(std::make_pair(thisPoint, origin));
@@ -254,7 +252,7 @@ public:
         {
             bool erased = boundary_point_set.erase(pointID);
             boundary_point_of_set.at(setID).erase(pointID);
-            if (erased) kdtree.deletePoint(pointID);
+            if (erased) kdtree.deletePoint(pointID, point_to_vector3d_map.at(pointID));
             return;
         }
 
@@ -263,7 +261,7 @@ public:
         {
             bool erased = boundary_point_set.erase(pointID);
             boundary_point_of_set.at(setID).erase(pointID);
-            if (erased) kdtree.deletePoint(pointID);
+            if (erased) kdtree.deletePoint(pointID, point_to_vector3d_map.at(pointID));
             return;
         }
 
@@ -278,13 +276,13 @@ public:
         {
             bool inserted = boundary_point_set.insert(pointID).second;
             boundary_point_of_set.at(setID).insert(pointID);
-            if (inserted) kdtree.addPoint(point_to_vector3d_map.at(pointID), pointID);
+            if (inserted) kdtree.addPoint(pointID, point_to_vector3d_map.at(pointID));
         }
         else
         {
             bool erased = boundary_point_set.erase(pointID);
             boundary_point_of_set.at(setID).erase(pointID);
-            if (erased) kdtree.deletePoint(pointID);
+            if (erased) kdtree.deletePoint(pointID, point_to_vector3d_map.at(pointID));
         }
     }
 
