@@ -684,11 +684,8 @@ public:
             return;
         }
 
-        // radius search size
-        double search_size = 0.2;
-
         // perform kdtree radius search
-        std::set<int> searched_boundary_points_set = kdtree.radiusSearch(thisPointVEC, search_size);
+        std::set<int> searched_boundary_points_set = kdtree.radiusSearch(thisPointVEC, radius_search_size);
 
         // if no searched results, add point to new set
         if (searched_boundary_points_set.size() == 0)
@@ -1247,6 +1244,7 @@ private:
     double distance_threshold = 0.05;
     std::size_t fit_plane_threshold = 10; // may cause error if below 3
     double merged_eigenvalue_threshold = 15e-5;
+    double radius_search_size = 0.2;
 
         // free points
     std::queue<std::pair<Eigen::Vector3d, Eigen::Vector3d>> free_points_queue;
