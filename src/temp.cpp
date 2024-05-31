@@ -807,7 +807,7 @@ public:
         if (ith_point >= ith_size) 
         {
             // next cloud
-            ith_cloud += 1;
+            ith_cloud += 10;
             ith_point = 0;
 
             // load data
@@ -816,10 +816,10 @@ public:
             pointcloud = transform_cloud_to_global<PointT>(pointcloud_local, pose);
             origin = pose.translation();
 
-            ith_size = pointcloud->size();
+            ith_size = pointcloud->size()/5;
 
-            // // shuffle the pointcloud
-            // std::random_shuffle(pointcloud->points.begin(), pointcloud->points.end());
+            // shuffle the pointcloud
+            std::random_shuffle(pointcloud->points.begin(), pointcloud->points.end());
         }
 
         // get point
@@ -896,19 +896,19 @@ public:
             remove_triangle(triangleID);
         }
 
-        // re add the list points by radius search
-        // todo - while avoid covering the new point
-        // process point in the queue free_points_vector3d_and_origin_vector3d
-        while (!free_points_queue.empty())
-        {
-            std::pair<Eigen::Vector3d, Eigen::Vector3d> pair = free_points_queue.front(); free_points_queue.pop();
+        // // re add the list points by radius search
+        // // todo - while avoid covering the new point
+        // // process point in the queue free_points_vector3d_and_origin_vector3d
+        // while (!free_points_queue.empty())
+        // {
+        //     std::pair<Eigen::Vector3d, Eigen::Vector3d> pair = free_points_queue.front(); free_points_queue.pop();
 
-            std::cout << "---------------------------------------------------------------------------------------------------- re-adding point by radius search" << std::endl;
-            Eigen::Vector3d pointVEC = pair.first;
-            Eigen::Vector3d pointOriginVEC = pair.second;
-            int pointID = getNewPointID();
-            add_point_by_radius_search(pointID, pointVEC, pointOriginVEC);
-        }
+        //     std::cout << "---------------------------------------------------------------------------------------------------- re-adding point by radius search" << std::endl;
+        //     Eigen::Vector3d pointVEC = pair.first;
+        //     Eigen::Vector3d pointOriginVEC = pair.second;
+        //     int pointID = getNewPointID();
+        //     add_point_by_radius_search(pointID, pointVEC, pointOriginVEC);
+        // }
         
         // process point within set set
         bool point_added_to_set = false;
@@ -1235,7 +1235,7 @@ private:
     typename pcl::PointCloud<VilensPointT>::Ptr pointcloud;
     Eigen::Vector3d origin;
 
-    int ith_cloud = -1;
+    int ith_cloud = 30;
     std::size_t ith_point = -1;
     std::size_t ith_size = -2;
     
