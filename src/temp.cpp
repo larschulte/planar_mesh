@@ -391,20 +391,20 @@ public:
     }
 
     // check if edge intersects any existing boundary edge of set
-    bool edge_set_intersection(const std::array<int, 2>& newEdge, int setID)
+    bool edge_set_intersection(const std::array<int, 2>& newEdge, int setID, const std::map<int, Eigen::Vector2d>& precompute_2d_map)
     {
         int newPointID1 = newEdge[0];
         int newPointID2 = newEdge[1];
-        Eigen::Vector2d newPoint1_2D = project_point_to_set_plane(newPointID1, setID);
-        Eigen::Vector2d newPoint2_2D = project_point_to_set_plane(newPointID2, setID);
+        const Eigen::Vector2d& newPoint1_2D = precompute_2d_map.at(newPointID1);
+        const Eigen::Vector2d& newPoint2_2D = precompute_2d_map.at(newPointID2);
 
         for (int boundary_edgeID : boundary_edge_of_set.at(setID))
         {
             const std::array<int, 2>& boundaryEdge = edge_to_point_map.at(boundary_edgeID);
             int boundaryPointID1 = boundaryEdge[0];
             int boundaryPointID2 = boundaryEdge[1];
-            Eigen::Vector2d boundaryPoint1_2D = project_point_to_set_plane(boundaryPointID1, setID);
-            Eigen::Vector2d boundaryPoint2_2D = project_point_to_set_plane(boundaryPointID2, setID);
+            const Eigen::Vector2d& boundaryPoint1_2D = precompute_2d_map.at(boundaryPointID1);
+            const Eigen::Vector2d& boundaryPoint2_2D = precompute_2d_map.at(boundaryPointID2);
 
             // intersect at ends
             if (newPointID1 == boundaryPointID1 || newPointID1 == boundaryPointID2 || newPointID2 == boundaryPointID1 || newPointID2 == boundaryPointID2) continue;
@@ -417,18 +417,18 @@ public:
     }
 
     // check if triangle contains any boundary point of set
-    bool triangle_set_intersection(const std::array<int, 3>& triangle, int setID)
+    bool triangle_set_intersection(const std::array<int, 3>& triangle, int setID, const std::map<int, Eigen::Vector2d>& precompute_2d_map)
     {
         int vertexID1 = triangle[0];
         int vertexID2 = triangle[1];
         int vertexID3 = triangle[2];
-        Eigen::Vector2d vertex1_2D = project_point_to_set_plane(vertexID1, setID);
-        Eigen::Vector2d vertex2_2D = project_point_to_set_plane(vertexID2, setID);
-        Eigen::Vector2d vertex3_2D = project_point_to_set_plane(vertexID3, setID);
+        const Eigen::Vector2d& vertex1_2D = precompute_2d_map.at(vertexID1);
+        const Eigen::Vector2d& vertex2_2D = precompute_2d_map.at(vertexID2);
+        const Eigen::Vector2d& vertex3_2D = precompute_2d_map.at(vertexID3);
 
         for (int boundary_pointID : boundary_point_of_set.at(setID))
         {
-            Eigen::Vector2d boundary_point_2D = project_point_to_set_plane(boundary_pointID, setID);
+            const Eigen::Vector2d& boundary_point_2D = precompute_2d_map.at(boundary_pointID);
 
             // contain at ends
             if (boundary_pointID == vertexID1 || boundary_pointID == vertexID2 || boundary_pointID == vertexID3) continue;
@@ -481,6 +481,13 @@ public:
         std::set<int> searched_boundary_points_in_current_set = intersection_of_sets(searched_boundary_points, boundary_point_of_current_set);
         std::set<int> searched_boundary_edge_in_current_set = extract_existing_edge_between_points(searched_boundary_points_in_current_set, boundary_edge_of_current_set);
 
+        // precompute 2d points
+        std::map<int, Eigen::Vector2d> precompute_2d_map;
+        for (int point_id : boundary_point_of_current_set) 
+        {
+            precompute_2d_map[point_id] = project_point_to_set_plane(point_id, setID);
+        }
+
         // add edge
         std::set<int> searched_boundary_points_used;
         for (int point_id : searched_boundary_points_in_current_set)
@@ -489,7 +496,7 @@ public:
             std::array<int, 2> newEdge = {std::min(newPointID, point_id), std::max(newPointID, point_id)};
 
             // skip if intersected with any boundary edge of the current set
-            bool intersected = edge_set_intersection(newEdge, setID);
+            bool intersected = edge_set_intersection(newEdge, setID, precompute_2d_map);
             if (intersected) continue;
 
             // add edge
@@ -517,7 +524,7 @@ public:
             if (triangle_to_vertices_map_reverse.find(newTriangle) != triangle_to_vertices_map_reverse.end()) continue;
 
             // skip if triangle contains other boundary points
-            if (triangle_set_intersection(newTriangle, setID)) continue;
+            if (triangle_set_intersection(newTriangle, setID, precompute_2d_map)) continue;
 
             // add triangle
             int newTriangleID = getNewTriangleID();
