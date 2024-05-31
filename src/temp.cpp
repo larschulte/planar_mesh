@@ -225,7 +225,7 @@ public:
         set_to_triangles_map.at(setID).erase(triangleID);
         triangle_to_points_map.erase(triangleID);
         bool erased = global_triangle_set.erase(triangleID);
-        if (erased) bvhRoot.deleteTriangle(triangleID);
+        if (erased) bvhRoot.deleteTriangle(triangleID, vertices, point_to_vector3d_map.at(pointID1), point_to_vector3d_map.at(pointID2), point_to_vector3d_map.at(pointID3));
 
         // update boundary
         edge_to_edge_count_map.at(edgeID1) --;
