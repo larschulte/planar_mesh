@@ -799,29 +799,34 @@ public:
         add_point(newPointID, newSetID, thisPointVEC, thisPointOriginVEC);
     }
 
+    void load_point_cloud()
+    {
+        if (ith_cloud < 0)
+        {
+            std::cout << "reached the first pointcloud" << std::endl;
+            ith_cloud = 0;
+        }
+        if (ith_cloud >= data_loader.size())
+        {
+            std::cout << "reached the last pointcloud" << std::endl;
+            ith_cloud = data_loader.size() - 1;
+        }
+        
+        typename pcl::PointCloud<PointT>::Ptr pointcloud_local = data_loader.get_cloud(ith_cloud);
+        Eigen::Affine3d pose = data_loader.get_pose(ith_cloud);
+        pointcloud = transform_cloud_to_global<PointT>(pointcloud_local, pose);
+        origin = pose.translation();
+        ith_point = 0;
+        ith_size = pointcloud->size()/5;
 
+        std::cout << "loaded pointcloud " << ith_cloud << " with " << pointcloud->size() << " points" << std::endl;
+
+        // shuffle the pointcloud
+        std::random_shuffle(pointcloud->points.begin(), pointcloud->points.end());
+    }
 
     void step()
     {        
-        // if all points are processed
-        if (ith_point >= ith_size) 
-        {
-            // next cloud
-            ith_cloud += 10;
-            ith_point = 0;
-
-            // load data
-            typename pcl::PointCloud<PointT>::Ptr pointcloud_local = data_loader.get_cloud(ith_cloud);
-            Eigen::Affine3d pose = data_loader.get_pose(ith_cloud);
-            pointcloud = transform_cloud_to_global<PointT>(pointcloud_local, pose);
-            origin = pose.translation();
-
-            ith_size = pointcloud->size()/5;
-
-            // shuffle the pointcloud
-            std::random_shuffle(pointcloud->points.begin(), pointcloud->points.end());
-        }
-
         // get point
         Eigen::Vector3d thisPointVEC = pointcloud->points[ith_point].getVector3fMap().cast<double>();
         Eigen::Vector3d thisPointOriginVEC = origin;
@@ -984,6 +989,14 @@ public:
 
         // todo - process point before set set
 
+
+        // check if end of point cloud
+        if (ith_point == ith_size) 
+        {
+            // next cloud
+            ith_cloud += 1;
+            load_point_cloud();
+        }
     }
 
     void loop()
@@ -991,7 +1004,7 @@ public:
         step();
 
         // finish all points in step
-        while (ith_point < ith_size)
+        while (ith_point != 0)
         {
             step();
         }
@@ -1029,10 +1042,9 @@ public:
         // std::string pose_file_path = "/home/jiahao/datasets/osney power station/2024-03-26_13-47-27_rec004_osney_power_station/slam_pose_graph.slam";
         std::string pcd_file_folder = "/home/jiahao/datasets/2024-03-14-09-09-02-lenord-walk-for-lintong/individual_clouds/";
         std::string pose_file_path = "/home/jiahao/datasets/2024-03-14-09-09-02-lenord-walk-for-lintong/slam_pose_graph.g2o";
-        
-
-
         data_loader.load_dataset(pcd_file_folder, pose_file_path);
+
+        load_point_cloud();
     }
 
     std::map<int, Eigen::Vector3d> get_point_to_vector3d_map() {return point_to_vector3d_map;};
@@ -1228,16 +1240,17 @@ public:
     {
         kdtree.print_size();
     }
-    
+
+
+    int ith_cloud = 55;
+    std::size_t ith_point = 0;
+    std::size_t ith_size = 0;
+
 private:
     // data
     DataLoader<VilensPointT> data_loader;
     typename pcl::PointCloud<VilensPointT>::Ptr pointcloud;
     Eigen::Vector3d origin;
-
-    int ith_cloud = 30;
-    std::size_t ith_point = -1;
-    std::size_t ith_size = -2;
     
 
     // settings
@@ -1436,20 +1449,27 @@ private:
 
     void keyboard_callback(const pcl::visualization::KeyboardEvent &event, void*) 
     {
-        // std::cout << "key pressed: " << event.getKeySym() << std::endl;
+        // std::cout << "key pressed: [" << event.getKeySym() << "]" << std::endl;
+        
 
         if (event.getKeySym() == "space" && event.keyDown())
         {
-            app_.step();
-            app_.step();
-            app_.step();
-            app_.step();
-            app_.step();
-            app_.step();
-            app_.step();
-            app_.step();
-            app_.step();
-            app_.step();
+            app_.loop();
+            update_display();
+        }
+        if (event.getKeySym() == "KP_Insert" && event.keyDown())
+        {
+            for (int i = 0; i < 100; i++) app_.step();
+            update_display();
+        }
+        if (event.getKeySym() == "KP_Delete" && event.keyDown())
+        {
+            for (int i = 0; i < 1000; i++) app_.step();
+            update_display();
+        }
+        if (event.getKeySym() == "KP_Enter" && event.keyDown())
+        {
+            app_.loop();
             update_display();
         }
         if (event.getKeySym() == "1" && event.keyDown())
@@ -1528,6 +1548,36 @@ private:
         {
             // print tree
             app_.kdtree_print_tree();
+        }
+        if (event.getKeySym() == "KP_Next" && event.keyDown())
+        {
+            app_.ith_cloud += 1;
+            app_.load_point_cloud();
+        }
+        if (event.getKeySym() == "KP_End" && event.keyDown())
+        {
+            app_.ith_cloud -= 1;
+            app_.load_point_cloud();
+        }
+        if (event.getKeySym() == "KP_Right" && event.keyDown())
+        {
+            app_.ith_cloud += 10;
+            app_.load_point_cloud();
+        }
+        if (event.getKeySym() == "KP_Left" && event.keyDown())
+        {
+            app_.ith_cloud -= 10;
+            app_.load_point_cloud();
+        }
+        if (event.getKeySym() == "KP_Prior" && event.keyDown())
+        {
+            app_.ith_cloud += 100;
+            app_.load_point_cloud();
+        }
+        if (event.getKeySym() == "KP_Home" && event.keyDown())
+        {
+            app_.ith_cloud -= 100;
+            app_.load_point_cloud();
         }
     }  
 };

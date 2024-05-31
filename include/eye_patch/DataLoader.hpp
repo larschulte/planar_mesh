@@ -94,7 +94,7 @@ find_pose(std::string pcd_file, std::string pose_file)
         return Eigen::Isometry3d::Identity();
     }
 
-    std::cout << "found pose for time " << sec_str << " " << nsec_str << std::endl;
+    // std::cout << "found pose for time " << sec_str << " " << nsec_str << std::endl;
 
     // convert pose to eigen::isometry3d
     Eigen::Affine3d pose_eigen = Eigen::Isometry3d::Identity();
@@ -167,6 +167,11 @@ public:
     get_pose(int i)
     {
         return file_to_pose_map_[pcd_file_list_[i]];
+    }
+
+    int size()
+    {
+        return pcd_file_list_.size();
     }
 
 private:
