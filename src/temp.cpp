@@ -351,7 +351,7 @@ public:
         // pass
     }
 
-    std::set<int> extract_existing_edge_between_points(std::set<int> candidate_point_set, std::set<int> candidate_edge_set)
+    std::set<int> extract_existing_edge_between_points(const std::set<int>& candidate_point_set, const std::set<int>& candidate_edge_set)
     {
         // initialize
         std::set<int> out_existing_edge_set;
@@ -381,19 +381,13 @@ public:
         return out_existing_edge_set;
     }
 
-    bool edge_edges_intersection(std::array<int, 2> edgeA, std::set<int> edgeB_set, std::map<int, Eigen::Vector2d> points_to_vector2d_map)
+    bool edge_edges_intersection(const std::array<int, 2>& edgeA, const std::set<int>& edgeB_set, const std::map<int, Eigen::Vector2d>& points_to_vector2d_map)
     {
         for (const auto& edgeB_ID : edgeB_set)
         {
             // if intersected at end points, don't count
-            std::array<int, 2> edgeB = edge_to_point_map.at(edgeB_ID);
+            const std::array<int, 2>& edgeB = edge_to_point_map.at(edgeB_ID);
             if (edgeA[0] == edgeB[0] || edgeA[0] == edgeB[1] || edgeA[1] == edgeB[0] || edgeA[1] == edgeB[1]) continue;
-
-            if (points_to_vector2d_map.find(edgeB[0]) == points_to_vector2d_map.end() || points_to_vector2d_map.find(edgeB[1]) == points_to_vector2d_map.end() || points_to_vector2d_map.find(edgeA[0]) == points_to_vector2d_map.end() || points_to_vector2d_map.find(edgeA[1]) == points_to_vector2d_map.end())
-            {
-                std::cout << point_to_set_map.at(edgeA[0]) << " " << point_to_set_map.at(edgeA[1]) << std::endl;
-                std::cout << point_to_set_map.at(edgeB[0]) << " " << point_to_set_map.at(edgeB[1]) << std::endl;
-            }
 
             // intersection check
             Eigen::Vector2d pointA0 = points_to_vector2d_map.at(edgeA[0]);
@@ -406,7 +400,7 @@ public:
         return false;
     }
 
-    bool triangle_contains_point(std::array<int, 3> triangle, std::set<int> point_set, std::map<int, Eigen::Vector2d> points_to_vector2d_map)
+    bool triangle_contains_point(const std::array<int, 3>& triangle, const std::set<int>& point_set, const std::map<int, Eigen::Vector2d>& points_to_vector2d_map)
     {
         for (int point_id : point_set)
         {
@@ -475,7 +469,7 @@ public:
     }
 
     // creates edges and triangles that connects the new point to the set
-    void connect_point_to_set(int newPointID, int setID, std::set<int> searched_boundary_points_in_current_set)
+    void connect_point_to_set(int newPointID, int setID, const std::set<int>& searched_boundary_points_in_current_set)
     {
         // add point as boundary point
         update_boundary_point_record(newPointID, setID);
@@ -825,7 +819,7 @@ public:
             pointcloud = transform_cloud_to_global<PointT>(pointcloud_local, pose);
             origin = pose.translation();
 
-            ith_size = pointcloud->size()/10;
+            ith_size = pointcloud->size();
 
             // shuffle the pointcloud
             std::random_shuffle(pointcloud->points.begin(), pointcloud->points.end());

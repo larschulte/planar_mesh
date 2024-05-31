@@ -110,7 +110,7 @@ bool TriangleBVH::rayTriangleIntersect(const Eigen::Vector3d& orig, const Eigen:
     return true;
 }
 
-std::set<int> TriangleBVH::intersectHierarchy(const std::shared_ptr<Node>& node, Eigen::Vector3d orig, Eigen::Vector3d dir) 
+std::set<int> TriangleBVH::intersectHierarchy(const std::shared_ptr<Node>& node, const Eigen::Vector3d& orig, const Eigen::Vector3d& dir) 
 {
     bool intersected = node->box.intersect(orig, dir);
     if (!intersected) return std::set<int>();

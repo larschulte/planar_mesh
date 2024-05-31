@@ -117,7 +117,7 @@ bool doIntersect(const Eigen::Vector2d &p1, const Eigen::Vector2d &q1, const Eig
 }
 
 // ray plane intersection
-Eigen::Vector3d ray_plane_intersection(Eigen::Vector3d rayOrigin, Eigen::Vector3d rayEndPoint, Eigen::Vector3d planeMean, Eigen::Vector3d planeNormal)
+Eigen::Vector3d ray_plane_intersection(const Eigen::Vector3d& rayOrigin, const Eigen::Vector3d& rayEndPoint, const Eigen::Vector3d& planeMean, const Eigen::Vector3d& planeNormal)
 {   
     // if perpendicular, return NaN
     Eigen::Vector3d rayDirection = (rayEndPoint - rayOrigin).normalized();

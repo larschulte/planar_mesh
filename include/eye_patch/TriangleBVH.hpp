@@ -43,7 +43,7 @@ private:
     double sort_triangle_list_in_axis(std::vector<int>& triangle_list, int axis, int start, int mid, int end);
     void expand_node_box(std::shared_ptr<Node> node, int triangle_id);
     bool rayTriangleIntersect(const Eigen::Vector3d& orig, const Eigen::Vector3d& dir, const Eigen::Vector3d& v0, const Eigen::Vector3d& v1, const Eigen::Vector3d& v2, Eigen::Vector3d& outIntersection);
-    std::set<int> intersectHierarchy(const std::shared_ptr<Node>& node, Eigen::Vector3d orig, Eigen::Vector3d dir);
+    std::set<int> intersectHierarchy(const std::shared_ptr<Node>& node, const Eigen::Vector3d& orig, const Eigen::Vector3d& dir);
     void convert_leaf_to_branch(std::shared_ptr<Node> node);
     std::shared_ptr<Node> build_node(std::vector<int> triangle_list);
     void addTriangleToNode(std::shared_ptr<Node> node, int triangleID);
