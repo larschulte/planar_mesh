@@ -806,6 +806,8 @@ public:
 
     void step()
     {
+        kdtree.print_size();
+        
         // if all points are processed
         if (ith_point >= ith_size) 
         {
@@ -821,8 +823,8 @@ public:
 
             ith_size = pointcloud->size();
 
-            // shuffle the pointcloud
-            std::random_shuffle(pointcloud->points.begin(), pointcloud->points.end());
+            // // shuffle the pointcloud
+            // std::random_shuffle(pointcloud->points.begin(), pointcloud->points.end());
         }
 
         // get point
@@ -1207,6 +1209,11 @@ public:
     void kdtree_print_tree()
     {
         kdtree.print_tree();
+    }
+
+    void kdtree_print_size()
+    {
+        kdtree.print_size();
     }
     
 private:

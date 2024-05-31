@@ -237,6 +237,11 @@ public:
         print_node(node->right);
     }
 
+    void print_size()
+    {
+        std::cout << "Size: " << point_list.size() << std::endl;
+    }
+
     std::vector<int> point_list;
     std::map<int, Eigen::Vector3d> point_to_vector3d_map;
     std::shared_ptr<Node> root;
