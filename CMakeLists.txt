@@ -66,8 +66,13 @@ install(TARGETS
   DESTINATION lib/${PROJECT_NAME}
 )
 
-
-
+# add executable
+add_executable(RRSTree_test src/RRSTree_test.cpp)
+target_link_libraries (RRSTree_test ${PCL_LIBRARIES})
+target_include_directories(RRSTree_test
+  PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>)
 
 
 
