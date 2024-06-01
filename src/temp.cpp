@@ -5,7 +5,7 @@
 #include "point_type/VilensPointT.hpp"
 #include "eye_patch/DataLoader.hpp"
 #include "eye_patch/TriangleBVH.hpp"
-#include "eye_patch/KDTree.hpp"
+#include "eye_patch/RRSTree.hpp"
 #include "eye_patch/utilities.hpp"
 
 // queue
@@ -252,7 +252,7 @@ public:
         {
             bool erased = boundary_point_set.erase(pointID);
             boundary_point_of_set.at(setID).erase(pointID);
-            if (erased) kdtree.deletePoint(pointID, point_to_vector3d_map.at(pointID));
+            if (erased) rrstree.deleteBoundaryPoint(pointID, point_to_vector3d_map.at(pointID));
             return;
         }
 
@@ -261,7 +261,7 @@ public:
         {
             bool erased = boundary_point_set.erase(pointID);
             boundary_point_of_set.at(setID).erase(pointID);
-            if (erased) kdtree.deletePoint(pointID, point_to_vector3d_map.at(pointID));
+            if (erased) rrstree.deleteBoundaryPoint(pointID, point_to_vector3d_map.at(pointID));
             return;
         }
 
@@ -276,13 +276,13 @@ public:
         {
             bool inserted = boundary_point_set.insert(pointID).second;
             boundary_point_of_set.at(setID).insert(pointID);
-            if (inserted) kdtree.addPoint(pointID, point_to_vector3d_map.at(pointID));
+            if (inserted) rrstree.addBoundaryPoint(pointID, point_to_vector3d_map.at(pointID), radius_search_size);
         }
         else
         {
             bool erased = boundary_point_set.erase(pointID);
             boundary_point_of_set.at(setID).erase(pointID);
-            if (erased) kdtree.deletePoint(pointID, point_to_vector3d_map.at(pointID));
+            if (erased) rrstree.deleteBoundaryPoint(pointID, point_to_vector3d_map.at(pointID));
         }
     }
 
@@ -684,8 +684,8 @@ public:
             return;
         }
 
-        // perform kdtree radius search
-        std::set<int> searched_boundary_points_set = kdtree.radiusSearch(thisPointVEC, radius_search_size);
+        // perform rrstree radius search
+        std::set<int> searched_boundary_points_set = rrstree.reverseRadiusSearch(thisPointVEC);
 
         // if no searched results, add point to new set
         if (searched_boundary_points_set.size() == 0)
@@ -1226,19 +1226,19 @@ public:
         }
     }
 
-    void kdtree_rebuild()
+    void rrstree_rebuild()
     {
-        kdtree.rebuild();
+        rrstree.rebuildTree();
     }
 
-    void kdtree_print_tree()
+    void rrstree_print_tree()
     {
-        kdtree.print_tree();
+        rrstree.printTree();
     }
 
-    void kdtree_print_size()
+    void rrstree_print_size()
     {
-        kdtree.print_size();
+        rrstree.printSize();
     }
 
 
@@ -1304,7 +1304,7 @@ private:
     std::map<int, int> edge_to_set_map;
 
         // boundary
-    KDTree kdtree;
+    RRSTree rrstree;
     std::set<int> boundary_point_set;
     std::set<int> boundary_edge_set;
     std::map<int, std::set<int>> boundary_point_of_set;
@@ -1540,14 +1540,14 @@ private:
         }
         if (event.getKeySym() == "b" && event.keyDown())
         {
-            // rebuild kdtree
-            app_.kdtree_rebuild();
-            std::cout << "kdtree rebuilt" << std::endl;
+            // rebuild rrstree
+            app_.rrstree_rebuild();
+            std::cout << "rrstree rebuilt" << std::endl;
         }
         if (event.getKeySym() == "n" && event.keyDown())
         {
             // print tree
-            app_.kdtree_print_tree();
+            app_.rrstree_print_tree();
         }
         if (event.getKeySym() == "KP_Next" && event.keyDown())
         {

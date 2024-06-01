@@ -358,4 +358,9 @@ public:
     {
         printNode(root, 0);
     }
+
+    void printSize()
+    {
+        std::cout << "Size: " << tree_size << std::endl;
+    }
 };
