@@ -367,4 +367,9 @@ public:
     {
         std::cout << "Size: " << tree_size << std::endl;
     }
+
+    std::vector<BoundaryPoint> getBoundaryPoints()
+    {
+        return flatten_node(root);
+    }
 };

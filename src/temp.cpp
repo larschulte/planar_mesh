@@ -1242,6 +1242,11 @@ public:
         rrstree.printSize();
     }
 
+    std::vector<BoundaryPoint> rrstree_get_boundary_points()
+    {
+        return rrstree.getBoundaryPoints();
+    }
+
 
     int ith_cloud = 55;
     std::size_t ith_point = 0;
@@ -1363,6 +1368,9 @@ private:
 
     bool show_wireframe = true;
     
+    std::vector<std::string> sphere_name_list;
+    bool show_sphere = false;
+
     void update_display()
     {
         // data
@@ -1436,6 +1444,26 @@ private:
             viewer_->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, 1, 1, 1, "boundary_edges");
             viewer_->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, 2, "boundary_edges");
         }
+
+        // boundary points spheres
+        for (const std::string& sphere_name : sphere_name_list) viewer_->removeShape(sphere_name);
+        sphere_name_list.clear();
+        if (show_sphere)
+        {
+            std::vector<BoundaryPoint> boundary_points = app_.rrstree_get_boundary_points();
+            // sort
+            std::sort(boundary_points.begin(), boundary_points.end(), [](const BoundaryPoint& a, const BoundaryPoint& b) {return a.pointID < b.pointID;});
+
+            // add sphere for only the last 20 points
+            for (int i = std::max(0, (int)boundary_points.size() - 5); i < boundary_points.size()-1; i++)
+            {
+                const BoundaryPoint& boundary_point = boundary_points[i];
+                std::string sphere_name = "boundary_point_" + std::to_string(boundary_point.pointID);
+                sphere_name_list.push_back(sphere_name);
+                viewer_->addSphere(pcl::PointXYZ(boundary_point.position[0], boundary_point.position[1], boundary_point.position[2]), boundary_point.radius, 1, 1, 1, sphere_name);
+            }
+        }
+
 
         // display mode
         if (show_wireframe)
@@ -1579,6 +1607,11 @@ private:
         {
             app_.ith_cloud -= 100;
             app_.load_point_cloud();
+        }
+        if (event.getKeySym() == "m" && event.keyDown())
+        {
+            show_sphere = !show_sphere;
+            update_display();
         }
     }  
 };
