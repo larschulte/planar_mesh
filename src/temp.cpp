@@ -774,22 +774,23 @@ public:
             return;
         }
 
-        // else, find the set with the largest size
-        int largest_setID = -1;
-        std::size_t largest_size = 0;
+        // else, find the set that is nearest
+        int nearest_setID = -1;
+        double nearest_distance = std::numeric_limits<double>::max();
         for (int setID : sets_without_plane)
         {
-            if (set_to_points_map.at(setID).size() > largest_size)
+            Eigen::Vector3d mean = set_to_mean_map.at(setID);
+            double distance = (thisPointVEC - mean).norm();
+            if (distance < nearest_distance)
             {
-                largest_size = set_to_points_map.at(setID).size();
-                largest_setID = setID;
+                nearest_distance = distance;
+                nearest_setID = setID;
             }
         }
-        if (largest_setID != -1)
+        if (nearest_setID != -1)
         {
-            std::set<int> searched_boundary_points_in_current_set = intersection_of_sets(searched_boundary_points_set, boundary_point_of_set.at(largest_setID));
-            add_point(newPointID, largest_setID, thisPointVEC, thisPointOriginVEC);
-            connect_point_to_set(newPointID, largest_setID, searched_boundary_points_in_current_set);
+            add_point(newPointID, nearest_setID, thisPointVEC, thisPointOriginVEC);
+            connect_point_to_set(newPointID, nearest_setID, searched_boundary_points_set);
             return;
         }
 
