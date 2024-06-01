@@ -217,7 +217,7 @@ private:
     }
 
 
-    std::set<int> reverseRadiusSearch(const std::shared_ptr<Node>& node, const Eigen::Vector3d& point) 
+    std::set<int> reverseRadiusSearchNode(const std::shared_ptr<Node>& node, const Eigen::Vector3d& point, std::map<int, double>& pointID_radius_map) 
     {
         bool contained = node->box.contains(point);
         if (!contained) return std::set<int>();
@@ -227,7 +227,11 @@ private:
             std::set<int> contained_pointIDs;
             for (BoundaryPoint boundary_point : node->boundaryPoints)
             {
-                if (boundary_point.contains(point)) contained_pointIDs.insert(boundary_point.pointID);
+                if (boundary_point.contains(point)) 
+                {
+                    contained_pointIDs.insert(boundary_point.pointID);
+                    pointID_radius_map[boundary_point.pointID] = boundary_point.radius;
+                }
             }
             return contained_pointIDs;
         }
@@ -237,12 +241,12 @@ private:
 
             if (node->left->box.contains(point))
             {
-                std::set<int> contained_pointIDs_left = reverseRadiusSearch(node->left, point);
+                std::set<int> contained_pointIDs_left = reverseRadiusSearchNode(node->left, point, pointID_radius_map);
                 contained_pointIDs.insert(contained_pointIDs_left.begin(), contained_pointIDs_left.end());
             }
             if (node->right->box.contains(point))
             {
-                std::set<int> contained_pointIDs_right = reverseRadiusSearch(node->right, point);
+                std::set<int> contained_pointIDs_right = reverseRadiusSearchNode(node->right, point, pointID_radius_map);
                 contained_pointIDs.insert(contained_pointIDs_right.begin(), contained_pointIDs_right.end());
             }
 
@@ -343,9 +347,9 @@ public:
         deleteBoundaryPointFromNode(root, boundary_point);
     }
 
-    std::set<int> reverseRadiusSearch(Eigen::Vector3d point)
+    std::set<int> reverseRadiusSearch(Eigen::Vector3d point, std::map<int, double>& pointID_radius_map)
     {
-        return reverseRadiusSearch(root, point);
+        return reverseRadiusSearchNode(root, point, pointID_radius_map);
     }
 
     void adjustRadius(int pointID, Eigen::Vector3d position, double radius)
