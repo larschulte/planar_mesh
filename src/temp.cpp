@@ -276,7 +276,7 @@ public:
         {
             bool inserted = boundary_point_set.insert(pointID).second;
             boundary_point_of_set.at(setID).insert(pointID);
-            if (inserted) rrstree.addBoundaryPoint(pointID, point_to_vector3d_map.at(pointID), radius_search_size);
+            if (inserted) rrstree.addBoundaryPoint(pointID, point_to_vector3d_map.at(pointID), max_radius);
         }
         else
         {
@@ -480,6 +480,16 @@ public:
 
         std::set<int> searched_boundary_points_in_current_set = intersection_of_sets(searched_boundary_points, boundary_point_of_current_set);
         std::set<int> searched_boundary_edge_in_current_set = extract_existing_edge_between_points(searched_boundary_points_in_current_set, boundary_edge_of_current_set);
+
+        // // adjust radius
+        // // choose the smallest radius among the boundary points
+        // double smallest_radius = std::numeric_limits<double>::max();
+        // for (int point_id : searched_boundary_points_in_current_set)
+        // {
+        //     double distance = (point_to_vector3d_map.at(newPointID) - point_to_vector3d_map.at(point_id)).norm();
+        //     if (distance < smallest_radius) smallest_radius = distance;
+        // }
+        // rrstree.adjustRadius(newPointID, point_to_vector3d_map.at(newPointID), smallest_radius);
 
         // precompute 2d points
         std::map<int, Eigen::Vector2d> precompute_2d_map;
@@ -685,7 +695,8 @@ public:
         }
 
         // perform rrstree radius search
-        std::set<int> searched_boundary_points_set = rrstree.reverseRadiusSearch(thisPointVEC);
+        std::map<int, double> point_to_radius_map;
+        std::set<int> searched_boundary_points_set = rrstree.reverseRadiusSearch(thisPointVEC, point_to_radius_map);
 
         // if no searched results, add point to new set
         if (searched_boundary_points_set.size() == 0)
@@ -705,6 +716,41 @@ public:
 
         // try merge neighboring sets
         std::map<int, int> merge_map = try_merge_sets(neighboring_sets);
+
+        // after merging, we are left with sets that should have different normals
+        // each point in the neighboring set should reduce their search radius to the closest set
+        // [todo]
+        // for each point, compute the shortest distance to another point that is in a different set
+        // if the distance is less than its original radius, reduce its original radius
+        for (int pointID : searched_boundary_points_set)
+        {
+            // setID
+            int setID = point_to_set_map.at(pointID);
+
+            // smallest distance
+            double smallest_distance = std::numeric_limits<double>::max();
+
+            for (int otherPointID : searched_boundary_points_set)
+            {
+                // skip if same set
+                if (point_to_set_map.at(otherPointID) == setID) continue;
+
+                // compute distance
+                double distance = (point_to_vector3d_map.at(pointID) - point_to_vector3d_map.at(otherPointID)).norm();
+
+                // update radius
+                if (distance < smallest_distance) smallest_distance = distance;
+            }
+
+            // adjust radius
+            if (smallest_distance < point_to_radius_map.at(pointID)) 
+            {
+                rrstree.adjustRadius(pointID, point_to_vector3d_map.at(pointID), smallest_distance);
+                point_to_radius_map.at(pointID) = smallest_distance;
+            }
+        }
+
+
 
         // split neighboring sets into sets with plane and sets without plane (by size)
         std::set<int> sets_with_plane;
@@ -766,7 +812,28 @@ public:
                 closest_setID = setID;
             }
         }
-        // somewhere above, the global and local boundary points sets are not in sync
+
+        // for the sets not selected as closest, update their searched points' radius
+        // for all searched points
+        for (int pointID : searched_boundary_points_set)
+        {
+            // if it is in a set with plane
+            if (sets_with_plane.find(point_to_set_map.at(pointID)) != sets_with_plane.end())
+            {
+                // and the set with plane is not the closest set
+                if (point_to_set_map.at(pointID) != closest_setID)
+                {
+                    // reduce their searched points' radius
+                    double reduced_radius = (thisPointVEC - point_to_vector3d_map.at(pointID)).norm();
+
+                    if (reduced_radius < point_to_radius_map.at(pointID))
+                    {
+                        rrstree.adjustRadius(pointID, point_to_vector3d_map.at(pointID), reduced_radius);
+                    }
+                }
+            }
+        }
+
         if (closest_setID != -1 && closest_distance < distance_threshold)
         {
             add_point(newPointID, closest_setID, thisPointVEC, thisPointOriginVEC);
@@ -1263,7 +1330,7 @@ private:
     double distance_threshold = 0.05;
     std::size_t fit_plane_threshold = 10; // may cause error if below 3
     double merged_eigenvalue_threshold = 15e-5;
-    double radius_search_size = 0.2;
+    double max_radius = 0.2;
 
         // free points
     std::queue<std::pair<Eigen::Vector3d, Eigen::Vector3d>> free_points_queue;
