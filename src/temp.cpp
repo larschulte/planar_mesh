@@ -885,12 +885,12 @@ public:
         pointcloud = transform_cloud_to_global<PointT>(pointcloud_local, pose);
         origin = pose.translation();
         ith_point = 0;
-        ith_size = pointcloud->size()/5;
+        ith_size = pointcloud->size();
 
         std::cout << "loaded pointcloud " << ith_cloud << " with " << pointcloud->size() << " points" << std::endl;
 
-        // shuffle the pointcloud
-        std::random_shuffle(pointcloud->points.begin(), pointcloud->points.end());
+        // // shuffle the pointcloud
+        // std::random_shuffle(pointcloud->points.begin(), pointcloud->points.end());
     }
 
     void step()
@@ -1104,12 +1104,12 @@ public:
         */
 
         // input data
-        // std::string pcd_file_folder = "/home/jiahao/datasets/bag2pcd_output/mission2_reverse/slam_clouds/";
-        // std::string pose_file_path = "/home/jiahao/datasets/bag2pcd_output/mission2_reverse/slam_poses/slam_poss_graph.slam";
+        std::string pcd_file_folder = "/home/jiahao/datasets/bag2pcd_output/mission2_reverse/slam_clouds/";
+        std::string pose_file_path = "/home/jiahao/datasets/bag2pcd_output/mission2_reverse/slam_poses/slam_poss_graph.slam";
         // std::string pcd_file_folder = "/home/jiahao/datasets/osney power station/2024-03-26_13-47-27_rec004_osney_power_station/slam_clouds/";
         // std::string pose_file_path = "/home/jiahao/datasets/osney power station/2024-03-26_13-47-27_rec004_osney_power_station/slam_pose_graph.slam";
-        std::string pcd_file_folder = "/home/jiahao/datasets/2024-03-14-09-09-02-lenord-walk-for-lintong/individual_clouds/";
-        std::string pose_file_path = "/home/jiahao/datasets/2024-03-14-09-09-02-lenord-walk-for-lintong/slam_pose_graph.g2o";
+        // std::string pcd_file_folder = "/home/jiahao/datasets/2024-03-14-09-09-02-lenord-walk-for-lintong/individual_clouds/";
+        // std::string pose_file_path = "/home/jiahao/datasets/2024-03-14-09-09-02-lenord-walk-for-lintong/slam_pose_graph.g2o";
         data_loader.load_dataset(pcd_file_folder, pose_file_path);
 
         load_point_cloud();
