@@ -469,7 +469,7 @@ public:
         //     double distance = (point_to_vector3d_map.at(newPointID) - point_to_vector3d_map.at(point_id)).norm();
         //     if (distance < smallest_radius) smallest_radius = distance;
         // }
-        // rrstree.adjustRadius(newPointID, point_to_vector3d_map.at(newPointID), smallest_radius);
+        // rrstree.reduceRadius(newPointID, point_to_vector3d_map.at(newPointID), smallest_radius);
 
         // compute the smallest distance to searched boundary points that are not in the same set, and is not small set
         double smallest_distance = std::numeric_limits<double>::max();
@@ -482,7 +482,7 @@ public:
             double distance = (point_to_vector3d_map.at(newPointID) - point_to_vector3d_map.at(point_id)).norm();
             if (distance < smallest_distance) smallest_distance = distance;
         }
-        if (smallest_distance < std::numeric_limits<double>::max()) rrstree.adjustRadius(newPointID, point_to_vector3d_map.at(newPointID), smallest_distance);
+        if (smallest_distance < std::numeric_limits<double>::max()) rrstree.reduceRadius(newPointID, point_to_vector3d_map.at(newPointID), smallest_distance);
 
         // precompute 2d points
         std::map<int, Eigen::Vector2d> precompute_2d_map;
@@ -832,7 +832,7 @@ public:
             // adjust radius
             if (smallest_distance < point_to_radius_map.at(pointID)) 
             {
-                rrstree.adjustRadius(pointID, point_to_vector3d_map.at(pointID), smallest_distance);
+                rrstree.reduceRadius(pointID, point_to_vector3d_map.at(pointID), smallest_distance);
                 point_to_radius_map.at(pointID) = smallest_distance;
             }
         }
@@ -915,7 +915,7 @@ public:
 
                     if (reduced_radius < point_to_radius_map.at(pointID))
                     {
-                        rrstree.adjustRadius(pointID, point_to_vector3d_map.at(pointID), reduced_radius);
+                        rrstree.reduceRadius(pointID, point_to_vector3d_map.at(pointID), reduced_radius);
                     }
                 }
             }

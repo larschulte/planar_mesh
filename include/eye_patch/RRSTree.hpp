@@ -196,6 +196,31 @@ private:
         }
     }
 
+    void reduceBoundaryPointRadiusToNode(std::shared_ptr<Node> node, BoundaryPoint boundary_point)
+    {
+        if (node->isLeaf())
+        {
+            for (BoundaryPoint& node_boundary_point : node->boundaryPoints)
+            {
+                if (node_boundary_point.pointID == boundary_point.pointID)
+                {
+                    if (boundary_point.radius < node_boundary_point.radius) node_boundary_point.adjustRadius(boundary_point.radius);
+                }
+            }
+        }
+        else
+        {
+            if (boundary_point.position[node->split_axis] < node->split_value)
+            {
+                reduceBoundaryPointRadiusToNode(node->left, boundary_point);
+            }
+            else 
+            {
+                reduceBoundaryPointRadiusToNode(node->right, boundary_point);
+            }
+        }
+    }
+
 
     void deleteBoundaryPointFromNode(std::shared_ptr<Node> node, BoundaryPoint boundary_point)
     {
@@ -356,6 +381,12 @@ public:
     {   
         BoundaryPoint boundary_point(pointID, position, radius);
         adjustBoundaryPointRadiusToNode(root, boundary_point);
+    }
+
+    void reduceRadius(int pointID, Eigen::Vector3d position, double radius)
+    {
+        BoundaryPoint boundary_point(pointID, position, radius);
+        reduceBoundaryPointRadiusToNode(root, boundary_point);
     }
 
     void printTree()
