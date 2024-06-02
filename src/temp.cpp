@@ -1055,8 +1055,28 @@ public:
         // collect the list of points that are within the penetrated triangles, and isolated by the triangle
         for (int triangleID : penetrated_triangles)
         {
+            // get the triangle
+            const std::array<int, 3>& vertices = triangle_to_vertices_map.at(triangleID);
+            Eigen::Vector3d v0 = point_to_vector3d_map.at(vertices[0]);
+            Eigen::Vector3d v1 = point_to_vector3d_map.at(vertices[1]);
+            Eigen::Vector3d v2 = point_to_vector3d_map.at(vertices[2]);
+
+            // compute point and triangle intersection
+            Eigen::Vector3d intersectionPoint;
+            bool intersected = rayTriangleIntersect(thisPointOriginVEC, thisPointVEC, v0, v1, v2, intersectionPoint);
+
+            // compute distance from each vertex point to intersection
+            double distance0 = (v0 - intersectionPoint).norm();
+            double distance1 = (v1 - intersectionPoint).norm();
+            double distance2 = (v2 - intersectionPoint).norm();
+
             // penetrate triangles
             remove_triangle(triangleID);
+
+            // if vertex point still exists, and is boundary point, reduce its search radius
+            if (point_to_set_map.find(vertices[0]) != point_to_set_map.end() && boundary_point_set.find(vertices[0]) != boundary_point_set.end()) rrstree.reduceRadius(vertices[0], v0, distance0);
+            if (point_to_set_map.find(vertices[1]) != point_to_set_map.end() && boundary_point_set.find(vertices[1]) != boundary_point_set.end()) rrstree.reduceRadius(vertices[1], v1, distance1);
+            if (point_to_set_map.find(vertices[2]) != point_to_set_map.end() && boundary_point_set.find(vertices[2]) != boundary_point_set.end()) rrstree.reduceRadius(vertices[2], v2, distance2);
         }
 
         // // re add the list points by radius search

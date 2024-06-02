@@ -9,6 +9,8 @@
 #include <memory>
 #include <array>
 
+bool rayTriangleIntersect(const Eigen::Vector3d& orig, const Eigen::Vector3d& dir, const Eigen::Vector3d& v0, const Eigen::Vector3d& v1, const Eigen::Vector3d& v2, Eigen::Vector3d& outIntersection);
+
 struct Triangle 
 {
     int triangleID;
@@ -63,7 +65,6 @@ private:
     Eigen::Vector3d compute_triangle_center(int triangleID);
     double sort_triangle_list_in_axis(std::vector<Triangle>& triangle_list, int axis, int start, int mid, int end);
     void expand_node_box(std::shared_ptr<Node> node, Triangle triangle);
-    bool rayTriangleIntersect(const Eigen::Vector3d& orig, const Eigen::Vector3d& dir, const Eigen::Vector3d& v0, const Eigen::Vector3d& v1, const Eigen::Vector3d& v2, Eigen::Vector3d& outIntersection);
     std::set<int> intersectHierarchy(const std::shared_ptr<Node>& node, const Eigen::Vector3d& orig, const Eigen::Vector3d& dir);
     void convert_leaf_to_branch(std::shared_ptr<Node> node);
     std::shared_ptr<Node> build_node(std::vector<Triangle> triangle_list);

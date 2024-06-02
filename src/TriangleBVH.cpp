@@ -1,5 +1,36 @@
 #include "eye_patch/TriangleBVH.hpp"
 
+bool rayTriangleIntersect(const Eigen::Vector3d& orig, const Eigen::Vector3d& dir,
+    const Eigen::Vector3d& v0, const Eigen::Vector3d& v1, const Eigen::Vector3d& v2,
+    Eigen::Vector3d& outIntersection)
+{
+    const double EPSILON = 1e-8;
+    Eigen::Vector3d edge1 = v1 - v0;
+    Eigen::Vector3d edge2 = v2 - v0;
+    
+    Eigen::Vector3d pvec = dir.cross(edge2);
+    double det = edge1.dot(pvec);
+    if (std::fabs(det) < EPSILON) {
+        return false;
+    }
+
+    double invDet = 1.0 / det;
+
+    Eigen::Vector3d tvec = orig - v0;
+    double u = tvec.dot(pvec) * invDet;
+    if (u < 0.0 || u > 1.0) return false;
+    
+    Eigen::Vector3d qvec = tvec.cross(edge1);
+    double v = dir.dot(qvec) * invDet;
+    if (v < 0.0 || u + v > 1.0) return false;
+
+    double t = edge2.dot(qvec) * invDet;
+    if (t < EPSILON) return false;
+
+    outIntersection = orig + dir * t;
+    return true;
+}
+
 TriangleBVH::BoundingBox::BoundingBox()
     : min(Eigen::Vector3d::Constant(std::numeric_limits<double>::infinity())),
       max(Eigen::Vector3d::Constant(-std::numeric_limits<double>::infinity())) {}
@@ -72,37 +103,6 @@ void TriangleBVH::expand_node_box(std::shared_ptr<Node> node, Triangle triangle)
     node->box.expand(triangle.v0);
     node->box.expand(triangle.v1);
     node->box.expand(triangle.v2);
-}
-
-bool TriangleBVH::rayTriangleIntersect(const Eigen::Vector3d& orig, const Eigen::Vector3d& dir,
-    const Eigen::Vector3d& v0, const Eigen::Vector3d& v1, const Eigen::Vector3d& v2,
-    Eigen::Vector3d& outIntersection)
-{
-    const double EPSILON = 1e-8;
-    Eigen::Vector3d edge1 = v1 - v0;
-    Eigen::Vector3d edge2 = v2 - v0;
-    
-    Eigen::Vector3d pvec = dir.cross(edge2);
-    double det = edge1.dot(pvec);
-    if (std::fabs(det) < EPSILON) {
-        return false;
-    }
-
-    double invDet = 1.0 / det;
-
-    Eigen::Vector3d tvec = orig - v0;
-    double u = tvec.dot(pvec) * invDet;
-    if (u < 0.0 || u > 1.0) return false;
-    
-    Eigen::Vector3d qvec = tvec.cross(edge1);
-    double v = dir.dot(qvec) * invDet;
-    if (v < 0.0 || u + v > 1.0) return false;
-
-    double t = edge2.dot(qvec) * invDet;
-    if (t < EPSILON) return false;
-
-    outIntersection = orig + dir * t;
-    return true;
 }
 
 std::set<int> TriangleBVH::intersectHierarchy(const std::shared_ptr<Node>& node, const Eigen::Vector3d& orig, const Eigen::Vector3d& dir) 
