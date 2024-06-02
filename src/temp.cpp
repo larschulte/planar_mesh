@@ -556,7 +556,6 @@ public:
         // add edge
         std::set<int> searched_boundary_points_used;
         std::vector<std::pair<Eigen::Vector2d, Eigen::Vector2d>> boundary_edges;
-
         // Precompute boundary edges and their coordinates
         for (int boundary_edgeID : boundary_edge_of_set.at(setID)) 
         {
@@ -565,32 +564,25 @@ public:
             const Eigen::Vector2d& boundaryPoint2_2D = precompute_2d_map.at(boundaryEdge[1]);
             boundary_edges.emplace_back(boundaryPoint1_2D, boundaryPoint2_2D);
         }
-
         for (int point_id : searched_boundary_points_in_current_set) 
         {
             // new edge, smaller id first
             std::array<int, 2> newEdge = {std::min(newPointID, point_id), std::max(newPointID, point_id)};
-            
             const Eigen::Vector2d& newPoint1_2D = precompute_2d_map.at(newEdge[0]);
             const Eigen::Vector2d& newPoint2_2D = precompute_2d_map.at(newEdge[1]);
 
             // skip if intersected with any boundary edge of the current set
             bool intersected = false;
-            for (const auto& boundaryEdge : boundary_edges) {
+            for (const auto& boundaryEdge : boundary_edges) 
+            {
                 const Eigen::Vector2d& boundaryPoint1_2D = boundaryEdge.first;
                 const Eigen::Vector2d& boundaryPoint2_2D = boundaryEdge.second;
 
                 // intersect at ends
-                if (newPoint1_2D == boundaryPoint1_2D || newPoint1_2D == boundaryPoint2_2D || newPoint2_2D == boundaryPoint1_2D || newPoint2_2D == boundaryPoint2_2D) 
-                {
-                    continue;
-                }
+                if (newPoint1_2D == boundaryPoint1_2D || newPoint1_2D == boundaryPoint2_2D || newPoint2_2D == boundaryPoint1_2D || newPoint2_2D == boundaryPoint2_2D) continue;
 
                 // intersect at middle
-                if (doIntersect(newPoint1_2D, newPoint2_2D, boundaryPoint1_2D, boundaryPoint2_2D)) {
-                    intersected = true;
-                    break;
-                }
+                if (doIntersect(newPoint1_2D, newPoint2_2D, boundaryPoint1_2D, boundaryPoint2_2D)) { intersected = true; break; }
             }
             
             if (intersected) continue;
