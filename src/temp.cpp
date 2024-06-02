@@ -491,6 +491,16 @@ public:
         // }
         // rrstree.adjustRadius(newPointID, point_to_vector3d_map.at(newPointID), smallest_radius);
 
+        // compute the smallest distance to searched boundary points that are not in the same set
+        double smallest_distance = std::numeric_limits<double>::max();
+        for (int point_id : searched_boundary_points)
+        {
+            if (point_to_set_map.at(point_id) == setID) continue;
+            double distance = (point_to_vector3d_map.at(newPointID) - point_to_vector3d_map.at(point_id)).norm();
+            if (distance < smallest_distance) smallest_distance = distance;
+        }
+        if (smallest_distance < std::numeric_limits<double>::max()) rrstree.adjustRadius(newPointID, point_to_vector3d_map.at(newPointID), smallest_distance);
+
         // precompute 2d points
         std::map<int, Eigen::Vector2d> precompute_2d_map;
         for (int point_id : boundary_point_of_current_set) 
