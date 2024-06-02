@@ -280,9 +280,7 @@ public:
             {
                 // origin to point distance 
                 double distance = (point_to_vector3d_map.at(pointID) - point_to_origin_vector3d_map.at(pointID)).norm();
-                constexpr double angle = 3;
-                constexpr double ratio = tan(angle * M_PI / 180);
-                double radius = distance * ratio;
+                double radius = distance * distance_to_radius_ratio;
                 rrstree.addBoundaryPoint(pointID, point_to_vector3d_map.at(pointID), radius);
             }
         }
@@ -968,12 +966,15 @@ public:
         pointcloud = transform_cloud_to_global<PointT>(pointcloud_local, pose);
         origin = pose.translation();
         ith_point = 0;
-        ith_size = pointcloud->size();
+        ith_size = pointcloud->size() * pointcloud_fraction;
 
         std::cout << "loaded pointcloud " << ith_cloud << " with " << pointcloud->size() << " points" << std::endl;
 
-        // // shuffle the pointcloud
-        // std::random_shuffle(pointcloud->points.begin(), pointcloud->points.end());
+        if (shuffle_pointcloud) 
+        {
+            // shuffle the pointcloud
+            std::random_shuffle(pointcloud->points.begin(), pointcloud->points.end());
+        }
     }
 
     void step()
@@ -1163,38 +1164,39 @@ public:
 
     Application() 
     {
-        /* 
-        - when a new point comes in, check intersected triangle
-        - if have intersection
-            - from the intersected triangle, retrieve the set
-            - from the set, check relation of the point with the set
-            - cases
-                - within - add the point to the set and to the triangle
-                - in front of - move to "no intersection" process
-                - behind
-                    - remove the triangle from the set
-                    - recompute boundary edge and edge points
-                    - for each point within the triangle, re-add them to the map
-        - if no intersection with any triangles
-            - perform radius search on edge points
-                - from the edge points identify the set / planes
-                - if new point does not match found planes
-                    - add the new point as new set
-                - if new point match found planes
-                    - form edge to the found edge points
-                    - form triangle between the new point and any two edge points that have a boundary edge between them
-                    - the triangle is added to the set and the boundary edge and points are recomputed
-        */
+        // // ----------------------- DATA
+        std::map<std::string, std::pair<std::string, std::string>> dataset_map;
+        dataset_map["room"] = std::make_pair(
+            "/home/jiahao/datasets/bag2pcd_output/mission2_reverse/slam_clouds/",
+            "/home/jiahao/datasets/bag2pcd_output/mission2_reverse/slam_poses/slam_poss_graph.slam"
+        );
+        dataset_map["osney"] = std::make_pair(
+            "/home/jiahao/datasets/osney power station/2024-03-26_13-47-27_rec004_osney_power_station/slam_clouds/",
+            "/home/jiahao/datasets/osney power station/2024-03-26_13-47-27_rec004_osney_power_station/slam_pose_graph.slam"
+        );
+        dataset_map["blenheim"] = std::make_pair(
+            "/home/jiahao/datasets/2024-03-14-09-09-02-lenord-walk-for-lintong/individual_clouds/",
+            "/home/jiahao/datasets/2024-03-14-09-09-02-lenord-walk-for-lintong/slam_pose_graph.g2o"
+        );
 
-        // input data
-        std::string pcd_file_folder = "/home/jiahao/datasets/bag2pcd_output/mission2_reverse/slam_clouds/";
-        std::string pose_file_path = "/home/jiahao/datasets/bag2pcd_output/mission2_reverse/slam_poses/slam_poss_graph.slam";
-        // std::string pcd_file_folder = "/home/jiahao/datasets/osney power station/2024-03-26_13-47-27_rec004_osney_power_station/slam_clouds/";
-        // std::string pose_file_path = "/home/jiahao/datasets/osney power station/2024-03-26_13-47-27_rec004_osney_power_station/slam_pose_graph.slam";
-        // std::string pcd_file_folder = "/home/jiahao/datasets/2024-03-14-09-09-02-lenord-walk-for-lintong/individual_clouds/";
-        // std::string pose_file_path = "/home/jiahao/datasets/2024-03-14-09-09-02-lenord-walk-for-lintong/slam_pose_graph.g2o";
-        data_loader.load_dataset(pcd_file_folder, pose_file_path);
+        // // ----------------------- PARAMETERS
+        distance_threshold = 0.05;
+        fit_plane_threshold = 10; // may cause error if below 3
+        merged_eigenvalue_threshold = 15e-5;
+        
 
+        dataset = "room";
+        // dataset = "osney";
+        // dataset = "blenheim";
+        ith_cloud = 50;
+        shuffle_pointcloud = false;
+        pointcloud_fraction = 1;
+        distance_to_radius_ratio = tan(4 * M_PI / 180);
+
+        
+
+        // // ----------------------- INITIALIZATION
+        data_loader.load_dataset(dataset_map.at(dataset).first, dataset_map.at(dataset).second);
         load_point_cloud();
     }
 
@@ -1398,7 +1400,7 @@ public:
     }
 
 
-    int ith_cloud = 55;
+    int ith_cloud;
     std::size_t ith_point = 0;
     std::size_t ith_size = 0;
 
@@ -1410,10 +1412,13 @@ private:
     
 
     // settings
-    double distance_threshold = 0.05;
-    std::size_t fit_plane_threshold = 10; // may cause error if below 3
-    double merged_eigenvalue_threshold = 15e-5;
-    double max_radius = 0.2;
+    double distance_threshold;
+    std::size_t fit_plane_threshold; // may cause error if below 3
+    double merged_eigenvalue_threshold;
+    bool shuffle_pointcloud;
+    double pointcloud_fraction;
+    std::string dataset;
+    double distance_to_radius_ratio;
 
         // free points
     std::queue<std::pair<Eigen::Vector3d, Eigen::Vector3d>> free_points_queue;
@@ -1502,6 +1507,10 @@ public:
 
         // spin
         viewer_->spin();
+
+
+        // // ------------------------------ parameters
+        number_of_spheres_to_display = 20;
     }
 
 private:
@@ -1520,6 +1529,8 @@ private:
     
     std::vector<std::string> sphere_name_list;
     bool show_sphere = false;
+
+    int number_of_spheres_to_display;
 
     void update_display()
     {
@@ -1605,7 +1616,7 @@ private:
             std::sort(boundary_points.begin(), boundary_points.end(), [](const BoundaryPoint& a, const BoundaryPoint& b) {return a.pointID < b.pointID;});
 
             // add sphere for only the last 20 points
-            for (int i = std::max(0, (int)boundary_points.size() - 5); i < boundary_points.size()-1; i++)
+            for (int i = std::max(0, (int)boundary_points.size() - number_of_spheres_to_display); i < (int)boundary_points.size()-1; i++)
             {
                 const BoundaryPoint& boundary_point = boundary_points[i];
                 std::string sphere_name = "boundary_point_" + std::to_string(boundary_point.pointID);
