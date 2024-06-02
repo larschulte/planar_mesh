@@ -396,32 +396,6 @@ public:
         return out_existing_edge_set;
     }
 
-    // check if edge intersects any existing boundary edge of set
-    bool edge_set_intersection(const std::array<int, 2>& newEdge, int setID, const std::map<int, Eigen::Vector2d>& precompute_2d_map)
-    {
-        int newPointID1 = newEdge[0];
-        int newPointID2 = newEdge[1];
-        const Eigen::Vector2d& newPoint1_2D = precompute_2d_map.at(newPointID1);
-        const Eigen::Vector2d& newPoint2_2D = precompute_2d_map.at(newPointID2);
-
-        for (int boundary_edgeID : boundary_edge_of_set.at(setID))
-        {
-            const std::array<int, 2>& boundaryEdge = edge_to_point_map.at(boundary_edgeID);
-            int boundaryPointID1 = boundaryEdge[0];
-            int boundaryPointID2 = boundaryEdge[1];
-            const Eigen::Vector2d& boundaryPoint1_2D = precompute_2d_map.at(boundaryPointID1);
-            const Eigen::Vector2d& boundaryPoint2_2D = precompute_2d_map.at(boundaryPointID2);
-
-            // intersect at ends
-            if (newPointID1 == boundaryPointID1 || newPointID1 == boundaryPointID2 || newPointID2 == boundaryPointID1 || newPointID2 == boundaryPointID2) continue;
-
-            // intersect at middle
-            if (doIntersect(newPoint1_2D, newPoint2_2D, boundaryPoint1_2D, boundaryPoint2_2D)) return true;
-        }
-
-        return false;
-    }
-
     // check if triangle contains any boundary point of set
     bool triangle_set_intersection(const std::array<int, 3>& triangle, int setID, const std::map<int, Eigen::Vector2d>& precompute_2d_map)
     {
@@ -581,13 +555,44 @@ public:
 
         // add edge
         std::set<int> searched_boundary_points_used;
-        for (int point_id : searched_boundary_points_in_current_set)
+        std::vector<std::pair<Eigen::Vector2d, Eigen::Vector2d>> boundary_edges;
+
+        // Precompute boundary edges and their coordinates
+        for (int boundary_edgeID : boundary_edge_of_set.at(setID)) 
+        {
+            const std::array<int, 2>& boundaryEdge = edge_to_point_map.at(boundary_edgeID);
+            const Eigen::Vector2d& boundaryPoint1_2D = precompute_2d_map.at(boundaryEdge[0]);
+            const Eigen::Vector2d& boundaryPoint2_2D = precompute_2d_map.at(boundaryEdge[1]);
+            boundary_edges.emplace_back(boundaryPoint1_2D, boundaryPoint2_2D);
+        }
+
+        for (int point_id : searched_boundary_points_in_current_set) 
         {
             // new edge, smaller id first
             std::array<int, 2> newEdge = {std::min(newPointID, point_id), std::max(newPointID, point_id)};
+            
+            const Eigen::Vector2d& newPoint1_2D = precompute_2d_map.at(newEdge[0]);
+            const Eigen::Vector2d& newPoint2_2D = precompute_2d_map.at(newEdge[1]);
 
             // skip if intersected with any boundary edge of the current set
-            bool intersected = edge_set_intersection(newEdge, setID, precompute_2d_map);
+            bool intersected = false;
+            for (const auto& boundaryEdge : boundary_edges) {
+                const Eigen::Vector2d& boundaryPoint1_2D = boundaryEdge.first;
+                const Eigen::Vector2d& boundaryPoint2_2D = boundaryEdge.second;
+
+                // intersect at ends
+                if (newPoint1_2D == boundaryPoint1_2D || newPoint1_2D == boundaryPoint2_2D || newPoint2_2D == boundaryPoint1_2D || newPoint2_2D == boundaryPoint2_2D) 
+                {
+                    continue;
+                }
+
+                // intersect at middle
+                if (doIntersect(newPoint1_2D, newPoint2_2D, boundaryPoint1_2D, boundaryPoint2_2D)) {
+                    intersected = true;
+                    break;
+                }
+            }
+            
             if (intersected) continue;
 
             // add edge
