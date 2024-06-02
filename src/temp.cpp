@@ -471,11 +471,14 @@ public:
         // }
         // rrstree.adjustRadius(newPointID, point_to_vector3d_map.at(newPointID), smallest_radius);
 
-        // compute the smallest distance to searched boundary points that are not in the same set
+        // compute the smallest distance to searched boundary points that are not in the same set, and is not small set
         double smallest_distance = std::numeric_limits<double>::max();
         for (int point_id : searched_boundary_points)
         {
             if (point_to_set_map.at(point_id) == setID) continue;
+            // skip if the set is small in size
+            if (set_to_points_map.at(point_to_set_map.at(point_id)).size() < fit_plane_threshold) continue;
+            
             double distance = (point_to_vector3d_map.at(newPointID) - point_to_vector3d_map.at(point_id)).norm();
             if (distance < smallest_distance) smallest_distance = distance;
         }
@@ -798,12 +801,15 @@ public:
         // after merging, we are left with sets that should have different normals
         // each point in the neighboring set should reduce their search radius to the closest set
         // [todo]
-        // for each point, compute the shortest distance to another point that is in a different set
+        // for each point, compute the shortest distance to another point that is in a different set, and that different set have enough points
         // if the distance is less than its original radius, reduce its original radius
         for (int pointID : searched_boundary_points_set)
         {
             // setID
             int setID = point_to_set_map.at(pointID);
+
+            // skip if small set
+            if (set_to_points_map.at(setID).size() < fit_plane_threshold) continue;
 
             // smallest distance
             double smallest_distance = std::numeric_limits<double>::max();
@@ -812,6 +818,9 @@ public:
             {
                 // skip if same set
                 if (point_to_set_map.at(otherPointID) == setID) continue;
+
+                // skip if small set
+                if (set_to_points_map.at(point_to_set_map.at(otherPointID)).size() < fit_plane_threshold) continue;
 
                 // compute distance
                 double distance = (point_to_vector3d_map.at(pointID) - point_to_vector3d_map.at(otherPointID)).norm();
