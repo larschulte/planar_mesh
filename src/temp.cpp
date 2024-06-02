@@ -53,7 +53,7 @@ public:
         boundary_point_of_set[newSetID] = {};
     }
 
-    void add_point(int newPointID, int setID, Eigen::Vector3d thisPoint, Eigen::Vector3d origin)
+    void add_point(int newPointID, int setID, const Eigen::Vector3d& thisPoint, const Eigen::Vector3d& origin)
     {
         point_list.push_back(newPointID);
         point_to_vector3d_map[newPointID] = thisPoint;
@@ -66,7 +66,7 @@ public:
         update_boundary_point_record(newPointID, setID);
     }
 
-    void store_point_in_triangle(int newPointID, int triangleID, Eigen::Vector3d thisPoint, Eigen::Vector3d origin)
+    void store_point_in_triangle(int newPointID, int triangleID, const Eigen::Vector3d& thisPoint, const Eigen::Vector3d& origin)
     {
         int setID = triangle_to_set_map.at(triangleID);
 
@@ -462,7 +462,7 @@ public:
     }
 
     // extract set from set
-    std::set<int> intersection_of_sets(std::set<int> setA, std::set<int> setB)
+    std::set<int> intersection_of_sets(const std::set<int>& setA, const std::set<int>& setB)
     {
         // initialize
         std::set<int> setOut;
@@ -634,7 +634,7 @@ public:
         return merge_means(mean1, mean2, size1, size2);
     }
 
-    Eigen::Vector3d merge_means_between_set_and_point(int setID, Eigen::Vector3d point)
+    Eigen::Vector3d merge_means_between_set_and_point(int setID, const Eigen::Vector3d& point)
     {
         Eigen::Vector3d mean1 = set_to_mean_map.at(setID);
         Eigen::Vector3d mean2 = point;
@@ -654,7 +654,7 @@ public:
         return merge_covariances(cov1, cov2, mean1, mean2, size1, size2);
     }
 
-    Eigen::Matrix3d merge_covariances_between_set_and_point(int setID, Eigen::Vector3d point)
+    Eigen::Matrix3d merge_covariances_between_set_and_point(int setID, const Eigen::Vector3d& point)
     {
         Eigen::Matrix3d cov1 = set_to_covariance_matrix_map.at(setID);
         Eigen::Matrix3d cov2 = Eigen::Matrix3d::Zero(); 
@@ -766,7 +766,7 @@ public:
         return merge_map;
     }
 
-    void add_point_by_radius_search(int newPointID, Eigen::Vector3d thisPointVEC, Eigen::Vector3d thisPointOriginVEC)
+    void add_point_by_radius_search(int newPointID, const Eigen::Vector3d& thisPointVEC, const Eigen::Vector3d& thisPointOriginVEC)
     {
         // if empty, can not set up radius search, add point to new set
         if (boundary_point_set.size() == 0)
