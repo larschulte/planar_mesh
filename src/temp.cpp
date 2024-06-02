@@ -516,6 +516,71 @@ public:
             precompute_2d_map[point_id] = project_point_to_set_plane(point_id, setID);
         }
 
+        // // get a queue of candidate edges
+        // std::priority_queue<
+        //     std::pair<double, std::array<int, 2>>, 
+        //     std::vector<std::pair<double, std::array<int, 2>>>, 
+        //     std::greater<std::pair<double, std::array<int, 2>>>
+        // > edge_queue;
+        // for (int point_id : searched_boundary_points_in_current_set)
+        // {
+        //     // new edge, smaller id first
+        //     std::array<int, 2> newEdge = {std::min(newPointID, point_id), std::max(newPointID, point_id)};
+
+        //     // skip if intersected with any boundary edge of the current set
+        //     bool intersected = edge_set_intersection(newEdge, setID, precompute_2d_map);
+        //     if (intersected) continue;
+
+        //     // compute distance in 2d map
+        //     double distance = (precompute_2d_map.at(newEdge[0]) - precompute_2d_map.at(newEdge[1])).norm();
+
+        //     // add to queue
+        //     edge_queue.push(std::make_pair(distance, newEdge));
+        // }
+
+        // // add from shortest edge, until two triangles are formed
+        // std::set<int> searched_boundary_points_used;
+        // int triangles_added = 0;
+        // while (!edge_queue.empty() && triangles_added < 3)
+        // {
+        //     // get edge
+        //     std::array<int, 2> newEdge = edge_queue.top().second;
+        //     edge_queue.pop();
+
+        //     // add edge
+        //     int newEdgeID = getNewEdgeID();
+        //     add_edge(newEdgeID, setID, newEdge);
+
+        //     // add to used
+        //     searched_boundary_points_used.insert(newEdge[0]);
+        //     searched_boundary_points_used.insert(newEdge[1]);
+
+        //     // add triangle
+        //     for (const auto& edgeID : searched_boundary_edge_in_current_set)
+        //     {   
+        //         // skip if not both points are used
+        //         int i1 = edge_to_point_map.at(edgeID)[0];
+        //         int i2 = edge_to_point_map.at(edgeID)[1];
+        //         bool i1_used = searched_boundary_points_used.find(i1) != searched_boundary_points_used.end();
+        //         bool i2_used = searched_boundary_points_used.find(i2) != searched_boundary_points_used.end();
+        //         if (!i1_used || !i2_used) continue;
+
+        //         // new triangle, smaller id first
+        //         std::array<int, 3> newTriangle = sortThreeInts(newPointID, i1, i2);
+
+        //         // skip if triangle already exists
+        //         if (triangle_to_vertices_map_reverse.find(newTriangle) != triangle_to_vertices_map_reverse.end()) continue;
+
+        //         // skip if triangle contains other boundary points
+        //         if (triangle_set_intersection(newTriangle, setID, precompute_2d_map)) continue;
+
+        //         // add triangle
+        //         int newTriangleID = getNewTriangleID();
+        //         add_triangle(newTriangleID, setID, newTriangle);
+        //         triangles_added ++;
+        //     }
+        // }
+
         // add edge
         std::set<int> searched_boundary_points_used;
         for (int point_id : searched_boundary_points_in_current_set)
