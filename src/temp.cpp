@@ -925,8 +925,8 @@ public:
         // ------------- add point by triangle intersection
 
         // get list of intersected triangle by the point
-        std::set<int> searched_triangles = bvhRoot.intersectionSearch(thisPointOriginVEC, thisPointVEC); // may include deleted triangles
-        // std::set<int> searched_triangles = intersection_of_sets(candidate_searched_triangles, global_triangle_set);
+        std::set<int> candidate_searched_triangles = bvhRoot.intersectionSearch(thisPointOriginVEC, thisPointVEC); // may include deleted triangles
+        std::set<int> searched_triangles = intersection_of_sets(candidate_searched_triangles, global_triangle_set);
 
         // group the triangles by set
         std::map<int, std::set<int>> set_to_searched_triangle_map;
