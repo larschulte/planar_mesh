@@ -276,7 +276,15 @@ public:
         {
             bool inserted = boundary_point_set.insert(pointID).second;
             boundary_point_of_set.at(setID).insert(pointID);
-            if (inserted) rrstree.addBoundaryPoint(pointID, point_to_vector3d_map.at(pointID), max_radius);
+            if (inserted) 
+            {
+                // origin to point distance 
+                double distance = (point_to_vector3d_map.at(pointID) - point_to_origin_vector3d_map.at(pointID)).norm();
+                constexpr double angle = 3;
+                constexpr double ratio = tan(angle * M_PI / 180);
+                double radius = distance * ratio;
+                rrstree.addBoundaryPoint(pointID, point_to_vector3d_map.at(pointID), radius);
+            }
         }
         else
         {
