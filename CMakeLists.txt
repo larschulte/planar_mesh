@@ -75,6 +75,14 @@ target_include_directories(RRSTree_test
     $<INSTALL_INTERFACE:include>)
 
 
+# add executable
+add_executable(MeshObject_test src/MeshObject_test.cpp src/MeshObject/Vert.cpp src/MeshObject/Edge.cpp src/MeshObject/Face.cpp src/MeshObject/Storage.cpp)
+target_link_libraries (MeshObject_test ${PCL_LIBRARIES})
+target_include_directories(MeshObject_test
+  PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>)
+
 
 # add executable
 add_executable(optimization src/optimization.cpp)
