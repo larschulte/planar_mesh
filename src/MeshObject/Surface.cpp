@@ -26,29 +26,25 @@ void Surface::delete_()
     // log
     std::cout << "Destroying surface " << id_ << std::endl;
 
-    // disconnect all vertices
-    for (auto vertex : vertices_)
-    {
-        if (vertex.expired()) throw std::runtime_error("Surface holds pointer to deleted vertex");
-        vertex.lock()->disconnect_surface(shared_from_this());
-    }
+    // set deletion flag
+    deleting_ = true;
 
-    // disconnect all edges
-    for (auto edge : edges_)
+    // disconnect
+    while (!vertices_.empty())
     {
-        if (edge.expired()) throw std::runtime_error("Surface holds pointer to deleted edge");
-        edge.lock()->disconnect_surface(shared_from_this());
+        disconnect(*vertices_.begin());
     }
-
-    // disconnect all faces
-    for (auto face : faces_)
+    while (!edges_.empty())
     {
-        if (face.expired()) throw std::runtime_error("Surface holds pointer to deleted face");
-        face.lock()->disconnect_surface(shared_from_this());
+        disconnect(*edges_.begin());
+    }
+    while (!faces_.empty())
+    {
+        disconnect(*faces_.begin());
     }
 
     // log
-    std::cout << "Surface " << id_ << " destroyed" << std::endl;
+    std::cout << "---------- surface " << id_ << " destroyed" << std::endl;
 }
 
 int Surface::get_id() const
@@ -56,62 +52,76 @@ int Surface::get_id() const
     return id_;
 }
 
-void Surface::connect_vertex(std::weak_ptr<Vertex> vertex)
+void Surface::connect(std::weak_ptr<Vertex> vertex)
 {
-    // check pointer validity
+    // check input
     if (vertex.expired()) throw std::runtime_error("Attempts to connect surface with invalid vertex.");
-    auto vertex_valid = vertex.lock();
 
-    // store
-    vertices_.push_back(vertex_valid);
+    // connect
+    bool inserted = vertices_.insert(vertex.lock()).second;
+    if (inserted) vertex.lock()->connect(shared_from_this());
 }
 
-void Surface::disconnect_vertex(std::weak_ptr<Vertex> vertex)
+void Surface::connect(std::weak_ptr<Edge> edge)
 {
-    // check pointer validity
-    if (vertex.expired()) throw std::runtime_error("Attempts to disconnect surface from invalid vertex.");
-    auto vertex_valid = vertex.lock();
-
-    // delete
-    vertices_.erase(std::remove_if(vertices_.begin(), vertices_.end(), [&](const std::weak_ptr<Vertex> &v){return v.lock() == vertex_valid;}), vertices_.end());
-}
-
-void Surface::connect_edge(std::weak_ptr<Edge> edge)
-{
-    // check pointer validity
+    // check input
     if (edge.expired()) throw std::runtime_error("Attempts to connect surface with invalid edge.");
-    auto edge_valid = edge.lock();
 
-    // store
-    edges_.push_back(edge_valid);
+    // connect
+    bool inserted = edges_.insert(edge).second;
+    if (inserted) edge.lock()->connect(shared_from_this());
 }
 
-void Surface::disconnect_edge(std::weak_ptr<Edge> edge)
+void Surface::connect(std::weak_ptr<Face> face)
 {
-    // check pointer validity
-    if (edge.expired()) throw std::runtime_error("Attempts to disconnect surface from invalid edge.");
-    auto edge_valid = edge.lock();
-
-    // delete
-    edges_.erase(std::remove_if(edges_.begin(), edges_.end(), [&](const std::weak_ptr<Edge> &e){return e.lock() == edge_valid;}), edges_.end());
-}
-
-void Surface::connect_face(std::weak_ptr<Face> face)
-{
-    // check pointer validity
+    // check input
     if (face.expired()) throw std::runtime_error("Attempts to connect surface with invalid face.");
-    auto face_valid = face.lock();
 
-    // store
-    faces_.push_back(face_valid);
+    // connect
+    bool inserted = faces_.insert(face).second;
+    if (inserted) face.lock()->connect(shared_from_this());
 }
 
-void Surface::disconnect_face(std::weak_ptr<Face> face)
+void Surface::disconnect(std::weak_ptr<Vertex> vertex)
+{
+    // check input
+    if (vertex.expired()) return;
+
+    // disconnect
+    bool erased = vertices_.erase(vertex.lock());
+    if (erased) vertex.lock()->disconnect(shared_from_this());
+}
+
+void Surface::disconnect(std::weak_ptr<Edge> edge)
+{
+    // check input
+    if (edge.expired()) return;
+
+    // disconnect
+    bool erased = edges_.erase(edge);
+    if (erased) edge.lock()->disconnect(shared_from_this());
+}
+
+void Surface::disconnect(std::weak_ptr<Face> face)
+{
+    // check input
+    if (face.expired()) return;
+
+    // disconnect
+    bool erased = faces_.erase(face);
+    if (erased) face.lock()->disconnect(shared_from_this());
+}
+
+bool operator<(const std::weak_ptr<Surface>& lhs, const std::weak_ptr<Surface>& rhs)
 {
     // check pointer validity
-    if (face.expired()) throw std::runtime_error("Attempts to disconnect surface from invalid face.");
-    auto face_valid = face.lock();
+    if (lhs.expired() || rhs.expired()) throw std::runtime_error("Comparing expired surfaces");
+    return lhs.lock()->get_id() < rhs.lock()->get_id();
+}
 
-    // delete
-    faces_.erase(std::remove_if(faces_.begin(), faces_.end(), [&](const std::weak_ptr<Face> &f){return f.lock() == face_valid;}), faces_.end());
+bool operator==(const std::weak_ptr<Surface>& lhs, const std::weak_ptr<Surface>& rhs)
+{
+    // check pointer validity
+    if (lhs.expired() || rhs.expired()) throw std::runtime_error("Comparing expired surfaces");
+    return lhs.lock()->get_id() == rhs.lock()->get_id();
 }

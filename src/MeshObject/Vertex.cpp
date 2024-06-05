@@ -1,6 +1,7 @@
 #include "MeshObject/Storage.hpp"
 #include "MeshObject/Vertex.hpp"
 #include "MeshObject/Edge.hpp"
+#include "MeshObject/Face.hpp"
 #include "MeshObject/Surface.hpp"
 #include <iostream>
 
@@ -25,14 +26,25 @@ void Vertex::delete_()
     // log
     std::cout << "Destroying vertex " << id_ << std::endl;
 
-    // cascade delete edges
-    for (std::weak_ptr<Edge>& edge : edges_)
+    // set deletion flag
+    deleting_ = true;
+
+    // disconnect
+    while (!edges_.empty())
     {
-        if (!edge.expired()) edge.lock()->cascade_delete_from_vertex(shared_from_this()); // cascade delete is depth first
+        disconnect(*edges_.begin());
+    }
+    while (!faces_.empty())
+    {
+        disconnect(*faces_.begin());
+    }
+    while (!surfaces_.empty())
+    {
+        disconnect(*surfaces_.begin());
     }
 
     // log
-    std::cout << "Vertex " << id_ << " destroyed" << std::endl;
+    std::cout << "---------- vertex " << id_ << " destroyed" << std::endl;
 }
 
 int Vertex::get_id() const 
@@ -40,42 +52,79 @@ int Vertex::get_id() const
     return id_; 
 }
 
-void Vertex::connect_edge(std::weak_ptr<Edge> edge) 
+Eigen::Vector3d Vertex::get_pos() const 
+{ 
+    return pos_; 
+}
+
+void Vertex::connect(std::weak_ptr<Edge> edge) 
 {
-    // check pointer validity
+    // check input
     if (edge.expired()) throw std::runtime_error("Attempts to connect vertex with invalid edge.");
-    auto edge_valid = edge.lock();
 
-    // store
-    edges_.push_back(edge_valid);
+    // connect
+    bool inserted = edges_.insert(edge).second;
+    if (inserted) edge.lock()->connect(shared_from_this());
 }
 
-void Vertex::disconnect_edge(std::weak_ptr<Edge> edge) 
+void Vertex::connect(std::weak_ptr<Face> face) 
 {
-    // check pointer validity
-    if (edge.expired()) throw std::runtime_error("Attempts to disconnect vertex from invalid edge.");
-    auto edge_valid = edge.lock();
+    // check input
+    if (face.expired()) throw std::runtime_error("Attempts to connect vertex with invalid face.");
 
-    // delete
-    edges_.erase(std::remove_if(edges_.begin(), edges_.end(), [&](const std::weak_ptr<Edge> &e){return e.lock() == edge_valid;}), edges_.end());
+    // connect
+    bool inserted = faces_.insert(face).second;
+    if (inserted) face.lock()->connect(shared_from_this());
 }
 
-void Vertex::connect_surface(std::weak_ptr<Surface> surface)
+void Vertex::connect(std::weak_ptr<Surface> surface)
 {
-    // check pointer validity
+    // check input
     if (surface.expired()) throw std::runtime_error("Attempts to connect vertex with invalid surface.");
-    auto surface_valid = surface.lock();
 
-    // store
-    surfaces_.push_back(surface_valid);
+    // connect
+    bool inserted = surfaces_.insert(surface).second;
+    if (inserted) surface.lock()->connect(shared_from_this());
 }
 
-void Vertex::disconnect_surface(std::weak_ptr<Surface> surface)
+void Vertex::disconnect(std::weak_ptr<Edge> edge) 
+{
+    // check input
+    if (edge.expired()) return;
+
+    // disconnect
+    bool erased = edges_.erase(edge);
+    if (erased) edge.lock()->disconnect(shared_from_this());
+}
+
+void Vertex::disconnect(std::weak_ptr<Face> face)
 {
     // check pointer validity
-    if (surface.expired()) throw std::runtime_error("Attempts to disconnect vertex from invalid surface.");
-    auto surface_valid = surface.lock();
+    if (face.expired()) return;
 
-    // delete
-    surfaces_.erase(std::remove_if(surfaces_.begin(), surfaces_.end(), [&](const std::weak_ptr<Surface> &s){return s.lock() == surface_valid;}), surfaces_.end());
+    // disconnect
+    bool erased = faces_.erase(face);
+    if (erased) face.lock()->disconnect(shared_from_this());
+}
+
+void Vertex::disconnect(std::weak_ptr<Surface> surface)
+{
+    // check input
+    if (surface.expired()) return;
+
+    // disconnect
+    bool erased = surfaces_.erase(surface);
+    if (erased) surface.lock()->disconnect(shared_from_this());
+}
+
+bool operator<(const std::weak_ptr<Vertex>& lhs, const std::weak_ptr<Vertex>& rhs)
+{
+    if (lhs.expired() || rhs.expired()) throw std::runtime_error("Comparing expired edges");
+    return lhs.lock()->get_id() < rhs.lock()->get_id();
+}
+
+bool operator==(const std::weak_ptr<Vertex>& lhs, const std::weak_ptr<Vertex>& rhs)
+{
+    if (lhs.expired() || rhs.expired()) throw std::runtime_error("Comparing expired edges");
+    return lhs.lock()->get_id() == rhs.lock()->get_id();
 }

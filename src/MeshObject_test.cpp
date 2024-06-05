@@ -38,9 +38,9 @@ int main()
     std::weak_ptr<Face> face0 = storage->faces_[0];
 
     // Deleting a vertex to see the cascading deletions
-    // storage->delete_vertex(vert0.lock());
+    storage->delete_vertex(vertex0.lock());
     // storage->delete_face(face0.lock());
-    storage->delete_edge(edge0.lock());
+    // storage->delete_edge(edge0.lock());
 
     // Check if weak pointers are expired
     std::cout << "Vertex 0 expired: " << vertex0.expired() << std::endl;

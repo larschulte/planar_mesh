@@ -1,7 +1,7 @@
 #pragma once
 
 #include <memory>
-#include <vector>
+#include <set>
 
 // Forward declarations
 class Vertex;
@@ -18,22 +18,24 @@ protected:
 
 public:
     int get_id() const;
-    std::weak_ptr<Vertex> get_vertex1() const;
-    std::weak_ptr<Vertex> get_vertex2() const;
-    
-    void cascade_delete_from_vertex(std::weak_ptr<Vertex> vertex);
-    void connect_face(std::weak_ptr<Face> face);
-    void disconnect_face(std::weak_ptr<Face> face);
-    void connect_surface(std::weak_ptr<Surface> surface);
-    void disconnect_surface(std::weak_ptr<Surface> surface);
+
+    void connect(std::weak_ptr<Vertex> vertex);
+    void connect(std::weak_ptr<Face> face);
+    void connect(std::weak_ptr<Surface> surface);
+    void disconnect(std::weak_ptr<Vertex> vertex);
+    void disconnect(std::weak_ptr<Face> face);
+    void disconnect(std::weak_ptr<Surface> surface);
 
 private:
-    void check_self_destruction();
+    bool deleting_ = false;
 
     int id_;
-    std::weak_ptr<Vertex> vertex1_;
-    std::weak_ptr<Vertex> vertex2_;
-    std::vector<std::weak_ptr<Face>> faces_;
-    std::vector<std::weak_ptr<Surface>> surfaces_;
     std::weak_ptr<Storage> storage_;
+
+    std::set<std::weak_ptr<Vertex>> vertices_;
+    std::set<std::weak_ptr<Face>> faces_;
+    std::set<std::weak_ptr<Surface>> surfaces_;
 };
+
+bool operator<(const std::weak_ptr<Edge>& lhs, const std::weak_ptr<Edge>& rhs);
+bool operator==(const std::weak_ptr<Edge>& lhs, const std::weak_ptr<Edge>& rhs);

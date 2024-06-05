@@ -19,19 +19,24 @@ protected:
 
 public:
     int get_id() const;
-    void connect_vertex(std::weak_ptr<Vertex> vertex);
-    void disconnect_vertex(std::weak_ptr<Vertex> vertex);
-    void connect_edge(std::weak_ptr<Edge> edge);
-    void disconnect_edge(std::weak_ptr<Edge> edge);
-    void connect_face(std::weak_ptr<Face> face);
-    void disconnect_face(std::weak_ptr<Face> face);
+
+    void connect(std::weak_ptr<Vertex> vertex);
+    void connect(std::weak_ptr<Edge> edge);
+    void connect(std::weak_ptr<Face> face);
+
+    void disconnect(std::weak_ptr<Vertex> vertex);
+    void disconnect(std::weak_ptr<Edge> edge);
+    void disconnect(std::weak_ptr<Face> face);
     
 private:
+    bool deleting_ = false;
+
     int id_;
     std::weak_ptr<Storage> storage_;
-    std::vector<std::weak_ptr<Vertex>> vertices_;
-    std::vector<std::weak_ptr<Edge>> edges_;
-    std::vector<std::weak_ptr<Face>> faces_;
+
+    std::set<std::weak_ptr<Vertex>> vertices_;
+    std::set<std::weak_ptr<Edge>> edges_;
+    std::set<std::weak_ptr<Face>> faces_;
 
     Eigen::Vector3d mean_;
     Eigen::Matrix3d covariance_;
@@ -39,3 +44,6 @@ private:
     Eigen::Vector3d eigenvalues_;
     Eigen::Vector3d normal_;
 };
+
+bool operator<(const std::weak_ptr<Surface>& lhs, const std::weak_ptr<Surface>& rhs);
+bool operator==(const std::weak_ptr<Surface>& lhs, const std::weak_ptr<Surface>& rhs);
