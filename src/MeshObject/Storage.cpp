@@ -1,23 +1,23 @@
 #include "MeshObject/Storage.hpp"
-#include "MeshObject/Vert.hpp"
+#include "MeshObject/Vertex.hpp"
 #include "MeshObject/Edge.hpp"
 #include "MeshObject/Face.hpp"
 
-void Storage::add_vert(Eigen::Vector3d pos) 
+void Storage::add_vertex(Eigen::Vector3d pos) 
 {
     // initialize
-    std::shared_ptr<Vert> vert = std::make_shared<Vert>();
-    vert->initialize_(shared_from_this(), pos);
+    std::shared_ptr<Vertex> vertex = std::make_shared<Vertex>();
+    vertex->initialize_(shared_from_this(), pos);
 
     // put into list
-    verts_.push_back(vert);    
+    vertices_.push_back(vertex);
 }
 
-void Storage::add_edge(std::weak_ptr<Vert> vert1, std::weak_ptr<Vert> vert2) 
+void Storage::add_edge(std::weak_ptr<Vertex> vertex1, std::weak_ptr<Vertex> vertex2) 
 {    
     // initialize
     std::shared_ptr<Edge> edge = std::make_shared<Edge>();
-    edge->initialize_(shared_from_this(), vert1, vert2);
+    edge->initialize_(shared_from_this(), vertex1, vertex2);
 
     // put into list
     edges_.push_back(edge);
@@ -35,18 +35,18 @@ void Storage::add_face(std::weak_ptr<Edge> edge1, std::weak_ptr<Edge> edge2, std
 }
 
 
-// need to ensure the vert/edge/face are only stored using shared_ptr here and nowhere else
-void Storage::delete_vert(std::weak_ptr<Vert> vert) 
+// need to ensure the vertex/edge/face are only stored using shared_ptr here and nowhere else
+void Storage::delete_vertex(std::weak_ptr<Vertex> vertex) 
 {
     // check if valid
-    if (vert.expired()) throw std::runtime_error("Attempts to delete expired vert.");
-    auto vert_valid = vert.lock();
+    if (vertex.expired()) throw std::runtime_error("Attempts to delete expired vertex.");
+    auto vertex_valid = vertex.lock();
 
     // member delete
-    vert_valid->delete_();
+    vertex_valid->delete_();
 
     // storage delete
-    verts_.erase(std::remove(verts_.begin(), verts_.end(), vert_valid), verts_.end());
+    vertices_.erase(std::remove(vertices_.begin(), vertices_.end(), vertex_valid), vertices_.end());
 }
 
 void Storage::delete_edge(std::weak_ptr<Edge> edge) 
@@ -76,6 +76,6 @@ void Storage::delete_face(std::weak_ptr<Face> face)
 }
 
 // get id
-int Storage::get_next_vert_id() { return next_vert_id_++; }
+int Storage::get_next_vertex_id() { return next_vertex_id_++; }
 int Storage::get_next_edge_id() { return next_edge_id_++; }
 int Storage::get_next_face_id() { return next_face_id_++; }

@@ -8,7 +8,7 @@
 class Edge;
 class Storage;
 
-class Vert : public std::enable_shared_from_this<Vert> 
+class Vertex : public std::enable_shared_from_this<Vertex> 
 {
 protected:
     friend class Storage;

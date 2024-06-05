@@ -1,35 +1,35 @@
 #include "MeshObject/Storage.hpp"
-#include "MeshObject/Vert.hpp"
+#include "MeshObject/Vertex.hpp"
 #include "MeshObject/Edge.hpp"
 #include "MeshObject/Face.hpp"
 
-void Edge::initialize_(std::weak_ptr<Storage> storage, std::weak_ptr<Vert> vert1, std::weak_ptr<Vert> vert2)
+void Edge::initialize_(std::weak_ptr<Storage> storage, std::weak_ptr<Vertex> vertex1, std::weak_ptr<Vertex> vertex2)
 {
     // check pointer validity
     if (storage.expired()) throw std::runtime_error("Attempts to create edge with invalid storage.");
-    if (vert1.expired()) throw std::runtime_error("Attempts to create edge with invalid vert1.");
-    if (vert2.expired()) throw std::runtime_error("Attempts to create edge with invalid vert2.");
+    if (vertex1.expired()) throw std::runtime_error("Attempts to create edge with invalid vertex1.");
+    if (vertex2.expired()) throw std::runtime_error("Attempts to create edge with invalid vertex2.");
     auto storage_valid = storage.lock();
-    auto vert1_valid = vert1.lock();
-    auto vert2_valid = vert2.lock();
+    auto vertex1_valid = vertex1.lock();
+    auto vertex2_valid = vertex2.lock();
 
     // get id
     id_ = storage_valid->get_next_edge_id();
 
     // sort
-    if (vert1_valid->get_id() > vert2_valid->get_id()) std::swap(vert1_valid, vert2_valid);
+    if (vertex1_valid->get_id() > vertex2_valid->get_id()) std::swap(vertex1_valid, vertex2_valid);
 
     // store
-    vert1_ = vert1_valid;
-    vert2_ = vert2_valid;
+    vertex1_ = vertex1_valid;
+    vertex2_ = vertex2_valid;
     storage_ = storage_valid;
     
     // register edge with verts
-    vert1_valid->connect_edge(shared_from_this());
-    vert2_valid->connect_edge(shared_from_this());
+    vertex1_valid->connect_edge(shared_from_this());
+    vertex2_valid->connect_edge(shared_from_this());
 
     // log
-    std::cout << "Edge " << id_ << " created between vertex " << vert1_valid->get_id() << " and vertex " << vert2_valid->get_id() << std::endl;
+    std::cout << "Edge " << id_ << " created between vertex " << vertex1_valid->get_id() << " and vertex " << vertex2_valid->get_id() << std::endl;
 }
 
 void Edge::delete_()
@@ -38,8 +38,8 @@ void Edge::delete_()
     std::cout << "Destroying edge " << id_ << std::endl;
 
     // disconnect verts
-    if (!vert1_.expired()) vert1_.lock()->disconnect_edge(shared_from_this());
-    if (!vert2_.expired()) vert2_.lock()->disconnect_edge(shared_from_this());
+    if (!vertex1_.expired()) vertex1_.lock()->disconnect_edge(shared_from_this());
+    if (!vertex2_.expired()) vertex2_.lock()->disconnect_edge(shared_from_this());
     
     // cascade delete faces
     for (auto &face : faces_)
@@ -51,20 +51,20 @@ void Edge::delete_()
     std::cout << "Edge " << id_ << " destroyed" << std::endl;
 }
 
-void Edge::cascade_delete_from_vert(std::weak_ptr<Vert> vert)
+void Edge::cascade_delete_from_vertex(std::weak_ptr<Vertex> vertex)
 {
     // get valid pointers
-    if (vert.expired()) throw std::runtime_error("Try to cascade delete from expired verts");
-    if (vert1_.expired()) throw std::runtime_error("Edge holds pointer to deleted vert1");
-    if (vert2_.expired()) throw std::runtime_error("Edge holds pointer to deleted vert2");
+    if (vertex.expired()) throw std::runtime_error("Try to cascade delete from expired verts");
+    if (vertex1_.expired()) throw std::runtime_error("Edge holds pointer to deleted vertex1");
+    if (vertex2_.expired()) throw std::runtime_error("Edge holds pointer to deleted vertex2");
     if (storage_.expired()) throw std::runtime_error("Edge holds pointer to deleted storage");
-    auto vert_valid = vert.lock();
-    auto vert1_valid = vert1_.lock();
-    auto vert2_valid = vert2_.lock();
+    auto vertex_valid = vertex.lock();
+    auto vertex1_valid = vertex1_.lock();
+    auto vertex2_valid = vertex2_.lock();
     auto storage_valid = storage_.lock();
 
-    // check if vert is connected to edge
-    if (vert_valid != vert1_valid && vert_valid != vert2_valid) throw std::runtime_error("Try to cascade delete from unconnected vert");
+    // check if vertex is connected to edge
+    if (vertex_valid != vertex1_valid && vertex_valid != vertex2_valid) throw std::runtime_error("Try to cascade delete from unconnected vertex");
 
     // delete edge
     storage_valid->delete_edge(shared_from_this());
@@ -106,23 +106,23 @@ void Edge::check_self_destruction()
     }
 }
 
-std::weak_ptr<Vert> Edge::get_vert1() const 
+std::weak_ptr<Vertex> Edge::get_vertex1() const 
 {
     // get valid pointer
-    if (vert1_.expired()) throw std::runtime_error("Edge holds pointer to deleted vert.");
-    auto vert1_valid = vert1_.lock();
+    if (vertex1_.expired()) throw std::runtime_error("Edge holds pointer to deleted vertex.");
+    auto vertex1_valid = vertex1_.lock();
 
     // return
-    return vert1_valid; 
+    return vertex1_valid; 
 }
-std::weak_ptr<Vert> Edge::get_vert2() const 
+std::weak_ptr<Vertex> Edge::get_vertex2() const 
 { 
     // get valid pointer
-    if (vert2_.expired()) throw std::runtime_error("Edge holds pointer to deleted vert.");
-    auto vert2_valid = vert2_.lock();
+    if (vertex2_.expired()) throw std::runtime_error("Edge holds pointer to deleted vertex.");
+    auto vertex2_valid = vertex2_.lock();
 
     // return
-    return vert2_valid; 
+    return vertex2_valid; 
 }
 
 int Edge::get_id() const 
