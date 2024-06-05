@@ -2,6 +2,8 @@
 #include "MeshObject/Vertex.hpp"
 #include "MeshObject/Edge.hpp"
 #include "MeshObject/Face.hpp"
+#include "MeshObject/Surface.hpp"
+#include <iostream>
 
 void Edge::initialize_(std::weak_ptr<Storage> storage, std::weak_ptr<Vertex> vertex1, std::weak_ptr<Vertex> vertex2)
 {
@@ -91,6 +93,26 @@ void Edge::disconnect_face(std::weak_ptr<Face> face)
 
     // check if edge should be deleted
     check_self_destruction();
+}
+
+void Edge::connect_surface(std::weak_ptr<Surface> surface)
+{
+    // check if surface is valid
+    if (surface.expired()) throw std::runtime_error("Attempts to connect edge with invalid surface.");
+    auto surface_valid = surface.lock();
+
+    // store
+    surfaces_.push_back(surface_valid);
+}
+
+void Edge::disconnect_surface(std::weak_ptr<Surface> surface)
+{
+    // check if surface is valid
+    if (surface.expired()) throw std::runtime_error("Attempts to disconnect edge from invalid surface.");
+    auto surface_valid = surface.lock();
+
+    // remove surface
+    surfaces_.erase(std::remove_if(surfaces_.begin(), surfaces_.end(), [&](const std::weak_ptr<Surface> &s){ return s.lock() == surface_valid; }), surfaces_.end());
 }
 
 void Edge::check_self_destruction()

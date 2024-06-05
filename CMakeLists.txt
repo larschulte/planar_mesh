@@ -76,7 +76,7 @@ target_include_directories(RRSTree_test
 
 
 # add executable
-add_executable(MeshObject_test src/MeshObject_test.cpp src/MeshObject/Vertex.cpp src/MeshObject/Edge.cpp src/MeshObject/Face.cpp src/MeshObject/Storage.cpp)
+add_executable(MeshObject_test src/MeshObject_test.cpp src/MeshObject/Vertex.cpp src/MeshObject/Edge.cpp src/MeshObject/Face.cpp src/MeshObject/Surface.cpp src/MeshObject/Storage.cpp)
 target_link_libraries (MeshObject_test ${PCL_LIBRARIES})
 target_include_directories(MeshObject_test
   PUBLIC

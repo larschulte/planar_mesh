@@ -2,6 +2,7 @@
 #include "MeshObject/Vertex.hpp"
 #include "MeshObject/Edge.hpp"
 #include "MeshObject/Face.hpp"
+#include "MeshObject/Surface.hpp"
 
 void Storage::add_vertex(Eigen::Vector3d pos) 
 {
@@ -34,6 +35,15 @@ void Storage::add_face(std::weak_ptr<Edge> edge1, std::weak_ptr<Edge> edge2, std
     faces_.push_back(face);
 }
 
+void Storage::add_surface() 
+{
+    // initialize
+    std::shared_ptr<Surface> surface = std::make_shared<Surface>();
+    surface->initialize_(shared_from_this());
+
+    // put into list
+    surfaces_.push_back(surface);
+}
 
 // need to ensure the vertex/edge/face are only stored using shared_ptr here and nowhere else
 void Storage::delete_vertex(std::weak_ptr<Vertex> vertex) 
@@ -75,7 +85,21 @@ void Storage::delete_face(std::weak_ptr<Face> face)
     faces_.erase(std::remove(faces_.begin(), faces_.end(), face_valid), faces_.end());
 }
 
+void Storage::delete_surface(std::weak_ptr<Surface> surface) 
+{
+    // check if valid
+    if (surface.expired()) throw std::runtime_error("Attempts to delete expired surface.");
+    auto surface_valid = surface.lock();
+
+    // member delete
+    surface_valid->delete_();
+
+    // storage delete
+    surfaces_.erase(std::remove(surfaces_.begin(), surfaces_.end(), surface_valid), surfaces_.end());
+}
+
 // get id
 int Storage::get_next_vertex_id() { return next_vertex_id_++; }
 int Storage::get_next_edge_id() { return next_edge_id_++; }
 int Storage::get_next_face_id() { return next_face_id_++; }
+int Storage::get_next_surface_id() { return next_surface_id_++; }

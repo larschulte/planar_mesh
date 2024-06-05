@@ -1,6 +1,8 @@
 #include "MeshObject/Storage.hpp"
 #include "MeshObject/Vertex.hpp"
 #include "MeshObject/Edge.hpp"
+#include "MeshObject/Surface.hpp"
+#include <iostream>
 
 void Vertex::initialize_(std::weak_ptr<Storage> storage, Eigen::Vector3d pos)
 {
@@ -56,4 +58,24 @@ void Vertex::disconnect_edge(std::weak_ptr<Edge> edge)
 
     // delete
     edges_.erase(std::remove_if(edges_.begin(), edges_.end(), [&](const std::weak_ptr<Edge> &e){return e.lock() == edge_valid;}), edges_.end());
+}
+
+void Vertex::connect_surface(std::weak_ptr<Surface> surface)
+{
+    // check pointer validity
+    if (surface.expired()) throw std::runtime_error("Attempts to connect vertex with invalid surface.");
+    auto surface_valid = surface.lock();
+
+    // store
+    surfaces_.push_back(surface_valid);
+}
+
+void Vertex::disconnect_surface(std::weak_ptr<Surface> surface)
+{
+    // check pointer validity
+    if (surface.expired()) throw std::runtime_error("Attempts to disconnect vertex from invalid surface.");
+    auto surface_valid = surface.lock();
+
+    // delete
+    surfaces_.erase(std::remove_if(surfaces_.begin(), surfaces_.end(), [&](const std::weak_ptr<Surface> &s){return s.lock() == surface_valid;}), surfaces_.end());
 }

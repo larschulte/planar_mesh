@@ -1,6 +1,8 @@
 #include "MeshObject/Storage.hpp"
 #include "MeshObject/Edge.hpp"
 #include "MeshObject/Face.hpp"
+#include "MeshObject/Surface.hpp"
+#include <iostream>
 
 void Face::initialize_(std::weak_ptr<Storage> storage, std::weak_ptr<Edge> edge1, std::weak_ptr<Edge> edge2, std::weak_ptr<Edge> edge3)
 {
@@ -74,4 +76,24 @@ void Face::cascade_delete_from_edge(std::weak_ptr<Edge> edge)
     
     // delete face
     storage_valid->delete_face(shared_from_this());
+}
+
+void Face::connect_surface(std::weak_ptr<Surface> surface)
+{
+    // check if surface is valid
+    if (surface.expired()) throw std::runtime_error("Attempts to connect face with invalid surface.");
+    auto surface_valid = surface.lock();
+
+    // store
+    surfaces_.push_back(surface_valid);
+}
+
+void Face::disconnect_surface(std::weak_ptr<Surface> surface)
+{
+    // check if surface is valid
+    if (surface.expired()) throw std::runtime_error("Attempts to disconnect face from invalid surface.");
+    auto surface_valid = surface.lock();
+
+    // delete
+    surfaces_.erase(std::remove_if(surfaces_.begin(), surfaces_.end(), [&](const std::weak_ptr<Surface> &s){return s.lock() == surface_valid;}), surfaces_.end());
 }
