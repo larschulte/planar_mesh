@@ -4,98 +4,106 @@
 #include "MeshObject/Face.hpp"
 #include "MeshObject/Surface.hpp"
 
-void Storage::add_vertex(Eigen::Vector3d pos) 
+std::weak_ptr<Vertex> Storage::add_vertex(Eigen::Vector3d pos) 
 {
-    // initialize
+    // create
     std::shared_ptr<Vertex> vertex = std::make_shared<Vertex>();
     vertex->initialize_(shared_from_this(), pos);
 
-    // put into list
-    vertices_.push_back(vertex);
+    // store
+    vertices_.insert(vertex);
+
+    // return
+    return vertex;
 }
 
-void Storage::add_edge(std::weak_ptr<Vertex> vertex1, std::weak_ptr<Vertex> vertex2) 
+std::weak_ptr<Edge> Storage::add_edge(std::weak_ptr<Vertex> vertex1, std::weak_ptr<Vertex> vertex2) 
 {    
-    // initialize
+    // create
     std::shared_ptr<Edge> edge = std::make_shared<Edge>();
     edge->initialize_(shared_from_this(), vertex1, vertex2);
 
-    // put into list
-    edges_.push_back(edge);
+    // store
+    edges_.insert(edge);
+
+    // return
+    return edge;
 
 }
 
-void Storage::add_face(std::weak_ptr<Edge> edge1, std::weak_ptr<Edge> edge2, std::weak_ptr<Edge> edge3) 
+std::weak_ptr<Face> Storage::add_face(std::weak_ptr<Edge> edge1, std::weak_ptr<Edge> edge2, std::weak_ptr<Edge> edge3) 
 {
-    // initialize
+    // create
     std::shared_ptr<Face> face = std::make_shared<Face>();
     face->initialize_(shared_from_this(), edge1, edge2, edge3);
 
-    // put into list
-    faces_.push_back(face);
+    // store
+    faces_.insert(face);
+
+    // return
+    return face;
 }
 
-void Storage::add_surface() 
+std::weak_ptr<Surface> Storage::add_surface() 
 {
-    // initialize
+    // create
     std::shared_ptr<Surface> surface = std::make_shared<Surface>();
     surface->initialize_(shared_from_this());
 
-    // put into list
-    surfaces_.push_back(surface);
+    // store
+    surfaces_.insert(surface);
+
+    // return
+    return surface;
 }
 
 // need to ensure the vertex/edge/face are only stored using shared_ptr here and nowhere else
 void Storage::delete_vertex(std::weak_ptr<Vertex> vertex) 
 {
-    // check if valid
+    // check input
     if (vertex.expired()) throw std::runtime_error("Attempts to delete expired vertex.");
-    auto vertex_valid = vertex.lock();
 
     // member delete
-    vertex_valid->delete_();
+    vertex.lock()->delete_();
 
     // storage delete
-    vertices_.erase(std::remove(vertices_.begin(), vertices_.end(), vertex_valid), vertices_.end());
+    vertices_.erase(vertex.lock());
 }
 
 void Storage::delete_edge(std::weak_ptr<Edge> edge) 
 {
-    // check if valid
+    // check input
     if (edge.expired()) throw std::runtime_error("Attempts to delete expired edge.");
-    auto edge_valid = edge.lock();
 
     // member delete
-    edge_valid->delete_();
+    edge.lock()->delete_();
 
     // storage delete
-    edges_.erase(std::remove(edges_.begin(), edges_.end(), edge_valid), edges_.end());
+    edges_.erase(edge.lock());
 }
 
 void Storage::delete_face(std::weak_ptr<Face> face) 
 {
-    // check if valid
+    // check input
     if (face.expired()) throw std::runtime_error("Attempts to delete expired face.");
-    auto face_valid = face.lock();
 
     // member delete
-    face_valid->delete_();
+    face.lock()->delete_();
 
     // storage delete
-    faces_.erase(std::remove(faces_.begin(), faces_.end(), face_valid), faces_.end());
+    faces_.erase(face.lock());
 }
 
 void Storage::delete_surface(std::weak_ptr<Surface> surface) 
 {
-    // check if valid
+    // check input
     if (surface.expired()) throw std::runtime_error("Attempts to delete expired surface.");
-    auto surface_valid = surface.lock();
 
     // member delete
-    surface_valid->delete_();
+    surface.lock()->delete_();
 
     // storage delete
-    surfaces_.erase(std::remove(surfaces_.begin(), surfaces_.end(), surface_valid), surfaces_.end());
+    surfaces_.erase(surface.lock());
 }
 
 // get id
