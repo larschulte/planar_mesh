@@ -80,6 +80,9 @@ void Edge::connect(std::weak_ptr<Face> face)
     // connect
     bool inserted = faces_.insert(face).second;
     if (inserted) face.lock()->connect(shared_from_this());
+
+    // update boundary state
+    update_boundary_state();
 }
 
 void Edge::connect(std::weak_ptr<Surface> surface)
@@ -114,7 +117,10 @@ void Edge::disconnect(std::weak_ptr<Face> face)
     bool erased = faces_.erase(face);
     if (erased) face.lock()->disconnect(shared_from_this());
 
-    // self destruct
+    // update boundary state
+    update_boundary_state();
+
+    // check self destruct
     if (faces_.empty())
     {
         if (!deleting_) storage_.lock()->delete_edge(shared_from_this());
@@ -134,6 +140,36 @@ void Edge::disconnect(std::weak_ptr<Surface> surface)
 int Edge::get_id() const 
 { 
     return id_; 
+}
+
+// has vertex
+bool Edge::has_vertex(std::weak_ptr<Vertex> vertex) const
+{
+    return vertices_.find(vertex) != vertices_.end();
+}
+
+bool Edge::is_boundary() const
+{
+    return is_boundary_;
+}
+
+void Edge::update_boundary_state()
+{
+    // becomes boundary when 0 or 1 face connected
+    if (faces_.size() <= 1) 
+    {
+        is_boundary_ = true;
+    }
+    else 
+    {
+        is_boundary_ = false;
+    }
+
+    // update boundary state of connected vertices
+    for (std::weak_ptr<Vertex> vertex : vertices_)
+    {
+        vertex.lock()->update_boundary_state();
+    }
 }
 
 bool operator<(const std::weak_ptr<Edge>& lhs, const std::weak_ptr<Edge>& rhs)

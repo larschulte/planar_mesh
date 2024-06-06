@@ -1,6 +1,6 @@
 #include "eye_patch/TriangleBVH.hpp"
 
-bool rayTriangleIntersect(const Eigen::Vector3d& orig, const Eigen::Vector3d& dir,
+bool ray_triangle_intersect(const Eigen::Vector3d& orig, const Eigen::Vector3d& dir,
     const Eigen::Vector3d& v0, const Eigen::Vector3d& v1, const Eigen::Vector3d& v2,
     Eigen::Vector3d& outIntersection)
 {
@@ -77,147 +77,136 @@ bool TriangleBVH::Node::isLeaf() const
     return !left && !right;
 }
 
-Eigen::Vector3d TriangleBVH::compute_triangle_center(int triangleID)
-{
-    int point0_id = triangle_to_indices_map.at(triangleID)[0];
-    int point1_id = triangle_to_indices_map.at(triangleID)[1];
-    int point2_id = triangle_to_indices_map.at(triangleID)[2];
-    Eigen::Vector3d v0 = point_to_vector3d_map.at(point0_id);
-    Eigen::Vector3d v1 = point_to_vector3d_map.at(point1_id);
-    Eigen::Vector3d v2 = point_to_vector3d_map.at(point2_id);
-    return (v0 + v1 + v2) / 3.0;
-}
 
-double TriangleBVH::sort_triangle_list_in_axis(std::vector<Triangle>& triangle_list, int axis, int start, int mid, int end)
+double TriangleBVH::sort_face_list_in_axis(std::vector<std::weak_ptr<Face>>& face_list, int axis, int start, int mid, int end)
 {
-    std::nth_element(triangle_list.begin() + start, triangle_list.begin() + mid, triangle_list.begin() + end, 
-        [&](const Triangle& triangle_a, const Triangle& triangle_b) 
+    std::nth_element(face_list.begin() + start, face_list.begin() + mid, face_list.begin() + end, 
+        [&](const std::weak_ptr<Face>& triangle_a, const std::weak_ptr<Face>& triangle_b) 
         {
-            return triangle_a.center[axis] < triangle_b.center[axis];
+            return triangle_a.lock()->get_center()[axis] < triangle_b.lock()->get_center()[axis];
         });
-    return triangle_list[mid].center[axis];
+    return face_list[mid].lock()->get_center()[axis];
 }
 
-void TriangleBVH::expand_node_box(std::shared_ptr<Node> node, Triangle triangle)
+void TriangleBVH::expand_node_box(std::shared_ptr<Node> node, std::weak_ptr<Face> face)
 {
-    node->box.expand(triangle.v0);
-    node->box.expand(triangle.v1);
-    node->box.expand(triangle.v2);
+    for (std::weak_ptr<Vertex> vertex : face.lock()->get_vertices())
+    {
+        node->box.expand(vertex.lock()->get_position());
+    }
 }
 
-std::set<int> TriangleBVH::intersectHierarchy(const std::shared_ptr<Node>& node, const Eigen::Vector3d& orig, const Eigen::Vector3d& dir) 
+std::set<std::weak_ptr<Face>> TriangleBVH::intersectHierarchy(const std::shared_ptr<Node>& node, const Eigen::Vector3d& orig, const Eigen::Vector3d& dir) 
 {
     bool intersected = node->box.intersect(orig, dir);
-    if (!intersected) return std::set<int>();
+    if (!intersected) return std::set<std::weak_ptr<Face>>();
     
     if (node->isLeaf())
     {
-        std::set<int> intersected_triangleIDs;
-        for (Triangle triangle : node->triangles)
+        std::set<std::weak_ptr<Face>> intersected_faces;
+        for (std::weak_ptr<Face> face : node->faces)
         {
-            Eigen::Vector3d v0 = triangle.v0;
-            Eigen::Vector3d v1 = triangle.v1;
-            Eigen::Vector3d v2 = triangle.v2;
-            Eigen::Vector3d intersection;
-            if (rayTriangleIntersect(orig, dir, v0, v1, v2, intersection)) intersected_triangleIDs.insert(triangle.triangleID);
+            if (face.lock()->intersects_point(orig, dir)) intersected_faces.insert(face);
         }
-        return intersected_triangleIDs;
+        return intersected_faces;
     }
     else
     {
-        std::set<int> triangles_left = intersectHierarchy(node->left, orig, dir);
-        std::set<int> triangles_right = intersectHierarchy(node->right, orig, dir);
-        triangles_left.insert(triangles_right.begin(), triangles_right.end());
-        return triangles_left;
+        std::set<std::weak_ptr<Face>> faces_left = intersectHierarchy(node->left, orig, dir);
+        std::set<std::weak_ptr<Face>> faces_right = intersectHierarchy(node->right, orig, dir);
+        faces_left.insert(faces_right.begin(), faces_right.end());
+        return faces_left;
     }
 }
 
 void TriangleBVH::convert_leaf_to_branch(std::shared_ptr<Node> node)
 {
-    std::vector<Triangle> triangle_list(node->triangles.begin(), node->triangles.end());
+    std::vector<std::weak_ptr<Face>> face_list(node->faces.begin(), node->faces.end());
     int start = 0;
-    int end = triangle_list.size();
+    int end = face_list.size();
     int mid = (start + end) / 2;
     int axis = node->box.get_longest_axis();
-    double split_value = sort_triangle_list_in_axis(triangle_list, axis, start, mid, end);
+    double split_value = sort_face_list_in_axis(face_list, axis, start, mid, end);
     
-    node->triangles.clear();
+    node->faces.clear();
     node->split_axis = axis;
     node->split_value = split_value;
-    node->left = build_node(std::vector<Triangle>(triangle_list.begin(), triangle_list.begin() + mid));
-    node->right = build_node(std::vector<Triangle>(triangle_list.begin() + mid, triangle_list.end()));
+    node->left = build_node(std::vector<std::weak_ptr<Face>>(face_list.begin(), face_list.begin() + mid));
+    node->right = build_node(std::vector<std::weak_ptr<Face>>(face_list.begin() + mid, face_list.end()));
 }
 
-std::shared_ptr<TriangleBVH::Node> TriangleBVH::build_node(std::vector<Triangle> triangle_list)
+std::shared_ptr<TriangleBVH::Node> TriangleBVH::build_node(std::vector<std::weak_ptr<Face>> face_list)
 {
     auto node = std::make_shared<Node>();
-    for (Triangle triangle : triangle_list) 
+    for (std::weak_ptr<Face> face : face_list) 
     {
-        expand_node_box(node, triangle);
-        node->triangles.insert(triangle);
+        expand_node_box(node, face);
+        node->faces.insert(face);
     }
 
-    if (node->triangles.size() > 4) convert_leaf_to_branch(node);
+    if (node->faces.size() > 4) convert_leaf_to_branch(node);
 
     return node;
 }
 
-void TriangleBVH::addTriangleToNode(std::shared_ptr<Node> node, Triangle triangle)
+void TriangleBVH::add_face_to_node(std::shared_ptr<Node> node, std::weak_ptr<Face> face)
 {
     if (node->isLeaf())
     {
-        expand_node_box(node, triangle);
-        node->triangles.insert(triangle);
-        if (node->triangles.size() > 4) convert_leaf_to_branch(node);
+        expand_node_box(node, face);
+        node->faces.insert(face);
+        if (node->faces.size() > 4) convert_leaf_to_branch(node);
     }
     else
     {
-        expand_node_box(node, triangle);
+        expand_node_box(node, face);
 
-        if (triangle.center[node->split_axis] < node->split_value)
+        if (face.lock()->get_center()[node->split_axis] < node->split_value)
         {
-            addTriangleToNode(node->left, triangle);
+            add_face_to_node(node->left, face);
         }
         else 
         {
-            addTriangleToNode(node->right, triangle);
+            add_face_to_node(node->right, face);
         }
     }
 }
 
-void TriangleBVH::deleteTriangleFromNode(std::shared_ptr<Node> node, Triangle triangle)
+void TriangleBVH::delete_face_from_node(std::shared_ptr<Node> node, std::weak_ptr<Face> face)
 {
     if (node->isLeaf())
     {
-        node->triangles.erase(triangle);
+        node->faces.erase(face);
     }
     else
     {
-        if (triangle.center[node->split_axis] < node->split_value)
+        if (face.lock()->get_center()[node->split_axis] < node->split_value)
         {
-            deleteTriangleFromNode(node->left, triangle);
+            delete_face_from_node(node->left, face);
         }
         else
         {
-            deleteTriangleFromNode(node->right, triangle);
+            delete_face_from_node(node->right, face);
         }
     }
 }
 
-void TriangleBVH::deleteTriangle(int triangleID, std::array<int, 3> indices, const Eigen::Vector3d& v0, const Eigen::Vector3d& v1, const Eigen::Vector3d& v2)
+void TriangleBVH::delete_face(std::weak_ptr<Face> face)
 {
-    Triangle triangle;
-    triangle.triangleID = triangleID;
-    triangle.v0 = v0;
-    triangle.v1 = v1;
-    triangle.v2 = v2;
-    triangle.center = (v0 + v1 + v2) / 3.0;
+    // check input
+    if (face.expired()) throw std::runtime_error("Attempts to delete expired face.");
 
-    // delete from triangle list using erase-remove idiom
-    triangle_list.erase(std::remove(triangle_list.begin(), triangle_list.end(), triangle), triangle_list.end());
+    // check if face exists
+    if (face_set.find(face) == face_set.end()) return;
+
+    // delete from face set
+    face_set.erase(face);
+
+    // delete from face list using erase-remove idiom
+    face_list.erase(std::remove(face_list.begin(), face_list.end(), face), face_list.end());
     
     // delete from BVH
-    deleteTriangleFromNode(root, triangle);
+    delete_face_from_node(root, face);
 }
 
 TriangleBVH::TriangleBVH()
@@ -227,48 +216,37 @@ TriangleBVH::TriangleBVH()
     rebuild();
 }
 
-void TriangleBVH::addData(std::vector<int> _triangle_list, std::map<int, std::array<int, 3>> _triangle_to_indices_map, std::map<int, Eigen::Vector3d> _point_to_vector3d_map)
-{
-    for (int triangleID : _triangle_list)
-    {
-        Triangle triangle;
-        triangle.triangleID = triangleID;
-        triangle.v0 = _point_to_vector3d_map.at(_triangle_to_indices_map.at(triangleID)[0]);
-        triangle.v1 = _point_to_vector3d_map.at(_triangle_to_indices_map.at(triangleID)[1]);
-        triangle.v2 = _point_to_vector3d_map.at(_triangle_to_indices_map.at(triangleID)[2]);
-        triangle.center = (triangle.v0 + triangle.v1 + triangle.v2) / 3.0;
-        triangle_list.push_back(triangle);
-    }
-}
-
 void TriangleBVH::rebuild()
 {
-    root = build_node(triangle_list);
+    root = build_node(face_list);
 }
 
-void TriangleBVH::addTriangle(int triangleID, std::array<int, 3> indices, const Eigen::Vector3d& v0, const Eigen::Vector3d& v1, const Eigen::Vector3d& v2)
+void TriangleBVH::add_face(std::weak_ptr<Face> face)
 {
-    Triangle triangle;
-    triangle.triangleID = triangleID;
-    triangle.v0 = v0;
-    triangle.v1 = v1;
-    triangle.v2 = v2;
-    triangle.center = (v0 + v1 + v2) / 3.0;
+    // check input
+    if (face.expired()) throw std::runtime_error("Attempts to add expired face.");
 
-    triangle_list.push_back(triangle);
+    // check if face already exists
+    if (face_set.find(face) != face_set.end()) return;
 
-    if (triangle_list.size() > size_at_last_rebuild * rebuild_threshold)
+    // add to face set
+    face_set.insert(face);
+
+    // add to face list
+    face_list.push_back(face);
+
+    if (face_list.size() > size_at_last_rebuild * rebuild_threshold)
     {
         rebuild();
-        size_at_last_rebuild = triangle_list.size();
+        size_at_last_rebuild = face_list.size();
     }
     else
     {
-        addTriangleToNode(root, triangle);
+        add_face_to_node(root, face);
     }
 }
 
-std::set<int> TriangleBVH::intersectionSearch(Eigen::Vector3d origin, Eigen::Vector3d endPoint)
+std::set<std::weak_ptr<Face>> TriangleBVH::intersectionSearch(Eigen::Vector3d origin, Eigen::Vector3d endPoint)
 {
     Eigen::Vector3d dir = (endPoint - origin).normalized();
     return intersectHierarchy(root, origin, dir);

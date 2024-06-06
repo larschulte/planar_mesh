@@ -5,6 +5,8 @@
 #include "MeshObject/Surface.hpp"
 #include <iostream>
 
+#include "MeshObject/InteriorPoint.hpp"
+
 void Surface::initialize_(std::weak_ptr<Storage> storage)
 {
     // check pointer validity
@@ -17,9 +19,52 @@ void Surface::initialize_(std::weak_ptr<Storage> storage)
     // store
     storage_ = storage_valid;
 
+    // initialize surface fitting
+    mean_ = Eigen::Vector3d::Zero();
+    covariance_ = Eigen::Matrix3d::Zero();
+    eigenvectors_ = Eigen::Matrix3d::Identity();
+    eigenvalues_ = Eigen::Vector3d::Zero();
+    normal_ = Eigen::Vector3d(0, 0, 1);
+
     // log
     std::cout << "Surface " << id_ << " created.\n";
 }
+
+void Surface::initialize_(std::weak_ptr<Storage> storage, std::weak_ptr<Surface> surface1, std::weak_ptr<Surface> surface2)
+{
+    // check pointer validity
+    if (storage.expired()) throw std::runtime_error("Attempts to create surface with invalid storage.");
+    if (surface1.expired()) throw std::runtime_error("Attempts to create surface with invalid surface1.");
+    if (surface2.expired()) throw std::runtime_error("Attempts to create surface with invalid surface2.");
+    auto storage_valid = storage.lock();
+
+    // get id
+    id_ = storage_valid->get_next_surface_id();
+
+    // store
+    storage_ = storage_valid;
+
+    // initialize surface fitting
+    mean_ = Eigen::Vector3d::Zero();
+    covariance_ = Eigen::Matrix3d::Zero();
+    eigenvectors_ = Eigen::Matrix3d::Identity();
+    eigenvalues_ = Eigen::Vector3d::Zero();
+    normal_ = Eigen::Vector3d(0, 0, 1);
+
+    // connect
+    for (auto vertex : surface1.lock()->vertices_) connect(vertex);
+    for (auto vertex : surface2.lock()->vertices_) connect(vertex);
+    for (auto edge : surface1.lock()->edges_) connect(edge);
+    for (auto edge : surface2.lock()->edges_) connect(edge);
+    for (auto face : surface1.lock()->faces_) connect(face);
+    for (auto face : surface2.lock()->faces_) connect(face);
+    for (auto interior_point : surface1.lock()->interior_points_) connect(interior_point);
+    for (auto interior_point : surface2.lock()->interior_points_) connect(interior_point);
+
+    // log
+    std::cout << "Surface " << id_ << " created.\n";
+}
+
 
 void Surface::delete_()
 {
@@ -42,6 +87,10 @@ void Surface::delete_()
     {
         disconnect(*faces_.begin());
     }
+    while (!interior_points_.empty())
+    {
+        disconnect(*interior_points_.begin());
+    }
 
     // log
     std::cout << "---------- surface " << id_ << " destroyed" << std::endl;
@@ -52,6 +101,49 @@ int Surface::get_id() const
     return id_;
 }
 
+double Surface::compute_point_to_surface_distance(const Eigen::Vector3d& origin, const Eigen::Vector3d& point) const
+{
+    // if perpendicular, return NaN
+    Eigen::Vector3d rayDirection = (point - origin).normalized();
+    if (normal_.dot(rayDirection) == 0) throw std::invalid_argument("Ray and plane are perpendicular");
+
+    // compute intersection
+    double distance = (mean_ - point).dot(normal_) / rayDirection.dot(normal_);
+
+    // return
+    return distance;
+}
+
+Eigen::Vector3d Surface::get_mean() const
+{
+    return mean_;
+}
+
+Eigen::Matrix3d Surface::get_covariance() const
+{
+    return covariance_;
+}
+
+Eigen::Matrix3d Surface::get_eigenvectors() const
+{
+    return eigenvectors_;
+}
+
+Eigen::Vector3d Surface::get_eigenvalues() const
+{
+    return eigenvalues_;
+}
+
+Eigen::Vector3d Surface::get_normal() const
+{
+    return normal_;
+}
+
+int Surface::get_total_point_size() const
+{
+    return vertices_.size() + interior_points_.size();
+}
+
 void Surface::connect(std::weak_ptr<Vertex> vertex)
 {
     // check input
@@ -60,6 +152,9 @@ void Surface::connect(std::weak_ptr<Vertex> vertex)
     // connect
     bool inserted = vertices_.insert(vertex.lock()).second;
     if (inserted) vertex.lock()->connect(shared_from_this());
+
+    // update surface fitting
+    if (inserted) add_point_to_surface_fitting(vertex.lock()->get_position(), vertex.lock()->get_origin());
 }
 
 void Surface::connect(std::weak_ptr<Edge> edge)
@@ -80,6 +175,19 @@ void Surface::connect(std::weak_ptr<Face> face)
     // connect
     bool inserted = faces_.insert(face).second;
     if (inserted) face.lock()->connect(shared_from_this());
+}
+
+void Surface::connect(std::weak_ptr<InteriorPoint> interior_point)
+{
+    // check input
+    if (interior_point.expired()) throw std::runtime_error("Attempts to connect surface with invalid interior point.");
+
+    // connect
+    bool inserted = interior_points_.insert(interior_point).second;
+    if (inserted) interior_point.lock()->connect(shared_from_this());
+
+    // update surface fitting
+    if (inserted) add_point_to_surface_fitting(interior_point.lock()->get_position(), interior_point.lock()->get_origin());
 }
 
 void Surface::disconnect(std::weak_ptr<Vertex> vertex)
@@ -112,7 +220,66 @@ void Surface::disconnect(std::weak_ptr<Face> face)
     if (erased) face.lock()->disconnect(shared_from_this());
 }
 
-bool operator<(const std::weak_ptr<Surface>& lhs, const std::weak_ptr<Surface>& rhs)
+void Surface::disconnect(std::weak_ptr<InteriorPoint> interior_point)
+{
+    // check input
+    if (interior_point.expired()) return;
+
+    // disconnect
+    bool erased = interior_points_.erase(interior_point);
+    if (erased) interior_point.lock()->disconnect(shared_from_this());
+}
+
+Eigen::Vector3d merge_means(const Eigen::Vector3d& mean1, const Eigen::Vector3d& mean2, int size1, int size2) 
+{
+    return (size1 * mean1 + size2 * mean2) / (size1 + size2);
+}
+
+Eigen::Matrix3d merge_covariances(const Eigen::Matrix3d& cov1, const Eigen::Matrix3d& cov2, 
+                                const Eigen::Vector3d& mean1, const Eigen::Vector3d& mean2, 
+                                int size1, int size2) 
+{
+    Eigen::Vector3d combined_mean = merge_means(mean1, mean2, size1, size2);
+    Eigen::Matrix3d mean_diff1 = (mean1 - combined_mean) * (mean1 - combined_mean).transpose();
+    Eigen::Matrix3d mean_diff2 = (mean2 - combined_mean) * (mean2 - combined_mean).transpose();
+    Eigen::Matrix3d combined_covariance = (size1 * cov1 + size2 * cov2 + size1 * mean_diff1 + size2 * mean_diff2) / (size1 + size2);
+
+    return combined_covariance;
+}
+
+void Surface::add_point_to_surface_fitting(Eigen::Vector3d point, Eigen::Vector3d origin)
+{
+    // set
+    int size1 = get_total_point_size();
+    Eigen::Vector3d mean1 = mean_;
+    Eigen::Matrix3d cov1 = covariance_;
+
+    // point
+    int size2 = 1;
+    Eigen::Vector3d mean2 = point;
+    Eigen::Matrix3d cov2 = Eigen::Matrix3d::Zero();
+
+    // set + point
+    Eigen::Vector3d new_mean = merge_means(mean1, mean2, size1, size2);
+    Eigen::Matrix3d new_cov = merge_covariances(cov1, cov2, mean1, mean2, size1, size2);
+
+    // plane estimate
+    Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> solver(new_cov);
+    Eigen::Matrix3d new_eigenvectors = solver.eigenvectors();
+    Eigen::Vector3d new_eigenvalues = solver.eigenvalues();
+    Eigen::Vector3d new_normal = new_eigenvectors.col(0); // Assuming the smallest eigenvalue corresponds to the normal
+    Eigen::Vector3d vector_towards_origin = origin - point;
+    if (new_normal.dot(vector_towards_origin) < 0) new_normal *= -1; // normal should points towards the origin
+
+    // store
+    mean_ = new_mean;
+    covariance_ = new_cov;
+    eigenvectors_ = new_eigenvectors;
+    eigenvalues_ = new_eigenvalues;
+    normal_ = new_normal;
+}
+
+bool operator<(const std::weak_ptr<Surface> &lhs, const std::weak_ptr<Surface> &rhs)
 {
     // check pointer validity
     if (lhs.expired() || rhs.expired()) throw std::runtime_error("Comparing expired surfaces");
@@ -124,4 +291,11 @@ bool operator==(const std::weak_ptr<Surface>& lhs, const std::weak_ptr<Surface>&
     // check pointer validity
     if (lhs.expired() || rhs.expired()) throw std::runtime_error("Comparing expired surfaces");
     return lhs.lock()->get_id() == rhs.lock()->get_id();
+}
+
+bool operator>= (const std::weak_ptr<Surface>& lhs, const std::weak_ptr<Surface>& rhs)
+{
+    // check pointer validity
+    if (lhs.expired() || rhs.expired()) throw std::runtime_error("Comparing expired surfaces");
+    return lhs.lock()->get_id() >= rhs.lock()->get_id();
 }

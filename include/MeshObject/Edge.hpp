@@ -26,8 +26,13 @@ public:
     void disconnect(std::weak_ptr<Face> face);
     void disconnect(std::weak_ptr<Surface> surface);
 
+    bool has_vertex(std::weak_ptr<Vertex> vertex) const;
+    bool is_boundary() const;
+    void update_boundary_state();
+
 private:
     bool deleting_ = false;
+    bool is_boundary_ = false;
 
     int id_;
     std::weak_ptr<Storage> storage_;

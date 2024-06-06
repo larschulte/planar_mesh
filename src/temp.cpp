@@ -11,31 +11,17 @@
 // queue
 #include <queue>
 
+#include "MeshObject/Vertex.hpp"
+#include "MeshObject/Edge.hpp"
+#include "MeshObject/Face.hpp"
+#include "MeshObject/Surface.hpp"
+#include "MeshObject/Storage.hpp"
+
 // application class
 template <typename PointT>
 class Application
 {
 public:
-
-    int getNewSetID()
-    {
-        return next_set_id ++;
-    }
-
-    int getNewPointID()
-    {
-        return next_point_id ++;
-    }
-
-    int getNewEdgeID()
-    {
-        return next_edge_id ++;
-    }
-
-    int getNewTriangleID()
-    {
-        return next_triangle_id ++;
-    }
 
     void add_set(int newSetID)
     {
@@ -223,7 +209,7 @@ public:
         set_to_triangles_map.at(setID).erase(triangleID);
         triangle_to_points_map.erase(triangleID);
         bool erased = global_triangle_set.erase(triangleID);
-        if (erased) bvhRoot.deleteTriangle(triangleID, vertices, point_to_vector3d_map.at(pointID1), point_to_vector3d_map.at(pointID2), point_to_vector3d_map.at(pointID3));
+        if (erased) bvhRoot.delete_face(triangleID, vertices, point_to_vector3d_map.at(pointID1), point_to_vector3d_map.at(pointID2), point_to_vector3d_map.at(pointID3));
 
         // update boundary
         edge_to_edge_count_map.at(edgeID1) --;
@@ -641,14 +627,14 @@ public:
         return merge_means(mean1, mean2, size1, size2);
     }
 
-    Eigen::Matrix3d merge_covariances_of_sets(int setID1, int setID2) 
+    Eigen::Matrix3d merge_covariances_of_surfaces(std::weak_ptr<Surface> surface1, std::weak_ptr<Surface> surface2) 
     {
-        Eigen::Matrix3d cov1 = set_to_covariance_matrix_map.at(setID1);
-        Eigen::Matrix3d cov2 = set_to_covariance_matrix_map.at(setID2);
-        Eigen::Vector3d mean1 = set_to_mean_map.at(setID1);
-        Eigen::Vector3d mean2 = set_to_mean_map.at(setID2);
-        int size1 = set_to_points_map.at(setID1).size();
-        int size2 = set_to_points_map.at(setID2).size();
+        Eigen::Matrix3d cov1 = surface1.lock()->get_covariance_matrix();
+        Eigen::Matrix3d cov2 = surface2.lock()->get_covariance_matrix();
+        Eigen::Vector3d mean1 = surface1.lock()->get_mean();
+        Eigen::Vector3d mean2 = surface2.lock()->get_mean();
+        int size1 = surface1.lock()->get_total_point_size();
+        int size2 = surface2.lock()->get_total_point_size();
         return merge_covariances(cov1, cov2, mean1, mean2, size1, size2);
     }
 
@@ -664,94 +650,45 @@ public:
     }
 
     // merge setID2 into setID1
-    void merge_sets(int setID1, int setID2, int newSetID) 
+    std::weak_ptr<Surface> merge_surfaces(std::weak_ptr<Surface> surface1, std::weak_ptr<Surface> surface2) 
     {
-        // initialize merged statistics
-        std::set<int> combined_points;
-        std::set<int> combined_edges;
-        std::set<int> combined_triangles;
-        std::set<int> combined_boundary_points;
-        std::set<int> combined_boundary_edges;
-        std::map<int, int> combined_edge_count_map;
-        Eigen::Vector3d combined_mean;
-        Eigen::Matrix3d combined_covariance_matrix;
-        Eigen::Matrix3d combined_eigenvectors;
-        Eigen::Vector3d combined_eigenvalues;
-        Eigen::Vector3d combined_normal;
-        std::array<int, 3> combined_color;
-        
-        // compute merged statistics
-        // insert if setID exist
-        if (set_to_points_map.find(setID1) != set_to_points_map.end()) combined_points.insert(set_to_points_map.at(setID1).begin(), set_to_points_map.at(setID1).end());
-        if (set_to_points_map.find(setID2) != set_to_points_map.end()) combined_points.insert(set_to_points_map.at(setID2).begin(), set_to_points_map.at(setID2).end());
-        if (set_to_edges_map.find(setID1) != set_to_edges_map.end()) combined_edges.insert(set_to_edges_map.at(setID1).begin(), set_to_edges_map.at(setID1).end());
-        if (set_to_edges_map.find(setID2) != set_to_edges_map.end()) combined_edges.insert(set_to_edges_map.at(setID2).begin(), set_to_edges_map.at(setID2).end());
-        if (set_to_triangles_map.find(setID1) != set_to_triangles_map.end()) combined_triangles.insert(set_to_triangles_map.at(setID1).begin(), set_to_triangles_map.at(setID1).end());
-        if (set_to_triangles_map.find(setID2) != set_to_triangles_map.end()) combined_triangles.insert(set_to_triangles_map.at(setID2).begin(), set_to_triangles_map.at(setID2).end());
-        combined_mean = merge_means_of_sets(setID1, setID2);
-        combined_covariance_matrix = merge_covariances_of_sets(setID1, setID2);
+        std::weak_ptr<Surface> new_surface = storage_.lock()->add_surface(surface1, surface2);
+        storage_.lock()->delete_surface(surface1);
+        storage_.lock()->delete_surface(surface2);
 
-        Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> solver(combined_covariance_matrix);
-        combined_eigenvectors = solver.eigenvectors();
-        combined_eigenvalues = solver.eigenvalues();
-        combined_normal = combined_eigenvectors.col(0);
-        combined_color = {rand() % 256, rand() % 256, rand() % 256};
-
-        // remove old statistics
-        remove_set(setID1);
-        remove_set(setID2);
-
-        // store merged statistics
-        set_to_points_map.at(newSetID) = combined_points;
-        set_to_edges_map.at(newSetID) = combined_edges;
-        set_to_triangles_map.at(newSetID) = combined_triangles;
-        set_to_mean_map.at(newSetID) = combined_mean;
-        set_to_covariance_matrix_map.at(newSetID) = combined_covariance_matrix;
-        set_to_eigenvectors_map.at(newSetID) = combined_eigenvectors;
-        set_to_eigenvalues_map.at(newSetID) = combined_eigenvalues;
-        set_to_normal_map.at(newSetID) = combined_normal;
-        set_to_color_map.at(newSetID) = combined_color;
-        for (int point_id : combined_points) {point_to_set_map.at(point_id) = newSetID; update_boundary_point_record(point_id, newSetID);}
-        for (int edge_id : combined_edges) {edge_to_set_map.at(edge_id) = newSetID; update_boundary_edge_record(edge_id, newSetID);}
-        for (int triangle_id : combined_triangles) triangle_to_set_map.at(triangle_id) = newSetID;
+        return new_surface;
     }
 
     // try merge sets
-    std::map<int, int> try_merge_sets(std::set<int>& sets_to_merge)
+    void try_merge_surfaces(std::set<std::weak_ptr<Surface>>& surfaces_to_merge)
     {
-        std::map<int, int> merge_map;
-
         while (true) 
         {
             // get all possible pairs to merge
-            std::set<std::pair<int, int>> pairs_set;
-            for (int setID1 : sets_to_merge) 
+            std::set<std::pair<std::weak_ptr<Surface>, std::weak_ptr<Surface>>> surface_pairs;
+            for (std::weak_ptr<Surface> surface1 : surfaces_to_merge) 
             {
-                for (int setID2 : sets_to_merge) 
+                for (std::weak_ptr<Surface> surface2 : surfaces_to_merge) 
                 {
-                    if (setID1 >= setID2) continue;
-                    pairs_set.insert(std::make_pair(setID1, setID2));
+                    if (surface1 >= surface2) continue;
+                    surface_pairs.insert(std::make_pair(surface1, surface2));
                 }
             }
             
             // try to merge pairs
             bool again = false;
-            for (const auto& pairs : pairs_set) 
+            for (const auto& pairs : surface_pairs) 
             {
                 // skip if can't merge
-                Eigen::Matrix3d covariance_matrix = merge_covariances_of_sets(pairs.first, pairs.second);
+                Eigen::Matrix3d covariance_matrix = merge_covariances_of_surfaces(pairs.first, pairs.second);
                 double eigenvalue = Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d>(covariance_matrix).eigenvalues()[0];
                 if (eigenvalue > merged_eigenvalue_threshold) continue;
 
                 // merge sets
-                int newSetID = getNewSetID();
-                add_set(newSetID);
-                merge_sets(pairs.first, pairs.second, newSetID);
-                sets_to_merge.erase(pairs.first);
-                sets_to_merge.erase(pairs.second);
-                sets_to_merge.insert(newSetID);
-                merge_map[pairs.first] = newSetID;
-                merge_map[pairs.second] = newSetID;
+                surfaces_to_merge.erase(pairs.first);
+                surfaces_to_merge.erase(pairs.second);
+                std::weak_ptr<Surface> newSurface = merge_surfaces(pairs.first, pairs.second);
+                surfaces_to_merge.insert(newSurface);
 
                 // once merged, restart
                 again = true;
@@ -759,25 +696,22 @@ public:
             }
             if (!again) break;
         }
-
-        // return
-        return merge_map;
     }
 
-    void add_point_by_radius_search(int newPointID, const Eigen::Vector3d& thisPointVEC, const Eigen::Vector3d& thisPointOriginVEC)
+    void add_point_by_radius_search(const Eigen::Vector3d& thisPointVEC, const Eigen::Vector3d& thisPointOriginVEC)
     {
         // if empty, can not set up radius search, add point to new set
-        if (boundary_point_set.size() == 0)
+        if (!storage_.lock()->can_reverse_radius_search())
         {
-            int newSetID = getNewSetID();
-            add_set(newSetID);
-            add_point(newPointID, newSetID, thisPointVEC, thisPointOriginVEC);
+            std::weak_ptr<Surface> new_surface = storage_.lock()->add_surface();
+            std::weak_ptr<Vertex> new_vertex = storage_.lock()->add_vertex(thisPointVEC, thisPointOriginVEC);
+            new_surface.lock()->connect(new_vertex);
             return;
         }
 
         // perform rrstree radius search
         std::map<int, double> point_to_radius_map;
-        std::set<int> searched_boundary_points_set = rrstree.reverseRadiusSearch(thisPointVEC, point_to_radius_map);
+        std::set<int> searched_boundary_points_set = rrstree.reverse_radius_search(thisPointVEC);
 
         // if no searched results, add point to new set
         if (searched_boundary_points_set.size() == 0)
@@ -796,7 +730,7 @@ public:
         }
 
         // try merge neighboring sets
-        std::map<int, int> merge_map = try_merge_sets(neighboring_sets);
+        std::map<int, int> merge_map = try_merge_surfaces(neighboring_sets);
 
         // after merging, we are left with sets that should have different normals
         // each point in the neighboring set should reduce their search radius to the closest set
@@ -997,86 +931,62 @@ public:
         // ------------- add point by triangle intersection
 
         // get list of intersected triangle by the point
-        std::set<int> candidate_searched_triangles = bvhRoot.intersectionSearch(thisPointOriginVEC, thisPointVEC); // may include deleted triangles
-        std::set<int> searched_triangles = intersection_of_sets(candidate_searched_triangles, global_triangle_set);
+        std::set<std::weak_ptr<Face>> searched_faces = bvhRoot.intersectionSearch(thisPointOriginVEC, thisPointVEC); // may include deleted triangles
 
-        // group the triangles by set
-        std::map<int, std::set<int>> set_to_searched_triangle_map;
-        for (int triangleID : searched_triangles)
+        // group the faces by surface
+        std::map<std::weak_ptr<Face>, std::set<std::weak_ptr<Face>>> surface_to_searched_faces_map;
+        for (std::weak_ptr<Face> face : searched_faces)
         {
-            int setID = triangle_to_set_map.at(triangleID);
-            set_to_searched_triangle_map[setID].insert(triangleID);
+            std::weak_ptr<Surface> surface = face.lock()->getSurface();
+            surface_to_searched_faces_map[surface].insert(face);
         }
 
         // compute the intersection distance to the sets (distance measured in plane normal direction)
-        std::map<int, double> set_distance_map;
-        for (const auto& pair : set_to_searched_triangle_map)
+        std::map<std::weak_ptr<Surface>, double> surface_to_point_distance_map;
+        for (const auto& pair : surface_to_searched_faces_map)
         {
-            int setID = pair.first;
-            Eigen::Vector3d mean = set_to_mean_map.at(setID);
-            Eigen::Vector3d normal = set_to_normal_map.at(setID);
-            Eigen::Vector3d rayPlaneIntersectionPoint = ray_plane_intersection(thisPointOriginVEC, thisPointVEC, mean, normal);
-            double distance = (thisPointVEC - rayPlaneIntersectionPoint).dot(normal);
-            set_distance_map[setID] = distance;
+            std::weak_ptr<Surface> surface = pair.first;
+            double distance = surface.lock()->compute_point_to_surface_distance(thisPointOriginVEC, thisPointVEC);
+            surface_to_point_distance_map[surface] = distance;
         }
 
         // split the sets into three categories
-        std::set<int> set_with_point_before_it;
-        std::set<int> set_with_point_within_it;
-        std::set<int> set_with_point_behind_it;
+        std::set<std::weak_ptr<Surface>> surface_with_point_before_it;
+        std::set<std::weak_ptr<Surface>> surface_with_point_within_it;
+        std::set<std::weak_ptr<Surface>> surface_with_point_behind_it;
         double split_distance_threshold = distance_threshold;
-        for (const auto& pair : set_distance_map)
+        for (const auto& pair : surface_to_point_distance_map)
         {
-            int setID = pair.first;
+            std::weak_ptr<Surface> surface = pair.first;
             double distance = pair.second;
             if (distance > split_distance_threshold) 
             {
-                set_with_point_before_it.insert(setID);
+                surface_with_point_before_it.insert(surface);
             }
             else if (distance < -split_distance_threshold) 
             {
-                set_with_point_behind_it.insert(setID);
+                surface_with_point_behind_it.insert(surface);
             }
             else 
             {
-                set_with_point_within_it.insert(setID);
+                surface_with_point_within_it.insert(surface);
             }
         }
         
         // process point behind set set
 
         // get the set of triangles that are penetrated by the point
-        std::set<int> penetrated_triangles;
-        for (int setID : set_with_point_behind_it)
+        std::set<std::weak_ptr<Face>> penetrated_faces;
+        for (std::weak_ptr<Face> surface : surface_with_point_behind_it)
         {
-            penetrated_triangles.insert(set_to_searched_triangle_map.at(setID).begin(), set_to_searched_triangle_map.at(setID).end());
+            penetrated_faces.insert(surface_to_searched_faces_map.at(surface).begin(), surface_to_searched_faces_map.at(surface).end());
         }
 
         // collect the list of points that are within the penetrated triangles, and isolated by the triangle
-        for (int triangleID : penetrated_triangles)
+        for (std::weak_ptr<Face> face : penetrated_faces)
         {
-            // get the triangle
-            const std::array<int, 3>& vertices = triangle_to_vertices_map.at(triangleID);
-            Eigen::Vector3d v0 = point_to_vector3d_map.at(vertices[0]);
-            Eigen::Vector3d v1 = point_to_vector3d_map.at(vertices[1]);
-            Eigen::Vector3d v2 = point_to_vector3d_map.at(vertices[2]);
-
-            // compute point and triangle intersection
-            Eigen::Vector3d intersectionPoint;
-            bool intersected = rayTriangleIntersect(thisPointOriginVEC, thisPointVEC, v0, v1, v2, intersectionPoint);
-
-            // compute distance from each vertex point to intersection
-            double distance0 = (v0 - intersectionPoint).norm();
-            double distance1 = (v1 - intersectionPoint).norm();
-            double distance2 = (v2 - intersectionPoint).norm();
-
-            // penetrate triangles
-            remove_triangle(triangleID);
-
-            // if vertex point still exists, and is boundary point, reduce its search radius
-            if (point_to_set_map.find(vertices[0]) != point_to_set_map.end() && boundary_point_set.find(vertices[0]) != boundary_point_set.end()) rrstree.reduceRadius(vertices[0], v0, distance0);
-            if (point_to_set_map.find(vertices[1]) != point_to_set_map.end() && boundary_point_set.find(vertices[1]) != boundary_point_set.end()) rrstree.reduceRadius(vertices[1], v1, distance1);
-            if (point_to_set_map.find(vertices[2]) != point_to_set_map.end() && boundary_point_set.find(vertices[2]) != boundary_point_set.end()) rrstree.reduceRadius(vertices[2], v2, distance2);
+            // for now, just delete the face
+            storage_.lock()->delete_face(face);
         }
 
         // // re add the list points by radius search
@@ -1094,73 +1004,45 @@ public:
         // }
         
         // process point within set set
-        bool point_added_to_set = false;
+        bool point_added_to_surface = false;
 
         // try merge them
-        std::set<int> merged_set = set_with_point_within_it;
-        std::map<int, int> merge_map = try_merge_sets(merged_set);
-
-        // update the set_to_searched_triangle_map using the merge map
-        while (true)
-        {
-            bool restart = false;
-
-            for (const auto& pair : merge_map)
-            {
-                // skip if the key is already handled
-                if (set_to_searched_triangle_map.find(pair.first) == set_to_searched_triangle_map.end()) continue;
-
-                // change the key
-                std::set<int> content = set_to_searched_triangle_map.at(pair.first);
-                set_to_searched_triangle_map.erase(pair.first);
-                set_to_searched_triangle_map[pair.second] = content;
-
-                // restart
-                restart = true;
-                break;
-            }
-
-            if (!restart) break;
-        }
-        
+        std::set<std::weak_ptr<Surface>> merged_surface = surface_with_point_within_it;
+        try_merge_surfaces(merged_surface);        
 
         // find the set with the smallest distance
-        int smallest_setID = -1;
+        std::weak_ptr<Surface> smallest_surface;
         double smallest_distance = std::numeric_limits<double>::max();
-        for (int setID : merged_set)
+        for (std::weak_ptr<Surface> surface : merged_surface)
         {
-            // if the set does not have distance, it is new, compute its distance
-            if (set_distance_map.find(setID) == set_distance_map.end())
-            {
-                Eigen::Vector3d mean = set_to_mean_map.at(setID);
-                Eigen::Vector3d normal = set_to_normal_map.at(setID);
-                Eigen::Vector3d rayPlaneIntersectionPoint = ray_plane_intersection(thisPointOriginVEC, thisPointVEC, mean, normal);
-                double distance = (thisPointVEC - rayPlaneIntersectionPoint).dot(normal);
-                set_distance_map[setID] = distance;
-            }
-
             // update if smaller
-            if (std::abs(set_distance_map.at(setID)) < smallest_distance)
+            double distance = surface.lock()->compute_point_to_surface_distance(thisPointOriginVEC, thisPointVEC);
+            if (std::abs(distance) < smallest_distance)
             {
-                smallest_distance = set_distance_map.at(setID);
-                smallest_setID = setID;
+                smallest_distance = distance;
+                smallest_surface = surface;
             }
         }
 
         // if the smallest set is within threshold, add the point to the set
-        if (smallest_setID != -1 && std::abs(smallest_distance) < distance_threshold)
+        if (!smallest_surface.expired() && std::abs(smallest_distance) < distance_threshold)
         {
-            // if multiple, add to first
-            int triangleID = *set_to_searched_triangle_map.at(smallest_setID).begin();
-            store_point_in_triangle(newPointID, triangleID, thisPointVEC, thisPointOriginVEC);
-            std::cout << ith_point << " / " << ith_size << " of pointcloud " << ith_cloud << " added to set " << smallest_setID << std::endl;
+            // from searched_faces find the first face that belongs to the smallest surface
+            for (std::weak_ptr<Face> face : searched_faces)
+            {
+                if (face.lock()->get_surface() != smallest_surface) continue;
+                
+                // add point as interior point
+                storage_.lock()->add_interior_point(newPointID, face.lock()->get_id(), thisPointVEC, thisPointOriginVEC);
 
-            point_added_to_set = true;
+                std::cout << ith_point << " / " << ith_size << " of pointcloud " << ith_cloud << " added to set " << smallest_surface.lock()->get_id() << std::endl;
+                point_added_to_surface = true;
+                break;
+            }
         }
-
-        if (!point_added_to_set)
+        if (!point_added_to_surface)
         {
-            add_point_by_radius_search(newPointID, thisPointVEC, thisPointOriginVEC);
+            add_point_by_radius_search(thisPointVEC, thisPointOriginVEC);
             std::cout << ith_point << " / " << ith_size << " of pointcloud " << ith_cloud << " added by radius search" << std::endl;
         }
 
@@ -1431,6 +1313,10 @@ public:
     std::size_t ith_size = 0;
 
 private:
+    // storage
+    std::shared_ptr<Storage> storage_;
+
+
     // data
     DataLoader<VilensPointT> data_loader;
     typename pcl::PointCloud<VilensPointT>::Ptr pointcloud;
