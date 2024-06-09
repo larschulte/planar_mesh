@@ -22,7 +22,20 @@ std::weak_ptr<Vertex> Storage::add_vertex(Eigen::Vector3d position, Eigen::Vecto
     return vertex;
 }
 
-std::weak_ptr<Edge> Storage::add_edge(std::weak_ptr<Vertex> vertex1, std::weak_ptr<Vertex> vertex2) 
+std::weak_ptr<Vertex> Storage::add_vertex(Eigen::Vector3d position, Eigen::Vector3d origin, double radius)
+{
+    // create
+    std::shared_ptr<Vertex> vertex = std::make_shared<Vertex>();
+    vertex->initialize_(shared_from_this(), position, origin, radius);
+
+    // store
+    vertices_.insert(vertex);
+
+    // return
+    return vertex;
+}
+
+std::weak_ptr<Edge> Storage::add_edge(std::weak_ptr<Vertex> vertex1, std::weak_ptr<Vertex> vertex2)
 {    
     // create
     std::shared_ptr<Edge> edge = std::make_shared<Edge>();
@@ -276,4 +289,14 @@ std::weak_ptr<Edge> Storage::get_edge(std::weak_ptr<Vertex> vertex1, std::weak_p
 
     // error
     throw std::runtime_error("Edge not found.");
+}
+
+void Storage::print() const
+{
+    rrs_tree_.print();
+}
+
+void Storage::rebuild_tree()
+{
+    rrs_tree_.rebuild();
 }

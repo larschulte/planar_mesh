@@ -33,6 +33,29 @@ void Vertex::initialize_(std::weak_ptr<Storage> storage, Eigen::Vector3d positio
     std::cout << "Vertex " << id_ << " created.\n";
 }
 
+void Vertex::initialize_(std::weak_ptr<Storage> storage, Eigen::Vector3d position, Eigen::Vector3d origin, double radius)
+{
+    // check pointer validity
+    if (storage.expired()) throw std::runtime_error("Attempts to create vertex with invalid storage.");
+
+    // get id
+    id_ = storage.lock()->get_next_vertex_id();
+
+    // store
+    storage_ = storage;
+    position_ = position;
+    origin_ = origin;
+
+    // set reverse search radius based on input parameter
+    set_reverse_radius_search_radius(radius);
+
+    // update boundary state
+    update_boundary_state();
+
+    // log
+    std::cout << "Vertex " << id_ << " created.\n";
+}
+
 void Vertex::delete_()
 {
     // log

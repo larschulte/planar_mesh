@@ -15,6 +15,7 @@ class Vertex : public std::enable_shared_from_this<Vertex>
 protected:
     friend class Storage;
     void initialize_(std::weak_ptr<Storage> storage, Eigen::Vector3d position, Eigen::Vector3d origin);
+    void initialize_(std::weak_ptr<Storage> storage, Eigen::Vector3d position, Eigen::Vector3d origin, double radius);
     void delete_();
 
 public:

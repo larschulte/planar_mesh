@@ -38,6 +38,18 @@ include_directories(${PYTHON_INCLUDE_DIRS})
 # ceres solver
 find_package(Ceres REQUIRED)
 
+# MeshObject
+set(MeshObject_SOURCE 
+  src/MeshObject/Vertex.cpp
+  src/MeshObject/Edge.cpp
+  src/MeshObject/Face.cpp
+  src/MeshObject/Surface.cpp
+  src/MeshObject/Storage.cpp
+  src/MeshObject/GenericPoint.cpp
+  src/MeshObject/InteriorPoint.cpp
+  src/TriangleBVH.cpp
+)
+
 # add executable
 add_executable(main src/main.cpp)
 target_link_libraries (main ${PCL_LIBRARIES} ${PYTHON_LIBRARIES} delaunator)
@@ -67,7 +79,7 @@ install(TARGETS
 )
 
 # add executable
-add_executable(RRSTree_test src/RRSTree_test.cpp)
+add_executable(RRSTree_test src/RRSTree_test.cpp ${MeshObject_SOURCE})
 target_link_libraries (RRSTree_test ${PCL_LIBRARIES})
 target_include_directories(RRSTree_test
   PUBLIC
@@ -76,7 +88,7 @@ target_include_directories(RRSTree_test
 
 
 # add executable
-add_executable(MeshObject_test src/MeshObject_test.cpp src/MeshObject/Vertex.cpp src/MeshObject/Edge.cpp src/MeshObject/Face.cpp src/MeshObject/Surface.cpp src/MeshObject/Storage.cpp src/MeshObject/GenericPoint.cpp src/MeshObject/InteriorPoint.cpp src/TriangleBVH.cpp)
+add_executable(MeshObject_test src/MeshObject_test.cpp ${MeshObject_SOURCE})
 target_link_libraries (MeshObject_test ${PCL_LIBRARIES})
 target_include_directories(MeshObject_test
   PUBLIC

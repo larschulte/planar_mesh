@@ -18,13 +18,14 @@ class InteriorPoint;
 class Storage : public std::enable_shared_from_this<Storage> 
 {
 public: // to user
-    std::weak_ptr<Vertex> add_vertex(Eigen::Vector3d pos, Eigen::Vector3d origin);
+    std::weak_ptr<Vertex> add_vertex(Eigen::Vector3d position, Eigen::Vector3d origin);
+    std::weak_ptr<Vertex> add_vertex(Eigen::Vector3d position, Eigen::Vector3d origin, double radius);
     std::weak_ptr<Edge> add_edge(std::weak_ptr<Vertex> vertex1, std::weak_ptr<Vertex> vertex2);
     std::weak_ptr<Face> add_face(std::weak_ptr<Vertex> vertex1, std::weak_ptr<Vertex> vertex2, std::weak_ptr<Vertex> vertex3);
     std::weak_ptr<Surface> add_surface();
     std::weak_ptr<Surface> add_surface(std::weak_ptr<Surface> surface1, std::weak_ptr<Surface> surface2);
-    std::weak_ptr<GenericPoint> add_generic_point(Eigen::Vector3d pos, Eigen::Vector3d origin);
-    std::weak_ptr<InteriorPoint> add_interior_point(std::weak_ptr<Face> face, Eigen::Vector3d pos, Eigen::Vector3d origin);
+    std::weak_ptr<GenericPoint> add_generic_point(Eigen::Vector3d position, Eigen::Vector3d origin);
+    std::weak_ptr<InteriorPoint> add_interior_point(std::weak_ptr<Face> face, Eigen::Vector3d position, Eigen::Vector3d origin);
 
     void delete_vertex(std::weak_ptr<Vertex> vertex);
     void delete_edge(std::weak_ptr<Edge> edge);
@@ -44,7 +45,12 @@ public: // to user
 
     std::weak_ptr<Edge> get_edge(std::weak_ptr<Vertex> vertex1, std::weak_ptr<Vertex> vertex2) const;
 
-public: // to Vertex and Face class
+    void print() const;
+    void rebuild_tree();
+
+private: // to Vertex and Face class
+    friend class Vertex;
+    friend class Face;
     void add_searchable_vertex(std::weak_ptr<Vertex> vertex);
     void remove_searchable_vertex(std::weak_ptr<Vertex> vertex);
 

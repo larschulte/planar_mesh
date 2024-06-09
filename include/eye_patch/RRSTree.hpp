@@ -219,7 +219,7 @@ private:
         return boundary_vertex_list;
     }
 
-    void printNode(std::shared_ptr<Node> node, int level)
+    void print_node(std::shared_ptr<Node> node, int level) const
     {
         if (node->isLeaf())
         {
@@ -231,8 +231,8 @@ private:
         }
         else
         {
-            printNode(node->left, level+1);
-            printNode(node->right, level+1);
+            print_node(node->left, level+1);
+            print_node(node->right, level+1);
         }
     }
 
@@ -248,11 +248,11 @@ public:
 
     RRSTree() : rebuild_threshold(2), size_at_last_rebuild(0), tree_size(0)
     {
-        rebuildTree();
+        rebuild();
         vertex_set.clear();
     }
 
-    void rebuildTree()
+    void rebuild()
     {
         if (tree_size == 0)
         {
@@ -286,7 +286,7 @@ public:
         if (tree_size > size_at_last_rebuild * rebuild_threshold)
         {
             add_vertex_to_node(root, boundary_vertex);
-            rebuildTree();
+            rebuild();
             size_at_last_rebuild = tree_size;
         }
         else
@@ -320,12 +320,12 @@ public:
         increase_vertex_radius_to_node(root, boundary_vertex);
     }
 
-    void printTree()
+    void print() const
     {
-        printNode(root, 0);
+        print_node(root, 0);
     }
 
-    void printSize()
+    void print_size()
     {
         std::cout << "Size: " << tree_size << std::endl;
     }

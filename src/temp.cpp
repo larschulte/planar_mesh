@@ -1263,17 +1263,17 @@ public:
 
     void rrstree_rebuild()
     {
-        rrstree.rebuildTree();
+        rrstree.rebuild();
     }
 
     void rrstree_print_tree()
     {
-        rrstree.printTree();
+        rrstree.print();
     }
 
     void rrstree_print_size()
     {
-        rrstree.printSize();
+        rrstree.print_size();
     }
 
     std::vector<BoundaryPoint> rrstree_get_boundary_points()
