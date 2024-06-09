@@ -1,4 +1,5 @@
 #include "eye_patch/TriangleBVH.hpp"
+#include <iostream>
 
 bool ray_triangle_intersect(const Eigen::Vector3d& orig, const Eigen::Vector3d& dir,
     const Eigen::Vector3d& v0, const Eigen::Vector3d& v1, const Eigen::Vector3d& v2,
@@ -191,6 +192,23 @@ void TriangleBVH::delete_face_from_node(std::shared_ptr<Node> node, std::weak_pt
     }
 }
 
+void TriangleBVH::print_node(const std::shared_ptr<Node> &node, int level) const
+{
+    if (node->isLeaf())
+    {
+        for (std::weak_ptr<Face> face : node->faces)
+        {
+            std::cout << "Level: " <<  level << " | ID: " << face.lock()->get_id() << " | Center: " << face.lock()->get_center().transpose() << std::endl;
+        }
+        std::cout << std::endl;
+    }
+    else
+    {
+        print_node(node->left, level+1);
+        print_node(node->right, level+1);
+    }
+}
+
 void TriangleBVH::delete_face(std::weak_ptr<Face> face)
 {
     // check input
@@ -250,4 +268,9 @@ std::set<std::weak_ptr<Face>> TriangleBVH::intersectionSearch(Eigen::Vector3d or
 {
     Eigen::Vector3d dir = (endPoint - origin).normalized();
     return intersectHierarchy(root, origin, dir);
+}
+
+void TriangleBVH::print() const
+{
+    print_node(root, 0);
 }

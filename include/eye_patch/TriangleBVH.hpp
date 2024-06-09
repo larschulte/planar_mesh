@@ -51,6 +51,7 @@ private:
     std::shared_ptr<Node> build_node(std::vector<std::weak_ptr<Face>> face_list);
     void add_face_to_node(std::shared_ptr<Node> node, std::weak_ptr<Face> face);
     void delete_face_from_node(std::shared_ptr<Node> node, std::weak_ptr<Face> face);
+    void print_node(const std::shared_ptr<Node>& node, int level) const;
 
     double rebuild_threshold;
     std::vector<std::weak_ptr<Face>> face_list;
@@ -68,6 +69,7 @@ public:
     void add_face(std::weak_ptr<Face> face);
     void delete_face(std::weak_ptr<Face> face);
     std::set<std::weak_ptr<Face>> intersectionSearch(Eigen::Vector3d origin, Eigen::Vector3d endPoint);
+    void print() const;
 };
 
 #endif // TRIANGLEBVH_H

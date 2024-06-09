@@ -18,8 +18,8 @@ class InteriorPoint;
 class Storage : public std::enable_shared_from_this<Storage> 
 {
 public: // to user
-    std::weak_ptr<Vertex> add_vertex(Eigen::Vector3d position, Eigen::Vector3d origin);
-    std::weak_ptr<Vertex> add_vertex(Eigen::Vector3d position, Eigen::Vector3d origin, double radius);
+    std::weak_ptr<Vertex> add_vertex(Eigen::Vector3d origin, Eigen::Vector3d position);
+    std::weak_ptr<Vertex> add_vertex(Eigen::Vector3d origin, Eigen::Vector3d position, double radius);
     std::weak_ptr<Edge> add_edge(std::weak_ptr<Vertex> vertex1, std::weak_ptr<Vertex> vertex2);
     std::weak_ptr<Face> add_face(std::weak_ptr<Vertex> vertex1, std::weak_ptr<Vertex> vertex2, std::weak_ptr<Vertex> vertex3);
     std::weak_ptr<Surface> add_surface();
@@ -45,7 +45,8 @@ public: // to user
 
     std::weak_ptr<Edge> get_edge(std::weak_ptr<Vertex> vertex1, std::weak_ptr<Vertex> vertex2) const;
 
-    void print() const;
+    void print_rrs() const;
+    void print_bvh() const;
     void rebuild_tree();
 
 private: // to Vertex and Face class

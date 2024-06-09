@@ -9,7 +9,7 @@
 #include "eye_patch/RRSTree.hpp"
 #include "eye_patch/TriangleBVH.hpp"
 
-std::weak_ptr<Vertex> Storage::add_vertex(Eigen::Vector3d position, Eigen::Vector3d origin) 
+std::weak_ptr<Vertex> Storage::add_vertex(Eigen::Vector3d origin, Eigen::Vector3d position) 
 {
     // create
     std::shared_ptr<Vertex> vertex = std::make_shared<Vertex>();
@@ -22,7 +22,7 @@ std::weak_ptr<Vertex> Storage::add_vertex(Eigen::Vector3d position, Eigen::Vecto
     return vertex;
 }
 
-std::weak_ptr<Vertex> Storage::add_vertex(Eigen::Vector3d position, Eigen::Vector3d origin, double radius)
+std::weak_ptr<Vertex> Storage::add_vertex(Eigen::Vector3d origin, Eigen::Vector3d position, double radius)
 {
     // create
     std::shared_ptr<Vertex> vertex = std::make_shared<Vertex>();
@@ -291,9 +291,14 @@ std::weak_ptr<Edge> Storage::get_edge(std::weak_ptr<Vertex> vertex1, std::weak_p
     throw std::runtime_error("Edge not found.");
 }
 
-void Storage::print() const
+void Storage::print_rrs() const
 {
     rrs_tree_.print();
+}
+
+void Storage::print_bvh() const
+{
+    triangle_bvh_.print();
 }
 
 void Storage::rebuild_tree()

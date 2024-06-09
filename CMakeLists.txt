@@ -95,6 +95,14 @@ target_include_directories(MeshObject_test
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>)
 
+# add executable
+add_executable(TriangleBVH_test src/TriangleBVH_test.cpp ${MeshObject_SOURCE} src/TriangleBVH.cpp)
+target_link_libraries (TriangleBVH_test ${PCL_LIBRARIES})
+target_include_directories(TriangleBVH_test
+  PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>)
+
 
 # add executable
 add_executable(optimization src/optimization.cpp)

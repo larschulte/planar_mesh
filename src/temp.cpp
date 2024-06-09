@@ -704,7 +704,7 @@ public:
         if (!storage_.lock()->can_reverse_radius_search())
         {
             std::weak_ptr<Surface> new_surface = storage_.lock()->add_surface();
-            std::weak_ptr<Vertex> new_vertex = storage_.lock()->add_vertex(thisPointVEC, thisPointOriginVEC);
+            std::weak_ptr<Vertex> new_vertex = storage_.lock()->add_vertex(thisPointOriginVEC, thisPointVEC);
             new_surface.lock()->connect(new_vertex);
             return;
         }
@@ -717,7 +717,7 @@ public:
         if (searched_boundary_vertices_set.size() == 0)
         {
             std::weak_ptr<Surface> new_surface = storage_.lock()->add_surface();
-            std::weak_ptr<Vertex> new_vertex = storage_.lock()->add_vertex(thisPointVEC, thisPointOriginVEC);
+            std::weak_ptr<Vertex> new_vertex = storage_.lock()->add_vertex(thisPointOriginVEC, thisPointVEC);
             new_surface.lock()->connect(new_vertex);
             return;
         }
@@ -841,7 +841,7 @@ public:
         if (!closest_surface.expired() && closest_distance < distance_threshold)
         {
             std::weak_ptr<Surface> new_surface = storage_.lock()->add_surface();
-            std::weak_ptr<Vertex> new_vertex = storage_.lock()->add_vertex(thisPointVEC, thisPointOriginVEC);
+            std::weak_ptr<Vertex> new_vertex = storage_.lock()->add_vertex(thisPointOriginVEC, thisPointVEC);
             new_surface.lock()->connect(new_vertex);
             return;
         }
@@ -862,14 +862,14 @@ public:
         if (!nearest_surface.expired())
         {
             std::weak_ptr<Surface> new_surface = storage_.lock()->add_surface();
-            std::weak_ptr<Vertex> new_vertex = storage_.lock()->add_vertex(thisPointVEC, thisPointOriginVEC);
+            std::weak_ptr<Vertex> new_vertex = storage_.lock()->add_vertex(thisPointOriginVEC, thisPointVEC);
             new_surface.lock()->connect(new_vertex);
             return;
         }
 
         // else, add the point to a new set
         std::weak_ptr<Surface> new_surface = storage_.lock()->add_surface();
-        std::weak_ptr<Vertex> new_vertex = storage_.lock()->add_vertex(thisPointVEC, thisPointOriginVEC);
+        std::weak_ptr<Vertex> new_vertex = storage_.lock()->add_vertex(thisPointOriginVEC, thisPointVEC);
         new_surface.lock()->connect(new_vertex);
         return;
     }
