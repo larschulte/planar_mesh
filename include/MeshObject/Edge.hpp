@@ -18,6 +18,7 @@ protected:
 
 public:
     int get_id() const;
+    std::weak_ptr<Vertex> get_vertex(int index) const;
 
     void connect(std::weak_ptr<Vertex> vertex);
     void connect(std::weak_ptr<Face> face);

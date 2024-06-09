@@ -29,6 +29,7 @@ public:
 private:
     bool deleting_ = false;
 
+    int id_;
     std::weak_ptr<Storage> storage_;
 
     std::set<std::weak_ptr<Face>> faces_;
@@ -38,5 +39,5 @@ private:
     Eigen::Vector3d origin_;
 };
 
-bool operator<(const std::weak_ptr<Vertex>& lhs, const std::weak_ptr<Vertex>& rhs);
-bool operator==(const std::weak_ptr<Vertex>& lhs, const std::weak_ptr<Vertex>& rhs);
+bool operator<(const std::weak_ptr<InteriorPoint>& lhs, const std::weak_ptr<InteriorPoint>& rhs);
+bool operator==(const std::weak_ptr<InteriorPoint>& lhs, const std::weak_ptr<InteriorPoint>& rhs);

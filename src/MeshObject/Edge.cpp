@@ -15,14 +15,14 @@ void Edge::initialize_(std::weak_ptr<Storage> storage, std::weak_ptr<Vertex> ver
     auto vertex1_valid = vertex1.lock();
     auto vertex2_valid = vertex2.lock();
 
+    // store
+    storage_ = storage;
+
     // get id
     id_ = storage_valid->get_next_edge_id();
 
     // sort
     if (vertex1_valid->get_id() > vertex2_valid->get_id()) std::swap(vertex1_valid, vertex2_valid);
-
-    // store
-    storage_ = storage_valid;
 
     // make connections
     connect(vertex1);
@@ -140,6 +140,13 @@ void Edge::disconnect(std::weak_ptr<Surface> surface)
 int Edge::get_id() const 
 { 
     return id_; 
+}
+
+std::weak_ptr<Vertex> Edge::get_vertex(int index) const
+{
+    if (index < 0 || index > 1) throw std::runtime_error("Invalid vertex index.");
+    if (vertices_.size() != 2) throw std::runtime_error("Edge does not have 2 vertices.");
+    return *std::next(vertices_.begin(), index);
 }
 
 // has vertex

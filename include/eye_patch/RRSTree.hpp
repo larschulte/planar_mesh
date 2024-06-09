@@ -249,6 +249,7 @@ public:
     RRSTree() : rebuild_threshold(2), size_at_last_rebuild(0), tree_size(0)
     {
         rebuildTree();
+        vertex_set.clear();
     }
 
     void rebuildTree()

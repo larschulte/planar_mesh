@@ -711,181 +711,167 @@ public:
 
         // perform rrstree radius search
         std::map<int, double> point_to_radius_map;
-        std::set<int> searched_boundary_points_set = rrstree.reverse_radius_search(thisPointVEC);
+        std::set<std::weak_ptr<Vertex>> searched_boundary_vertices_set = rrstree.reverse_radius_search(thisPointVEC);
 
         // if no searched results, add point to new set
-        if (searched_boundary_points_set.size() == 0)
+        if (searched_boundary_vertices_set.size() == 0)
         {
-            int newSetID = getNewSetID();
-            add_set(newSetID);
-            add_point(newPointID, newSetID, thisPointVEC, thisPointOriginVEC);
+            std::weak_ptr<Surface> new_surface = storage_.lock()->add_surface();
+            std::weak_ptr<Vertex> new_vertex = storage_.lock()->add_vertex(thisPointVEC, thisPointOriginVEC);
+            new_surface.lock()->connect(new_vertex);
             return;
         }
 
         // from searched points identify neighboring sets
-        std::set<int> neighboring_sets; 
-        for (int point_id : searched_boundary_points_set)
+        std::set<std::weak_ptr<Surface>> neighboring_surfaces; 
+        for (std::weak_ptr<Vertex> vertex : searched_boundary_vertices_set)
         {
-            neighboring_sets.insert(point_to_set_map.at(point_id));
+            neighboring_surfaces.insert(vertex.lock()->get_surface());
         }
 
         // try merge neighboring sets
-        std::map<int, int> merge_map = try_merge_surfaces(neighboring_sets);
+        try_merge_surfaces(neighboring_surfaces);
 
         // after merging, we are left with sets that should have different normals
         // each point in the neighboring set should reduce their search radius to the closest set
         // [todo]
         // for each point, compute the shortest distance to another point that is in a different set, and that different set have enough points
         // if the distance is less than its original radius, reduce its original radius
-        for (int pointID : searched_boundary_points_set)
+        for (std::weak_ptr<Vertex> vertex : searched_boundary_vertices_set)
         {
-            // setID
-            int setID = point_to_set_map.at(pointID);
+            // surface
+            std::weak_ptr<Surface> surface = vertex.lock()->get_surface();
 
             // skip if small set
-            if (set_to_points_map.at(setID).size() < fit_plane_threshold) continue;
+            if (surface.lock()->get_total_point_size() < fit_plane_threshold) continue;
 
             // smallest distance
             double smallest_distance = std::numeric_limits<double>::max();
 
-            for (int otherPointID : searched_boundary_points_set)
+            for (std::weak_ptr<Vertex> other_vertex : searched_boundary_vertices_set)
             {
+                // surface 
+                std::weak_ptr<Surface> other_surface = other_vertex.lock()->get_surface();
+
                 // skip if same set
-                if (point_to_set_map.at(otherPointID) == setID) continue;
+                if (other_surface == surface) continue;
 
                 // skip if small set
-                if (set_to_points_map.at(point_to_set_map.at(otherPointID)).size() < fit_plane_threshold) continue;
+                if (other_surface.lock()->get_total_point_size() < fit_plane_threshold) continue;
 
                 // compute distance
-                double distance = (point_to_vector3d_map.at(pointID) - point_to_vector3d_map.at(otherPointID)).norm();
+                double distance = (vertex.lock()->get_position() - other_vertex.lock()->get_position()).norm();
 
                 // update radius
                 if (distance < smallest_distance) smallest_distance = distance;
             }
 
             // adjust radius
-            if (smallest_distance < point_to_radius_map.at(pointID)) 
+            if (smallest_distance < vertex.lock()->get_radius()) 
             {
-                rrstree.reduceRadius(pointID, point_to_vector3d_map.at(pointID), smallest_distance);
-                point_to_radius_map.at(pointID) = smallest_distance;
+                vertex.lock()->set_reverse_radius_search_radius(smallest_distance);
             }
         }
 
 
 
         // split neighboring sets into sets with plane and sets without plane (by size)
-        std::set<int> sets_with_plane;
-        std::set<int> sets_without_plane;
-        for (int setID : neighboring_sets)
+        std::set<std::weak_ptr<Surface>> surfaces_with_plane;
+        std::set<std::weak_ptr<Surface>> surfaces_without_plane;
+        for (std::weak_ptr<Surface> surface : neighboring_surfaces)
         {
-            if (set_to_points_map.at(setID).size() > fit_plane_threshold) sets_with_plane.insert(setID);
-            else sets_without_plane.insert(setID);
+            if (surface.lock()->get_total_point_size() > fit_plane_threshold) surfaces_with_plane.insert(surface);
+            else surfaces_without_plane.insert(surface);
         }
         
         // for sets with plane, compute the point to set intersection distance
-        std::map<int, double> set_distance_map;
-        for (int setID : sets_with_plane)
+        std::map<std::weak_ptr<Surface>, double> surface_distance_map;
+        for (std::weak_ptr<Surface> surface : surfaces_with_plane)
         {
-            // use mean and normal of the set with the point added
-            Eigen::Vector3d mean = merge_means_between_set_and_point(setID, thisPointVEC);
-            Eigen::Matrix3d cov = merge_covariances_between_set_and_point(setID, thisPointVEC);
-
-            // use eigen solver to get normal
-            Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> eigensolver(cov);
-            Eigen::Vector3d normal = eigensolver.eigenvectors().col(0);
-
-            // compute distance
-            Eigen::Vector3d rayPlaneIntersectionPoint = ray_plane_intersection(thisPointOriginVEC, thisPointVEC, mean, normal);
-            double distance = (thisPointVEC - rayPlaneIntersectionPoint).norm();
+            // compute (not using normal from combined points, could implement in future)
+            double distance = surface.lock()->compute_point_to_surface_distance(thisPointOriginVEC, thisPointVEC);
 
             // store
-            set_distance_map[setID] = distance;
+            surface_distance_map[surface] = distance;
         }
 
         // extract the set within distance threshold
-        std::set<int> sets_within_threshold;
-        for (const auto& pair : set_distance_map)
+        std::set<std::weak_ptr<Surface>> surfaces_within_threshold;
+        for (const auto& pair : surface_distance_map)
         {
-            if (pair.second < distance_threshold) sets_within_threshold.insert(pair.first);
+            if (pair.second < distance_threshold) surfaces_within_threshold.insert(pair.first);
         }
 
         // from the sets within threshold, find the set that is closest to the point
-        int closest_setID = -1;
+        std::weak_ptr<Surface> closest_surface;
         double closest_distance = std::numeric_limits<double>::max();
-        for (int setID : sets_within_threshold)
+        for (std::weak_ptr<Surface> surface : surfaces_within_threshold)
         {
-            // use mean and normal of the set with the point added
-            Eigen::Vector3d mean = merge_means_between_set_and_point(setID, thisPointVEC);
-            Eigen::Matrix3d cov = merge_covariances_between_set_and_point(setID, thisPointVEC);
-
-            // use eigen solver to get normal
-            Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> eigensolver(cov);
-            Eigen::Vector3d normal = eigensolver.eigenvectors().col(0);
-
-            // compute distance
-            Eigen::Vector3d rayPlaneIntersectionPoint = ray_plane_intersection(thisPointOriginVEC, thisPointVEC, mean, normal);
-            double distance = (thisPointVEC - rayPlaneIntersectionPoint).norm();
+            double distance = surface.lock()->compute_point_to_surface_distance(thisPointOriginVEC, thisPointVEC);
 
             // update if closer
             if (distance < closest_distance)
             {
                 closest_distance = distance;
-                closest_setID = setID;
+                closest_surface = surface;
             }
         }
 
         // for the sets not selected as closest, update their searched points' radius
         // for all searched points
-        for (int pointID : searched_boundary_points_set)
+        for (std::weak_ptr<Vertex> vertex : searched_boundary_vertices_set)
         {
             // if it is in a set with plane
-            if (sets_with_plane.find(point_to_set_map.at(pointID)) != sets_with_plane.end())
+            if (surfaces_with_plane.find(vertex.lock()->get_surface()) != surfaces_with_plane.end())
             {
                 // and the set with plane is not the closest set
-                if (point_to_set_map.at(pointID) != closest_setID)
+                if (vertex.lock()->get_surface() != closest_surface)
                 {
                     // reduce their searched points' radius
-                    double reduced_radius = (thisPointVEC - point_to_vector3d_map.at(pointID)).norm();
+                    double reduced_radius = (thisPointVEC - vertex.lock()->get_position()).norm();
 
-                    if (reduced_radius < point_to_radius_map.at(pointID))
+                    if (reduced_radius < vertex.lock()->get_radius())
                     {
-                        rrstree.reduceRadius(pointID, point_to_vector3d_map.at(pointID), reduced_radius);
+                        vertex.lock()->set_reverse_radius_search_radius(reduced_radius);
                     }
                 }
             }
         }
 
-        if (closest_setID != -1 && closest_distance < distance_threshold)
+        if (!closest_surface.expired() && closest_distance < distance_threshold)
         {
-            add_point(newPointID, closest_setID, thisPointVEC, thisPointOriginVEC);
-            connect_point_to_set(newPointID, closest_setID, searched_boundary_points_set);
+            std::weak_ptr<Surface> new_surface = storage_.lock()->add_surface();
+            std::weak_ptr<Vertex> new_vertex = storage_.lock()->add_vertex(thisPointVEC, thisPointOriginVEC);
+            new_surface.lock()->connect(new_vertex);
             return;
         }
 
         // else, find the set that is nearest
-        int nearest_setID = -1;
+        std::weak_ptr<Surface> nearest_surface;
         double nearest_distance = std::numeric_limits<double>::max();
-        for (int setID : sets_without_plane)
+        for (std::weak_ptr<Surface> surface : surfaces_without_plane)
         {
-            Eigen::Vector3d mean = set_to_mean_map.at(setID);
+            Eigen::Vector3d mean = surface.lock()->get_mean();
             double distance = (thisPointVEC - mean).norm();
             if (distance < nearest_distance)
             {
                 nearest_distance = distance;
-                nearest_setID = setID;
+                nearest_surface = surface;
             }
         }
-        if (nearest_setID != -1)
+        if (!nearest_surface.expired())
         {
-            add_point(newPointID, nearest_setID, thisPointVEC, thisPointOriginVEC);
-            connect_point_to_set(newPointID, nearest_setID, searched_boundary_points_set);
+            std::weak_ptr<Surface> new_surface = storage_.lock()->add_surface();
+            std::weak_ptr<Vertex> new_vertex = storage_.lock()->add_vertex(thisPointVEC, thisPointOriginVEC);
+            new_surface.lock()->connect(new_vertex);
             return;
         }
 
         // else, add the point to a new set
-        int newSetID = getNewSetID();
-        add_set(newSetID);
-        add_point(newPointID, newSetID, thisPointVEC, thisPointOriginVEC);
+        std::weak_ptr<Surface> new_surface = storage_.lock()->add_surface();
+        std::weak_ptr<Vertex> new_vertex = storage_.lock()->add_vertex(thisPointVEC, thisPointOriginVEC);
+        new_surface.lock()->connect(new_vertex);
+        return;
     }
 
     void load_point_cloud()
@@ -923,11 +909,7 @@ public:
         Eigen::Vector3d thisPointVEC = pointcloud->points[ith_point].getVector3fMap().cast<double>();
         Eigen::Vector3d thisPointOriginVEC = origin;
         ith_point ++;
-        
-        // get new point id
-        int newPointID = getNewPointID();
-
-
+    
         // ------------- add point by triangle intersection
 
         // get list of intersected triangle by the point
@@ -1033,7 +1015,7 @@ public:
                 if (face.lock()->get_surface() != smallest_surface) continue;
                 
                 // add point as interior point
-                storage_.lock()->add_interior_point(newPointID, face.lock()->get_id(), thisPointVEC, thisPointOriginVEC);
+                storage_.lock()->add_interior_point(face.lock()->get_id(), thisPointVEC, thisPointOriginVEC);
 
                 std::cout << ith_point << " / " << ith_size << " of pointcloud " << ith_cloud << " added to set " << smallest_surface.lock()->get_id() << std::endl;
                 point_added_to_surface = true;
@@ -1142,6 +1124,31 @@ public:
         // return
         return edge_to_cloud_indices_map;
     };
+
+    std::map<std::weak_ptr<Vertex>, int> get_vertex_to_cloud_indices_map()
+    {
+        return storage_.lock()->get_vertex_to_cloud_indices_map();
+    } 
+
+    std::set<std::weak_ptr<Face>> get_faces() {return storage_.lock()->get_faces();};
+    std::set<std::weak_ptr<Edge>> get_edges() {return storage_.lock()->get_edges();};
+
+    std::set<std::weak_ptr<Vertex>> get_boundary_edges() 
+    {
+        // all edges
+        std::set<std::weak_ptr<Edge>> edges = storage_.lock()->get_edges();
+
+        // boundary edges
+        std::set<std::weak_ptr<Edge>> boundary_edges;
+        for (std::weak_ptr<Edge> edge : edges)
+        {
+            if (edge.lock()->is_boundary()) 
+            {
+                boundary_edges.insert(edge);
+            }
+        }
+    }
+
     std::map<int, std::array<int, 3>> get_triangle_to_cloud_indices_map() 
     {
         // initialize
@@ -1164,15 +1171,17 @@ public:
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr point_to_vector3d_set_colored_cloud()
     {
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
-        for (int point_id : point_list)
+        for (std::weak_ptr<Vertex> vertex : storage_.lock()->get_vertices())
         {
             pcl::PointXYZRGB point;
-            point.x = point_to_vector3d_map.at(point_id)[0];
-            point.y = point_to_vector3d_map.at(point_id)[1];
-            point.z = point_to_vector3d_map.at(point_id)[2];
-            point.r = set_to_color_map.at(point_to_set_map.at(point_id)).at(0);
-            point.g = set_to_color_map.at(point_to_set_map.at(point_id)).at(1);
-            point.b = set_to_color_map.at(point_to_set_map.at(point_id)).at(2);
+            Eigen::Vector3d position = vertex.lock()->get_position();
+            std::tuple<int, int, int> color = vertex.lock()->get_surface().lock()->get_color();
+            point.x = position[0];
+            point.y = position[1];
+            point.z = position[2];
+            point.r = std::get<0>(color);
+            point.g = std::get<1>(color);
+            point.b = std::get<2>(color);
             cloud->push_back(point);
         }
         return cloud;
@@ -1180,16 +1189,16 @@ public:
 
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr point_to_vector3d_set_distance_cloud()
     {
-        compute_projected_point_to_vector3d_map();
-
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
-        for (int point_id : point_list)
+        for (std::weak_ptr<Vertex> vertex : storage_.lock()->get_vertices())
         {
             pcl::PointXYZRGB point;
-            point.x = point_to_vector3d_map.at(point_id)[0];
-            point.y = point_to_vector3d_map.at(point_id)[1];
-            point.z = point_to_vector3d_map.at(point_id)[2];
-            double value = projected_points_distance_map.at(point_id) / 0.05;
+            Eigen::Vector3d origin = vertex.lock()->get_origin();
+            Eigen::Vector3d position = vertex.lock()->get_position();
+            point.x = position[0];
+            point.y = position[1];
+            point.z = position[2];
+            double value = vertex.lock()->get_surface().lock()->compute_point_to_surface_distance(origin, position) / 0.05;
             std::tuple<int, int, int> color = valueToJet(value);
             point.r = std::get<0>(color);
             point.g = std::get<1>(color);
@@ -1201,36 +1210,15 @@ public:
 
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr projected_point_to_vector3d_set_colored_cloud()
     {
-        compute_projected_point_to_vector3d_map();
-
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
-        for (int point_id : point_list)
+        for (std::weak_ptr<Vertex> vertex : storage_.lock()->get_vertices())
         {
             pcl::PointXYZRGB point;
-            point.x = projected_points_to_vector3d_map.at(point_id)[0];
-            point.y = projected_points_to_vector3d_map.at(point_id)[1];
-            point.z = projected_points_to_vector3d_map.at(point_id)[2];
-            point.r = set_to_color_map.at(point_to_set_map.at(point_id)).at(0);
-            point.g = set_to_color_map.at(point_to_set_map.at(point_id)).at(1);
-            point.b = set_to_color_map.at(point_to_set_map.at(point_id)).at(2);
-            cloud->push_back(point);
-        }
-        return cloud;
-    }
-
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr projected_point_to_vector3d_set_distance_cloud()
-    {
-        compute_projected_point_to_vector3d_map();
-
-        pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
-        for (int point_id : point_list)
-        {
-            pcl::PointXYZRGB point;
-            point.x = projected_points_to_vector3d_map.at(point_id)[0];
-            point.y = projected_points_to_vector3d_map.at(point_id)[1];
-            point.z = projected_points_to_vector3d_map.at(point_id)[2];
-            double value = projected_points_distance_map.at(point_id) / 0.05;
-            std::tuple<int, int, int> color = valueToJet(value);
+            Eigen::Vector3d projected_position = vertex.lock()->get_projected_position();
+            std::tuple<int, int, int> color = vertex.lock()->get_surface().lock()->get_color();
+            point.x = projected_position[0];
+            point.y = projected_position[1];
+            point.z = projected_position[2];
             point.r = std::get<0>(color);
             point.g = std::get<1>(color);
             point.b = std::get<2>(color);
@@ -1238,40 +1226,26 @@ public:
         }
         return cloud;
     }
-    
-    void compute_projected_point_to_vector3d_map()
+
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr projected_point_to_vector3d_set_distance_cloud()
     {
-        // for each point
-        for (int point_id : point_list)
+        pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+        for (std::weak_ptr<Vertex> vertex : storage_.lock()->get_vertices())
         {
-            // get set id
-            int setID = point_to_set_map.at(point_id);
-
-            // no plane
-            if (set_to_points_map.at(setID).size() < 2*fit_plane_threshold)
-            {
-                // store
-                projected_points_to_vector3d_map[point_id] = point_to_vector3d_map.at(point_id);   
-                projected_points_distance_map[point_id] = 0;
-            }
-            // have plane
-            else
-            {
-                // get projected point
-                const Eigen::Vector3d& rayOrigin = point_to_origin_vector3d_map.at(point_id);
-                const Eigen::Vector3d& rayEndPoint = point_to_vector3d_map.at(point_id);
-                const Eigen::Vector3d& mean = set_to_mean_map.at(setID);
-                const Eigen::Vector3d& normal = set_to_normal_map.at(setID);
-                Eigen::Vector3d rayPlaneIntersectionPoint = ray_plane_intersection(rayOrigin, rayEndPoint, mean, normal);
-
-                // compute distance
-                double distance = (point_to_vector3d_map.at(point_id) - rayPlaneIntersectionPoint).norm();
-
-                // store
-                projected_points_to_vector3d_map[point_id] = rayPlaneIntersectionPoint;   
-                projected_points_distance_map[point_id] = distance;
-            }
+            pcl::PointXYZRGB point;
+            Eigen::Vector3d origin = vertex.lock()->get_origin();
+            Eigen::Vector3d projected_position = vertex.lock()->get_projected_position();
+            point.x = projected_position[0];
+            point.y = projected_position[1];
+            point.z = projected_position[2];
+            double value = vertex.lock()->get_surface().lock()->compute_point_to_surface_distance(origin, position) / 0.05;
+            std::tuple<int, int, int> color = valueToJet(value);
+            point.r = std::get<0>(color);
+            point.g = std::get<1>(color);
+            point.b = std::get<2>(color);
+            cloud->push_back(point);
         }
+        return cloud;
     }
 
     int get_number_of_triangles()
@@ -1470,9 +1444,10 @@ private:
                 point_cloud = app_.point_to_vector3d_set_colored_cloud();
             }
         }
-        std::map<int, std::array<int, 3>> triangle_to_cloud_indices_map = app_.get_triangle_to_cloud_indices_map();
-        std::map<int, std::array<int, 2>> edge_to_cloud_indices_map = app_.get_edge_to_cloud_indices_map();
-        std::set<int> boundary_edge_set = app_.get_boundary_edge_set();
+        std::map<std::weak_ptr<Vertex>, int> vertex_to_cloud_indices_map = app_.get_vertex_to_cloud_indices_map();
+        std::set<std::weak_ptr<Face>> faces = app_.get_faces();
+        std::set<std::weak_ptr<Edge>> edges = app_.get_edges();
+        std::set<std::weak_ptr<Edge>> boundary_edges = app_.get_boundary_edges();
 
         // point cloud
         viewer_->removeShape("point_cloud");
@@ -1489,12 +1464,12 @@ private:
         {
             pcl::PolygonMesh triangle_mesh;
             pcl::toPCLPointCloud2(*point_cloud, triangle_mesh.cloud);
-            for (const auto& pair : triangle_to_cloud_indices_map)
+            for (const std::weak_ptr<Face>& face : faces)
             {
                 pcl::Vertices triangle;
-                triangle.vertices.push_back(pair.second[0]);
-                triangle.vertices.push_back(pair.second[1]);
-                triangle.vertices.push_back(pair.second[2]);
+                triangle.vertices.push_back(vertex_to_cloud_indices_map.at(face.lock()->get_vertex(0)));
+                triangle.vertices.push_back(vertex_to_cloud_indices_map.at(face.lock()->get_vertex(1)));
+                triangle.vertices.push_back(vertex_to_cloud_indices_map.at(face.lock()->get_vertex(2)));
                 triangle_mesh.polygons.push_back(triangle);
             }
             viewer_->addPolygonMesh(triangle_mesh, "triangle_mesh");
@@ -1506,36 +1481,36 @@ private:
         {
             pcl::PolygonMesh boundary_mesh;
             pcl::toPCLPointCloud2(*point_cloud, boundary_mesh.cloud);
-            for (int edge_id : boundary_edge_set)
+            for (const std::weak_ptr<Edge>& edge : boundary_edges)
             {
-                pcl::Vertices edge;
-                edge.vertices.push_back(edge_to_cloud_indices_map.at(edge_id)[0]);
-                edge.vertices.push_back(edge_to_cloud_indices_map.at(edge_id)[1]);
-                boundary_mesh.polygons.push_back(edge);
+                pcl::Vertices boundary_edge;
+                boundary_edge.vertices.push_back(vertex_to_cloud_indices_map.at(edge.lock()->get_vertex(0)));
+                boundary_edge.vertices.push_back(vertex_to_cloud_indices_map.at(edge.lock()->get_vertex(1)));
+                boundary_mesh.polygons.push_back(boundary_edge);
             }
             viewer_->addPolylineFromPolygonMesh(boundary_mesh, "boundary_edges");
             viewer_->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, 1, 1, 1, "boundary_edges");
             viewer_->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, 2, "boundary_edges");
         }
 
-        // boundary points spheres
-        for (const std::string& sphere_name : sphere_name_list) viewer_->removeShape(sphere_name);
-        sphere_name_list.clear();
-        if (show_sphere)
-        {
-            std::vector<BoundaryPoint> boundary_points = app_.rrstree_get_boundary_points();
-            // sort
-            std::sort(boundary_points.begin(), boundary_points.end(), [](const BoundaryPoint& a, const BoundaryPoint& b) {return a.pointID < b.pointID;});
+        // // boundary points spheres
+        // for (const std::string& sphere_name : sphere_name_list) viewer_->removeShape(sphere_name);
+        // sphere_name_list.clear();
+        // if (show_sphere)
+        // {
+        //     std::vector<BoundaryPoint> boundary_points = app_.rrstree_get_boundary_points();
+        //     // sort
+        //     std::sort(boundary_points.begin(), boundary_points.end(), [](const BoundaryPoint& a, const BoundaryPoint& b) {return a.pointID < b.pointID;});
 
-            // add sphere for only the last 20 points
-            for (int i = std::max(0, (int)boundary_points.size() - number_of_spheres_to_display); i < (int)boundary_points.size()-1; i++)
-            {
-                const BoundaryPoint& boundary_point = boundary_points[i];
-                std::string sphere_name = "boundary_point_" + std::to_string(boundary_point.pointID);
-                sphere_name_list.push_back(sphere_name);
-                viewer_->addSphere(pcl::PointXYZ(boundary_point.position[0], boundary_point.position[1], boundary_point.position[2]), boundary_point.radius, 1, 1, 1, sphere_name);
-            }
-        }
+        //     // add sphere for only the last 20 points
+        //     for (int i = std::max(0, (int)boundary_points.size() - number_of_spheres_to_display); i < (int)boundary_points.size()-1; i++)
+        //     {
+        //         const BoundaryPoint& boundary_point = boundary_points[i];
+        //         std::string sphere_name = "boundary_point_" + std::to_string(boundary_point.pointID);
+        //         sphere_name_list.push_back(sphere_name);
+        //         viewer_->addSphere(pcl::PointXYZ(boundary_point.position[0], boundary_point.position[1], boundary_point.position[2]), boundary_point.radius, 1, 1, 1, sphere_name);
+        //     }
+        // }
 
 
         // display mode

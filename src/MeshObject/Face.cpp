@@ -14,12 +14,13 @@ void Face::initialize_(std::weak_ptr<Storage> storage, std::weak_ptr<Vertex> ver
     if (vertex0.expired()) throw std::runtime_error("Attempts to create face with invalid vertex0.");
     if (vertex1.expired()) throw std::runtime_error("Attempts to create face with invalid vertex1.");
     if (vertex2.expired()) throw std::runtime_error("Attempts to create face with invalid vertex2.");
-    
-    // get id
-    id_ = storage.lock()->get_next_face_id();
 
     // store
     storage_ = storage;
+
+    // get id
+    id_ = storage_.lock()->get_next_face_id();
+
 
     // connect
     connect(vertex0);
@@ -85,6 +86,14 @@ Eigen::Vector3d Face::get_center() const
 std::set<std::weak_ptr<Vertex>> Face::get_vertices() const
 {
     return vertices_;
+}
+
+std::weak_ptr<Vertex> Face::get_vertex(int index) const
+{
+    if (index < 0 || index > 2) throw std::runtime_error("Invalid index for vertex.");
+    auto it = vertices_.begin();
+    for (int i = 0; i < index; i++) it++;
+    return *it;
 }
 
 std::weak_ptr<Surface> Face::get_surface() const

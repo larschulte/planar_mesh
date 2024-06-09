@@ -5,6 +5,7 @@
 #include <Eigen/Dense>
 
 // Forward declarations
+class Vertex;
 class Edge;
 class Storage;
 class Surface;
@@ -21,6 +22,7 @@ public:
     int get_id() const;
     Eigen::Vector3d get_center() const;
     std::set<std::weak_ptr<Vertex>> get_vertices() const;
+    std::weak_ptr<Vertex> get_vertex(int index) const;
     std::weak_ptr<Surface> get_surface() const;
 
     bool intersects_point(const Eigen::Vector3d& origin, const Eigen::Vector3d& direction);

@@ -26,6 +26,9 @@ void Surface::initialize_(std::weak_ptr<Storage> storage)
     eigenvalues_ = Eigen::Vector3d::Zero();
     normal_ = Eigen::Vector3d(0, 0, 1);
 
+    // initialize surface color
+    set_random_color_();
+    
     // log
     std::cout << "Surface " << id_ << " created.\n";
 }
@@ -114,6 +117,20 @@ double Surface::compute_point_to_surface_distance(const Eigen::Vector3d& origin,
     return distance;
 }
 
+Eigen::Vector3d Surface::compute_point_to_surface_position(const Eigen::Vector3d& origin, const Eigen::Vector3d& point) const
+{
+    // if perpendicular, return NaN
+    Eigen::Vector3d rayDirection = (point - origin).normalized();
+    if (normal_.dot(rayDirection) == 0) throw std::invalid_argument("Ray and plane are perpendicular");
+
+    // compute intersection
+    double distance = (mean_ - point).dot(normal_) / rayDirection.dot(normal_);
+    Eigen::Vector3d intersection = point + distance * rayDirection;
+
+    // return
+    return intersection;
+}
+
 Eigen::Vector3d Surface::get_mean() const
 {
     return mean_;
@@ -155,6 +172,9 @@ void Surface::connect(std::weak_ptr<Vertex> vertex)
 
     // update surface fitting
     if (inserted) add_point_to_surface_fitting(vertex.lock()->get_position(), vertex.lock()->get_origin());
+
+    // will need to create edges and faces
+    
 }
 
 void Surface::connect(std::weak_ptr<Edge> edge)
@@ -277,6 +297,12 @@ void Surface::add_point_to_surface_fitting(Eigen::Vector3d point, Eigen::Vector3
     eigenvectors_ = new_eigenvectors;
     eigenvalues_ = new_eigenvalues;
     normal_ = new_normal;
+}
+
+void Surface::set_random_color_()
+{
+    // random color
+    color_ = std::make_tuple(rand() % 256, rand() % 256, rand() % 256);
 }
 
 bool operator<(const std::weak_ptr<Surface> &lhs, const std::weak_ptr<Surface> &rhs)

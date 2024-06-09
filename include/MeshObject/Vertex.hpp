@@ -20,7 +20,9 @@ protected:
 public:
     int get_id() const;
     Eigen::Vector3d get_position() const;
+    Eigen::Vector3d get_projected_position() const;
     Eigen::Vector3d get_origin() const;
+    std::weak_ptr<Surface> get_surface() const;
 
     void connect(std::weak_ptr<Edge> edge);
     void connect(std::weak_ptr<Face> face);

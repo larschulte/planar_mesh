@@ -3,8 +3,8 @@
 #include "MeshObject/Edge.hpp"
 #include "MeshObject/Face.hpp"
 #include "MeshObject/Surface.hpp"
-#include "MeshObject/GenerticPoint.hpp"
-#include "MeshObject/InteriorPoint.hpp
+#include "MeshObject/GenericPoint.hpp"
+#include "MeshObject/InteriorPoint.hpp"
 
 #include "eye_patch/RRSTree.hpp"
 #include "eye_patch/TriangleBVH.hpp"
@@ -75,10 +75,10 @@ std::weak_ptr<Surface> Storage::add_surface(std::weak_ptr<Surface> surface1, std
     return surface;
 }
 
-std::weak_ptr<GenerticPoint> Storage::add_generic_point(Eigen::Vector3d position, Eigen::Vector3d origin) 
+std::weak_ptr<GenericPoint> Storage::add_generic_point(Eigen::Vector3d position, Eigen::Vector3d origin) 
 {
     // create
-    std::shared_ptr<GenerticPoint> genertic_point = std::make_shared<GenerticPoint>();
+    std::shared_ptr<GenericPoint> genertic_point = std::make_shared<GenericPoint>();
     genertic_point->initialize_(shared_from_this(), position, origin);
 
     // store
@@ -150,7 +150,7 @@ void Storage::delete_surface(std::weak_ptr<Surface> surface)
     surfaces_.erase(surface.lock());
 }
 
-void Storage::delete_genertic_point(std::weak_ptr<GenerticPoint> genertic_point) 
+void Storage::delete_genertic_point(std::weak_ptr<GenericPoint> genertic_point) 
 {
     // check input
     if (genertic_point.expired()) throw std::runtime_error("Attempts to delete expired genertic point.");
@@ -206,7 +206,7 @@ int Storage::get_next_surface_id() { return next_surface_id_++; }
 int Storage::get_next_generic_point_id() { return next_genertic_point_id_++; }
 int Storage::get_next_interior_point_id() { return next_interior_point_id_++; }
 
-bool can_reverse_radius_search() 
+bool Storage::can_reverse_radius_search() 
 { 
     return rrs_tree_.can_reverse_radius_search(); 
 }
@@ -222,6 +222,44 @@ std::set<std::weak_ptr<Face>> Storage::face_intersection_search(Eigen::Vector3d 
 {
     return triangle_bvh_.intersectionSearch(origin, point);
 }
+
+std::set<std::weak_ptr<Vertex>> Storage::get_vertices() const
+{
+    std::set<std::weak_ptr<Vertex>> vertices;
+    for (auto vertex : vertices_) vertices.insert(vertex);
+    return vertices;
+}
+
+std::set<std::weak_ptr<Edge>> Storage::get_edges() const
+{
+    std::set<std::weak_ptr<Edge>> edges;
+    for (auto edge : edges_) edges.insert(edge);
+    return edges;
+}
+
+std::set<std::weak_ptr<Face>> Storage::get_faces() const
+{
+    std::set<std::weak_ptr<Face>> faces;
+    for (auto face : faces_) faces.insert(face);
+    return faces;
+}
+
+std::map<std::weak_ptr<Vertex>, int> Storage::get_vertex_to_cloud_indices_map() const
+{
+    // initialize
+    std::map<std::weak_ptr<Vertex>, int> vertex_to_cloud_indices_map;
+
+    // fill
+    int id = 0;
+    for (auto vertex : vertices_)
+    {
+        vertex_to_cloud_indices_map[vertex] = id;
+        id++;
+    }
+
+    // return
+    return vertex_to_cloud_indices_map;
+} 
 
 
 // get edge

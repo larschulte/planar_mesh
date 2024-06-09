@@ -1,13 +1,18 @@
 #include "MeshObject/Storage.hpp"
 #include "MeshObject/InteriorPoint.hpp"
+#include "MeshObject/Face.hpp"
+#include "MeshObject/Surface.hpp"
 
 void InteriorPoint::initialize_(std::weak_ptr<Storage> storage, std::weak_ptr<Face> face, Eigen::Vector3d position, Eigen::Vector3d origin)
 {
     // check pointer validity
     if (storage.expired()) throw std::runtime_error("Attempts to create interior point with invalid storage.");
 
+    // store
+    storage_ = storage;
+
     // get id
-    id_ = storage_valid->get_next_interior_point_id();
+    id_ = storage_.lock()->get_next_interior_point_id();
 
     // store
     position_ = position;
@@ -103,7 +108,7 @@ bool operator<(const std::weak_ptr<InteriorPoint>& lhs, const std::weak_ptr<Inte
     return lhs.lock()->get_id() < rhs.lock()->get_id();
 }
 
-bool operator==(const std::weak_ptr<Vertex>& lhs, const std::weak_ptr<Vertex>& rhs)
+bool operator==(const std::weak_ptr<InteriorPoint>& lhs, const std::weak_ptr<InteriorPoint>& rhs)
 {
     if (lhs.expired() || rhs.expired()) throw std::runtime_error("Comparing expired InteriorPoints");
     return lhs.lock()->get_id() == rhs.lock()->get_id();

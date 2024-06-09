@@ -11,12 +11,12 @@ void Vertex::initialize_(std::weak_ptr<Storage> storage, Eigen::Vector3d positio
 {
     // check pointer validity
     if (storage.expired()) throw std::runtime_error("Attempts to create vertex with invalid storage.");
-    auto storage_valid = storage.lock();
 
     // get id
-    id_ = storage_valid->get_next_vertex_id();
+    id_ = storage.lock()->get_next_vertex_id();
 
     // store
+    storage_ = storage;
     position_ = position;
     origin_ = origin;
 
@@ -25,6 +25,9 @@ void Vertex::initialize_(std::weak_ptr<Storage> storage, Eigen::Vector3d positio
     double distance = (position - origin).norm();
     double radius = distance * distance_to_radius_ratio;
     set_reverse_radius_search_radius(radius);
+
+    // update boundary state
+    update_boundary_state();
 
     // log
     std::cout << "Vertex " << id_ << " created.\n";
@@ -52,6 +55,12 @@ void Vertex::delete_()
         disconnect(*surfaces_.begin());
     }
 
+    // remove from search tree
+    if (is_boundary_)
+    {
+        storage_.lock()->remove_searchable_vertex(shared_from_this());
+    }
+
     // add to storage as generic point
     storage_.lock()->add_generic_point(get_position(), get_origin());
 
@@ -69,12 +78,23 @@ Eigen::Vector3d Vertex::get_position() const
     return position_; 
 }
 
+Eigen::Vector3d Vertex::get_projected_position() const
+{
+    return get_surface().lock()->compute_point_to_surface_position(get_origin(), get_position());
+}
+
 Eigen::Vector3d Vertex::get_origin() const 
 { 
     return origin_; 
 }
 
-void Vertex::connect(std::weak_ptr<Edge> edge) 
+std::weak_ptr<Surface> Vertex::get_surface() const
+{    
+    // return surfaces_.empty() ? std::weak_ptr<Surface>() : *surfaces_.begin();
+    return *surfaces_.begin();
+}
+
+void Vertex::connect(std::weak_ptr<Edge> edge)
 {
     // check input
     if (edge.expired()) throw std::runtime_error("Attempts to connect vertex with invalid edge.");
@@ -163,6 +183,7 @@ void Vertex::update_boundary_state()
     // update search tree
     if (is_boundary_)
     {
+        if (storage_.expired()) throw std::runtime_error("Storage expired in vertex update boundary state.");
         storage_.lock()->add_searchable_vertex(shared_from_this());
     }
     else
@@ -180,7 +201,7 @@ void Vertex::set_reverse_radius_search_radius(double radius)
     min_ = position_ - Eigen::Vector3d(radius, radius, radius);
     max_ = position_ + Eigen::Vector3d(radius, radius, radius);
 
-    // would cause error if try to expand the radius, which is skipped for now
+    // should update search tree if expand radius
 }
 
 Eigen::Vector3d Vertex::get_min() const
@@ -213,6 +234,7 @@ bool Vertex::approx_contains(const Eigen::Vector3d& point) const
 
 bool operator<(const std::weak_ptr<Vertex>& lhs, const std::weak_ptr<Vertex>& rhs)
 {
+    // when updating the third point's boundary state (due to first point deleted), the first point is already deleted. 
     if (lhs.expired() || rhs.expired()) throw std::runtime_error("Comparing expired edges");
     return lhs.lock()->get_id() < rhs.lock()->get_id();
 }

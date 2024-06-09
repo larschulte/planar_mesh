@@ -22,6 +22,7 @@ public:
 private:
     bool deleting_ = false;
 
+    int id_;
     std::weak_ptr<Storage> storage_;
     Eigen::Vector3d position_;
     Eigen::Vector3d origin_;

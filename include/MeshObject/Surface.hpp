@@ -21,7 +21,8 @@ protected:
 public:
     int get_id() const;
     double compute_point_to_surface_distance(const Eigen::Vector3d& origin, const Eigen::Vector3d& point) const;
-
+    Eigen::Vector3d compute_point_to_surface_position(const Eigen::Vector3d& origin, const Eigen::Vector3d& point) const;
+    
     Eigen::Vector3d get_mean() const;
     Eigen::Matrix3d get_covariance() const;
     Eigen::Matrix3d get_eigenvectors() const;
@@ -55,6 +56,9 @@ private:
     Eigen::Matrix3d eigenvectors_;
     Eigen::Vector3d eigenvalues_;
     Eigen::Vector3d normal_;
+
+    void set_random_color_();
+    std::tuple<int, int, int> color_;
 };
 
 bool operator<(const std::weak_ptr<Surface>& lhs, const std::weak_ptr<Surface>& rhs);

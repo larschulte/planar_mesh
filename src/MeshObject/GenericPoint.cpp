@@ -6,8 +6,11 @@ void GenericPoint::initialize_(std::weak_ptr<Storage> storage, Eigen::Vector3d p
     // check pointer validity
     if (storage.expired()) throw std::runtime_error("Attempts to create generic point with invalid storage.");
 
+    // store
+    storage_ = storage;
+    
     // get id
-    id_ = storage_valid->get_next_generic_point_id();
+    id_ = storage_.lock()->get_next_generic_point_id();
 
     // store
     position_ = position;
@@ -50,7 +53,7 @@ bool operator<(const std::weak_ptr<GenericPoint>& lhs, const std::weak_ptr<Gener
     return lhs.lock()->get_id() < rhs.lock()->get_id();
 }
 
-bool operator==(const std::weak_ptr<Vertex>& lhs, const std::weak_ptr<Vertex>& rhs)
+bool operator==(const std::weak_ptr<GenericPoint>& lhs, const std::weak_ptr<GenericPoint>& rhs)
 {
     if (lhs.expired() || rhs.expired()) throw std::runtime_error("Comparing expired GenericPoints");
     return lhs.lock()->get_id() == rhs.lock()->get_id();
