@@ -63,6 +63,9 @@ void Surface::initialize_(std::weak_ptr<Storage> storage, std::weak_ptr<Surface>
     for (auto interior_point : surface1.lock()->interior_points_) connect(interior_point);
     for (auto interior_point : surface2.lock()->interior_points_) connect(interior_point);
 
+    // initialize surface color
+    set_random_color();
+
     // log
     std::cout << "Surface " << id_ << " created.\n";
 }
@@ -111,6 +114,41 @@ double Surface::compute_point_to_surface_distance(const Eigen::Vector3d& origin,
 
     // compute intersection
     double distance = (mean_ - point).dot(normal_) / rayDirection.dot(normal_);
+
+    // return
+    return distance;
+}
+
+double Surface::compute_point_to_surface_distance_with_improved_covariance(const Eigen::Vector3d& origin, const Eigen::Vector3d& position) const
+{
+    // set
+    int size1 = get_total_point_size();
+    Eigen::Vector3d mean1 = mean_;
+    Eigen::Matrix3d cov1 = covariance_;
+
+    // point
+    int size2 = 1;
+    Eigen::Vector3d mean2 = position;
+    Eigen::Matrix3d cov2 = Eigen::Matrix3d::Zero();
+
+    // set + point
+    Eigen::Vector3d new_mean = merge_means(mean1, mean2, size1, size2);
+    Eigen::Matrix3d new_cov = merge_covariances(cov1, cov2, mean1, mean2, size1, size2);
+
+    // plane estimate
+    Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> solver(new_cov);
+    Eigen::Matrix3d new_eigenvectors = solver.eigenvectors();
+    Eigen::Vector3d new_normal = new_eigenvectors.col(0); // Assuming the smallest eigenvalue corresponds to the normal
+    Eigen::Vector3d vector_towards_origin = origin - position;
+    if (new_normal.dot(vector_towards_origin) < 0) new_normal *= -1; // normal should points towards the origin
+
+
+    // if perpendicular, return NaN
+    Eigen::Vector3d rayDirection = (position - origin).normalized();
+    if (new_normal.dot(rayDirection) == 0) throw std::invalid_argument("Ray and plane are perpendicular");
+
+    // compute intersection
+    double distance = (new_mean - position).dot(new_normal) / rayDirection.dot(new_normal);
 
     // return
     return distance;
@@ -254,7 +292,7 @@ void Surface::disconnect(std::weak_ptr<InteriorPoint> interior_point)
     if (erased) interior_point.lock()->disconnect(shared_from_this());
 }
 
-void Surface::add_point_to_surface_fitting(Eigen::Vector3d point, Eigen::Vector3d origin)
+void Surface::add_point_to_surface_fitting(Eigen::Vector3d position, Eigen::Vector3d origin)
 {
     // set
     int size1 = get_total_point_size();
@@ -263,7 +301,7 @@ void Surface::add_point_to_surface_fitting(Eigen::Vector3d point, Eigen::Vector3
 
     // point
     int size2 = 1;
-    Eigen::Vector3d mean2 = point;
+    Eigen::Vector3d mean2 = position;
     Eigen::Matrix3d cov2 = Eigen::Matrix3d::Zero();
 
     // set + point
@@ -275,7 +313,7 @@ void Surface::add_point_to_surface_fitting(Eigen::Vector3d point, Eigen::Vector3
     Eigen::Matrix3d new_eigenvectors = solver.eigenvectors();
     Eigen::Vector3d new_eigenvalues = solver.eigenvalues();
     Eigen::Vector3d new_normal = new_eigenvectors.col(0); // Assuming the smallest eigenvalue corresponds to the normal
-    Eigen::Vector3d vector_towards_origin = origin - point;
+    Eigen::Vector3d vector_towards_origin = origin - position;
     if (new_normal.dot(vector_towards_origin) < 0) new_normal *= -1; // normal should points towards the origin
 
     // store
@@ -329,6 +367,10 @@ Eigen::Matrix3d merge_covariances(const Eigen::Matrix3d& cov1, const Eigen::Matr
                                 const Eigen::Vector3d& mean1, const Eigen::Vector3d& mean2, 
                                 int size1, int size2) 
 {
+    // Handle the edge case where one of the sizes is zero
+    if (size1 == 0) return cov2;
+    if (size2 == 0) return cov1;
+
     Eigen::Vector3d combined_mean = merge_means(mean1, mean2, size1, size2);
     Eigen::Matrix3d mean_diff1 = (mean1 - combined_mean) * (mean1 - combined_mean).transpose();
     Eigen::Matrix3d mean_diff2 = (mean2 - combined_mean) * (mean2 - combined_mean).transpose();

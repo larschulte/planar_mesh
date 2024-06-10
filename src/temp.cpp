@@ -419,7 +419,8 @@ public:
         for (std::weak_ptr<Surface> surface : surfaces_with_plane)
         {
             // compute (not using normal from combined points, could implement in future)
-            double distance = surface.lock()->compute_point_to_surface_distance(thisPointOriginVEC, thisPointVEC);
+            double distance = surface.lock()->compute_point_to_surface_distance_with_improved_covariance(thisPointOriginVEC, thisPointVEC);
+            std::cout << "distance: " << distance << std::endl;
 
             // store
             surface_distance_map[surface] = distance;
@@ -429,7 +430,7 @@ public:
         std::set<std::weak_ptr<Surface>> surfaces_within_threshold;
         for (const auto& pair : surface_distance_map)
         {
-            if (pair.second < distance_threshold) surfaces_within_threshold.insert(pair.first);
+            if (std::fabs(pair.second) < distance_threshold) surfaces_within_threshold.insert(pair.first);
         }
 
         // from the sets within threshold, find the set that is closest to the point
@@ -437,7 +438,7 @@ public:
         double closest_distance = std::numeric_limits<double>::max();
         for (std::weak_ptr<Surface> surface : surfaces_within_threshold)
         {
-            double distance = surface.lock()->compute_point_to_surface_distance(thisPointOriginVEC, thisPointVEC);
+            double distance = surface_distance_map.at(surface);
 
             // update if closer
             if (distance < closest_distance)
@@ -519,7 +520,6 @@ public:
         Eigen::Affine3d pose = data_loader.get_pose(ith_cloud);
         pointcloud = transform_cloud_to_global<PointT>(pointcloud_local, pose);
         origin = pose.translation();
-        ith_point = 0;
         ith_size = pointcloud->size() * pointcloud_fraction;
 
         std::cout << "loaded pointcloud " << ith_cloud << " with " << pointcloud->size() << " points" << std::endl;
@@ -665,6 +665,7 @@ public:
         {
             // next cloud
             ith_cloud += 1;
+            ith_point = 0;
             load_point_cloud();
         }
     }
@@ -707,6 +708,7 @@ public:
         // dataset = "osney";
         // dataset = "blenheim";
         ith_cloud = 50;
+        ith_point = 0;
         shuffle_pointcloud = false;
         pointcloud_fraction = 1;
         distance_to_radius_ratio = tan(4 * M_PI / 180);
@@ -760,7 +762,7 @@ public:
 
     std::set<std::weak_ptr<Face>> get_faces() {return storage_->get_faces();};
     std::set<std::weak_ptr<Edge>> get_edges() {return storage_->get_edges();};
-
+    std::vector<std::weak_ptr<Vertex>> get_rrs_vertices() {return storage_->get_rrs_vertices();};
     // std::set<std::weak_ptr<Vertex>> get_boundary_edges() 
     // {
     //     // all edges
@@ -1015,12 +1017,14 @@ public:
         // register keyboard callback
         viewer_->registerKeyboardCallback(&InteractiveViewer::keyboard_callback, *this, nullptr);
 
+        // // ------------------------------ parameters
+        number_of_spheres_to_display = 60;
+
         // spin
         viewer_->spin();
 
 
-        // // ------------------------------ parameters
-        number_of_spheres_to_display = 20;
+        
     }
 
 private:
@@ -1117,24 +1121,25 @@ private:
         //     viewer_->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, 2, "boundary_edges");
         // }
 
-        // // boundary points spheres
-        // for (const std::string& sphere_name : sphere_name_list) viewer_->removeShape(sphere_name);
-        // sphere_name_list.clear();
-        // if (show_sphere)
-        // {
-        //     std::vector<BoundaryPoint> boundary_points = app_.rrstree_get_boundary_points();
-        //     // sort
-        //     std::sort(boundary_points.begin(), boundary_points.end(), [](const BoundaryPoint& a, const BoundaryPoint& b) {return a.pointID < b.pointID;});
+        // boundary points spheres
+        for (const std::string& sphere_name : sphere_name_list) viewer_->removeShape(sphere_name);
+        sphere_name_list.clear();
+        if (show_sphere)
+        {
+            std::vector<std::weak_ptr<Vertex>> boundary_vertices = app_.get_rrs_vertices();
+            // sort
+            std::sort(boundary_vertices.begin(), boundary_vertices.end());
 
-        //     // add sphere for only the last 20 points
-        //     for (int i = std::max(0, (int)boundary_points.size() - number_of_spheres_to_display); i < (int)boundary_points.size()-1; i++)
-        //     {
-        //         const BoundaryPoint& boundary_point = boundary_points[i];
-        //         std::string sphere_name = "boundary_point_" + std::to_string(boundary_point.pointID);
-        //         sphere_name_list.push_back(sphere_name);
-        //         viewer_->addSphere(pcl::PointXYZ(boundary_point.position[0], boundary_point.position[1], boundary_point.position[2]), boundary_point.radius, 1, 1, 1, sphere_name);
-        //     }
-        // }
+            // for the last 20
+            for (int i = 0; i < std::min(number_of_spheres_to_display, (int)boundary_vertices.size()); i++)
+            {
+                std::weak_ptr<Vertex> boundary_vertex = boundary_vertices[boundary_vertices.size() - 1 - i];
+                std::string sphere_name = "boundary_point_" + std::to_string(boundary_vertex.lock()->get_id());
+                sphere_name_list.push_back(sphere_name);
+                Eigen::Vector3d position = boundary_vertex.lock()->get_position();
+                viewer_->addSphere(pcl::PointXYZ(position[0], position[1], position[2]), boundary_vertex.lock()->get_radius(), 1, 1, 1, sphere_name);
+            }
+        }
 
 
         // display mode

@@ -52,7 +52,7 @@ private:
         std::shared_ptr<Node> right;
         std::vector<std::weak_ptr<Vertex>> boundary_vertices;
 
-        bool isLeaf() 
+        bool isLeaf() const
         {
             return !left && !right;
         }
@@ -199,7 +199,7 @@ private:
         }
     }
 
-    std::vector<std::weak_ptr<Vertex>> flatten_node(std::shared_ptr<Node> node)
+    std::vector<std::weak_ptr<Vertex>> flatten_node(std::shared_ptr<Node> node) const
     {
         std::vector<std::weak_ptr<Vertex>> boundary_vertex_list;
         if (node->isLeaf())
@@ -330,7 +330,7 @@ public:
         std::cout << "Size: " << tree_size << std::endl;
     }
 
-    std::vector<std::weak_ptr<Vertex>> get_vertices()
+    std::vector<std::weak_ptr<Vertex>> get_vertices() const
     {
         return flatten_node(root);
     }

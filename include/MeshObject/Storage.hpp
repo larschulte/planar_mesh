@@ -42,6 +42,7 @@ public: // to user
     std::set<std::weak_ptr<Edge>> get_edges() const;
     std::set<std::weak_ptr<Face>> get_faces() const;
     std::set<std::weak_ptr<Surface>> get_surfaces() const;
+    std::vector<std::weak_ptr<Vertex>> get_rrs_vertices() const;
     std::map<std::weak_ptr<Vertex>, int> get_vertex_to_cloud_indices_map() const;
 
     std::weak_ptr<Edge> get_edge(std::weak_ptr<Vertex> vertex1, std::weak_ptr<Vertex> vertex2) const;

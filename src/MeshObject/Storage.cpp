@@ -264,6 +264,11 @@ std::set<std::weak_ptr<Surface>> Storage::get_surfaces() const
     return surfaces;
 }
 
+std::vector<std::weak_ptr<Vertex>> Storage::get_rrs_vertices() const
+{
+    return rrs_tree_.get_vertices();
+}
+
 std::map<std::weak_ptr<Vertex>, int> Storage::get_vertex_to_cloud_indices_map() const
 {
     // initialize
