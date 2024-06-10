@@ -23,335 +23,6 @@ class Application
 {
 public:
 
-    void add_set(int newSetID)
-    {
-        set_list.push_back(newSetID);
-        set_to_color_map[newSetID] = {rand() % 256, rand() % 256, rand() % 256};
-        set_to_points_map[newSetID] = {};
-        set_to_edges_map[newSetID] = {};
-        set_to_triangles_map[newSetID] = {};
-        set_to_mean_map[newSetID] = Eigen::Vector3d::Zero();
-        set_to_covariance_matrix_map[newSetID] = Eigen::Matrix3d::Zero();
-        set_to_eigenvectors_map[newSetID] = Eigen::Matrix3d::Identity();
-        set_to_eigenvalues_map[newSetID] = Eigen::Vector3d::Zero();
-        set_to_normal_map[newSetID] = Eigen::Vector3d(0, 0, 1);
-        boundary_edge_of_set[newSetID] = {};
-        boundary_point_of_set[newSetID] = {};
-    }
-
-    void add_point(int newPointID, int setID, const Eigen::Vector3d& thisPoint, const Eigen::Vector3d& origin)
-    {
-        point_list.push_back(newPointID);
-        point_to_vector3d_map[newPointID] = thisPoint;
-        point_to_origin_vector3d_map[newPointID] = origin;
-        point_to_edges_map[newPointID] = {};
-        point_to_set_map[newPointID] = setID;
-        set_to_points_map.at(setID).insert(newPointID);
-        add_to_plane_estimate(newPointID, setID);
-
-        update_boundary_point_record(newPointID, setID);
-    }
-
-    void store_point_in_triangle(int newPointID, int triangleID, const Eigen::Vector3d& thisPoint, const Eigen::Vector3d& origin)
-    {
-        int setID = triangle_to_set_map.at(triangleID);
-
-        point_list.push_back(newPointID);
-        point_to_vector3d_map[newPointID] = thisPoint;
-        point_to_origin_vector3d_map[newPointID] = origin;
-        point_to_edges_map[newPointID] = {};
-        point_to_storing_triangle_map[newPointID] = triangleID;
-        point_to_set_map[newPointID] = setID;
-        set_to_points_map.at(setID).insert(newPointID);
-        add_to_plane_estimate(newPointID, setID);
-        // update_boundary_point_record(newPointID, setID);
-        triangle_to_points_map.at(triangleID).insert(newPointID);
-    }
-
-    void add_edge(int newEdgeID, int setID, std::array<int, 2> vertices)
-    {
-        vertices = sortTwoInts(vertices[0], vertices[1]);
-        int pointID1 = vertices[0];
-        int pointID2 = vertices[1];
-
-        edge_list.push_back(newEdgeID);
-        edge_to_point_map[newEdgeID] = vertices;
-        edge_to_point_map_reverse[vertices] = newEdgeID;
-        point_to_edges_map.at(pointID1).insert(newEdgeID);
-        point_to_edges_map.at(pointID2).insert(newEdgeID);
-        set_to_edges_map.at(setID).insert(newEdgeID);
-        edge_to_set_map[newEdgeID] = setID;
-
-        edge_to_edge_count_map[newEdgeID] = 0;
-        update_boundary_edge_record(newEdgeID, setID);
-        update_boundary_point_record(pointID1, setID);
-        update_boundary_point_record(pointID2, setID);
-    }
-
-    void add_triangle(int newTriangleID, int setID, std::array<int, 3> vertices)
-    {
-        vertices = sortThreeInts(vertices[0], vertices[1], vertices[2]);
-        int pointID1 = vertices[0];
-        int pointID2 = vertices[1];
-        int pointID3 = vertices[2];
-        std::array<int, 2> edge1 = {pointID1, pointID2};
-        std::array<int, 2> edge2 = {pointID2, pointID3};
-        std::array<int, 2> edge3 = {pointID1, pointID3};
-        int edgeID1 = edge_to_point_map_reverse.at(edge1);
-        int edgeID2 = edge_to_point_map_reverse.at(edge2);
-        int edgeID3 = edge_to_point_map_reverse.at(edge3);
-
-        triangle_list.push_back(newTriangleID);
-        triangle_to_vertices_map[newTriangleID] = vertices;
-        triangle_to_vertices_map_reverse[vertices] = newTriangleID;
-        triangle_to_points_map[newTriangleID] = {};
-        triangle_to_set_map[newTriangleID] = setID;
-        set_to_triangles_map.at(setID).insert(newTriangleID);
-
-        edge_to_edge_count_map.at(edgeID1) ++;
-        edge_to_edge_count_map.at(edgeID2) ++;
-        edge_to_edge_count_map.at(edgeID3) ++;
-        update_boundary_edge_record(edgeID1, setID);
-        update_boundary_edge_record(edgeID2, setID);
-        update_boundary_edge_record(edgeID3, setID);
-        update_boundary_point_record(pointID1, setID);
-        update_boundary_point_record(pointID2, setID);
-        update_boundary_point_record(pointID3, setID);
-
-        bool inserted = global_triangle_set.insert(newTriangleID).second;
-        if (inserted) bvhRoot.addTriangle(newTriangleID, vertices, point_to_vector3d_map.at(pointID1), point_to_vector3d_map.at(pointID2), point_to_vector3d_map.at(pointID3));
-    }
-
-    void remove_set(int setID)
-    {
-        // remove
-        set_list.erase(std::remove(set_list.begin(), set_list.end(), setID), set_list.end());
-        set_to_color_map.erase(setID);
-        set_to_points_map.erase(setID);
-        set_to_edges_map.erase(setID);
-        set_to_triangles_map.erase(setID);
-        set_to_mean_map.erase(setID);
-        set_to_covariance_matrix_map.erase(setID);
-        set_to_eigenvectors_map.erase(setID);
-        set_to_eigenvalues_map.erase(setID);
-        set_to_normal_map.erase(setID);
-        boundary_edge_of_set.erase(setID);
-        boundary_point_of_set.erase(setID);
-    }
-
-    void remove_point(int pointID)
-    {
-        // original info
-        Eigen::Vector3d thisPoint = point_to_vector3d_map.at(pointID);
-        Eigen::Vector3d origin = point_to_origin_vector3d_map.at(pointID);
-        int setID = point_to_set_map.at(pointID);
-
-        // remove
-        point_list.erase(std::remove(point_list.begin(), point_list.end(), pointID), point_list.end());
-        point_to_set_map.erase(pointID);
-        update_boundary_point_record(pointID, setID); // update boundary before point to vector3d map is erased
-        point_to_vector3d_map.erase(pointID);
-        point_to_origin_vector3d_map.erase(pointID);
-        set_to_points_map.at(setID).erase(pointID);
-        point_to_storing_triangle_map.erase(pointID);
-        remove_from_plane_estimate(pointID, setID);        
-        
-        // add to free points
-        free_points_queue.push(std::make_pair(thisPoint, origin));
-    }
-
-    void remove_edge(int edgeID)
-    {
-        // original info
-        std::array<int, 2> vertices = edge_to_point_map.at(edgeID);
-        int pointID1 = vertices[0];
-        int pointID2 = vertices[1];
-        int setID = edge_to_set_map.at(edgeID);
-
-        // remove
-        edge_list.erase(std::remove(edge_list.begin(), edge_list.end(), edgeID), edge_list.end());
-        edge_to_point_map.erase(edgeID);
-        edge_to_point_map_reverse.erase(vertices);
-        point_to_edges_map.at(pointID1).erase(edgeID);
-        point_to_edges_map.at(pointID2).erase(edgeID);
-        set_to_edges_map.at(setID).erase(edgeID);
-        edge_to_set_map.erase(edgeID);
-        edge_to_edge_count_map.erase(edgeID);
-
-        // update boundary
-        update_boundary_edge_record(edgeID, setID);
-        update_boundary_point_record(pointID1, setID);
-        update_boundary_point_record(pointID2, setID);
-        
-        // if the removal of edge causes a point to be isolated, remove the point
-        if (point_to_edges_map.at(pointID1).empty()) remove_point(pointID1);
-        if (point_to_edges_map.at(pointID2).empty()) remove_point(pointID2);
-    }
-
-    void remove_triangle(int triangleID)
-    {
-        // original info
-        std::array<int, 3> vertices = triangle_to_vertices_map.at(triangleID);
-        int pointID1 = vertices[0];
-        int pointID2 = vertices[1];
-        int pointID3 = vertices[2];
-        int edgeID1 = edge_to_point_map_reverse.at({pointID1, pointID2});
-        int edgeID2 = edge_to_point_map_reverse.at({pointID2, pointID3});
-        int edgeID3 = edge_to_point_map_reverse.at({pointID1, pointID3});
-        int setID = triangle_to_set_map.at(triangleID);
-        std::set<int> points_within_triangles = triangle_to_points_map.at(triangleID);
-
-        // remove
-        triangle_list.erase(std::remove(triangle_list.begin(), triangle_list.end(), triangleID), triangle_list.end());
-        triangle_to_vertices_map.erase(triangleID);
-        triangle_to_vertices_map_reverse.erase(vertices);
-        triangle_to_set_map.erase(triangleID);
-        set_to_triangles_map.at(setID).erase(triangleID);
-        triangle_to_points_map.erase(triangleID);
-        bool erased = global_triangle_set.erase(triangleID);
-        if (erased) bvhRoot.delete_face(triangleID, vertices, point_to_vector3d_map.at(pointID1), point_to_vector3d_map.at(pointID2), point_to_vector3d_map.at(pointID3));
-
-        // update boundary
-        edge_to_edge_count_map.at(edgeID1) --;
-        edge_to_edge_count_map.at(edgeID2) --;
-        edge_to_edge_count_map.at(edgeID3) --;
-        update_boundary_edge_record(edgeID1, setID);
-        update_boundary_edge_record(edgeID2, setID);
-        update_boundary_edge_record(edgeID3, setID);
-        update_boundary_point_record(pointID1, setID);
-        update_boundary_point_record(pointID2, setID);
-        update_boundary_point_record(pointID3, setID);
-
-        // if the removal of triangle causes an edge to be isolated, remove the edge
-        if (edge_to_edge_count_map.at(edgeID1) == 0) remove_edge(edgeID1);
-        if (edge_to_edge_count_map.at(edgeID2) == 0) remove_edge(edgeID2);
-        if (edge_to_edge_count_map.at(edgeID3) == 0) remove_edge(edgeID3);
-
-        // // if the removal of triangle causes a point to be isolated, remove the point
-        for (int pointID : points_within_triangles) remove_point(pointID);
-    }
-
-    void update_boundary_point_record(int pointID, int setID)
-    {
-        // if point is removed
-        if (point_to_set_map.find(pointID) == point_to_set_map.end())
-        {
-            bool erased = boundary_point_set.erase(pointID);
-            boundary_point_of_set.at(setID).erase(pointID);
-            if (erased) rrstree.deleteBoundaryPoint(pointID, point_to_vector3d_map.at(pointID));
-            return;
-        }
-
-        // if point is stored in triangle
-        if (point_to_storing_triangle_map.find(pointID) != point_to_storing_triangle_map.end())
-        {
-            bool erased = boundary_point_set.erase(pointID);
-            boundary_point_of_set.at(setID).erase(pointID);
-            if (erased) rrstree.deleteBoundaryPoint(pointID, point_to_vector3d_map.at(pointID));
-            return;
-        }
-
-        // if point to edge map is updated
-        bool isolated = point_to_edges_map.at(pointID).empty();
-        bool connected_to_boundary_edge = false;
-        for (int edge_id : point_to_edges_map.at(pointID))
-        {
-            if (boundary_edge_set.find(edge_id) != boundary_edge_set.end()) {connected_to_boundary_edge = true; break;}
-        }
-        if (isolated || connected_to_boundary_edge)
-        {
-            bool inserted = boundary_point_set.insert(pointID).second;
-            boundary_point_of_set.at(setID).insert(pointID);
-            if (inserted) 
-            {
-                // origin to point distance 
-                double distance = (point_to_vector3d_map.at(pointID) - point_to_origin_vector3d_map.at(pointID)).norm();
-                double radius = distance * distance_to_radius_ratio;
-                rrstree.addBoundaryPoint(pointID, point_to_vector3d_map.at(pointID), radius);
-            }
-        }
-        else
-        {
-            bool erased = boundary_point_set.erase(pointID);
-            boundary_point_of_set.at(setID).erase(pointID);
-            if (erased) rrstree.deleteBoundaryPoint(pointID, point_to_vector3d_map.at(pointID));
-        }
-    }
-
-    void update_boundary_edge_record(int edgeID, int setID)
-    {
-        // if edge is removed
-        if (edge_to_set_map.find(edgeID) == edge_to_set_map.end())
-        {
-            boundary_edge_set.erase(edgeID);
-            boundary_edge_of_set.at(setID).erase(edgeID);
-            return;
-        }
-
-        // if edge count is updated
-        int count = edge_to_edge_count_map.at(edgeID);
-        bool is_boundary_edge = count == 0 || count == 1;
-        if (is_boundary_edge)
-        {
-            boundary_edge_set.insert(edgeID);
-            boundary_edge_of_set.at(setID).insert(edgeID);
-        }
-        else
-        {
-            boundary_edge_set.erase(edgeID);
-            boundary_edge_of_set.at(setID).erase(edgeID);
-        }
-    }
-
-    void add_to_plane_estimate(int pointID, int setID)
-    {
-        if (set_to_points_map.at(setID).size() == 1)
-        {
-            // initialize
-            set_to_mean_map.at(setID) = point_to_vector3d_map.at(pointID);
-            set_to_covariance_matrix_map.at(setID) = Eigen::Matrix3d::Zero();
-            set_to_eigenvectors_map.at(setID) = Eigen::Matrix3d::Identity();
-            set_to_eigenvalues_map.at(setID) = Eigen::Vector3d::Zero();
-            set_to_normal_map.at(setID) = Eigen::Vector3d(0, 0, 1);
-        }
-        else
-        {
-            // set
-            int size1 = set_to_points_map.at(setID).size();
-            Eigen::Vector3d mean1 = set_to_mean_map.at(setID);
-            Eigen::Matrix3d cov1 = set_to_covariance_matrix_map.at(setID);
-
-            // point
-            int size2 = 1;
-            Eigen::Vector3d mean2 = point_to_vector3d_map.at(pointID);
-            Eigen::Matrix3d cov2 = Eigen::Matrix3d::Zero();
-
-            // set + point
-            Eigen::Vector3d new_mean = merge_means(mean1, mean2, size1, size2);
-            Eigen::Matrix3d new_cov = merge_covariances(cov1, cov2, mean1, mean2, size1, size2);
-
-            // plane estimate
-            Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> solver(new_cov);
-            Eigen::Matrix3d new_eigenvectors = solver.eigenvectors();
-            Eigen::Vector3d new_eigenvalues = solver.eigenvalues();
-            Eigen::Vector3d new_normal = new_eigenvectors.col(0); // Assuming the smallest eigenvalue corresponds to the normal
-            Eigen::Vector3d vector_towards_origin = point_to_origin_vector3d_map.at(pointID) - point_to_vector3d_map.at(pointID);
-            if (new_normal.dot(vector_towards_origin) < 0) new_normal *= -1; // normal should points towards the origin
-
-            // store
-            set_to_mean_map.at(setID) = new_mean;
-            set_to_covariance_matrix_map.at(setID) = new_cov;
-            set_to_eigenvectors_map.at(setID) = new_eigenvectors;
-            set_to_eigenvalues_map.at(setID) = new_eigenvalues;
-            set_to_normal_map.at(setID) = new_normal;
-        }
-    }
-
-    void remove_from_plane_estimate(int pointID, int setID)
-    {
-        // pass
-    }
-
     std::set<int> extract_existing_edge_between_points(const std::set<int>& candidate_point_set, const std::set<int>& candidate_edge_set)
     {
         // initialize
@@ -405,19 +76,6 @@ public:
     
         return false;
     }
-    
-    Eigen::Vector2d project_point_to_set_plane(int pointID, int setID)
-    {
-        const Eigen::Vector3d& rayOrigin = point_to_origin_vector3d_map.at(pointID);
-        const Eigen::Vector3d& rayEndPoint = point_to_vector3d_map.at(pointID);
-        const Eigen::Vector3d& mean = set_to_mean_map.at(setID);
-        const Eigen::Vector3d& normal = set_to_normal_map.at(setID);
-        Eigen::Matrix3d eigenvectors = set_to_eigenvectors_map.at(setID);
-        Eigen::Matrix<double, 3, 2> projection_matrix = eigenvectors.rightCols<2>();
-        Eigen::Vector3d rayPlaneIntersectionPoint = ray_plane_intersection(rayOrigin, rayEndPoint, mean, normal);
-        Eigen::Vector2d projected_point = (projection_matrix.transpose() * rayPlaneIntersectionPoint).head<2>();
-        return projected_point;
-    }
 
     // extract set from set
     std::set<int> intersection_of_sets(const std::set<int>& setA, const std::set<int>& setB)
@@ -435,228 +93,200 @@ public:
         return setOut;
     }
 
-    // creates edges and triangles that connects the new point to the set
-    // to add a new point to mesh
-    // - form edge to boundary point of the mesh, skip if the edge intersects any existing boundary edge
-    // - form triangle if two used boundary points have a boundary edge between them, skip if the triangle contains other boundary points
-    void connect_point_to_set(int newPointID, int setID, const std::set<int>& searched_boundary_points)
-    {
-        const std::set<int>& boundary_point_of_current_set = boundary_point_of_set.at(setID);
-        const std::set<int>& boundary_edge_of_current_set = boundary_edge_of_set.at(setID);
+    // // creates edges and triangles that connects the new point to the set
+    // // to add a new point to mesh
+    // // - form edge to boundary point of the mesh, skip if the edge intersects any existing boundary edge
+    // // - form triangle if two used boundary points have a boundary edge between them, skip if the triangle contains other boundary points
+    // void connect_point_to_set(int newPointID, int setID, const std::set<int>& searched_boundary_points)
+    // {
+    //     const std::set<int>& boundary_point_of_current_set = boundary_point_of_set.at(setID);
+    //     const std::set<int>& boundary_edge_of_current_set = boundary_edge_of_set.at(setID);
 
-        std::set<int> searched_boundary_points_in_current_set = intersection_of_sets(searched_boundary_points, boundary_point_of_current_set);
-        std::set<int> searched_boundary_edge_in_current_set = extract_existing_edge_between_points(searched_boundary_points_in_current_set, boundary_edge_of_current_set);
+    //     std::set<int> searched_boundary_points_in_current_set = intersection_of_sets(searched_boundary_points, boundary_point_of_current_set);
+    //     std::set<int> searched_boundary_edge_in_current_set = extract_existing_edge_between_points(searched_boundary_points_in_current_set, boundary_edge_of_current_set);
 
-        // // adjust radius
-        // // choose the smallest radius among the boundary points
-        // double smallest_radius = std::numeric_limits<double>::max();
-        // for (int point_id : searched_boundary_points_in_current_set)
-        // {
-        //     double distance = (point_to_vector3d_map.at(newPointID) - point_to_vector3d_map.at(point_id)).norm();
-        //     if (distance < smallest_radius) smallest_radius = distance;
-        // }
-        // rrstree.reduceRadius(newPointID, point_to_vector3d_map.at(newPointID), smallest_radius);
+    //     // // adjust radius
+    //     // // choose the smallest radius among the boundary points
+    //     // double smallest_radius = std::numeric_limits<double>::max();
+    //     // for (int point_id : searched_boundary_points_in_current_set)
+    //     // {
+    //     //     double distance = (point_to_vector3d_map.at(newPointID) - point_to_vector3d_map.at(point_id)).norm();
+    //     //     if (distance < smallest_radius) smallest_radius = distance;
+    //     // }
+    //     // rrstree.reduceRadius(newPointID, point_to_vector3d_map.at(newPointID), smallest_radius);
 
-        // compute the smallest distance to searched boundary points that are not in the same set, and is not small set
-        double smallest_distance = std::numeric_limits<double>::max();
-        for (int point_id : searched_boundary_points)
-        {
-            if (point_to_set_map.at(point_id) == setID) continue;
-            // skip if the set is small in size
-            if (set_to_points_map.at(point_to_set_map.at(point_id)).size() < fit_plane_threshold) continue;
+    //     // compute the smallest distance to searched boundary points that are not in the same set, and is not small set
+    //     double smallest_distance = std::numeric_limits<double>::max();
+    //     for (int point_id : searched_boundary_points)
+    //     {
+    //         if (point_to_set_map.at(point_id) == setID) continue;
+    //         // skip if the set is small in size
+    //         if (set_to_points_map.at(point_to_set_map.at(point_id)).size() < fit_plane_threshold) continue;
             
-            double distance = (point_to_vector3d_map.at(newPointID) - point_to_vector3d_map.at(point_id)).norm();
-            if (distance < smallest_distance) smallest_distance = distance;
-        }
-        if (smallest_distance < std::numeric_limits<double>::max()) rrstree.reduceRadius(newPointID, point_to_vector3d_map.at(newPointID), smallest_distance);
+    //         double distance = (point_to_vector3d_map.at(newPointID) - point_to_vector3d_map.at(point_id)).norm();
+    //         if (distance < smallest_distance) smallest_distance = distance;
+    //     }
+    //     if (smallest_distance < std::numeric_limits<double>::max()) rrstree.reduceRadius(newPointID, point_to_vector3d_map.at(newPointID), smallest_distance);
 
-        // precompute 2d points
-        std::map<int, Eigen::Vector2d> precompute_2d_map;
-        for (int point_id : boundary_point_of_current_set) 
-        {
-            precompute_2d_map[point_id] = project_point_to_set_plane(point_id, setID);
-        }
+    //     // precompute 2d points
+    //     std::map<int, Eigen::Vector2d> precompute_2d_map;
+    //     for (int point_id : boundary_point_of_current_set) 
+    //     {
+    //         precompute_2d_map[point_id] = project_point_to_set_plane(point_id, setID);
+    //     }
 
-        // // get a queue of candidate edges
-        // std::priority_queue<
-        //     std::pair<double, std::array<int, 2>>, 
-        //     std::vector<std::pair<double, std::array<int, 2>>>, 
-        //     std::greater<std::pair<double, std::array<int, 2>>>
-        // > edge_queue;
-        // for (int point_id : searched_boundary_points_in_current_set)
-        // {
-        //     // new edge, smaller id first
-        //     std::array<int, 2> newEdge = {std::min(newPointID, point_id), std::max(newPointID, point_id)};
+    //     // // get a queue of candidate edges
+    //     // std::priority_queue<
+    //     //     std::pair<double, std::array<int, 2>>, 
+    //     //     std::vector<std::pair<double, std::array<int, 2>>>, 
+    //     //     std::greater<std::pair<double, std::array<int, 2>>>
+    //     // > edge_queue;
+    //     // for (int point_id : searched_boundary_points_in_current_set)
+    //     // {
+    //     //     // new edge, smaller id first
+    //     //     std::array<int, 2> newEdge = {std::min(newPointID, point_id), std::max(newPointID, point_id)};
 
-        //     // skip if intersected with any boundary edge of the current set
-        //     bool intersected = edge_set_intersection(newEdge, setID, precompute_2d_map);
-        //     if (intersected) continue;
+    //     //     // skip if intersected with any boundary edge of the current set
+    //     //     bool intersected = edge_set_intersection(newEdge, setID, precompute_2d_map);
+    //     //     if (intersected) continue;
 
-        //     // compute distance in 2d map
-        //     double distance = (precompute_2d_map.at(newEdge[0]) - precompute_2d_map.at(newEdge[1])).norm();
+    //     //     // compute distance in 2d map
+    //     //     double distance = (precompute_2d_map.at(newEdge[0]) - precompute_2d_map.at(newEdge[1])).norm();
 
-        //     // add to queue
-        //     edge_queue.push(std::make_pair(distance, newEdge));
-        // }
+    //     //     // add to queue
+    //     //     edge_queue.push(std::make_pair(distance, newEdge));
+    //     // }
 
-        // // add from shortest edge, until two triangles are formed
-        // std::set<int> searched_boundary_points_used;
-        // int triangles_added = 0;
-        // while (!edge_queue.empty() && triangles_added < 3)
-        // {
-        //     // get edge
-        //     std::array<int, 2> newEdge = edge_queue.top().second;
-        //     edge_queue.pop();
+    //     // // add from shortest edge, until two triangles are formed
+    //     // std::set<int> searched_boundary_points_used;
+    //     // int triangles_added = 0;
+    //     // while (!edge_queue.empty() && triangles_added < 3)
+    //     // {
+    //     //     // get edge
+    //     //     std::array<int, 2> newEdge = edge_queue.top().second;
+    //     //     edge_queue.pop();
 
-        //     // add edge
-        //     int newEdgeID = getNewEdgeID();
-        //     add_edge(newEdgeID, setID, newEdge);
+    //     //     // add edge
+    //     //     int newEdgeID = getNewEdgeID();
+    //     //     add_edge(newEdgeID, setID, newEdge);
 
-        //     // add to used
-        //     searched_boundary_points_used.insert(newEdge[0]);
-        //     searched_boundary_points_used.insert(newEdge[1]);
+    //     //     // add to used
+    //     //     searched_boundary_points_used.insert(newEdge[0]);
+    //     //     searched_boundary_points_used.insert(newEdge[1]);
 
-        //     // add triangle
-        //     for (const auto& edgeID : searched_boundary_edge_in_current_set)
-        //     {   
-        //         // skip if not both points are used
-        //         int i1 = edge_to_point_map.at(edgeID)[0];
-        //         int i2 = edge_to_point_map.at(edgeID)[1];
-        //         bool i1_used = searched_boundary_points_used.find(i1) != searched_boundary_points_used.end();
-        //         bool i2_used = searched_boundary_points_used.find(i2) != searched_boundary_points_used.end();
-        //         if (!i1_used || !i2_used) continue;
+    //     //     // add triangle
+    //     //     for (const auto& edgeID : searched_boundary_edge_in_current_set)
+    //     //     {   
+    //     //         // skip if not both points are used
+    //     //         int i1 = edge_to_point_map.at(edgeID)[0];
+    //     //         int i2 = edge_to_point_map.at(edgeID)[1];
+    //     //         bool i1_used = searched_boundary_points_used.find(i1) != searched_boundary_points_used.end();
+    //     //         bool i2_used = searched_boundary_points_used.find(i2) != searched_boundary_points_used.end();
+    //     //         if (!i1_used || !i2_used) continue;
 
-        //         // new triangle, smaller id first
-        //         std::array<int, 3> newTriangle = sortThreeInts(newPointID, i1, i2);
+    //     //         // new triangle, smaller id first
+    //     //         std::array<int, 3> newTriangle = sortThreeInts(newPointID, i1, i2);
 
-        //         // skip if triangle already exists
-        //         if (triangle_to_vertices_map_reverse.find(newTriangle) != triangle_to_vertices_map_reverse.end()) continue;
+    //     //         // skip if triangle already exists
+    //     //         if (triangle_to_vertices_map_reverse.find(newTriangle) != triangle_to_vertices_map_reverse.end()) continue;
 
-        //         // skip if triangle contains other boundary points
-        //         if (triangle_set_intersection(newTriangle, setID, precompute_2d_map)) continue;
+    //     //         // skip if triangle contains other boundary points
+    //     //         if (triangle_set_intersection(newTriangle, setID, precompute_2d_map)) continue;
 
-        //         // add triangle
-        //         int newTriangleID = getNewTriangleID();
-        //         add_triangle(newTriangleID, setID, newTriangle);
-        //         triangles_added ++;
-        //     }
-        // }
+    //     //         // add triangle
+    //     //         int newTriangleID = getNewTriangleID();
+    //     //         add_triangle(newTriangleID, setID, newTriangle);
+    //     //         triangles_added ++;
+    //     //     }
+    //     // }
 
-        // add edge
-        std::set<int> searched_boundary_points_used;
-        std::vector<std::pair<Eigen::Vector2d, Eigen::Vector2d>> boundary_edges;
-        // Precompute boundary edges and their coordinates
-        for (int boundary_edgeID : boundary_edge_of_set.at(setID)) 
-        {
-            const std::array<int, 2>& boundaryEdge = edge_to_point_map.at(boundary_edgeID);
-            const Eigen::Vector2d& boundaryPoint1_2D = precompute_2d_map.at(boundaryEdge[0]);
-            const Eigen::Vector2d& boundaryPoint2_2D = precompute_2d_map.at(boundaryEdge[1]);
-            boundary_edges.emplace_back(boundaryPoint1_2D, boundaryPoint2_2D);
-        }
-        for (int point_id : searched_boundary_points_in_current_set) 
-        {
-            // new edge, smaller id first
-            std::array<int, 2> newEdge = {std::min(newPointID, point_id), std::max(newPointID, point_id)};
-            const Eigen::Vector2d& newPoint1_2D = precompute_2d_map.at(newEdge[0]);
-            const Eigen::Vector2d& newPoint2_2D = precompute_2d_map.at(newEdge[1]);
+    //     // add edge
+    //     std::set<int> searched_boundary_points_used;
+    //     std::vector<std::pair<Eigen::Vector2d, Eigen::Vector2d>> boundary_edges;
+    //     // Precompute boundary edges and their coordinates
+    //     for (int boundary_edgeID : boundary_edge_of_set.at(setID)) 
+    //     {
+    //         const std::array<int, 2>& boundaryEdge = edge_to_point_map.at(boundary_edgeID);
+    //         const Eigen::Vector2d& boundaryPoint1_2D = precompute_2d_map.at(boundaryEdge[0]);
+    //         const Eigen::Vector2d& boundaryPoint2_2D = precompute_2d_map.at(boundaryEdge[1]);
+    //         boundary_edges.emplace_back(boundaryPoint1_2D, boundaryPoint2_2D);
+    //     }
+    //     for (int point_id : searched_boundary_points_in_current_set) 
+    //     {
+    //         // new edge, smaller id first
+    //         std::array<int, 2> newEdge = {std::min(newPointID, point_id), std::max(newPointID, point_id)};
+    //         const Eigen::Vector2d& newPoint1_2D = precompute_2d_map.at(newEdge[0]);
+    //         const Eigen::Vector2d& newPoint2_2D = precompute_2d_map.at(newEdge[1]);
 
-            // skip if intersected with any boundary edge of the current set
-            bool intersected = false;
-            for (const auto& boundaryEdge : boundary_edges) 
-            {
-                const Eigen::Vector2d& boundaryPoint1_2D = boundaryEdge.first;
-                const Eigen::Vector2d& boundaryPoint2_2D = boundaryEdge.second;
+    //         // skip if intersected with any boundary edge of the current set
+    //         bool intersected = false;
+    //         for (const auto& boundaryEdge : boundary_edges) 
+    //         {
+    //             const Eigen::Vector2d& boundaryPoint1_2D = boundaryEdge.first;
+    //             const Eigen::Vector2d& boundaryPoint2_2D = boundaryEdge.second;
 
-                // intersect at ends
-                if (newPoint1_2D == boundaryPoint1_2D || newPoint1_2D == boundaryPoint2_2D || newPoint2_2D == boundaryPoint1_2D || newPoint2_2D == boundaryPoint2_2D) continue;
+    //             // intersect at ends
+    //             if (newPoint1_2D == boundaryPoint1_2D || newPoint1_2D == boundaryPoint2_2D || newPoint2_2D == boundaryPoint1_2D || newPoint2_2D == boundaryPoint2_2D) continue;
 
-                // intersect at middle
-                if (doIntersect(newPoint1_2D, newPoint2_2D, boundaryPoint1_2D, boundaryPoint2_2D)) { intersected = true; break; }
-            }
+    //             // intersect at middle
+    //             if (doIntersect(newPoint1_2D, newPoint2_2D, boundaryPoint1_2D, boundaryPoint2_2D)) { intersected = true; break; }
+    //         }
             
-            if (intersected) continue;
+    //         if (intersected) continue;
 
-            // add edge
-            int newEdgeID = getNewEdgeID();
-            add_edge(newEdgeID, setID, newEdge);
+    //         // add edge
+    //         int newEdgeID = getNewEdgeID();
+    //         add_edge(newEdgeID, setID, newEdge);
 
-            // add to used
-            searched_boundary_points_used.insert(point_id);
-        }
+    //         // add to used
+    //         searched_boundary_points_used.insert(point_id);
+    //     }
 
-        // add triangle
-        for (const auto& edgeID : searched_boundary_edge_in_current_set)
-        {   
-            // skip if not both points are used
-            int i1 = edge_to_point_map.at(edgeID)[0];
-            int i2 = edge_to_point_map.at(edgeID)[1];
-            bool i1_used = searched_boundary_points_used.find(i1) != searched_boundary_points_used.end();
-            bool i2_used = searched_boundary_points_used.find(i2) != searched_boundary_points_used.end();
-            if (!i1_used || !i2_used) continue;
+    //     // add triangle
+    //     for (const auto& edgeID : searched_boundary_edge_in_current_set)
+    //     {   
+    //         // skip if not both points are used
+    //         int i1 = edge_to_point_map.at(edgeID)[0];
+    //         int i2 = edge_to_point_map.at(edgeID)[1];
+    //         bool i1_used = searched_boundary_points_used.find(i1) != searched_boundary_points_used.end();
+    //         bool i2_used = searched_boundary_points_used.find(i2) != searched_boundary_points_used.end();
+    //         if (!i1_used || !i2_used) continue;
 
-            // new triangle, smaller id first
-            std::array<int, 3> newTriangle = sortThreeInts(newPointID, i1, i2);
+    //         // new triangle, smaller id first
+    //         std::array<int, 3> newTriangle = sortThreeInts(newPointID, i1, i2);
 
-            // skip if triangle already exists
-            if (triangle_to_vertices_map_reverse.find(newTriangle) != triangle_to_vertices_map_reverse.end()) continue;
+    //         // skip if triangle already exists
+    //         if (triangle_to_vertices_map_reverse.find(newTriangle) != triangle_to_vertices_map_reverse.end()) continue;
 
-            // skip if triangle contains other boundary points
-            if (triangle_set_intersection(newTriangle, setID, precompute_2d_map)) continue;
+    //         // skip if triangle contains other boundary points
+    //         if (triangle_set_intersection(newTriangle, setID, precompute_2d_map)) continue;
 
-            // add triangle
-            int newTriangleID = getNewTriangleID();
-            add_triangle(newTriangleID, setID, newTriangle);
-        }
-    }
+    //         // add triangle
+    //         int newTriangleID = getNewTriangleID();
+    //         add_triangle(newTriangleID, setID, newTriangle);
+    //     }
+    // }
 
-    Eigen::Vector3d merge_means_of_sets(int setID1, int setID2) 
+
+    // merge setID2 into setID1
+    std::weak_ptr<Surface> merge_surfaces(std::weak_ptr<Surface> surface1, std::weak_ptr<Surface> surface2) 
     {
-        Eigen::Vector3d mean1 = set_to_mean_map.at(setID1);
-        Eigen::Vector3d mean2 = set_to_mean_map.at(setID2);
-        int size1 = set_to_points_map.at(setID1).size();
-        int size2 = set_to_points_map.at(setID2).size();
-        return merge_means(mean1, mean2, size1, size2);
-    }
+        std::weak_ptr<Surface> new_surface = storage_->add_surface(surface1, surface2);
+        storage_->delete_surface(surface1);
+        storage_->delete_surface(surface2);
 
-    Eigen::Vector3d merge_means_between_set_and_point(int setID, const Eigen::Vector3d& point)
-    {
-        Eigen::Vector3d mean1 = set_to_mean_map.at(setID);
-        Eigen::Vector3d mean2 = point;
-        int size1 = set_to_points_map.at(setID).size();
-        int size2 = 1;
-        return merge_means(mean1, mean2, size1, size2);
+        return new_surface;
     }
 
     Eigen::Matrix3d merge_covariances_of_surfaces(std::weak_ptr<Surface> surface1, std::weak_ptr<Surface> surface2) 
     {
-        Eigen::Matrix3d cov1 = surface1.lock()->get_covariance_matrix();
-        Eigen::Matrix3d cov2 = surface2.lock()->get_covariance_matrix();
+        Eigen::Matrix3d cov1 = surface1.lock()->get_covariance();
+        Eigen::Matrix3d cov2 = surface2.lock()->get_covariance();
         Eigen::Vector3d mean1 = surface1.lock()->get_mean();
         Eigen::Vector3d mean2 = surface2.lock()->get_mean();
         int size1 = surface1.lock()->get_total_point_size();
         int size2 = surface2.lock()->get_total_point_size();
         return merge_covariances(cov1, cov2, mean1, mean2, size1, size2);
-    }
-
-    Eigen::Matrix3d merge_covariances_between_set_and_point(int setID, const Eigen::Vector3d& point)
-    {
-        Eigen::Matrix3d cov1 = set_to_covariance_matrix_map.at(setID);
-        Eigen::Matrix3d cov2 = Eigen::Matrix3d::Zero(); 
-        Eigen::Vector3d mean1 = set_to_mean_map.at(setID);
-        Eigen::Vector3d mean2 = point;
-        int size1 = set_to_points_map.at(setID).size();
-        int size2 = 1;
-        return merge_covariances(cov1, cov2, mean1, mean2, size1, size2);
-    }
-
-    // merge setID2 into setID1
-    std::weak_ptr<Surface> merge_surfaces(std::weak_ptr<Surface> surface1, std::weak_ptr<Surface> surface2) 
-    {
-        std::weak_ptr<Surface> new_surface = storage_.lock()->add_surface(surface1, surface2);
-        storage_.lock()->delete_surface(surface1);
-        storage_.lock()->delete_surface(surface2);
-
-        return new_surface;
     }
 
     // try merge sets
@@ -701,10 +331,10 @@ public:
     void add_point_by_radius_search(const Eigen::Vector3d& thisPointVEC, const Eigen::Vector3d& thisPointOriginVEC)
     {
         // if empty, can not set up radius search, add point to new set
-        if (!storage_.lock()->can_reverse_radius_search())
+        if (!storage_->can_reverse_radius_search())
         {
-            std::weak_ptr<Surface> new_surface = storage_.lock()->add_surface();
-            std::weak_ptr<Vertex> new_vertex = storage_.lock()->add_vertex(thisPointOriginVEC, thisPointVEC);
+            std::weak_ptr<Surface> new_surface = storage_->add_surface();
+            std::weak_ptr<Vertex> new_vertex = storage_->add_vertex(thisPointOriginVEC, thisPointVEC);
             new_surface.lock()->connect(new_vertex);
             return;
         }
@@ -716,8 +346,8 @@ public:
         // if no searched results, add point to new set
         if (searched_boundary_vertices_set.size() == 0)
         {
-            std::weak_ptr<Surface> new_surface = storage_.lock()->add_surface();
-            std::weak_ptr<Vertex> new_vertex = storage_.lock()->add_vertex(thisPointOriginVEC, thisPointVEC);
+            std::weak_ptr<Surface> new_surface = storage_->add_surface();
+            std::weak_ptr<Vertex> new_vertex = storage_->add_vertex(thisPointOriginVEC, thisPointVEC);
             new_surface.lock()->connect(new_vertex);
             return;
         }
@@ -840,8 +470,8 @@ public:
 
         if (!closest_surface.expired() && closest_distance < distance_threshold)
         {
-            std::weak_ptr<Surface> new_surface = storage_.lock()->add_surface();
-            std::weak_ptr<Vertex> new_vertex = storage_.lock()->add_vertex(thisPointOriginVEC, thisPointVEC);
+            std::weak_ptr<Surface> new_surface = storage_->add_surface();
+            std::weak_ptr<Vertex> new_vertex = storage_->add_vertex(thisPointOriginVEC, thisPointVEC);
             new_surface.lock()->connect(new_vertex);
             return;
         }
@@ -861,15 +491,15 @@ public:
         }
         if (!nearest_surface.expired())
         {
-            std::weak_ptr<Surface> new_surface = storage_.lock()->add_surface();
-            std::weak_ptr<Vertex> new_vertex = storage_.lock()->add_vertex(thisPointOriginVEC, thisPointVEC);
+            std::weak_ptr<Surface> new_surface = storage_->add_surface();
+            std::weak_ptr<Vertex> new_vertex = storage_->add_vertex(thisPointOriginVEC, thisPointVEC);
             new_surface.lock()->connect(new_vertex);
             return;
         }
 
         // else, add the point to a new set
-        std::weak_ptr<Surface> new_surface = storage_.lock()->add_surface();
-        std::weak_ptr<Vertex> new_vertex = storage_.lock()->add_vertex(thisPointOriginVEC, thisPointVEC);
+        std::weak_ptr<Surface> new_surface = storage_->add_surface();
+        std::weak_ptr<Vertex> new_vertex = storage_->add_vertex(thisPointOriginVEC, thisPointVEC);
         new_surface.lock()->connect(new_vertex);
         return;
     }
@@ -916,10 +546,10 @@ public:
         std::set<std::weak_ptr<Face>> searched_faces = bvhRoot.intersectionSearch(thisPointOriginVEC, thisPointVEC); // may include deleted triangles
 
         // group the faces by surface
-        std::map<std::weak_ptr<Face>, std::set<std::weak_ptr<Face>>> surface_to_searched_faces_map;
+        std::map<std::weak_ptr<Surface>, std::set<std::weak_ptr<Face>>> surface_to_searched_faces_map;
         for (std::weak_ptr<Face> face : searched_faces)
         {
-            std::weak_ptr<Surface> surface = face.lock()->getSurface();
+            std::weak_ptr<Surface> surface = face.lock()->get_surface();
             surface_to_searched_faces_map[surface].insert(face);
         }
 
@@ -959,7 +589,7 @@ public:
 
         // get the set of triangles that are penetrated by the point
         std::set<std::weak_ptr<Face>> penetrated_faces;
-        for (std::weak_ptr<Face> surface : surface_with_point_behind_it)
+        for (std::weak_ptr<Surface> surface : surface_with_point_behind_it)
         {
             penetrated_faces.insert(surface_to_searched_faces_map.at(surface).begin(), surface_to_searched_faces_map.at(surface).end());
         }
@@ -968,7 +598,7 @@ public:
         for (std::weak_ptr<Face> face : penetrated_faces)
         {
             // for now, just delete the face
-            storage_.lock()->delete_face(face);
+            storage_->delete_face(face);
         }
 
         // // re add the list points by radius search
@@ -1015,7 +645,7 @@ public:
                 if (face.lock()->get_surface() != smallest_surface) continue;
                 
                 // add point as interior point
-                storage_.lock()->add_interior_point(face.lock()->get_id(), thisPointVEC, thisPointOriginVEC);
+                storage_->add_interior_point(face, thisPointVEC, thisPointOriginVEC);
 
                 std::cout << ith_point << " / " << ith_size << " of pointcloud " << ith_cloud << " added to set " << smallest_surface.lock()->get_id() << std::endl;
                 point_added_to_surface = true;
@@ -1083,7 +713,7 @@ public:
         pointcloud_fraction = 1;
         distance_to_radius_ratio = tan(4 * M_PI / 180);
 
-        
+        storage_ = std::make_shared<Storage>();        
 
         // // ----------------------- INITIALIZATION
         data_loader.load_dataset(dataset_map.at(dataset).first, dataset_map.at(dataset).second);
@@ -1127,27 +757,27 @@ public:
 
     std::map<std::weak_ptr<Vertex>, int> get_vertex_to_cloud_indices_map()
     {
-        return storage_.lock()->get_vertex_to_cloud_indices_map();
+        return storage_->get_vertex_to_cloud_indices_map();
     } 
 
-    std::set<std::weak_ptr<Face>> get_faces() {return storage_.lock()->get_faces();};
-    std::set<std::weak_ptr<Edge>> get_edges() {return storage_.lock()->get_edges();};
+    std::set<std::weak_ptr<Face>> get_faces() {return storage_->get_faces();};
+    std::set<std::weak_ptr<Edge>> get_edges() {return storage_->get_edges();};
 
-    std::set<std::weak_ptr<Vertex>> get_boundary_edges() 
-    {
-        // all edges
-        std::set<std::weak_ptr<Edge>> edges = storage_.lock()->get_edges();
+    // std::set<std::weak_ptr<Vertex>> get_boundary_edges() 
+    // {
+    //     // all edges
+    //     std::set<std::weak_ptr<Edge>> edges = storage_->get_edges();
 
-        // boundary edges
-        std::set<std::weak_ptr<Edge>> boundary_edges;
-        for (std::weak_ptr<Edge> edge : edges)
-        {
-            if (edge.lock()->is_boundary()) 
-            {
-                boundary_edges.insert(edge);
-            }
-        }
-    }
+    //     // boundary edges
+    //     std::set<std::weak_ptr<Edge>> boundary_edges;
+    //     for (std::weak_ptr<Edge> edge : edges)
+    //     {
+    //         if (edge.lock()->is_boundary()) 
+    //         {
+    //             boundary_edges.insert(edge);
+    //         }
+    //     }
+    // }
 
     std::map<int, std::array<int, 3>> get_triangle_to_cloud_indices_map() 
     {
@@ -1171,7 +801,7 @@ public:
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr point_to_vector3d_set_colored_cloud()
     {
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
-        for (std::weak_ptr<Vertex> vertex : storage_.lock()->get_vertices())
+        for (std::weak_ptr<Vertex> vertex : storage_->get_vertices())
         {
             pcl::PointXYZRGB point;
             Eigen::Vector3d position = vertex.lock()->get_position();
@@ -1190,7 +820,7 @@ public:
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr point_to_vector3d_set_distance_cloud()
     {
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
-        for (std::weak_ptr<Vertex> vertex : storage_.lock()->get_vertices())
+        for (std::weak_ptr<Vertex> vertex : storage_->get_vertices())
         {
             pcl::PointXYZRGB point;
             Eigen::Vector3d origin = vertex.lock()->get_origin();
@@ -1211,7 +841,7 @@ public:
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr projected_point_to_vector3d_set_colored_cloud()
     {
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
-        for (std::weak_ptr<Vertex> vertex : storage_.lock()->get_vertices())
+        for (std::weak_ptr<Vertex> vertex : storage_->get_vertices())
         {
             pcl::PointXYZRGB point;
             Eigen::Vector3d projected_position = vertex.lock()->get_projected_position();
@@ -1230,10 +860,11 @@ public:
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr projected_point_to_vector3d_set_distance_cloud()
     {
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
-        for (std::weak_ptr<Vertex> vertex : storage_.lock()->get_vertices())
+        for (std::weak_ptr<Vertex> vertex : storage_->get_vertices())
         {
             pcl::PointXYZRGB point;
             Eigen::Vector3d origin = vertex.lock()->get_origin();
+            Eigen::Vector3d position = vertex.lock()->get_position();
             Eigen::Vector3d projected_position = vertex.lock()->get_projected_position();
             point.x = projected_position[0];
             point.y = projected_position[1];
@@ -1275,12 +906,6 @@ public:
     {
         rrstree.print_size();
     }
-
-    std::vector<BoundaryPoint> rrstree_get_boundary_points()
-    {
-        return rrstree.getBoundaryPoints();
-    }
-
 
     int ith_cloud;
     std::size_t ith_point = 0;
@@ -1447,7 +1072,7 @@ private:
         std::map<std::weak_ptr<Vertex>, int> vertex_to_cloud_indices_map = app_.get_vertex_to_cloud_indices_map();
         std::set<std::weak_ptr<Face>> faces = app_.get_faces();
         std::set<std::weak_ptr<Edge>> edges = app_.get_edges();
-        std::set<std::weak_ptr<Edge>> boundary_edges = app_.get_boundary_edges();
+        // std::set<std::weak_ptr<Edge>> boundary_edges = app_.get_boundary_edges();
 
         // point cloud
         viewer_->removeShape("point_cloud");
@@ -1475,23 +1100,23 @@ private:
             viewer_->addPolygonMesh(triangle_mesh, "triangle_mesh");
         }
 
-        // boundary edges
-        viewer_->removeShape("boundary_edges");        
-        if (show_edge)
-        {
-            pcl::PolygonMesh boundary_mesh;
-            pcl::toPCLPointCloud2(*point_cloud, boundary_mesh.cloud);
-            for (const std::weak_ptr<Edge>& edge : boundary_edges)
-            {
-                pcl::Vertices boundary_edge;
-                boundary_edge.vertices.push_back(vertex_to_cloud_indices_map.at(edge.lock()->get_vertex(0)));
-                boundary_edge.vertices.push_back(vertex_to_cloud_indices_map.at(edge.lock()->get_vertex(1)));
-                boundary_mesh.polygons.push_back(boundary_edge);
-            }
-            viewer_->addPolylineFromPolygonMesh(boundary_mesh, "boundary_edges");
-            viewer_->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, 1, 1, 1, "boundary_edges");
-            viewer_->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, 2, "boundary_edges");
-        }
+        // // boundary edges
+        // viewer_->removeShape("boundary_edges");        
+        // if (show_edge)
+        // {
+        //     pcl::PolygonMesh boundary_mesh;
+        //     pcl::toPCLPointCloud2(*point_cloud, boundary_mesh.cloud);
+        //     for (const std::weak_ptr<Edge>& edge : boundary_edges)
+        //     {
+        //         pcl::Vertices boundary_edge;
+        //         boundary_edge.vertices.push_back(vertex_to_cloud_indices_map.at(edge.lock()->get_vertex(0)));
+        //         boundary_edge.vertices.push_back(vertex_to_cloud_indices_map.at(edge.lock()->get_vertex(1)));
+        //         boundary_mesh.polygons.push_back(boundary_edge);
+        //     }
+        //     viewer_->addPolylineFromPolygonMesh(boundary_mesh, "boundary_edges");
+        //     viewer_->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, 1, 1, 1, "boundary_edges");
+        //     viewer_->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, 2, "boundary_edges");
+        // }
 
         // // boundary points spheres
         // for (const std::string& sphere_name : sphere_name_list) viewer_->removeShape(sphere_name);

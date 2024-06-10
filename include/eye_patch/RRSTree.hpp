@@ -268,7 +268,7 @@ public:
 
     bool can_reverse_radius_search()
     {
-        return tree_size > 0;
+        return (tree_size > 0);
     }
 
     void add_vertex(std::weak_ptr<Vertex> boundary_vertex)

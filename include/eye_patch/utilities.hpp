@@ -1,3 +1,5 @@
+#pragma once
+
 #include <tuple>
 #include <Eigen/Dense>
 #include <pcl/point_cloud.h>
@@ -39,23 +41,6 @@ std::tuple<int, int, int> valueToJet(float value)
     }
 
     return std::make_tuple(static_cast<int>(r * 255), static_cast<int>(g * 255), static_cast<int>(b * 255));
-}
-
-Eigen::Vector3d merge_means(const Eigen::Vector3d& mean1, const Eigen::Vector3d& mean2, int size1, int size2) 
-{
-    return (size1 * mean1 + size2 * mean2) / (size1 + size2);
-}
-
-Eigen::Matrix3d merge_covariances(const Eigen::Matrix3d& cov1, const Eigen::Matrix3d& cov2, 
-                                const Eigen::Vector3d& mean1, const Eigen::Vector3d& mean2, 
-                                int size1, int size2) 
-{
-    Eigen::Vector3d combined_mean = merge_means(mean1, mean2, size1, size2);
-    Eigen::Matrix3d mean_diff1 = (mean1 - combined_mean) * (mean1 - combined_mean).transpose();
-    Eigen::Matrix3d mean_diff2 = (mean2 - combined_mean) * (mean2 - combined_mean).transpose();
-    Eigen::Matrix3d combined_covariance = (size1 * cov1 + size2 * cov2 + size1 * mean_diff1 + size2 * mean_diff2) / (size1 + size2);
-
-    return combined_covariance;
 }
 
 std::array<int, 3> sortThreeInts(int a, int b, int c) {

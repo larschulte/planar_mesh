@@ -4,7 +4,6 @@
 #include "MeshObject/Storage.hpp"
 #include "MeshObject/Surface.hpp"
 #include <iostream>
-
 #include "MeshObject/InteriorPoint.hpp"
 
 void Surface::initialize_(std::weak_ptr<Storage> storage)
@@ -156,9 +155,14 @@ Eigen::Vector3d Surface::get_normal() const
     return normal_;
 }
 
-int Surface::get_total_point_size() const
+std::size_t Surface::get_total_point_size() const
 {
     return vertices_.size() + interior_points_.size();
+}
+
+std::tuple<int, int, int> Surface::get_color() const
+{
+    return color_;
 }
 
 void Surface::connect(std::weak_ptr<Vertex> vertex)
@@ -250,23 +254,6 @@ void Surface::disconnect(std::weak_ptr<InteriorPoint> interior_point)
     if (erased) interior_point.lock()->disconnect(shared_from_this());
 }
 
-Eigen::Vector3d merge_means(const Eigen::Vector3d& mean1, const Eigen::Vector3d& mean2, int size1, int size2) 
-{
-    return (size1 * mean1 + size2 * mean2) / (size1 + size2);
-}
-
-Eigen::Matrix3d merge_covariances(const Eigen::Matrix3d& cov1, const Eigen::Matrix3d& cov2, 
-                                const Eigen::Vector3d& mean1, const Eigen::Vector3d& mean2, 
-                                int size1, int size2) 
-{
-    Eigen::Vector3d combined_mean = merge_means(mean1, mean2, size1, size2);
-    Eigen::Matrix3d mean_diff1 = (mean1 - combined_mean) * (mean1 - combined_mean).transpose();
-    Eigen::Matrix3d mean_diff2 = (mean2 - combined_mean) * (mean2 - combined_mean).transpose();
-    Eigen::Matrix3d combined_covariance = (size1 * cov1 + size2 * cov2 + size1 * mean_diff1 + size2 * mean_diff2) / (size1 + size2);
-
-    return combined_covariance;
-}
-
 void Surface::add_point_to_surface_fitting(Eigen::Vector3d point, Eigen::Vector3d origin)
 {
     // set
@@ -324,4 +311,28 @@ bool operator>= (const std::weak_ptr<Surface>& lhs, const std::weak_ptr<Surface>
     // check pointer validity
     if (lhs.expired() || rhs.expired()) throw std::runtime_error("Comparing expired surfaces");
     return lhs.lock()->get_id() >= rhs.lock()->get_id();
+}
+
+bool operator!= (const std::weak_ptr<Surface>& lhs, const std::weak_ptr<Surface>& rhs)
+{
+    // check pointer validity
+    if (lhs.expired() || rhs.expired()) throw std::runtime_error("Comparing expired surfaces");
+    return lhs.lock()->get_id() != rhs.lock()->get_id();
+}
+
+Eigen::Vector3d merge_means(const Eigen::Vector3d& mean1, const Eigen::Vector3d& mean2, int size1, int size2) 
+{
+    return (size1 * mean1 + size2 * mean2) / (size1 + size2);
+}
+
+Eigen::Matrix3d merge_covariances(const Eigen::Matrix3d& cov1, const Eigen::Matrix3d& cov2, 
+                                const Eigen::Vector3d& mean1, const Eigen::Vector3d& mean2, 
+                                int size1, int size2) 
+{
+    Eigen::Vector3d combined_mean = merge_means(mean1, mean2, size1, size2);
+    Eigen::Matrix3d mean_diff1 = (mean1 - combined_mean) * (mean1 - combined_mean).transpose();
+    Eigen::Matrix3d mean_diff2 = (mean2 - combined_mean) * (mean2 - combined_mean).transpose();
+    Eigen::Matrix3d combined_covariance = (size1 * cov1 + size2 * cov2 + size1 * mean_diff1 + size2 * mean_diff2) / (size1 + size2);
+
+    return combined_covariance;
 }

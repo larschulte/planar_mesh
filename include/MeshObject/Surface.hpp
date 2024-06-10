@@ -28,7 +28,8 @@ public:
     Eigen::Matrix3d get_eigenvectors() const;
     Eigen::Vector3d get_eigenvalues() const;
     Eigen::Vector3d get_normal() const;
-    int get_total_point_size() const;
+    std::size_t get_total_point_size() const;
+    std::tuple<int, int, int> get_color() const;
 
     void connect(std::weak_ptr<Vertex> vertex);
     void connect(std::weak_ptr<Edge> edge);
@@ -64,3 +65,10 @@ private:
 bool operator<(const std::weak_ptr<Surface>& lhs, const std::weak_ptr<Surface>& rhs);
 bool operator==(const std::weak_ptr<Surface>& lhs, const std::weak_ptr<Surface>& rhs);
 bool operator>=(const std::weak_ptr<Surface>& lhs, const std::weak_ptr<Surface>& rhs);
+bool operator!=(const std::weak_ptr<Surface>& lhs, const std::weak_ptr<Surface>& rhs);
+
+
+Eigen::Vector3d merge_means(const Eigen::Vector3d& mean1, const Eigen::Vector3d& mean2, int size1, int size2);
+Eigen::Matrix3d merge_covariances(const Eigen::Matrix3d& cov1, const Eigen::Matrix3d& cov2, 
+                                const Eigen::Vector3d& mean1, const Eigen::Vector3d& mean2, 
+                                int size1, int size2);
