@@ -367,43 +367,51 @@ public:
         // [todo]
         // for each point, compute the shortest distance to another point that is in a different set, and that different set have enough points
         // if the distance is less than its original radius, reduce its original radius
+        // group searched vertex by surface
+        std::map<std::weak_ptr<Surface>, std::set<std::weak_ptr<Vertex>>> surface_to_searched_vertices_map;
         for (std::weak_ptr<Vertex> vertex : searched_boundary_vertices_set)
         {
-            // surface
-            std::weak_ptr<Surface> surface = vertex.lock()->get_surface();
+            surface_to_searched_vertices_map[vertex.lock()->get_surface()].insert(vertex);
+        }
+        // for each surfaces
+        for (const auto& pair : surface_to_searched_vertices_map)
+        {
+            std::weak_ptr<Surface> surface = pair.first;
+            const std::set<std::weak_ptr<Vertex>>& searched_boundary_vertices_set = pair.second;
 
-            // skip if small set
+            // skip if small surface
             if (surface.lock()->get_total_point_size() < fit_plane_threshold) continue;
 
-            // smallest distance
-            double smallest_distance = std::numeric_limits<double>::max();
-
-            for (std::weak_ptr<Vertex> other_vertex : searched_boundary_vertices_set)
+            // for each vertex in the surface
+            for (std::weak_ptr<Vertex> this_vertex : searched_boundary_vertices_set)
             {
-                // surface 
-                std::weak_ptr<Surface> other_surface = other_vertex.lock()->get_surface();
+                // smallest distance
+                double smallest_distance = std::numeric_limits<double>::max();
 
-                // skip if same set
-                if (other_surface == surface) continue;
+                // for each other surface
+                for (const auto& other_pair : surface_to_searched_vertices_map)
+                {
+                    // skip if same surface
+                    if (other_pair.first == surface) continue;
 
-                // skip if small set
-                if (other_surface.lock()->get_total_point_size() < fit_plane_threshold) continue;
+                    // skip if small set
+                    if (other_pair.first.lock()->get_total_point_size() < fit_plane_threshold) continue;
 
-                // compute distance
-                double distance = (vertex.lock()->get_position() - other_vertex.lock()->get_position()).norm();
+                    // for each point in the other surface
+                    for (std::weak_ptr<Vertex> other_vertex : other_pair.second)
+                    {
+                        // compute distance
+                        double distance = (other_vertex.lock()->get_position() - this_vertex.lock()->get_position()).norm();
 
-                // update radius
-                if (distance < smallest_distance) smallest_distance = distance;
-            }
+                        // update radius
+                        if (distance < smallest_distance) smallest_distance = distance;
+                    }
+                }
 
-            // adjust radius
-            if (smallest_distance < vertex.lock()->get_radius()) 
-            {
-                vertex.lock()->set_reverse_radius_search_radius(smallest_distance);
+                // adjust radius of this vertex
+                if (smallest_distance < this_vertex.lock()->get_radius()) this_vertex.lock()->set_reverse_radius_search_radius(smallest_distance);
             }
         }
-
-
 
         // split neighboring sets into sets with plane and sets without plane (by size)
         std::set<std::weak_ptr<Surface>> surfaces_with_plane;
