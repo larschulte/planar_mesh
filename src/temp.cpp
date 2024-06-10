@@ -419,18 +419,17 @@ public:
         for (std::weak_ptr<Surface> surface : surfaces_with_plane)
         {
             // compute (not using normal from combined points, could implement in future)
-            double distance = surface.lock()->compute_point_to_surface_distance_with_improved_covariance(thisPointOriginVEC, thisPointVEC);
-            std::cout << "distance: " << distance << std::endl;
+            double distance = surface.lock()->compute_point_to_surface_distance(thisPointOriginVEC, thisPointVEC);
 
             // store
-            surface_distance_map[surface] = distance;
+            surface_distance_map[surface] = std::fabs(distance);
         }
 
         // extract the set within distance threshold
         std::set<std::weak_ptr<Surface>> surfaces_within_threshold;
         for (const auto& pair : surface_distance_map)
         {
-            if (std::fabs(pair.second) < distance_threshold) surfaces_within_threshold.insert(pair.first);
+            if (pair.second < distance_threshold) surfaces_within_threshold.insert(pair.first);
         }
 
         // from the sets within threshold, find the set that is closest to the point
