@@ -163,39 +163,31 @@ private:
         }
     }
 
-    std::set<std::weak_ptr<Vertex>> reverse_radius_search_node(const std::shared_ptr<Node>& node, const Eigen::Vector3d& point) 
+    void reverse_radius_search_node(const std::shared_ptr<Node>& node, const Eigen::Vector3d& point, std::set<std::weak_ptr<Vertex>>& search_results)
     {
         bool contained = node->box.contains(point);
-        if (!contained) return std::set<std::weak_ptr<Vertex>>();
+        if (!contained) return;
         
         if (node->isLeaf())
         {
-            std::set<std::weak_ptr<Vertex>> contained_pointIDs;
             for (std::weak_ptr<Vertex> boundary_vertex : node->boundary_vertices)
             {
                 if (boundary_vertex.lock()->approx_contains(point)) 
                 {
-                    contained_pointIDs.insert(boundary_vertex);
+                    search_results.insert(boundary_vertex);
                 }
             }
-            return contained_pointIDs;
         }
         else
         {
-            std::set<std::weak_ptr<Vertex>> contained_pointIDs;
-
             if (node->left->box.contains(point))
             {
-                std::set<std::weak_ptr<Vertex>> contained_pointIDs_left = reverse_radius_search_node(node->left, point);
-                contained_pointIDs.insert(contained_pointIDs_left.begin(), contained_pointIDs_left.end());
+                reverse_radius_search_node(node->left, point, search_results);
             }
             if (node->right->box.contains(point))
             {
-                std::set<std::weak_ptr<Vertex>> contained_pointIDs_right = reverse_radius_search_node(node->right, point);
-                contained_pointIDs.insert(contained_pointIDs_right.begin(), contained_pointIDs_right.end());
+                reverse_radius_search_node(node->right, point, search_results);
             }
-
-            return contained_pointIDs;
         }
     }
 
@@ -312,7 +304,9 @@ public:
 
     std::set<std::weak_ptr<Vertex>> reverse_radius_search(const Eigen::Vector3d& point)
     {
-        return reverse_radius_search_node(root, point);
+        std::set<std::weak_ptr<Vertex>> search_results;
+        reverse_radius_search_node(root, point, search_results);
+        return search_results;
     }
 
     void increase_vertex_radius(std::weak_ptr<Vertex> boundary_vertex)
