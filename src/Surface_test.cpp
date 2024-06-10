@@ -20,10 +20,10 @@ int main()
     std::cout << "after vertex 1, normal = [" << surface.lock()->get_normal().transpose() << "]" << std::endl;
     surface.lock()->connect(vertex2);
     std::cout << "after vertex 2, normal = [" << surface.lock()->get_normal().transpose() << "]" << std::endl;
-    surface.lock()->connect(vertex3);
-    std::cout << "after vertex 3, normal = [" << surface.lock()->get_normal().transpose() << "]" << std::endl;
+    // surface.lock()->connect(vertex3);
+    // std::cout << "after vertex 3, normal = [" << surface.lock()->get_normal().transpose() << "]" << std::endl;
 
-    double distance = surface.lock()->compute_point_to_surface_distance(Eigen::Vector3d(0, 0, -10), Eigen::Vector3d(0, 0, 0.5));
+    double distance = surface.lock()->compute_point_to_surface_distance_with_improved_covariance(Eigen::Vector3d(0, 0, -10), Eigen::Vector3d(0, 0, -0.5));
     std::cout << "distance = " << distance << std::endl;
 
     return 0;
