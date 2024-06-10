@@ -122,7 +122,7 @@ double Surface::compute_point_to_surface_distance(const Eigen::Vector3d& origin,
 double Surface::compute_point_to_surface_distance_with_improved_covariance(const Eigen::Vector3d& origin, const Eigen::Vector3d& position) const
 {
     // set
-    int size1 = get_total_point_size();
+    int size1 = get_total_point_size()-1;
     Eigen::Vector3d mean1 = mean_;
     Eigen::Matrix3d cov1 = covariance_;
 
@@ -294,8 +294,8 @@ void Surface::disconnect(std::weak_ptr<InteriorPoint> interior_point)
 
 void Surface::add_point_to_surface_fitting(Eigen::Vector3d position, Eigen::Vector3d origin)
 {
-    // set
-    int size1 = get_total_point_size();
+    // surface
+    int size1 = get_total_point_size()-1; // need to exclude the new point
     Eigen::Vector3d mean1 = mean_;
     Eigen::Matrix3d cov1 = covariance_;
 
@@ -368,6 +368,7 @@ Eigen::Matrix3d merge_covariances(const Eigen::Matrix3d& cov1, const Eigen::Matr
                                 int size1, int size2) 
 {
     // Handle the edge case where one of the sizes is zero
+    if (size1 == 0 && size2 == 0) throw std::invalid_argument("Both sizes are zero");
     if (size1 == 0) return cov2;
     if (size2 == 0) return cov1;
 
