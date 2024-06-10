@@ -79,6 +79,14 @@ install(TARGETS
 )
 
 # add executable
+add_executable(Surface_test src/Surface_test.cpp src/TriangleBVH.cpp ${MeshObject_SOURCE})
+target_link_libraries (Surface_test ${PCL_LIBRARIES})
+target_include_directories(Surface_test
+  PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>)
+
+# add executable
 add_executable(RRSTree_test src/RRSTree_test.cpp ${MeshObject_SOURCE})
 target_link_libraries (RRSTree_test ${PCL_LIBRARIES})
 target_include_directories(RRSTree_test
