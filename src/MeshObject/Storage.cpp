@@ -257,6 +257,13 @@ std::set<std::weak_ptr<Face>> Storage::get_faces() const
     return faces;
 }
 
+std::set<std::weak_ptr<Surface>> Storage::get_surfaces() const
+{
+    std::set<std::weak_ptr<Surface>> surfaces;
+    for (auto surface : surfaces_) surfaces.insert(surface);
+    return surfaces;
+}
+
 std::map<std::weak_ptr<Vertex>, int> Storage::get_vertex_to_cloud_indices_map() const
 {
     // initialize

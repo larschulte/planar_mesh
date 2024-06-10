@@ -39,6 +39,7 @@ public:
     void disconnect(std::weak_ptr<Edge> edge);
     void disconnect(std::weak_ptr<Face> face);
     void disconnect(std::weak_ptr<InteriorPoint> interior_point);
+    void set_random_color();
     
 private:
     bool deleting_ = false;
@@ -58,7 +59,6 @@ private:
     Eigen::Vector3d eigenvalues_;
     Eigen::Vector3d normal_;
 
-    void set_random_color_();
     std::tuple<int, int, int> color_;
 };
 

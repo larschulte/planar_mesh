@@ -26,7 +26,7 @@ void Surface::initialize_(std::weak_ptr<Storage> storage)
     normal_ = Eigen::Vector3d(0, 0, 1);
 
     // initialize surface color
-    set_random_color_();
+    set_random_color();
     
     // log
     std::cout << "Surface " << id_ << " created.\n";
@@ -286,7 +286,7 @@ void Surface::add_point_to_surface_fitting(Eigen::Vector3d point, Eigen::Vector3
     normal_ = new_normal;
 }
 
-void Surface::set_random_color_()
+void Surface::set_random_color()
 {
     // random color
     color_ = std::make_tuple(rand() % 256, rand() % 256, rand() % 256);

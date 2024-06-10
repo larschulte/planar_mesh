@@ -66,17 +66,17 @@ install(TARGETS
 
 # add executable
 add_executable(temp src/temp.cpp src/TriangleBVH.cpp ${MeshObject_SOURCE})
-target_link_libraries (temp ${PCL_LIBRARIES} ${PYTHON_LIBRARIES} delaunator Ceres::ceres)
+target_link_libraries (temp ${PCL_LIBRARIES})
 target_include_directories(temp
   PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>)
 
-# # install(TARGETS main DESTINATION lib/${PROJECT_NAME})
-# install(TARGETS 
-#   temp
-#   DESTINATION lib/${PROJECT_NAME}
-# )
+# install(TARGETS main DESTINATION lib/${PROJECT_NAME})
+install(TARGETS 
+  temp
+  DESTINATION lib/${PROJECT_NAME}
+)
 
 # add executable
 add_executable(RRSTree_test src/RRSTree_test.cpp ${MeshObject_SOURCE})

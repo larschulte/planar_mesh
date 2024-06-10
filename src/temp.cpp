@@ -341,7 +341,7 @@ public:
 
         // perform rrstree radius search
         std::map<int, double> point_to_radius_map;
-        std::set<std::weak_ptr<Vertex>> searched_boundary_vertices_set = rrstree.reverse_radius_search(thisPointVEC);
+        std::set<std::weak_ptr<Vertex>> searched_boundary_vertices_set = storage_->reverse_radius_search(thisPointVEC);
 
         // if no searched results, add point to new set
         if (searched_boundary_vertices_set.size() == 0)
@@ -446,33 +446,32 @@ public:
                 closest_surface = surface;
             }
         }
-
-        // for the sets not selected as closest, update their searched points' radius
-        // for all searched points
-        for (std::weak_ptr<Vertex> vertex : searched_boundary_vertices_set)
+        if (!closest_surface.expired() && closest_distance < distance_threshold)
         {
-            // if it is in a set with plane
-            if (surfaces_with_plane.find(vertex.lock()->get_surface()) != surfaces_with_plane.end())
+            // for the sets not selected as closest, update their searched points' radius
+            // for all searched points
+            for (std::weak_ptr<Vertex> vertex : searched_boundary_vertices_set)
             {
-                // and the set with plane is not the closest set
-                if (vertex.lock()->get_surface() != closest_surface)
+                // if it is in a set with plane
+                if (surfaces_with_plane.find(vertex.lock()->get_surface()) != surfaces_with_plane.end())
                 {
-                    // reduce their searched points' radius
-                    double reduced_radius = (thisPointVEC - vertex.lock()->get_position()).norm();
-
-                    if (reduced_radius < vertex.lock()->get_radius())
+                    // and the set with plane is not the closest set
+                    if (vertex.lock()->get_surface() != closest_surface)
                     {
-                        vertex.lock()->set_reverse_radius_search_radius(reduced_radius);
+                        // reduce their searched points' radius
+                        double reduced_radius = (thisPointVEC - vertex.lock()->get_position()).norm();
+
+                        if (reduced_radius < vertex.lock()->get_radius())
+                        {
+                            vertex.lock()->set_reverse_radius_search_radius(reduced_radius);
+                        }
                     }
                 }
             }
-        }
 
-        if (!closest_surface.expired() && closest_distance < distance_threshold)
-        {
-            std::weak_ptr<Surface> new_surface = storage_->add_surface();
+            // add the point to the closest set
             std::weak_ptr<Vertex> new_vertex = storage_->add_vertex(thisPointOriginVEC, thisPointVEC);
-            new_surface.lock()->connect(new_vertex);
+            closest_surface.lock()->connect(new_vertex);
             return;
         }
 
@@ -491,9 +490,8 @@ public:
         }
         if (!nearest_surface.expired())
         {
-            std::weak_ptr<Surface> new_surface = storage_->add_surface();
             std::weak_ptr<Vertex> new_vertex = storage_->add_vertex(thisPointOriginVEC, thisPointVEC);
-            new_surface.lock()->connect(new_vertex);
+            nearest_surface.lock()->connect(new_vertex);
             return;
         }
 
@@ -886,9 +884,10 @@ public:
 
     void change_color()
     {
-        for (int setID : set_list)
+        std::set<std::weak_ptr<Surface>> surfaces = storage_->get_surfaces();
+        for (std::weak_ptr<Surface> surface : surfaces)
         {
-            set_to_color_map.at(setID) = {rand() % 256, rand() % 256, rand() % 256};
+            surface.lock()->set_random_color();
         }
     }
 
