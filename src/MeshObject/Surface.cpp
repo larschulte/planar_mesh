@@ -106,14 +106,11 @@ int Surface::get_id() const
     return id_;
 }
 
-double Surface::compute_point_to_surface_distance(const Eigen::Vector3d& origin, const Eigen::Vector3d& point) const
+double Surface::compute_point_to_surface_distance(const Eigen::Vector3d& origin, const Eigen::Vector3d& position) const
 {
     // if perpendicular, return NaN
-    Eigen::Vector3d rayDirection = (point - origin).normalized();
-    if (normal_.dot(rayDirection) == 0) throw std::invalid_argument("Ray and plane are perpendicular");
-
-    // compute intersection
-    double distance = (mean_ - point).dot(normal_) / rayDirection.dot(normal_);
+    Eigen::Vector3d rayDirection = (position - origin).normalized();
+    double distance = (mean_ - position).dot(normal_) / rayDirection.dot(normal_);
 
     // return
     return distance;
@@ -142,12 +139,8 @@ double Surface::compute_point_to_surface_distance_with_improved_covariance(const
     Eigen::Vector3d vector_towards_origin = origin - position;
     if (new_normal.dot(vector_towards_origin) < 0) new_normal *= -1; // normal should points towards the origin
 
-
-    // if perpendicular, return NaN
+    // compute distance
     Eigen::Vector3d rayDirection = (position - origin).normalized();
-    if (new_normal.dot(rayDirection) == 0) throw std::invalid_argument("Ray and plane are perpendicular");
-
-    // compute intersection
     double distance = (new_mean - position).dot(new_normal) / rayDirection.dot(new_normal);
 
     // return
@@ -156,11 +149,8 @@ double Surface::compute_point_to_surface_distance_with_improved_covariance(const
 
 Eigen::Vector3d Surface::compute_point_to_surface_position(const Eigen::Vector3d& origin, const Eigen::Vector3d& point) const
 {
-    // if perpendicular, return NaN
+    // compute
     Eigen::Vector3d rayDirection = (point - origin).normalized();
-    if (normal_.dot(rayDirection) == 0) throw std::invalid_argument("Ray and plane are perpendicular");
-
-    // compute intersection
     double distance = (mean_ - point).dot(normal_) / rayDirection.dot(normal_);
     Eigen::Vector3d intersection = point + distance * rayDirection;
 
@@ -209,14 +199,14 @@ void Surface::connect(std::weak_ptr<Vertex> vertex)
     if (vertex.expired()) throw std::runtime_error("Attempts to connect surface with invalid vertex.");
 
     // connect
-    bool inserted = vertices_.insert(vertex.lock()).second;
-    if (inserted) vertex.lock()->connect(shared_from_this());
-
-    // update surface fitting
-    if (inserted) add_point_to_surface_fitting(vertex.lock()->get_position(), vertex.lock()->get_origin());
+    if (vertices_.insert(vertex.lock()).second)
+    {
+        vertex.lock()->connect(shared_from_this());
+        add_point_to_surface_fitting(vertex.lock()->get_position(), vertex.lock()->get_origin());
+    }
 
     // will need to create edges and faces
-    
+
 }
 
 void Surface::connect(std::weak_ptr<Edge> edge)
