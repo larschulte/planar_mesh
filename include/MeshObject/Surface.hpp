@@ -15,7 +15,6 @@ class Surface : public std::enable_shared_from_this<Surface>
 protected:
     friend class Storage;
     void initialize_(std::weak_ptr<Storage> storage);
-    void initialize_(std::weak_ptr<Storage> storage, std::weak_ptr<Surface> surface1, std::weak_ptr<Surface> surface2);
     void delete_();
 
 public:
@@ -24,6 +23,8 @@ public:
     double compute_point_to_surface_distance_with_improved_covariance(const Eigen::Vector3d& origin, const Eigen::Vector3d& point) const;
     Eigen::Vector3d compute_point_to_surface_position(const Eigen::Vector3d& origin, const Eigen::Vector3d& point) const;
     
+    void merge_surface(std::weak_ptr<Surface> surface);
+
     Eigen::Vector3d get_mean() const;
     Eigen::Matrix3d get_covariance() const;
     Eigen::Matrix3d get_eigenvectors() const;

@@ -75,19 +75,6 @@ std::weak_ptr<Surface> Storage::add_surface()
     return surface;
 }
 
-std::weak_ptr<Surface> Storage::add_surface(std::weak_ptr<Surface> surface1, std::weak_ptr<Surface> surface2) 
-{
-    // create
-    std::shared_ptr<Surface> surface = std::make_shared<Surface>();
-    surface->initialize_(shared_from_this(), surface1, surface2);
-
-    // store
-    surfaces_.insert(surface);
-
-    // return
-    return surface;
-}
-
 std::weak_ptr<GenericPoint> Storage::add_generic_point(Eigen::Vector3d position, Eigen::Vector3d origin) 
 {
     // create

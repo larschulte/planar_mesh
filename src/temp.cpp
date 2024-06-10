@@ -267,17 +267,6 @@ public:
     //     }
     // }
 
-
-    // merge setID2 into setID1
-    std::weak_ptr<Surface> merge_surfaces(std::weak_ptr<Surface> surface1, std::weak_ptr<Surface> surface2) 
-    {
-        std::weak_ptr<Surface> new_surface = storage_->add_surface(surface1, surface2);
-        storage_->delete_surface(surface1);
-        storage_->delete_surface(surface2);
-
-        return new_surface;
-    }
-
     Eigen::Matrix3d merge_covariances_of_surfaces(std::weak_ptr<Surface> surface1, std::weak_ptr<Surface> surface2) 
     {
         Eigen::Matrix3d cov1 = surface1.lock()->get_covariance();
@@ -314,11 +303,9 @@ public:
                 double eigenvalue = Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d>(covariance_matrix).eigenvalues()[0];
                 if (eigenvalue > merged_eigenvalue_threshold) continue;
 
-                // merge sets
-                surfaces_to_merge.erase(pairs.first);
+                // merge surfaces
                 surfaces_to_merge.erase(pairs.second);
-                std::weak_ptr<Surface> newSurface = merge_surfaces(pairs.first, pairs.second);
-                surfaces_to_merge.insert(newSurface);
+                pairs.first.lock()->merge_surface(pairs.second);
 
                 // once merged, restart
                 again = true;

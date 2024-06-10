@@ -32,45 +32,6 @@ void Surface::initialize_(std::weak_ptr<Storage> storage)
     std::cout << "Surface " << id_ << " created.\n";
 }
 
-void Surface::initialize_(std::weak_ptr<Storage> storage, std::weak_ptr<Surface> surface1, std::weak_ptr<Surface> surface2)
-{
-    // check pointer validity
-    if (storage.expired()) throw std::runtime_error("Attempts to create surface with invalid storage.");
-    if (surface1.expired()) throw std::runtime_error("Attempts to create surface with invalid surface1.");
-    if (surface2.expired()) throw std::runtime_error("Attempts to create surface with invalid surface2.");
-    auto storage_valid = storage.lock();
-
-    // get id
-    id_ = storage_valid->get_next_surface_id();
-
-    // store
-    storage_ = storage_valid;
-
-    // initialize surface fitting
-    mean_ = Eigen::Vector3d::Zero();
-    covariance_ = Eigen::Matrix3d::Zero();
-    eigenvectors_ = Eigen::Matrix3d::Identity();
-    eigenvalues_ = Eigen::Vector3d::Zero();
-    normal_ = Eigen::Vector3d(0, 0, 1);
-
-    // connect
-    for (auto vertex : surface1.lock()->vertices_) connect(vertex);
-    for (auto vertex : surface2.lock()->vertices_) connect(vertex);
-    for (auto edge : surface1.lock()->edges_) connect(edge);
-    for (auto edge : surface2.lock()->edges_) connect(edge);
-    for (auto face : surface1.lock()->faces_) connect(face);
-    for (auto face : surface2.lock()->faces_) connect(face);
-    for (auto interior_point : surface1.lock()->interior_points_) connect(interior_point);
-    for (auto interior_point : surface2.lock()->interior_points_) connect(interior_point);
-
-    // initialize surface color
-    set_random_color();
-
-    // log
-    std::cout << "Surface " << id_ << " created.\n";
-}
-
-
 void Surface::delete_()
 {
     // log
@@ -156,6 +117,25 @@ Eigen::Vector3d Surface::compute_point_to_surface_position(const Eigen::Vector3d
 
     // return
     return intersection;
+}
+
+void Surface::merge_surface(std::weak_ptr<Surface> surface)
+{
+    // check input
+    if (surface.expired()) throw std::runtime_error("Attempts to merge surface with invalid surface.");
+
+    // merge
+    auto surface_valid = surface.lock();
+    for (auto vertex : surface_valid->vertices_) connect(vertex);
+    for (auto edge : surface_valid->edges_) connect(edge);
+    for (auto face : surface_valid->faces_) connect(face);
+    for (auto interior_point : surface_valid->interior_points_) connect(interior_point);
+
+    // log
+    std::cout << "Surface " << surface_valid->get_id() << " merged into surface " << id_ << std::endl;
+
+    // delete
+    storage_.lock()->delete_surface(surface);
 }
 
 Eigen::Vector3d Surface::get_mean() const
