@@ -190,6 +190,26 @@ void EdgeBVH::node_print(const std::shared_ptr<Node>& node, int level) const
     }
 }
 
+void EdgeBVH::node_flatten(std::shared_ptr<EdgeBVH::Node> node, std::vector<std::weak_ptr<Edge>>& edge_list) const
+{
+    if (node->isLeaf())
+    {
+        edge_list.insert(edge_list.end(), node->edges.begin(), node->edges.end());
+    }
+    else
+    {
+        node_flatten(node->left, edge_list);
+        node_flatten(node->right, edge_list);
+    }
+}
+
+std::vector<std::weak_ptr<Edge>> EdgeBVH::get_edge_list() const
+{
+    std::vector<std::weak_ptr<Edge>> edge_list;
+    node_flatten(root, edge_list);
+    return edge_list;
+}
+
 void EdgeBVH::delete_edge(std::weak_ptr<Edge> edge)
 {
     // check input
@@ -201,8 +221,8 @@ void EdgeBVH::delete_edge(std::weak_ptr<Edge> edge)
     // delete from edge set
     edge_set.erase(edge);
 
-    // delete from edge list using erase-remove idiom
-    edge_list.erase(std::remove(edge_list.begin(), edge_list.end(), edge), edge_list.end());
+    // decrement size
+    edge_size--;
     
     // delete from BVH
     node_delete_edge(root, edge);
@@ -210,14 +230,24 @@ void EdgeBVH::delete_edge(std::weak_ptr<Edge> edge)
 
 EdgeBVH::EdgeBVH()
     : rebuild_threshold(2),
-      size_at_last_rebuild(0)
+      size_at_last_rebuild(0), 
+      edge_size(0)
 {
     rebuild();
 }
 
 void EdgeBVH::rebuild()
 {
-    root = build_node(edge_list);
+    if (edge_size == 0)
+    {
+        std::vector<std::weak_ptr<Edge>> edge_list = std::vector<std::weak_ptr<Edge>>();
+        root = build_node(edge_list);
+    }
+    else
+    {
+        std::vector<std::weak_ptr<Edge>> edge_list = get_edge_list();
+        root = build_node(edge_list);
+    }
 }
 
 void EdgeBVH::add_edge(std::weak_ptr<Edge> edge)
@@ -231,13 +261,13 @@ void EdgeBVH::add_edge(std::weak_ptr<Edge> edge)
     // add to edge set
     edge_set.insert(edge);
 
-    // add to edge list
-    edge_list.push_back(edge);
+    // increment count
+    edge_size++;
 
-    if (edge_list.size() > size_at_last_rebuild * rebuild_threshold)
+    if (edge_size > size_at_last_rebuild * rebuild_threshold)
     {
         rebuild();
-        size_at_last_rebuild = edge_list.size();
+        size_at_last_rebuild = edge_size;
     }
     else
     {

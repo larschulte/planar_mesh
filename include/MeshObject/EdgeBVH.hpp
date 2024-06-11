@@ -52,14 +52,18 @@ private:
     void node_delete_edge(std::shared_ptr<Node> node, std::weak_ptr<Edge> edge);
     bool node_intersect_edge(const std::shared_ptr<Node>& node, std::weak_ptr<Vertex> vertex1, std::weak_ptr<Vertex> vertex2);
     void node_print(const std::shared_ptr<Node>& node, int level) const;    
+    void node_flatten(std::shared_ptr<Node> node, std::vector<std::weak_ptr<Edge>>& flat_vector) const;
+
+    std::vector<std::weak_ptr<Edge>> get_edge_list() const;
     
     std::shared_ptr<Node> root;
 
     double rebuild_threshold;
     int size_at_last_rebuild;
+
+    int edge_size;
     
     std::set<std::weak_ptr<Edge>> edge_set;
-    std::vector<std::weak_ptr<Edge>> edge_list;
 
 public:
     EdgeBVH();
