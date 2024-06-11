@@ -120,12 +120,17 @@ void EdgeBVH::convert_leaf_to_branch(std::shared_ptr<Node> node)
 std::shared_ptr<EdgeBVH::Node> EdgeBVH::build_node(std::vector<std::weak_ptr<Edge>> edge_list)
 {
     auto node = std::make_shared<Node>();
+
+    // expand box
     for (std::weak_ptr<Edge> edge : edge_list) 
     {
         expand_node_box(node, edge);
-        node->edges.insert(edge);
     }
 
+    // store vector
+    node->edges = edge_list;
+
+    // convert to branch if necessary
     if (node->edges.size() > 4) convert_leaf_to_branch(node);
 
     return node;
@@ -136,7 +141,7 @@ void EdgeBVH::node_add_edge(std::shared_ptr<Node> node, std::weak_ptr<Edge> edge
     if (node->isLeaf())
     {
         expand_node_box(node, edge);
-        node->edges.insert(edge);
+        node->edges.push_back(edge);
         if (node->edges.size() > 4) convert_leaf_to_branch(node);
     }
     else
@@ -158,7 +163,7 @@ void EdgeBVH::node_delete_edge(std::shared_ptr<Node> node, std::weak_ptr<Edge> e
 {
     if (node->isLeaf())
     {
-        node->edges.erase(edge);
+        node->edges.erase(std::remove(node->edges.begin(), node->edges.end(), edge), node->edges.end());
     }
     else
     {

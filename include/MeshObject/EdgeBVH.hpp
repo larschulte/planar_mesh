@@ -39,7 +39,7 @@ private:
         std::shared_ptr<Node> left;
         std::shared_ptr<Node> right;
         bool isLeaf() const;
-        std::set<std::weak_ptr<Edge>> edges;
+        std::vector<std::weak_ptr<Edge>> edges;
     };
 
     double sort_edge_list_in_axis(std::vector<std::weak_ptr<Edge>>& edge_list, int axis, int start, int mid, int end);
