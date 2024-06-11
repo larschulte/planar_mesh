@@ -28,6 +28,14 @@ void Edge::initialize_(std::weak_ptr<Storage> storage, std::weak_ptr<Vertex> ver
     connect(vertex1);
     connect(vertex2);
 
+    // compute center
+    center_ = 0.5 * (vertex1_valid->get_position() + vertex2_valid->get_position());
+
+    // compute max and min
+    double margin = 0.05;
+    max_ = vertex1.lock()->get_position().cwiseMax(vertex2.lock()->get_position()) + margin * Eigen::Vector3d::Ones();
+    min_ = vertex1.lock()->get_position().cwiseMin(vertex2.lock()->get_position()) - margin * Eigen::Vector3d::Ones();
+
     // log
     std::cout << "Edge " << id_ << " created between vertex " << vertex1_valid->get_id() << " and vertex " << vertex2_valid->get_id() << std::endl;
 }
@@ -179,6 +187,36 @@ void Edge::update_boundary_state()
     }
 }
 
+Eigen::Vector3d Edge::get_center() const
+{
+    return center_;
+}
+
+Eigen::Vector3d Edge::get_max() const
+{
+    return max_;
+}
+
+Eigen::Vector3d Edge::get_min() const
+{
+    return min_;
+}
+
+bool Edge::intersects_edge(std::weak_ptr<Vertex> vertex0, std::weak_ptr<Vertex> vertex1)
+{
+    // skip if vertices are connected
+    if (has_vertex(vertex0) || has_vertex(vertex1)) return false;
+
+    // get surface coordinates
+    Eigen::Vector2d p1 = vertex0.lock()->get_surface_coordinate();
+    Eigen::Vector2d p2 = vertex1.lock()->get_surface_coordinate();
+    Eigen::Vector2d q1 = get_vertex(0).lock()->get_surface_coordinate();
+    Eigen::Vector2d q2 = get_vertex(1).lock()->get_surface_coordinate();
+    
+    // check if edge intersects
+    return segments_intersect(p1, p2, q1, q2);
+}
+
 bool operator<(const std::weak_ptr<Edge>& lhs, const std::weak_ptr<Edge>& rhs)
 {
     if (lhs.expired() || rhs.expired()) throw std::runtime_error("Comparing expired edges");
@@ -189,4 +227,28 @@ bool operator==(const std::weak_ptr<Edge>& lhs, const std::weak_ptr<Edge>& rhs)
 {
     if (lhs.expired() || rhs.expired()) throw std::runtime_error("Comparing expired edges");
     return lhs.lock()->get_id() == rhs.lock()->get_id();
+}
+
+// Function to check if two 2D segments (p1, p2) and (q1, q2) intersect
+bool segments_intersect(const Eigen::Vector2d &p1, const Eigen::Vector2d &p2, const Eigen::Vector2d &q1, const Eigen::Vector2d &q2) 
+{
+    auto orientation = [](const Eigen::Vector2d &p, const Eigen::Vector2d &q, const Eigen::Vector2d &r) 
+    {
+        double val = (q.y() - p.y()) * (r.x() - q.x()) - (q.x() - p.x()) * (r.y() - q.y());
+        if (val == 0) return 0;  // collinear
+        return (val > 0) ? 1 : 2; // clock or counterclockwise
+    };
+
+    int o1 = orientation(p1, p2, q1);
+    int o2 = orientation(p1, p2, q2);
+    int o3 = orientation(q1, q2, p1);
+    int o4 = orientation(q1, q2, p2);
+    if (o1 != o2 && o3 != o4) 
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
 }

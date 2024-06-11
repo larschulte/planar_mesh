@@ -117,6 +117,25 @@ std::weak_ptr<Surface> Vertex::get_surface() const
     return *surfaces_.begin();
 }
 
+Eigen::Vector2d Vertex::get_surface_coordinate()
+{
+    Eigen::Matrix3d eigenvectors = get_surface().lock()->get_eigenvectors();
+    if (eigenvectors_used_ == eigenvectors)
+    {
+        // use stored coordinate if eigenvectors are the same
+        return surface_coordinate_;
+    }
+    else
+    {
+        // compute new coordinate
+        Eigen::Matrix<double, 3, 2> projection_matrix = eigenvectors.rightCols<2>();
+        Eigen::Vector3d projected_position = get_projected_position();
+        surface_coordinate_ = (projection_matrix.transpose() * projected_position).head<2>();
+        eigenvectors_used_ = eigenvectors;
+        return surface_coordinate_;
+    }
+}
+
 void Vertex::connect(std::weak_ptr<Edge> edge)
 {
     // check input
@@ -260,6 +279,13 @@ bool operator<(const std::weak_ptr<Vertex>& lhs, const std::weak_ptr<Vertex>& rh
     // when updating the third point's boundary state (due to first point deleted), the first point is already deleted. 
     if (lhs.expired() || rhs.expired()) throw std::runtime_error("Comparing expired edges");
     return lhs.lock()->get_id() < rhs.lock()->get_id();
+}
+
+bool operator<=(const std::weak_ptr<Vertex>& lhs, const std::weak_ptr<Vertex>& rhs)
+{
+    // when updating the third point's boundary state (due to first point deleted), the first point is already deleted. 
+    if (lhs.expired() || rhs.expired()) throw std::runtime_error("Comparing expired edges");
+    return lhs.lock()->get_id() <= rhs.lock()->get_id();
 }
 
 bool operator==(const std::weak_ptr<Vertex>& lhs, const std::weak_ptr<Vertex>& rhs)

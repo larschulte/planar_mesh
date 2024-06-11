@@ -24,6 +24,7 @@ public:
     Eigen::Vector3d get_projected_position() const;
     Eigen::Vector3d get_origin() const;
     std::weak_ptr<Surface> get_surface() const;
+    Eigen::Vector2d get_surface_coordinate();
 
     void connect(std::weak_ptr<Edge> edge);
     void connect(std::weak_ptr<Face> face);
@@ -58,9 +59,13 @@ private:
     std::set<std::weak_ptr<Face>> faces_;
     std::set<std::weak_ptr<Surface>> surfaces_;
 
+    Eigen::Vector2d surface_coordinate_;
+    Eigen::Matrix3d eigenvectors_used_;
+
     Eigen::Vector3d position_;
     Eigen::Vector3d origin_;
 };
 
 bool operator<(const std::weak_ptr<Vertex>& lhs, const std::weak_ptr<Vertex>& rhs);
+bool operator<=(const std::weak_ptr<Vertex>& lhs, const std::weak_ptr<Vertex>& rhs);
 bool operator==(const std::weak_ptr<Vertex>& lhs, const std::weak_ptr<Vertex>& rhs);

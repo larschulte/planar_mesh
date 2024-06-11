@@ -4,10 +4,13 @@
 #include <vector>
 #include <Eigen/Dense>
 
+#include "MeshObject/EdgeBVH.hpp"
+
 // forward declarations
 class Vertex;
 class Edge;
 class Face;
+class InteriorPoint;
 class Storage;
 
 class Surface : public std::enable_shared_from_this<Surface> 
@@ -34,6 +37,7 @@ public:
     std::tuple<int, int, int> get_color() const;
 
     void connect(std::weak_ptr<Vertex> vertex);
+    void connect(std::weak_ptr<Vertex> vertex, std::set<std::weak_ptr<Vertex>> nearby_vertices);
     void connect(std::weak_ptr<Edge> edge);
     void connect(std::weak_ptr<Face> face);
     void connect(std::weak_ptr<InteriorPoint> interior_point);
@@ -45,6 +49,8 @@ public:
     
 private:
     bool deleting_ = false;
+
+    EdgeBVH edge_bvh_;
 
     int id_;
     std::weak_ptr<Storage> storage_;

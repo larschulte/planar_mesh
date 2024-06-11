@@ -1,6 +1,7 @@
 #include "MeshObject/Vertex.hpp"
 #include "MeshObject/Edge.hpp"
 #include "MeshObject/Face.hpp"
+#include "MeshObject/InteriorPoint.hpp"
 #include "MeshObject/Storage.hpp"
 #include "MeshObject/Surface.hpp"
 #include <iostream>
@@ -189,6 +190,66 @@ void Surface::connect(std::weak_ptr<Vertex> vertex)
 
 }
 
+void Surface::connect(std::weak_ptr<Vertex> vertex, std::set<std::weak_ptr<Vertex>> nearby_vertices)
+{
+    // check input
+    if (vertex.expired()) throw std::runtime_error("Attempts to connect surface with invalid vertex.");
+
+    // connect
+    if (vertices_.insert(vertex.lock()).second)
+    {
+        vertex.lock()->connect(shared_from_this());
+        add_point_to_surface_fitting(vertex.lock()->get_position(), vertex.lock()->get_origin());
+    }
+
+    // create edges
+    std::set<std::weak_ptr<Vertex>> used_vertices;
+    for (auto nearby_vertex : nearby_vertices)
+    {
+        // check input
+        if (nearby_vertex.expired()) throw std::runtime_error("Attempts to connect surface with invalid nearby vertex.");
+
+        // skip if same vertex
+        if (nearby_vertex.lock() == vertex.lock()) continue;
+
+        // skip if edge already exists
+        auto edge = storage_.lock()->get_edge(vertex, nearby_vertex);
+        if (!edge.expired()) continue;
+
+        // skip if edge is valid
+        if (edge_bvh_.intersect_edges(vertex, nearby_vertex)) continue;
+
+        // create edge
+        std::weak_ptr<Edge> new_edge = storage_.lock()->add_edge(vertex, nearby_vertex);
+        connect(new_edge);
+        used_vertices.insert(nearby_vertex);
+    }
+
+    // create faces
+    for (std::weak_ptr<Vertex> nearby_vertex0 : used_vertices)
+    {
+        for (std::weak_ptr<Vertex> nearby_vertex1 : used_vertices)
+        {
+            // skip if repeated
+            if (nearby_vertex1 <= nearby_vertex0) continue;
+
+            // skip if edge does not exist
+            std::weak_ptr<Edge> existing_edge = storage_.lock()->get_edge(nearby_vertex0, nearby_vertex1);
+            if (existing_edge.expired()) continue;
+
+            // skip if edge is not boundary
+            if (!existing_edge.lock()->is_boundary()) continue;
+
+            // skip if face have intersections
+            // // todo
+
+            // create face
+            std::weak_ptr<Face> new_face = storage_.lock()->add_face(vertex, nearby_vertex0, nearby_vertex1);
+            connect(new_face);
+        }
+    }
+}
+
 void Surface::connect(std::weak_ptr<Edge> edge)
 {
     // check input
@@ -197,6 +258,9 @@ void Surface::connect(std::weak_ptr<Edge> edge)
     // connect
     bool inserted = edges_.insert(edge).second;
     if (inserted) edge.lock()->connect(shared_from_this());
+
+    // add to BVH
+    edge_bvh_.add_edge(edge);
 }
 
 void Surface::connect(std::weak_ptr<Face> face)
@@ -240,6 +304,9 @@ void Surface::disconnect(std::weak_ptr<Edge> edge)
     // disconnect
     bool erased = edges_.erase(edge);
     if (erased) edge.lock()->disconnect(shared_from_this());
+
+    // remove from BVH
+    edge_bvh_.delete_edge(edge);
 }
 
 void Surface::disconnect(std::weak_ptr<Face> face)

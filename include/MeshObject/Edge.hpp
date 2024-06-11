@@ -31,9 +31,19 @@ public:
     bool is_boundary() const;
     void update_boundary_state();
 
+    Eigen::Vector3d get_center() const;
+    Eigen::Vector3d get_max() const;
+    Eigen::Vector3d get_min() const;
+
+    bool intersects_edge(std::weak_ptr<Vertex> vertex0, std::weak_ptr<Vertex> vertex1);
+
 private:
     bool deleting_ = false;
     bool is_boundary_ = false;
+
+    Eigen::Vector3d center_;
+    Eigen::Vector3d max_;
+    Eigen::Vector3d min_;
 
     int id_;
     std::weak_ptr<Storage> storage_;
@@ -45,3 +55,5 @@ private:
 
 bool operator<(const std::weak_ptr<Edge>& lhs, const std::weak_ptr<Edge>& rhs);
 bool operator==(const std::weak_ptr<Edge>& lhs, const std::weak_ptr<Edge>& rhs);
+
+bool segments_intersect(const Eigen::Vector2d &p1, const Eigen::Vector2d &p2, const Eigen::Vector2d &q1, const Eigen::Vector2d &q2);

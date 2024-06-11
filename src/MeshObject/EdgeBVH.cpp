@@ -1,0 +1,256 @@
+#include "MeshObject/EdgeBVH.hpp"
+#include <iostream>
+
+#include "MeshObject/Vertex.hpp"
+#include "MeshObject/Edge.hpp"
+#include "MeshObject/Surface.hpp"
+
+
+EdgeBVH::BoundingBox::BoundingBox()
+    : min(Eigen::Vector3d::Constant(std::numeric_limits<double>::infinity())),
+      max(Eigen::Vector3d::Constant(-std::numeric_limits<double>::infinity())) {}
+
+void EdgeBVH::BoundingBox::expand(const Eigen::Vector3d& point) 
+{
+    min = min.cwiseMin(point);
+    max = max.cwiseMax(point);
+}
+
+bool EdgeBVH::BoundingBox::intersect(const Eigen::Vector3d& orig, const Eigen::Vector3d& dir, double& tMin, double& tMax) const 
+{
+    for (int i = 0; i < 3; ++i) 
+    {
+        double invD = 1.0 / dir[i];
+        double t0 = (min[i] - orig[i]) * invD;
+        double t1 = (max[i] - orig[i]) * invD;
+        if (invD < 0.0) std::swap(t0, t1);
+        tMin = std::max(tMin, t0);
+        tMax = std::min(tMax, t1);
+        if (tMax < tMin) return false;
+    }
+    return true;
+}
+
+bool EdgeBVH::BoundingBox::intersect(const Eigen::Vector3d& a, const Eigen::Vector3d& b) const 
+{
+    // count as intersect if both points are inside
+    bool a_inside = (a[0] >= min[0] && a[0] <= max[0] &&
+                     a[1] >= min[1] && a[1] <= max[1] &&
+                     a[2] >= min[2] && a[2] <= max[2]);
+    bool b_inside = (b[0] >= min[0] && b[0] <= max[0] &&
+                     b[1] >= min[1] && b[1] <= max[1] &&
+                     b[2] >= min[2] && b[2] <= max[2]);
+    if (a_inside && b_inside) return true;
+
+    // Check for intersection if not both points are inside
+    double tMin = 0.0;
+    double tMax = 1.0;
+    Eigen::Vector3d dir = b - a;
+    return intersect(a, dir, tMin, tMax) && tMax >= 0.0 && tMin <= 1.0;
+}
+
+int EdgeBVH::BoundingBox::get_longest_axis()
+{
+    Eigen::Vector3d diagonal_line = max - min;
+    int axis = 0;
+    if (diagonal_line[1] > diagonal_line[axis]) axis = 1;
+    if (diagonal_line[2] > diagonal_line[axis]) axis = 2;
+    return axis;
+}
+
+bool EdgeBVH::Node::isLeaf() const 
+{
+    return !left && !right;
+}
+
+
+double EdgeBVH::sort_edge_list_in_axis(std::vector<std::weak_ptr<Edge>>& edge_list, int axis, int start, int mid, int end)
+{
+    std::nth_element(edge_list.begin() + start, edge_list.begin() + mid, edge_list.begin() + end, 
+        [&](const std::weak_ptr<Edge>& edge_a, const std::weak_ptr<Edge>& edge_b) 
+        {
+            return edge_a.lock()->get_center()[axis] < edge_b.lock()->get_center()[axis];
+        });
+    return edge_list[mid].lock()->get_center()[axis];
+}
+
+void EdgeBVH::expand_node_box(std::shared_ptr<Node> node, std::weak_ptr<Edge> edge)
+{
+    node->box.expand(edge.lock()->get_max());
+    node->box.expand(edge.lock()->get_min());
+}
+
+bool EdgeBVH::node_intersect_edge(const std::shared_ptr<Node>& node, std::weak_ptr<Vertex> vertex0, std::weak_ptr<Vertex> vertex1)
+{
+    bool intersected = node->box.intersect(vertex0.lock()->get_position(), vertex1.lock()->get_position());
+    if (!intersected) return false;
+    
+    if (node->isLeaf())
+    {
+        for (std::weak_ptr<Edge> edge : node->edges)
+        {
+            if (edge.lock()->intersects_edge(vertex0, vertex1)) return true;
+        }
+    }
+    else
+    {
+        if (node_intersect_edge(node->left, vertex0, vertex1)) return true;
+        if (node_intersect_edge(node->right, vertex0, vertex1)) return true;
+    }
+
+    return false;
+}
+
+void EdgeBVH::convert_leaf_to_branch(std::shared_ptr<Node> node)
+{
+    std::vector<std::weak_ptr<Edge>> edge_list(node->edges.begin(), node->edges.end());
+    int start = 0;
+    int end = edge_list.size();
+    int mid = (start + end) / 2;
+    int axis = node->box.get_longest_axis();
+    double split_value = sort_edge_list_in_axis(edge_list, axis, start, mid, end);
+    
+    node->edges.clear();
+    node->split_axis = axis;
+    node->split_value = split_value;
+    node->left = build_node(std::vector<std::weak_ptr<Edge>>(edge_list.begin(), edge_list.begin() + mid));
+    node->right = build_node(std::vector<std::weak_ptr<Edge>>(edge_list.begin() + mid, edge_list.end()));
+}
+
+std::shared_ptr<EdgeBVH::Node> EdgeBVH::build_node(std::vector<std::weak_ptr<Edge>> edge_list)
+{
+    auto node = std::make_shared<Node>();
+    for (std::weak_ptr<Edge> edge : edge_list) 
+    {
+        expand_node_box(node, edge);
+        node->edges.insert(edge);
+    }
+
+    if (node->edges.size() > 4) convert_leaf_to_branch(node);
+
+    return node;
+}
+
+void EdgeBVH::node_add_edge(std::shared_ptr<Node> node, std::weak_ptr<Edge> edge)
+{
+    if (node->isLeaf())
+    {
+        expand_node_box(node, edge);
+        node->edges.insert(edge);
+        if (node->edges.size() > 4) convert_leaf_to_branch(node);
+    }
+    else
+    {
+        expand_node_box(node, edge);
+
+        if (edge.lock()->get_center()[node->split_axis] < node->split_value)
+        {
+            node_add_edge(node->left, edge);
+        }
+        else 
+        {
+            node_add_edge(node->right, edge);
+        }
+    }
+}
+
+void EdgeBVH::node_delete_edge(std::shared_ptr<Node> node, std::weak_ptr<Edge> edge)
+{
+    if (node->isLeaf())
+    {
+        node->edges.erase(edge);
+    }
+    else
+    {
+        if (edge.lock()->get_center()[node->split_axis] < node->split_value)
+        {
+            node_delete_edge(node->left, edge);
+        }
+        else
+        {
+            node_delete_edge(node->right, edge);
+        }
+    }
+}
+
+void EdgeBVH::node_print(const std::shared_ptr<Node>& node, int level) const
+{
+    if (node->isLeaf())
+    {
+        for (std::weak_ptr<Edge> edge : node->edges)
+        {
+            std::cout << "Level: " <<  level << " | ID: " << edge.lock()->get_id() << " | Center: " << edge.lock()->get_center().transpose() << std::endl;
+        }
+        std::cout << std::endl;
+    }
+    else
+    {
+        node_print(node->left, level+1);
+        node_print(node->right, level+1);
+    }
+}
+
+void EdgeBVH::delete_edge(std::weak_ptr<Edge> edge)
+{
+    // check input
+    if (edge.expired()) throw std::runtime_error("Attempts to delete expired edge.");
+
+    // check if edge exists
+    if (edge_set.find(edge) == edge_set.end()) return;
+
+    // delete from edge set
+    edge_set.erase(edge);
+
+    // delete from edge list using erase-remove idiom
+    edge_list.erase(std::remove(edge_list.begin(), edge_list.end(), edge), edge_list.end());
+    
+    // delete from BVH
+    node_delete_edge(root, edge);
+}
+
+EdgeBVH::EdgeBVH()
+    : rebuild_threshold(2),
+      size_at_last_rebuild(0)
+{
+    rebuild();
+}
+
+void EdgeBVH::rebuild()
+{
+    root = build_node(edge_list);
+}
+
+void EdgeBVH::add_edge(std::weak_ptr<Edge> edge)
+{
+    // check input
+    if (edge.expired()) throw std::runtime_error("Attempts to add expired edge.");
+
+    // check if edge already exists
+    if (edge_set.find(edge) != edge_set.end()) return;
+
+    // add to edge set
+    edge_set.insert(edge);
+
+    // add to edge list
+    edge_list.push_back(edge);
+
+    if (edge_list.size() > size_at_last_rebuild * rebuild_threshold)
+    {
+        rebuild();
+        size_at_last_rebuild = edge_list.size();
+    }
+    else
+    {
+        node_add_edge(root, edge);
+    }
+}
+
+bool EdgeBVH::intersect_edges(std::weak_ptr<Vertex> vertex0, std::weak_ptr<Vertex> vertex1)
+{
+    return node_intersect_edge(root, vertex0, vertex1);
+}
+
+void EdgeBVH::print() const
+{
+    node_print(root, 0);
+}
