@@ -47,7 +47,7 @@ private:
     double sort_face_list_in_axis(std::vector<std::shared_ptr<Face>>& face_list, int axis, int start, int mid, int end);
     void expand_node_box(const std::shared_ptr<Node>& node, const std::shared_ptr<Face>& face);
     
-    std::shared_ptr<Node> build_node(std::vector<std::shared_ptr<Face>> face_list);
+    std::shared_ptr<Node> build_node(const std::vector<std::shared_ptr<Face>>& face_list);
     void convert_leaf_to_branch(const std::shared_ptr<Node>& node);
 
     void node_intersection_search(const std::shared_ptr<Node>& node, const Eigen::Vector3d& orig, const Eigen::Vector3d& dir, std::set<std::shared_ptr<Face>>& faces_intersected) const;

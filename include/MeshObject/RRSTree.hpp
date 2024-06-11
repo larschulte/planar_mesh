@@ -76,26 +76,25 @@ private:
 
     void convert_leaf_to_branch(const std::shared_ptr<Node>& node)
     {
-        std::vector<std::shared_ptr<Vertex>> boundary_vertex_list = node->boundary_vertices;
         int start = 0;
-        int end = boundary_vertex_list.size();
+        int end = node->boundary_vertices.size();
         int mid = (start + end) / 2;
         int axis = node->box.get_longest_axis();
-        double split_value = sort_boundary_vertex_list_in_axis(boundary_vertex_list, axis, start, mid, end);
+        double split_value = sort_boundary_vertex_list_in_axis(node->boundary_vertices, axis, start, mid, end);
         
-        node->boundary_vertices.clear();
         node->split_axis = axis;
         node->split_value = split_value;
-        node->left = build_node(std::vector<std::shared_ptr<Vertex>>(boundary_vertex_list.begin(), boundary_vertex_list.begin() + mid));
-        node->right = build_node(std::vector<std::shared_ptr<Vertex>>(boundary_vertex_list.begin() + mid, boundary_vertex_list.end()));
+        node->left = build_node(std::vector<std::shared_ptr<Vertex>>(node->boundary_vertices.begin(), node->boundary_vertices.begin() + mid));
+        node->right = build_node(std::vector<std::shared_ptr<Vertex>>(node->boundary_vertices.begin() + mid, node->boundary_vertices.end()));
+        node->boundary_vertices.clear();
     }
 
-    std::shared_ptr<Node> build_node(std::vector<std::shared_ptr<Vertex>> boundary_vertex_list)
+    std::shared_ptr<Node> build_node(const std::vector<std::shared_ptr<Vertex>>& boundary_vertex_list)
     {
         auto node = std::make_shared<Node>();
 
         // expand box
-        for (std::shared_ptr<Vertex> boundary_vertex : boundary_vertex_list) 
+        for (const std::shared_ptr<Vertex>& boundary_vertex : boundary_vertex_list) 
         {
             // check input
             if (boundary_vertex->is_expired()) throw std::invalid_argument("Invalid vertex in boundary_vertex_list");
@@ -198,24 +197,24 @@ private:
         }
     }
 
-    std::vector<std::shared_ptr<Vertex>> flatten_node(const std::shared_ptr<Node>& node)
+    void node_flattern(const std::shared_ptr<Node>& node, std::vector<std::shared_ptr<Vertex>>& flatten_list)
     {
-        std::vector<std::shared_ptr<Vertex>> boundary_vertex_list;
         if (node->isLeaf())
         {
-            for (const std::shared_ptr<Vertex>& boundary_vertex : node->boundary_vertices)
-            {
-                boundary_vertex_list.push_back(boundary_vertex);
-            }
+            flatten_list.insert(flatten_list.end(), node->boundary_vertices.begin(), node->boundary_vertices.end());
         }
         else
         {
-            std::vector<std::shared_ptr<Vertex>> boundary_vertex_list_left = flatten_node(node->left);
-            std::vector<std::shared_ptr<Vertex>> boundary_vertex_list_right = flatten_node(node->right);
-            boundary_vertex_list.insert(boundary_vertex_list.end(), boundary_vertex_list_left.begin(), boundary_vertex_list_left.end());
-            boundary_vertex_list.insert(boundary_vertex_list.end(), boundary_vertex_list_right.begin(), boundary_vertex_list_right.end());
+            node_flattern(node->left, flatten_list);
+            node_flattern(node->right, flatten_list);
         }
-        return boundary_vertex_list;
+    }
+
+    std::vector<std::shared_ptr<Vertex>> get_vertices_list()
+    {
+        std::vector<std::shared_ptr<Vertex>> flatten_list;
+        node_flattern(root, flatten_list);
+        return flatten_list;
     }
 
     void print_node(const std::shared_ptr<Node>& node, int level) const
@@ -254,12 +253,11 @@ public:
     {
         if (tree_size == 0)
         {
-            std::vector<std::shared_ptr<Vertex>> boundary_vertex_list = std::vector<std::shared_ptr<Vertex>>();
-            root = build_node(boundary_vertex_list);
+            root = build_node(std::vector<std::shared_ptr<Vertex>>());
         }
         else
         {
-            std::vector<std::shared_ptr<Vertex>> boundary_vertex_list = flatten_node(root);
+            std::vector<std::shared_ptr<Vertex>> boundary_vertex_list = get_vertices_list();
             root = build_node(boundary_vertex_list);
         }
     }
@@ -329,7 +327,7 @@ public:
 
     const std::vector<std::shared_ptr<Vertex>>& get_vertices()
     {
-        flattened_vertices = flatten_node(root);
+        flattened_vertices = get_vertices_list();
         return flattened_vertices;
     }
 };

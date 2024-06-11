@@ -103,18 +103,18 @@ bool EdgeBVH::node_intersect_edge(const std::shared_ptr<Node>& node, const std::
 
 void EdgeBVH::convert_leaf_to_branch(const std::shared_ptr<Node>& node)
 {
-    std::vector<std::shared_ptr<Edge>> edge_list(node->edges.begin(), node->edges.end());
     int start = 0;
-    int end = edge_list.size();
+    int end = node->edges.size();
     int mid = (start + end) / 2;
     int axis = node->box.get_longest_axis();
-    double split_value = sort_edge_list_in_axis(edge_list, axis, start, mid, end);
+    double split_value = sort_edge_list_in_axis(node->edges, axis, start, mid, end);
     
-    node->edges.clear();
     node->split_axis = axis;
     node->split_value = split_value;
-    node->left = build_node(std::vector<std::shared_ptr<Edge>>(edge_list.begin(), edge_list.begin() + mid));
-    node->right = build_node(std::vector<std::shared_ptr<Edge>>(edge_list.begin() + mid, edge_list.end()));
+    node->left = build_node(std::vector<std::shared_ptr<Edge>>(node->edges.begin(), node->edges.begin() + mid));
+    node->right = build_node(std::vector<std::shared_ptr<Edge>>(node->edges.begin() + mid, node->edges.end()));
+
+    node->edges.clear();
 }
 
 std::shared_ptr<EdgeBVH::Node> EdgeBVH::build_node(const std::vector<std::shared_ptr<Edge>>& edge_list)

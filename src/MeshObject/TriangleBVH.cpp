@@ -118,21 +118,20 @@ void TriangleBVH::node_intersection_search(const std::shared_ptr<Node>& node, co
 
 void TriangleBVH::convert_leaf_to_branch(const std::shared_ptr<Node>& node)
 {
-    std::vector<std::shared_ptr<Face>> face_list(node->faces.begin(), node->faces.end());
     int start = 0;
-    int end = face_list.size();
+    int end = node->faces.size();
     int mid = (start + end) / 2;
     int axis = node->box.get_longest_axis();
-    double split_value = sort_face_list_in_axis(face_list, axis, start, mid, end);
+    double split_value = sort_face_list_in_axis(node->faces, axis, start, mid, end);
     
-    node->faces.clear();
     node->split_axis = axis;
     node->split_value = split_value;
-    node->left = build_node(std::vector<std::shared_ptr<Face>>(face_list.begin(), face_list.begin() + mid));
-    node->right = build_node(std::vector<std::shared_ptr<Face>>(face_list.begin() + mid, face_list.end()));
+    node->left = build_node(std::vector<std::shared_ptr<Face>>(node->faces.begin(), node->faces.begin() + mid));
+    node->right = build_node(std::vector<std::shared_ptr<Face>>(node->faces.begin() + mid, node->faces.end()));
+    node->faces.clear();
 }
 
-std::shared_ptr<TriangleBVH::Node> TriangleBVH::build_node(std::vector<std::shared_ptr<Face>> face_list)
+std::shared_ptr<TriangleBVH::Node> TriangleBVH::build_node(const std::vector<std::shared_ptr<Face>>& face_list)
 {
     auto node = std::make_shared<Node>();
 
@@ -257,8 +256,7 @@ void TriangleBVH::rebuild()
 {
     if (face_size == 0)
     {
-        std::vector<std::shared_ptr<Face>> face_list = std::vector<std::shared_ptr<Face>>();
-        root = build_node(face_list);
+        root = build_node(std::vector<std::shared_ptr<Face>>());
     }
     else
     {
