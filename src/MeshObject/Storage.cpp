@@ -220,7 +220,7 @@ std::set<std::weak_ptr<Vertex>> Storage::reverse_radius_search(Eigen::Vector3d p
 // face intersection search
 std::set<std::weak_ptr<Face>> Storage::face_intersection_search(Eigen::Vector3d origin, Eigen::Vector3d point) 
 {
-    return triangle_bvh_.intersectionSearch(origin, point);
+    return triangle_bvh_.intersection_search(origin, point);
 }
 
 std::set<std::weak_ptr<Vertex>> Storage::get_vertices() const

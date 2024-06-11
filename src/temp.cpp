@@ -535,7 +535,7 @@ public:
         // ------------- add point by triangle intersection
 
         // get list of intersected triangle by the point
-        std::set<std::weak_ptr<Face>> searched_faces = bvhRoot.intersectionSearch(thisPointOriginVEC, thisPointVEC); // may include deleted triangles
+        std::set<std::weak_ptr<Face>> searched_faces = bvhRoot.intersection_search(thisPointOriginVEC, thisPointVEC); // may include deleted triangles
 
         // group the faces by surface
         std::map<std::weak_ptr<Surface>, std::set<std::weak_ptr<Face>>> surface_to_searched_faces_map;

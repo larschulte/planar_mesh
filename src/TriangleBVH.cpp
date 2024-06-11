@@ -97,7 +97,7 @@ void TriangleBVH::expand_node_box(std::shared_ptr<Node> node, std::weak_ptr<Face
     }
 }
 
-std::set<std::weak_ptr<Face>> TriangleBVH::intersectHierarchy(const std::shared_ptr<Node>& node, const Eigen::Vector3d& orig, const Eigen::Vector3d& dir) 
+std::set<std::weak_ptr<Face>> TriangleBVH::node_intersection_search(const std::shared_ptr<Node>& node, const Eigen::Vector3d& orig, const Eigen::Vector3d& dir) 
 {
     bool intersected = node->box.intersect(orig, dir);
     if (!intersected) return std::set<std::weak_ptr<Face>>();
@@ -113,8 +113,8 @@ std::set<std::weak_ptr<Face>> TriangleBVH::intersectHierarchy(const std::shared_
     }
     else
     {
-        std::set<std::weak_ptr<Face>> faces_left = intersectHierarchy(node->left, orig, dir);
-        std::set<std::weak_ptr<Face>> faces_right = intersectHierarchy(node->right, orig, dir);
+        std::set<std::weak_ptr<Face>> faces_left = node_intersection_search(node->left, orig, dir);
+        std::set<std::weak_ptr<Face>> faces_right = node_intersection_search(node->right, orig, dir);
         faces_left.insert(faces_right.begin(), faces_right.end());
         return faces_left;
     }
@@ -150,7 +150,7 @@ std::shared_ptr<TriangleBVH::Node> TriangleBVH::build_node(std::vector<std::weak
     return node;
 }
 
-void TriangleBVH::add_face_to_node(std::shared_ptr<Node> node, std::weak_ptr<Face> face)
+void TriangleBVH::node_add_face(std::shared_ptr<Node> node, std::weak_ptr<Face> face)
 {
     if (node->isLeaf())
     {
@@ -164,16 +164,16 @@ void TriangleBVH::add_face_to_node(std::shared_ptr<Node> node, std::weak_ptr<Fac
 
         if (face.lock()->get_center()[node->split_axis] < node->split_value)
         {
-            add_face_to_node(node->left, face);
+            node_add_face(node->left, face);
         }
         else 
         {
-            add_face_to_node(node->right, face);
+            node_add_face(node->right, face);
         }
     }
 }
 
-void TriangleBVH::delete_face_from_node(std::shared_ptr<Node> node, std::weak_ptr<Face> face)
+void TriangleBVH::node_delete_face(std::shared_ptr<Node> node, std::weak_ptr<Face> face)
 {
     if (node->isLeaf())
     {
@@ -183,16 +183,16 @@ void TriangleBVH::delete_face_from_node(std::shared_ptr<Node> node, std::weak_pt
     {
         if (face.lock()->get_center()[node->split_axis] < node->split_value)
         {
-            delete_face_from_node(node->left, face);
+            node_delete_face(node->left, face);
         }
         else
         {
-            delete_face_from_node(node->right, face);
+            node_delete_face(node->right, face);
         }
     }
 }
 
-void TriangleBVH::print_node(const std::shared_ptr<Node> &node, int level) const
+void TriangleBVH::node_print(const std::shared_ptr<Node> &node, int level) const
 {
     if (node->isLeaf())
     {
@@ -204,8 +204,8 @@ void TriangleBVH::print_node(const std::shared_ptr<Node> &node, int level) const
     }
     else
     {
-        print_node(node->left, level+1);
-        print_node(node->right, level+1);
+        node_print(node->left, level+1);
+        node_print(node->right, level+1);
     }
 }
 
@@ -224,7 +224,7 @@ void TriangleBVH::delete_face(std::weak_ptr<Face> face)
     face_list.erase(std::remove(face_list.begin(), face_list.end(), face), face_list.end());
     
     // delete from BVH
-    delete_face_from_node(root, face);
+    node_delete_face(root, face);
 }
 
 TriangleBVH::TriangleBVH()
@@ -260,17 +260,17 @@ void TriangleBVH::add_face(std::weak_ptr<Face> face)
     }
     else
     {
-        add_face_to_node(root, face);
+        node_add_face(root, face);
     }
 }
 
-std::set<std::weak_ptr<Face>> TriangleBVH::intersectionSearch(Eigen::Vector3d origin, Eigen::Vector3d endPoint)
+std::set<std::weak_ptr<Face>> TriangleBVH::intersection_search(Eigen::Vector3d origin, Eigen::Vector3d endPoint)
 {
     Eigen::Vector3d dir = (endPoint - origin).normalized();
-    return intersectHierarchy(root, origin, dir);
+    return node_intersection_search(root, origin, dir);
 }
 
 void TriangleBVH::print() const
 {
-    print_node(root, 0);
+    node_print(root, 0);
 }
