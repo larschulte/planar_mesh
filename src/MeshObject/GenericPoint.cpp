@@ -38,17 +38,17 @@ void GenericPoint::delete_()
     is_expired_ = true;
 }
 
-int GenericPoint::get_id() const
+const int& GenericPoint::get_id() const
 {
     return id_;
 }
 
-Eigen::Vector3d GenericPoint::get_position() const
+const Eigen::Vector3d& GenericPoint::get_position() const
 {
     return position_;
 }
 
-Eigen::Vector3d GenericPoint::get_origin() const
+const Eigen::Vector3d& GenericPoint::get_origin() const
 {
     return origin_;
 }

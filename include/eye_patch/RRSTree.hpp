@@ -198,7 +198,7 @@ private:
         }
     }
 
-    std::vector<std::shared_ptr<Vertex>> flatten_node(const std::shared_ptr<Node>& node) const
+    std::vector<std::shared_ptr<Vertex>> flatten_node(const std::shared_ptr<Node>& node)
     {
         std::vector<std::shared_ptr<Vertex>> boundary_vertex_list;
         if (node->isLeaf())
@@ -240,6 +240,8 @@ private:
 
     std::shared_ptr<Node> root;
     int tree_size;
+
+    std::vector<std::shared_ptr<Vertex>> flattened_vertices;
 
 public:
 
@@ -325,8 +327,9 @@ public:
         std::cout << "Size: " << tree_size << std::endl;
     }
 
-    std::vector<std::shared_ptr<Vertex>> get_vertices() const
+    const std::vector<std::shared_ptr<Vertex>>& get_vertices()
     {
-        return flatten_node(root);
+        flattened_vertices = flatten_node(root);
+        return flattened_vertices;
     }
 };

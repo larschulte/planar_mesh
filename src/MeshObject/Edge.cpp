@@ -159,19 +159,19 @@ void Edge::disconnect(std::shared_ptr<Surface> surface)
     if (erased) surface->disconnect(shared_from_this());
 }
 
-int Edge::get_id() const 
+const int& Edge::get_id() const 
 { 
     return id_; 
 }
 
-std::shared_ptr<Vertex> Edge::get_vertex(int index) const
+const std::shared_ptr<Vertex>& Edge::get_vertex(int index) const
 {
     if (index < 0 || index > 1) throw std::runtime_error("Invalid vertex index.");
     if (vertices_.size() != 2) throw std::runtime_error("Edge does not have 2 vertices.");
     return *std::next(vertices_.begin(), index);
 }
 
-std::shared_ptr<Surface> Edge::get_surface() const
+const std::shared_ptr<Surface>& Edge::get_surface() const
 {
     if (surfaces_.size() != 1) 
     {
@@ -235,17 +235,17 @@ void Edge::update_boundary_state()
     }
 }
 
-Eigen::Vector3d Edge::get_center() const
+const Eigen::Vector3d& Edge::get_center() const
 {
     return center_;
 }
 
-Eigen::Vector3d Edge::get_max() const
+const Eigen::Vector3d& Edge::get_max() const
 {
     return max_;
 }
 
-Eigen::Vector3d Edge::get_min() const
+const Eigen::Vector3d& Edge::get_min() const
 {
     return min_;
 }

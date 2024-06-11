@@ -119,22 +119,22 @@ void Face::delete_()
     is_expired_ = true;
 }
 
-int Face::get_id() const
+const int& Face::get_id() const
 {
     return id_;
 }
 
-Eigen::Vector3d Face::get_center() const
+const Eigen::Vector3d& Face::get_center() const
 {
     return center_;
 }
 
-std::set<std::shared_ptr<Vertex>> Face::get_vertices() const
+const std::set<std::shared_ptr<Vertex>>& Face::get_vertices() const
 {
     return vertices_;
 }
 
-std::shared_ptr<Vertex> Face::get_vertex(int index) const
+const std::shared_ptr<Vertex>& Face::get_vertex(int index) const
 {
     if (index < 0 || index > 2) throw std::runtime_error("Invalid index for vertex.");
     auto it = vertices_.begin();
@@ -142,9 +142,9 @@ std::shared_ptr<Vertex> Face::get_vertex(int index) const
     return *it;
 }
 
-std::shared_ptr<Surface> Face::get_surface() const
+const std::shared_ptr<Surface>& Face::get_surface() const
 {
-    if (surfaces_.empty()) return std::shared_ptr<Surface>();
+    if (surfaces_.empty()) throw std::runtime_error("Face has no surface.");
     return *surfaces_.begin();
 }
 

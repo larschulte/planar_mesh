@@ -19,12 +19,13 @@ protected:
     void delete_();
 
 public:
-    int get_id() const;
-    Eigen::Vector3d get_position() const;
+    const int& get_id() const;
+    const Eigen::Vector3d& get_position() const;
+    const Eigen::Vector3d& get_origin() const;
+    const std::shared_ptr<Surface>& get_surface() const;
+    const std::set<std::shared_ptr<Edge>>& get_edges() const;
+
     Eigen::Vector3d get_projected_position() const;
-    Eigen::Vector3d get_origin() const;
-    std::shared_ptr<Surface> get_surface() const;
-    std::set<std::shared_ptr<Edge>> get_edges() const;
     Eigen::Vector2d get_surface_coordinate();
     bool is_expired() const;
 

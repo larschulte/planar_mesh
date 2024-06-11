@@ -47,17 +47,17 @@ void InteriorPoint::delete_()
     is_expired_ = true;
 }
 
-int InteriorPoint::get_id() const
+const int& InteriorPoint::get_id() const
 {
     return id_;
 }
 
-Eigen::Vector3d InteriorPoint::get_position() const
+const Eigen::Vector3d& InteriorPoint::get_position() const
 {
     return position_;
 }
 
-Eigen::Vector3d InteriorPoint::get_origin() const
+const Eigen::Vector3d& InteriorPoint::get_origin() const
 {
     return origin_;
 }

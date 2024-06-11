@@ -100,12 +100,12 @@ void Vertex::delete_()
     is_expired_ = true;
 }
 
-int Vertex::get_id() const 
+const int& Vertex::get_id() const 
 { 
     return id_; 
 }
 
-Eigen::Vector3d Vertex::get_position() const 
+const Eigen::Vector3d& Vertex::get_position() const 
 { 
     return position_; 
 }
@@ -115,18 +115,18 @@ Eigen::Vector3d Vertex::get_projected_position() const
     return get_surface()->compute_point_to_surface_position(get_origin(), get_position());
 }
 
-Eigen::Vector3d Vertex::get_origin() const 
+const Eigen::Vector3d& Vertex::get_origin() const 
 { 
     return origin_; 
 }
 
-std::shared_ptr<Surface> Vertex::get_surface() const
+const std::shared_ptr<Surface>& Vertex::get_surface() const
 {    
     // return surfaces_.empty() ? std::shared_ptr<Surface>() : *surfaces_.begin();
     return *surfaces_.begin();
 }
 
-std::set<std::shared_ptr<Edge>> Vertex::get_edges() const 
+const std::set<std::shared_ptr<Edge>>& Vertex::get_edges() const 
 { 
     return edges_; 
 }

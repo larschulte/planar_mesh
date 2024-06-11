@@ -69,7 +69,7 @@ void Surface::delete_()
     is_expired_ = true;
 }
 
-int Surface::get_id() const
+const int& Surface::get_id() const
 {
     return id_;
 }
@@ -151,27 +151,27 @@ void Surface::merge_surface(std::shared_ptr<Surface> surface)
     storage_->delete_surface(surface);
 }
 
-Eigen::Vector3d Surface::get_mean() const
+const Eigen::Vector3d& Surface::get_mean() const
 {
     return mean_;
 }
 
-Eigen::Matrix3d Surface::get_covariance() const
+const Eigen::Matrix3d& Surface::get_covariance() const
 {
     return covariance_;
 }
 
-Eigen::Matrix3d Surface::get_eigenvectors() const
+const Eigen::Matrix3d& Surface::get_eigenvectors() const
 {
     return eigenvectors_;
 }
 
-Eigen::Vector3d Surface::get_eigenvalues() const
+const Eigen::Vector3d& Surface::get_eigenvalues() const
 {
     return eigenvalues_;
 }
 
-Eigen::Vector3d Surface::get_normal() const
+const Eigen::Vector3d& Surface::get_normal() const
 {
     return normal_;
 }
@@ -181,7 +181,7 @@ std::size_t Surface::get_total_point_size() const
     return vertices_.size() + interior_points_.size();
 }
 
-std::tuple<int, int, int> Surface::get_color() const
+const std::tuple<int, int, int>& Surface::get_color() const
 {
     return color_;
 }

@@ -233,35 +233,27 @@ std::set<std::shared_ptr<Face>> Storage::face_intersection_search(Eigen::Vector3
     return triangle_bvh_.intersection_search(origin, point);
 }
 
-std::set<std::shared_ptr<Vertex>> Storage::get_vertices() const
+const std::set<std::shared_ptr<Vertex>>& Storage::get_vertices() const
 {
-    std::set<std::shared_ptr<Vertex>> vertices;
-    for (auto vertex : vertices_) vertices.insert(vertex);
-    return vertices;
+    return vertices_;
 }
 
-std::set<std::shared_ptr<Edge>> Storage::get_edges() const
+const std::set<std::shared_ptr<Edge>>& Storage::get_edges() const
 {
-    std::set<std::shared_ptr<Edge>> edges;
-    for (auto edge : edges_) edges.insert(edge);
-    return edges;
+    return edges_;
 }
 
-std::set<std::shared_ptr<Face>> Storage::get_faces() const
+const std::set<std::shared_ptr<Face>>& Storage::get_faces() const
 {
-    std::set<std::shared_ptr<Face>> faces;
-    for (auto face : faces_) faces.insert(face);
-    return faces;
+    return faces_;
 }
 
-std::set<std::shared_ptr<Surface>> Storage::get_surfaces() const
+const std::set<std::shared_ptr<Surface>>& Storage::get_surfaces() const
 {
-    std::set<std::shared_ptr<Surface>> surfaces;
-    for (auto surface : surfaces_) surfaces.insert(surface);
-    return surfaces;
+    return surfaces_;
 }
 
-std::vector<std::shared_ptr<Vertex>> Storage::get_rrs_vertices() const
+const std::vector<std::shared_ptr<Vertex>>& Storage::get_rrs_vertices()
 {
     return rrs_tree_.get_vertices();
 }
@@ -289,20 +281,19 @@ bool Storage::is_expired() const
 }
 
 // get edge
-std::shared_ptr<Edge> Storage::get_edge(std::shared_ptr<Vertex> vertex1, std::shared_ptr<Vertex> vertex2) const
+const std::shared_ptr<Edge>& Storage::get_edge(std::shared_ptr<Vertex> vertex1, std::shared_ptr<Vertex> vertex2) const
 {
     // check input
     if (vertex1->is_expired() || vertex2->is_expired()) throw std::runtime_error("Attempts to get edge with invalid vertex.");
 
     // search
-    for (auto edge : edges_)
+    for (const std::shared_ptr<Edge>& edge : edges_)
     {
         if (edge->has_vertex(vertex1) && edge->has_vertex(vertex2)) return edge;
     }
 
     // not found
-    // throw std::runtime_error("Edge not found.");
-    return std::shared_ptr<Edge>();
+    throw std::runtime_error("Edge not found.");
 }
 
 void Storage::print_rrs() const

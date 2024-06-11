@@ -17,9 +17,12 @@ protected:
     void delete_();
 
 public:
-    int get_id() const;
-    std::shared_ptr<Vertex> get_vertex(int index) const;
-    std::shared_ptr<Surface> get_surface() const;
+    const int& get_id() const;
+    const std::shared_ptr<Vertex>& get_vertex(int index) const;
+    const std::shared_ptr<Surface>& get_surface() const;
+    const Eigen::Vector3d& get_center() const;
+    const Eigen::Vector3d& get_max() const;
+    const Eigen::Vector3d& get_min() const;
     bool is_expired() const;
 
     void connect(std::shared_ptr<Vertex> vertex);
@@ -32,10 +35,6 @@ public:
     bool has_vertex(std::shared_ptr<Vertex> vertex) const;
     bool is_boundary() const;
     void update_boundary_state();
-
-    Eigen::Vector3d get_center() const;
-    Eigen::Vector3d get_max() const;
-    Eigen::Vector3d get_min() const;
 
     bool intersects_edge(const std::shared_ptr<Vertex>& vertex0, const std::shared_ptr<Vertex>& vertex1);
 

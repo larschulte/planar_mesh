@@ -15,9 +15,9 @@ protected:
     void delete_(); 
 
 public:
-    int get_id() const;
-    Eigen::Vector3d get_position() const;
-    Eigen::Vector3d get_origin() const;
+    const int& get_id() const;
+    const Eigen::Vector3d& get_position() const;
+    const Eigen::Vector3d& get_origin() const;
     bool is_expired() const;
 
 private:

@@ -21,20 +21,20 @@ protected:
     void delete_();
 
 public:
-    int get_id() const;
     double compute_point_to_surface_distance(const Eigen::Vector3d& origin, const Eigen::Vector3d& point) const;
     double compute_point_to_surface_distance_with_improved_covariance(const Eigen::Vector3d& origin, const Eigen::Vector3d& point) const;
     Eigen::Vector3d compute_point_to_surface_position(const Eigen::Vector3d& origin, const Eigen::Vector3d& point) const;
     
     void merge_surface(std::shared_ptr<Surface> surface);
 
-    Eigen::Vector3d get_mean() const;
-    Eigen::Matrix3d get_covariance() const;
-    Eigen::Matrix3d get_eigenvectors() const;
-    Eigen::Vector3d get_eigenvalues() const;
-    Eigen::Vector3d get_normal() const;
+    const int& get_id() const;
+    const Eigen::Vector3d& get_mean() const;
+    const Eigen::Matrix3d& get_covariance() const;
+    const Eigen::Matrix3d& get_eigenvectors() const;
+    const Eigen::Vector3d& get_eigenvalues() const;
+    const Eigen::Vector3d& get_normal() const;
     std::size_t get_total_point_size() const;
-    std::tuple<int, int, int> get_color() const;
+    const std::tuple<int, int, int>& get_color() const;
     bool is_expired() const;
 
     void connect(std::shared_ptr<Vertex> vertex);

@@ -19,11 +19,11 @@ protected:
     void delete_();
 
 public:
-    int get_id() const;
-    Eigen::Vector3d get_center() const;
-    std::set<std::shared_ptr<Vertex>> get_vertices() const;
-    std::shared_ptr<Vertex> get_vertex(int index) const;
-    std::shared_ptr<Surface> get_surface() const;
+    const int& get_id() const;
+    const Eigen::Vector3d& get_center() const;
+    const std::set<std::shared_ptr<Vertex>>& get_vertices() const;
+    const std::shared_ptr<Vertex>& get_vertex(int index) const;
+    const std::shared_ptr<Surface>& get_surface() const;
     bool is_expired() const;
 
     bool intersects_point(const Eigen::Vector3d& origin, const Eigen::Vector3d& direction);
