@@ -35,11 +35,11 @@ std::weak_ptr<Vertex> Storage::add_vertex(Eigen::Vector3d origin, Eigen::Vector3
     return vertex;
 }
 
-std::weak_ptr<Edge> Storage::add_edge(std::weak_ptr<Vertex> vertex1, std::weak_ptr<Vertex> vertex2)
+std::weak_ptr<Edge> Storage::add_edge(std::weak_ptr<Surface> surface, std::weak_ptr<Vertex> vertex1, std::weak_ptr<Vertex> vertex2)
 {    
     // create
     std::shared_ptr<Edge> edge = std::make_shared<Edge>();
-    edge->initialize_(shared_from_this(), vertex1, vertex2);
+    edge->initialize_(shared_from_this(), surface, vertex1, vertex2);
 
     // store
     edges_.insert(edge);

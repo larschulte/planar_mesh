@@ -227,8 +227,7 @@ void Surface::connect(std::weak_ptr<Vertex> vertex, std::set<std::weak_ptr<Verte
         if (edge_bvh_.intersect_edges(vertex, nearby_vertex)) continue;
 
         // create edge
-        std::weak_ptr<Edge> new_edge = storage_.lock()->add_edge(vertex, nearby_vertex);
-        connect(new_edge);
+        std::weak_ptr<Edge> new_edge = storage_.lock()->add_edge(shared_from_this(), vertex, nearby_vertex);
         used_vertices.insert(nearby_vertex);
     }
 
@@ -318,9 +317,6 @@ void Surface::disconnect(std::weak_ptr<Edge> edge)
     // disconnect
     bool erased = edges_.erase(edge);
     if (erased) edge.lock()->disconnect(shared_from_this());
-
-    // remove from BVH
-    edge_bvh_.delete_edge(edge);
 }
 
 void Surface::disconnect(std::weak_ptr<Face> face)

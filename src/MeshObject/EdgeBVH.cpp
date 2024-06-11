@@ -220,11 +220,10 @@ void EdgeBVH::delete_edge(std::weak_ptr<Edge> edge)
     // check input
     if (edge.expired()) throw std::runtime_error("Attempts to delete expired edge.");
 
-    // check if edge exists
-    if (edge_set.find(edge) == edge_set.end()) return;
-
     // delete from edge set
-    edge_set.erase(edge);
+    bool erased = edge_set.erase(edge);
+    // if (!erased) throw std::runtime_error("Attempts to delete non-existent edge.");
+    if (!erased) return;
 
     // decrement size
     edge_size--;
@@ -260,11 +259,10 @@ void EdgeBVH::add_edge(std::weak_ptr<Edge> edge)
     // check input
     if (edge.expired()) throw std::runtime_error("Attempts to add expired edge.");
 
-    // check if edge already exists
-    if (edge_set.find(edge) != edge_set.end()) return;
-
     // add to edge set
-    edge_set.insert(edge);
+    bool inserted = edge_set.insert(edge).second;
+    if (!inserted) throw std::runtime_error("Attempts to add duplicate edge.");
+    // if (!inserted) return;
 
     // increment count
     edge_size++;

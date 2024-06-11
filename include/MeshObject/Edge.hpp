@@ -13,7 +13,7 @@ class Edge : public std::enable_shared_from_this<Edge>
 {
 protected:
     friend class Storage;
-    void initialize_(std::weak_ptr<Storage> storage, std::weak_ptr<Vertex> vertex1, std::weak_ptr<Vertex> vertex2);
+    void initialize_(std::weak_ptr<Storage> storage, std::weak_ptr<Surface> surface, std::weak_ptr<Vertex> vertex1, std::weak_ptr<Vertex> vertex2);
     void delete_();
 
 public:
@@ -42,6 +42,7 @@ public:
 private:
     bool deleting_ = false;
     bool is_boundary_ = false;
+    bool is_searchable_ = false;
 
     Eigen::Vector3d center_;
     Eigen::Vector3d max_;

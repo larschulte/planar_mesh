@@ -5,10 +5,11 @@
 #include "MeshObject/Surface.hpp"
 #include <iostream>
 
-void Edge::initialize_(std::weak_ptr<Storage> storage, std::weak_ptr<Vertex> vertex1, std::weak_ptr<Vertex> vertex2)
+void Edge::initialize_(std::weak_ptr<Storage> storage, std::weak_ptr<Surface> surface, std::weak_ptr<Vertex> vertex1, std::weak_ptr<Vertex> vertex2)
 {
     // check pointer validity
     if (storage.expired()) throw std::runtime_error("Attempts to create edge with invalid storage.");
+    if (surface.expired()) throw std::runtime_error("Attempts to create edge with invalid surface.");
     if (vertex1.expired()) throw std::runtime_error("Attempts to create edge with invalid vertex1.");
     if (vertex2.expired()) throw std::runtime_error("Attempts to create edge with invalid vertex2.");
     auto storage_valid = storage.lock();
@@ -27,9 +28,7 @@ void Edge::initialize_(std::weak_ptr<Storage> storage, std::weak_ptr<Vertex> ver
     // make connections
     connect(vertex1);
     connect(vertex2);
-
-    // update boundary state
-    update_boundary_state();
+    connect(surface);
 
     // compute center
     center_ = 0.5 * (vertex1_valid->get_position() + vertex2_valid->get_position());
@@ -38,6 +37,9 @@ void Edge::initialize_(std::weak_ptr<Storage> storage, std::weak_ptr<Vertex> ver
     double margin = 0.05;
     max_ = vertex1.lock()->get_position().cwiseMax(vertex2.lock()->get_position()) + margin * Eigen::Vector3d::Ones();
     min_ = vertex1.lock()->get_position().cwiseMin(vertex2.lock()->get_position()) - margin * Eigen::Vector3d::Ones();
+
+    // update boundary state
+    update_boundary_state();
 
     // log
     std::cout << "Edge " << id_ << " created between vertex " << vertex1_valid->get_id() << " and vertex " << vertex2_valid->get_id() << std::endl;
@@ -65,6 +67,9 @@ void Edge::delete_()
     {
         disconnect(*surfaces_.begin());
     }
+
+    // update boundary state
+    update_boundary_state();
 
     // log
     std::cout << "---------- edge " << id_ << " destroyed" << std::endl;
@@ -104,9 +109,6 @@ void Edge::connect(std::weak_ptr<Surface> surface)
     // connect
     bool inserted = surfaces_.insert(surface).second;
     if (inserted) surface.lock()->connect(shared_from_this());
-
-    // update edge search tree
-    update_edge_search_tree();
 }
 
 void Edge::disconnect(std::weak_ptr<Vertex> vertex)
@@ -149,9 +151,6 @@ void Edge::disconnect(std::weak_ptr<Surface> surface)
     // disconnect
     bool erased = surfaces_.erase(surface);
     if (erased) surface.lock()->disconnect(shared_from_this());
-
-    // update edge search tree
-    update_edge_search_tree();
 }
 
 int Edge::get_id() const 
@@ -208,28 +207,20 @@ void Edge::update_boundary_state()
         vertex.lock()->update_boundary_state();
     }
 
-    update_edge_search_tree();
-}
-
-void Edge::update_edge_search_tree()
-{
-    // skip if no surface connected
-    if (surfaces_.size() == 0) return;
-
     // update search tree in connected surface
-    if (is_boundary_)
+    if (is_boundary_ && !is_searchable_)
     {
-        for (auto surface : surfaces_)
-        {
-            surface.lock()->add_searchable_edge(shared_from_this());
-        }
+        get_surface().lock()->add_searchable_edge(shared_from_this());
+        is_searchable_ = true;
+    }
+    else if (!is_boundary_ && is_searchable_)
+    {   
+        get_surface().lock()->remove_searchable_edge(shared_from_this());
+        is_searchable_ = false;
     }
     else
     {
-        for (auto surface : surfaces_)
-        {
-            surface.lock()->remove_searchable_edge(shared_from_this());
-        }
+        // do nothing
     }
 }
 

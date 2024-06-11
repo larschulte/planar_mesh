@@ -20,7 +20,7 @@ class Storage : public std::enable_shared_from_this<Storage>
 public: // to user
     std::weak_ptr<Vertex> add_vertex(Eigen::Vector3d origin, Eigen::Vector3d position);
     std::weak_ptr<Vertex> add_vertex(Eigen::Vector3d origin, Eigen::Vector3d position, double radius);
-    std::weak_ptr<Edge> add_edge(std::weak_ptr<Vertex> vertex1, std::weak_ptr<Vertex> vertex2);
+    std::weak_ptr<Edge> add_edge(std::weak_ptr<Surface> surface, std::weak_ptr<Vertex> vertex1, std::weak_ptr<Vertex> vertex2);
     std::weak_ptr<Face> add_face(std::weak_ptr<Vertex> vertex1, std::weak_ptr<Vertex> vertex2, std::weak_ptr<Vertex> vertex3);
     std::weak_ptr<Surface> add_surface();
     std::weak_ptr<GenericPoint> add_generic_point(Eigen::Vector3d position, Eigen::Vector3d origin);
