@@ -7,7 +7,7 @@
 
 #include "MeshObject/InteriorPoint.hpp"
 
-void Face::initialize_(std::shared_ptr<Storage> storage, std::shared_ptr<Vertex> vertex0, std::shared_ptr<Vertex> vertex1, std::shared_ptr<Vertex> vertex2)
+void Face::initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<Vertex>& vertex0, const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2)
 {
     // set expired
     is_expired_ = false;

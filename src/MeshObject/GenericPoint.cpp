@@ -1,7 +1,7 @@
 #include "MeshObject/Storage.hpp"
 #include "MeshObject/GenericPoint.hpp"
 
-void GenericPoint::initialize_(std::shared_ptr<Storage> storage, Eigen::Vector3d position, Eigen::Vector3d origin)
+void GenericPoint::initialize_(const std::shared_ptr<Storage>& storage, const Eigen::Vector3d& position, const Eigen::Vector3d& origin)
 {
     // set expired
     is_expired_ = false;

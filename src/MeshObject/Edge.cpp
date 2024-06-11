@@ -5,7 +5,7 @@
 #include "MeshObject/Surface.hpp"
 #include <iostream>
 
-void Edge::initialize_(std::shared_ptr<Storage> storage, std::shared_ptr<Surface> surface, std::shared_ptr<Vertex> vertex1, std::shared_ptr<Vertex> vertex2)
+void Edge::initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<Surface>& surface, const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2)
 {
     // set expired
     is_expired_ = false;

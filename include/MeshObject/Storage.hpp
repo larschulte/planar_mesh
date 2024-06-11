@@ -21,31 +21,31 @@ public: // to user
     Storage();
     ~Storage();
 
-    std::shared_ptr<Vertex> add_vertex(Eigen::Vector3d origin, Eigen::Vector3d position);
-    std::shared_ptr<Vertex> add_vertex(Eigen::Vector3d origin, Eigen::Vector3d position, double radius);
-    std::shared_ptr<Edge> add_edge(std::shared_ptr<Surface> surface, std::shared_ptr<Vertex> vertex1, std::shared_ptr<Vertex> vertex2);
-    std::shared_ptr<Face> add_face(std::shared_ptr<Vertex> vertex1, std::shared_ptr<Vertex> vertex2, std::shared_ptr<Vertex> vertex3);
-    std::shared_ptr<Surface> add_surface();
-    std::shared_ptr<GenericPoint> add_generic_point(Eigen::Vector3d position, Eigen::Vector3d origin);
-    std::shared_ptr<InteriorPoint> add_interior_point(std::shared_ptr<Face> face, Eigen::Vector3d position, Eigen::Vector3d origin);
+    const std::shared_ptr<Vertex>& add_vertex(const Eigen::Vector3d& origin, const Eigen::Vector3d& position);
+    const std::shared_ptr<Vertex>& add_vertex(const Eigen::Vector3d& origin, const Eigen::Vector3d& position, const double& radius);
+    const std::shared_ptr<Edge>& add_edge(const std::shared_ptr<Surface>& surface, const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2);
+    const std::shared_ptr<Face>& add_face(const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2, const std::shared_ptr<Vertex>& vertex3);
+    const std::shared_ptr<Surface>& add_surface();
+    const std::shared_ptr<GenericPoint>& add_generic_point(const Eigen::Vector3d& position, const Eigen::Vector3d& origin);
+    const std::shared_ptr<InteriorPoint>& add_interior_point(const std::shared_ptr<Face>& face, const Eigen::Vector3d& position, const Eigen::Vector3d& origin);
 
-    void delete_vertex(std::shared_ptr<Vertex> vertex);
-    void delete_edge(std::shared_ptr<Edge> edge);
-    void delete_face(std::shared_ptr<Face> face);
-    void delete_surface(std::shared_ptr<Surface> surface);
-    void delete_genertic_point(std::shared_ptr<GenericPoint> genertic_point);
-    void delete_interior_point(std::shared_ptr<InteriorPoint> interior_point);
+    void delete_vertex(const std::shared_ptr<Vertex>& vertex);
+    void delete_edge(const std::shared_ptr<Edge>& edge);
+    void delete_face(const std::shared_ptr<Face>& face);
+    void delete_surface(const std::shared_ptr<Surface>& surface);
+    void delete_genertic_point(const std::shared_ptr<GenericPoint>& genertic_point);
+    void delete_interior_point(const std::shared_ptr<InteriorPoint>& interior_point);
 
     bool can_reverse_radius_search();
-    std::set<std::shared_ptr<Vertex>> reverse_radius_search(Eigen::Vector3d point);
-    std::set<std::shared_ptr<Face>> face_intersection_search(Eigen::Vector3d origin, Eigen::Vector3d point);
+    std::set<std::shared_ptr<Vertex>> reverse_radius_search(const Eigen::Vector3d& point);
+    std::set<std::shared_ptr<Face>> face_intersection_search(const Eigen::Vector3d& origin, const Eigen::Vector3d& point);
 
     const std::set<std::shared_ptr<Vertex>>& get_vertices() const;
     const std::set<std::shared_ptr<Edge>>& get_edges() const;
     const std::shared_ptr<Edge>& get_edge(std::shared_ptr<Vertex> vertex1, std::shared_ptr<Vertex> vertex2) const;
     const std::set<std::shared_ptr<Face>>& get_faces() const;
     const std::set<std::shared_ptr<Surface>>& get_surfaces() const;
-    
+
     const std::vector<std::shared_ptr<Vertex>>& get_rrs_vertices();
     std::map<std::shared_ptr<Vertex>, int> get_vertex_to_cloud_indices_map() const;
     bool is_expired() const;
@@ -57,11 +57,11 @@ public: // to user
 private: // to Vertex and Face class
     friend class Vertex;
     friend class Face;
-    void add_searchable_vertex(std::shared_ptr<Vertex> vertex);
-    void remove_searchable_vertex(std::shared_ptr<Vertex> vertex);
+    void add_searchable_vertex(const std::shared_ptr<Vertex>& vertex);
+    void remove_searchable_vertex(const std::shared_ptr<Vertex>& vertex);
 
-    void add_searchable_face(std::shared_ptr<Face> face);
-    void remove_searchable_face(std::shared_ptr<Face> face);
+    void add_searchable_face(const std::shared_ptr<Face>& face);
+    void remove_searchable_face(const std::shared_ptr<Face>& face);
 
 public: // to MeshObject class
     int get_next_vertex_id();

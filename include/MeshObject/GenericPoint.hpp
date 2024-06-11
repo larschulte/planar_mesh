@@ -11,7 +11,7 @@ class GenericPoint : public std::enable_shared_from_this<GenericPoint>
 {
 protected:
     friend class Storage;
-    void initialize_(std::shared_ptr<Storage> storage, Eigen::Vector3d position, Eigen::Vector3d origin);
+    void initialize_(const std::shared_ptr<Storage>& storage, const Eigen::Vector3d& position, const Eigen::Vector3d& origin);
     void delete_(); 
 
 public:

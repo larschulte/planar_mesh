@@ -3,7 +3,7 @@
 #include "MeshObject/Face.hpp"
 #include "MeshObject/Surface.hpp"
 
-void InteriorPoint::initialize_(std::shared_ptr<Storage> storage, std::shared_ptr<Face> face, Eigen::Vector3d position, Eigen::Vector3d origin)
+void InteriorPoint::initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<Face>& face, const Eigen::Vector3d& position, const Eigen::Vector3d& origin)
 {
     // set expired
     is_expired_ = false;

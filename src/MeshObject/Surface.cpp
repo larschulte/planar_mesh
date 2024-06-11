@@ -7,7 +7,7 @@
 #include <iostream>
 #include "MeshObject/InteriorPoint.hpp"
 
-void Surface::initialize_(std::shared_ptr<Storage> storage)
+void Surface::initialize_(const std::shared_ptr<Storage>& storage)
 {
     // set expired
     is_expired_ = false;
@@ -126,7 +126,7 @@ Eigen::Vector3d Surface::compute_point_to_surface_position(const Eigen::Vector3d
     return intersection;
 }
 
-void Surface::merge_surface(std::shared_ptr<Surface> surface)
+void Surface::merge_surface(const std::shared_ptr<Surface>& surface)
 {
     // check input
     if (surface->is_expired()) throw std::runtime_error("Attempts to merge surface with invalid surface.");

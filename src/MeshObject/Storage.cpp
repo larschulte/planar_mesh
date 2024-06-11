@@ -19,100 +19,78 @@ Storage::~Storage()
     is_expired_ = true;
 }
 
-std::shared_ptr<Vertex> Storage::add_vertex(Eigen::Vector3d origin, Eigen::Vector3d position) 
+const std::shared_ptr<Vertex>& Storage::add_vertex(const Eigen::Vector3d& origin, const Eigen::Vector3d& position) 
 {
     // create
     std::shared_ptr<Vertex> vertex = std::make_shared<Vertex>();
     vertex->initialize_(shared_from_this(), position, origin);
 
     // store
-    vertices_.insert(vertex);
-
-    // return
-    return vertex;
+    return *vertices_.insert(vertex).first;
 }
 
-std::shared_ptr<Vertex> Storage::add_vertex(Eigen::Vector3d origin, Eigen::Vector3d position, double radius)
+const std::shared_ptr<Vertex>& Storage::add_vertex(const Eigen::Vector3d& origin, const Eigen::Vector3d& position, const double& radius)
 {
     // create
     std::shared_ptr<Vertex> vertex = std::make_shared<Vertex>();
     vertex->initialize_(shared_from_this(), position, origin, radius);
 
     // store
-    vertices_.insert(vertex);
-
-    // return
-    return vertex;
+    return *vertices_.insert(vertex).first;
 }
 
-std::shared_ptr<Edge> Storage::add_edge(std::shared_ptr<Surface> surface, std::shared_ptr<Vertex> vertex1, std::shared_ptr<Vertex> vertex2)
+const std::shared_ptr<Edge>& Storage::add_edge(const std::shared_ptr<Surface>& surface, const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2)
 {    
     // create
     std::shared_ptr<Edge> edge = std::make_shared<Edge>();
     edge->initialize_(shared_from_this(), surface, vertex1, vertex2);
 
     // store
-    edges_.insert(edge);
-
-    // return
-    return edge;
-
+    return *edges_.insert(edge).first;
 }
 
-std::shared_ptr<Face> Storage::add_face(std::shared_ptr<Vertex> vertex1, std::shared_ptr<Vertex> vertex2, std::shared_ptr<Vertex> vertex3) 
+const std::shared_ptr<Face>& Storage::add_face(const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2, const std::shared_ptr<Vertex>& vertex3) 
 {
     // create
     std::shared_ptr<Face> face = std::make_shared<Face>();
     face->initialize_(shared_from_this(), vertex1, vertex2, vertex3);
 
     // store
-    faces_.insert(face);
-
-    // return
-    return face;
+    return *faces_.insert(face).first;
 }
 
-std::shared_ptr<Surface> Storage::add_surface() 
+const std::shared_ptr<Surface>& Storage::add_surface() 
 {
     // create
     std::shared_ptr<Surface> surface = std::make_shared<Surface>();
     surface->initialize_(shared_from_this());
 
     // store
-    surfaces_.insert(surface);
-
-    // return
-    return surface;
+    return *surfaces_.insert(surface).first;
 }
 
-std::shared_ptr<GenericPoint> Storage::add_generic_point(Eigen::Vector3d position, Eigen::Vector3d origin) 
+const std::shared_ptr<GenericPoint>& Storage::add_generic_point(const Eigen::Vector3d& position, const Eigen::Vector3d& origin) 
 {
     // create
     std::shared_ptr<GenericPoint> genertic_point = std::make_shared<GenericPoint>();
     genertic_point->initialize_(shared_from_this(), position, origin);
 
     // store
-    genertic_points_.insert(genertic_point);
-
-    // return
-    return genertic_point;
+    return *genertic_points_.insert(genertic_point).first;
 }
 
-std::shared_ptr<InteriorPoint> Storage::add_interior_point(std::shared_ptr<Face> face, Eigen::Vector3d position, Eigen::Vector3d origin) 
+const std::shared_ptr<InteriorPoint>& Storage::add_interior_point(const std::shared_ptr<Face>& face, const Eigen::Vector3d& position, const Eigen::Vector3d& origin) 
 {
     // create
     std::shared_ptr<InteriorPoint> interior_point = std::make_shared<InteriorPoint>();
     interior_point->initialize_(shared_from_this(), face, position, origin);
 
     // store
-    interior_points_.insert(interior_point);
-
-    // return
-    return interior_point;
+    return *interior_points_.insert(interior_point).first;
 }
 
 // need to ensure the vertex/edge/face are only stored using shared_ptr here and nowhere else
-void Storage::delete_vertex(std::shared_ptr<Vertex> vertex) 
+void Storage::delete_vertex(const std::shared_ptr<Vertex>& vertex) 
 {
     // check input
     if (vertex->is_expired()) throw std::runtime_error("Attempts to delete expired vertex.");
@@ -124,7 +102,7 @@ void Storage::delete_vertex(std::shared_ptr<Vertex> vertex)
     vertex->delete_();    
 }
 
-void Storage::delete_edge(std::shared_ptr<Edge> edge) 
+void Storage::delete_edge(const std::shared_ptr<Edge>& edge) 
 {
     // check input
     if (edge->is_expired()) throw std::runtime_error("Attempts to delete expired edge.");
@@ -136,7 +114,7 @@ void Storage::delete_edge(std::shared_ptr<Edge> edge)
     edge->delete_();
 }
 
-void Storage::delete_face(std::shared_ptr<Face> face) 
+void Storage::delete_face(const std::shared_ptr<Face>& face) 
 {
     // check input
     if (face->is_expired()) throw std::runtime_error("Attempts to delete expired face.");
@@ -148,7 +126,7 @@ void Storage::delete_face(std::shared_ptr<Face> face)
     face->delete_();
 }
 
-void Storage::delete_surface(std::shared_ptr<Surface> surface) 
+void Storage::delete_surface(const std::shared_ptr<Surface>& surface) 
 {
     // check input
     if (surface->is_expired()) throw std::runtime_error("Attempts to delete expired surface.");
@@ -160,7 +138,7 @@ void Storage::delete_surface(std::shared_ptr<Surface> surface)
     surface->delete_();
 }
 
-void Storage::delete_genertic_point(std::shared_ptr<GenericPoint> genertic_point) 
+void Storage::delete_genertic_point(const std::shared_ptr<GenericPoint>& genertic_point) 
 {
     // check input
     if (genertic_point->is_expired()) throw std::runtime_error("Attempts to delete expired genertic point.");
@@ -172,7 +150,7 @@ void Storage::delete_genertic_point(std::shared_ptr<GenericPoint> genertic_point
     genertic_point->delete_();
 }
 
-void Storage::delete_interior_point(std::shared_ptr<InteriorPoint> interior_point) 
+void Storage::delete_interior_point(const std::shared_ptr<InteriorPoint>& interior_point) 
 {
     // check input
     if (interior_point->is_expired()) throw std::runtime_error("Attempts to delete expired interior point.");
@@ -184,25 +162,25 @@ void Storage::delete_interior_point(std::shared_ptr<InteriorPoint> interior_poin
     interior_point->delete_();
 }
 
-void Storage::add_searchable_vertex(std::shared_ptr<Vertex> vertex)
+void Storage::add_searchable_vertex(const std::shared_ptr<Vertex>& vertex)
 {
     // add to rrs_tree
     rrs_tree_.add_vertex(vertex);
 }
 
-void Storage::remove_searchable_vertex(std::shared_ptr<Vertex> vertex)
+void Storage::remove_searchable_vertex(const std::shared_ptr<Vertex>& vertex)
 {
     // remove from rrs_tree
     rrs_tree_.delete_vertex(vertex);
 }
 
-void Storage::add_searchable_face(std::shared_ptr<Face> face)
+void Storage::add_searchable_face(const std::shared_ptr<Face>& face)
 {
     // add to triangle_bvh
     triangle_bvh_.add_face(face);
 }
 
-void Storage::remove_searchable_face(std::shared_ptr<Face> face)
+void Storage::remove_searchable_face(const std::shared_ptr<Face>& face)
 {
     // remove from triangle_bvh
     triangle_bvh_.delete_face(face);
@@ -222,13 +200,13 @@ bool Storage::can_reverse_radius_search()
 }
 
 // reverse radius search
-std::set<std::shared_ptr<Vertex>> Storage::reverse_radius_search(Eigen::Vector3d point) 
+std::set<std::shared_ptr<Vertex>> Storage::reverse_radius_search(const Eigen::Vector3d& point) 
 {
     return rrs_tree_.reverse_radius_search(point);
 }
 
 // face intersection search
-std::set<std::shared_ptr<Face>> Storage::face_intersection_search(Eigen::Vector3d origin, Eigen::Vector3d point) 
+std::set<std::shared_ptr<Face>> Storage::face_intersection_search(const Eigen::Vector3d& origin, const Eigen::Vector3d& point) 
 {
     return triangle_bvh_.intersection_search(origin, point);
 }

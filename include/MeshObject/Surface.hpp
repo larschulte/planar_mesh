@@ -17,7 +17,7 @@ class Surface : public std::enable_shared_from_this<Surface>
 {
 protected:
     friend class Storage;
-    void initialize_(std::shared_ptr<Storage> storage);
+    void initialize_(const std::shared_ptr<Storage>& storage);
     void delete_();
 
 public:
@@ -25,7 +25,7 @@ public:
     double compute_point_to_surface_distance_with_improved_covariance(const Eigen::Vector3d& origin, const Eigen::Vector3d& point) const;
     Eigen::Vector3d compute_point_to_surface_position(const Eigen::Vector3d& origin, const Eigen::Vector3d& point) const;
     
-    void merge_surface(std::shared_ptr<Surface> surface);
+    void merge_surface(const std::shared_ptr<Surface>& surface);
 
     const int& get_id() const;
     const Eigen::Vector3d& get_mean() const;

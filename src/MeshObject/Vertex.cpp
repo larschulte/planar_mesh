@@ -7,7 +7,7 @@
 
 #include "MeshObject/GenericPoint.hpp"
 
-void Vertex::initialize_(std::shared_ptr<Storage> storage, Eigen::Vector3d position, Eigen::Vector3d origin)
+void Vertex::initialize_(const std::shared_ptr<Storage>& storage, const Eigen::Vector3d& position, const Eigen::Vector3d& origin)
 {
     // set expired
     is_expired_ = false;
@@ -36,7 +36,7 @@ void Vertex::initialize_(std::shared_ptr<Storage> storage, Eigen::Vector3d posit
     std::cout << "Vertex " << id_ << " created.\n";
 }
 
-void Vertex::initialize_(std::shared_ptr<Storage> storage, Eigen::Vector3d position, Eigen::Vector3d origin, double radius)
+void Vertex::initialize_(const std::shared_ptr<Storage>& storage, const Eigen::Vector3d& position, const Eigen::Vector3d& origin, const double& radius)
 {
     // set expired
     is_expired_ = false;
