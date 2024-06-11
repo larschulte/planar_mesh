@@ -54,6 +54,9 @@ private:
     void node_add_face(std::shared_ptr<Node> node, std::weak_ptr<Face> face);
     void node_delete_face(std::shared_ptr<Node> node, std::weak_ptr<Face> face);
     void node_print(const std::shared_ptr<Node>& node, int level) const;
+    void node_flatten(std::shared_ptr<TriangleBVH::Node> node, std::vector<std::weak_ptr<Face>>& face_list) const;
+
+    std::vector<std::weak_ptr<Face>> get_face_list() const;
 
     double rebuild_threshold;
     int size_at_last_rebuild;
@@ -63,7 +66,6 @@ private:
 
     std::set<std::weak_ptr<Face>> face_set;
 
-    std::vector<std::weak_ptr<Face>> face_list;
     int face_size;
 
 public:

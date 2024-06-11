@@ -205,6 +205,26 @@ void TriangleBVH::node_print(const std::shared_ptr<Node> &node, int level) const
     }
 }
 
+void TriangleBVH::node_flatten(std::shared_ptr<TriangleBVH::Node> node, std::vector<std::weak_ptr<Face>>& face_list) const
+{
+    if (node->isLeaf())
+    {
+        face_list.insert(face_list.end(), node->faces.begin(), node->faces.end());
+    }
+    else
+    {
+        node_flatten(node->left, face_list);
+        node_flatten(node->right, face_list);
+    }
+}
+
+std::vector<std::weak_ptr<Face>> TriangleBVH::get_face_list() const
+{
+    std::vector<std::weak_ptr<Face>> face_list;
+    node_flatten(root, face_list);
+    return face_list;
+}
+
 void TriangleBVH::delete_face(std::weak_ptr<Face> face)
 {
     // check input
@@ -216,8 +236,8 @@ void TriangleBVH::delete_face(std::weak_ptr<Face> face)
     // delete from face set
     face_set.erase(face);
 
-    // delete from face list using erase-remove idiom
-    face_list.erase(std::remove(face_list.begin(), face_list.end(), face), face_list.end());
+    // decrement face size
+    face_size--;
     
     // delete from BVH
     node_delete_face(root, face);
@@ -225,14 +245,24 @@ void TriangleBVH::delete_face(std::weak_ptr<Face> face)
 
 TriangleBVH::TriangleBVH()
     : rebuild_threshold(2),
-      size_at_last_rebuild(0)
+      size_at_last_rebuild(0),
+      face_size(0)
 {
     rebuild();
 }
 
 void TriangleBVH::rebuild()
 {
-    root = build_node(face_list);
+    if (face_size == 0)
+    {
+        std::vector<std::weak_ptr<Face>> face_list = std::vector<std::weak_ptr<Face>>();
+        root = build_node(face_list);
+    }
+    else
+    {
+        std::vector<std::weak_ptr<Face>> face_list = get_face_list();
+        root = build_node(face_list);
+    }
 }
 
 void TriangleBVH::add_face(std::weak_ptr<Face> face)
@@ -246,13 +276,13 @@ void TriangleBVH::add_face(std::weak_ptr<Face> face)
     // add to face set
     face_set.insert(face);
 
-    // add to face list
-    face_list.push_back(face);
+    // increment face size
+    face_size++;
 
-    if (face_list.size() > size_at_last_rebuild * rebuild_threshold)
+    if (face_size > size_at_last_rebuild * rebuild_threshold)
     {
         rebuild();
-        size_at_last_rebuild = face_list.size();
+        size_at_last_rebuild = face_size;
     }
     else
     {
