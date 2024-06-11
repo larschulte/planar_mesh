@@ -74,7 +74,7 @@ double EdgeBVH::sort_edge_list_in_axis(std::vector<std::shared_ptr<Edge>>& edge_
     return edge_list[mid]->get_center()[axis];
 }
 
-void EdgeBVH::expand_node_box(std::shared_ptr<Node> node, std::shared_ptr<Edge> edge)
+void EdgeBVH::expand_node_box(const std::shared_ptr<Node>& node, const std::shared_ptr<Edge>& edge)
 {
     node->box.expand(edge->get_max());
     node->box.expand(edge->get_min());
@@ -87,7 +87,7 @@ bool EdgeBVH::node_intersect_edge(const std::shared_ptr<Node>& node, const std::
     
     if (node->isLeaf())
     {
-        for (std::shared_ptr<Edge> edge : node->edges)
+        for (const std::shared_ptr<Edge>& edge : node->edges)
         {
             if (edge->intersects_edge(vertex0, vertex1)) return true;
         }
@@ -117,12 +117,12 @@ void EdgeBVH::convert_leaf_to_branch(const std::shared_ptr<Node>& node)
     node->right = build_node(std::vector<std::shared_ptr<Edge>>(edge_list.begin() + mid, edge_list.end()));
 }
 
-std::shared_ptr<EdgeBVH::Node> EdgeBVH::build_node(std::vector<std::shared_ptr<Edge>> edge_list)
+std::shared_ptr<EdgeBVH::Node> EdgeBVH::build_node(const std::vector<std::shared_ptr<Edge>>& edge_list)
 {
     auto node = std::make_shared<Node>();
 
     // expand box
-    for (std::shared_ptr<Edge> edge : edge_list) 
+    for (const std::shared_ptr<Edge>& edge : edge_list) 
     {
         expand_node_box(node, edge);
     }
@@ -182,7 +182,7 @@ void EdgeBVH::node_print(const std::shared_ptr<Node>& node, int level) const
 {
     if (node->isLeaf())
     {
-        for (std::shared_ptr<Edge> edge : node->edges)
+        for (const std::shared_ptr<Edge>& edge : node->edges)
         {
             std::cout << "Level: " <<  level << " | ID: " << edge->get_id() << " | Center: " << edge->get_center().transpose() << std::endl;
         }

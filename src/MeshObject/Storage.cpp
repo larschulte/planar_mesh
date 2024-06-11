@@ -243,7 +243,7 @@ std::map<std::shared_ptr<Vertex>, int> Storage::get_vertex_to_cloud_indices_map(
 
     // fill
     int id = 0;
-    for (auto vertex : vertices_)
+    for (const auto& vertex : vertices_)
     {
         vertex_to_cloud_indices_map[vertex] = id;
         id++;

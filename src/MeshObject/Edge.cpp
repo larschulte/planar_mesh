@@ -175,7 +175,7 @@ const std::shared_ptr<Surface>& Edge::get_surface() const
 {
     if (surfaces_.size() != 1) 
     {
-        for (auto surface : surfaces_)
+        for (const auto& surface : surfaces_)
         {
             std::cout << "Surface " << surface->get_id() << std::endl;
         }
@@ -213,7 +213,7 @@ void Edge::update_boundary_state()
     }
 
     // update boundary state of connected vertices
-    for (std::shared_ptr<Vertex> vertex : vertices_)
+    for (const std::shared_ptr<Vertex>& vertex : vertices_)
     {
         vertex->update_boundary_state();
     }

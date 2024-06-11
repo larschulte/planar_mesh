@@ -104,7 +104,7 @@ void TriangleBVH::node_intersection_search(const std::shared_ptr<Node>& node, co
     
     if (node->isLeaf())
     {
-        for (std::shared_ptr<Face> face : node->faces)
+        for (const std::shared_ptr<Face>& face : node->faces)
         {
             if (face->intersects_point(orig, dir)) faces_intersected.insert(face);
         }
@@ -137,7 +137,7 @@ std::shared_ptr<TriangleBVH::Node> TriangleBVH::build_node(std::vector<std::shar
     auto node = std::make_shared<Node>();
 
     // expand box
-    for (std::shared_ptr<Face> face : face_list) 
+    for (const std::shared_ptr<Face>& face : face_list) 
     {
         // check input
         if (face->is_expired()) throw std::runtime_error("Attempts to add expired face.");
@@ -200,7 +200,7 @@ void TriangleBVH::node_print(const std::shared_ptr<Node> &node, int level) const
 {
     if (node->isLeaf())
     {
-        for (std::shared_ptr<Face> face : node->faces)
+        for (const std::shared_ptr<Face>& face : node->faces)
         {
             std::cout << "Level: " <<  level << " | ID: " << face->get_id() << " | Center: " << face->get_center().transpose() << std::endl;
         }

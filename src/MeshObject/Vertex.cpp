@@ -228,7 +228,7 @@ void Vertex::update_boundary_state()
 {
     // becomes boundary when one of the connected edges is boundary, or when the point is alone
     is_boundary_ = false;
-    for (std::shared_ptr<Edge> edge : edges_)
+    for (const std::shared_ptr<Edge>& edge : edges_)
     {
         if (edge->is_boundary())
         {

@@ -132,14 +132,14 @@ void Surface::merge_surface(const std::shared_ptr<Surface>& surface)
     if (surface->is_expired()) throw std::runtime_error("Attempts to merge surface with invalid surface.");
 
     // merge
-    auto surface_valid = surface;
-    for (auto vertex : surface_valid->vertices_) connect(vertex);
-    for (auto edge : surface_valid->edges_) connect(edge);
-    for (auto face : surface_valid->faces_) connect(face);
-    for (auto interior_point : surface_valid->interior_points_) connect(interior_point);
+    const auto& surface_valid = surface;
+    for (const auto& vertex : surface_valid->vertices_) connect(vertex);
+    for (const auto& edge : surface_valid->edges_) connect(edge);
+    for (const auto& face : surface_valid->faces_) connect(face);
+    for (const auto& interior_point : surface_valid->interior_points_) connect(interior_point);
 
     // merge EdgeBVH, since this is maintained per surface
-    for (auto edge : surface_valid->edges_)
+    for (const auto& edge : surface_valid->edges_)
     {
         edge_bvh_.add_edge(edge);
     }
@@ -221,7 +221,7 @@ void Surface::connect(const std::shared_ptr<Vertex>& vertex, const std::set<std:
 
     // get nearby vertices in the same surface
     std::set<std::shared_ptr<Vertex>> nearby_vertices;
-    for (auto nearby_vertex : all_nearby_vertices)
+    for (const auto& nearby_vertex : all_nearby_vertices)
     {
         // check input
         if (nearby_vertex->is_expired()) throw std::runtime_error("Attempts to connect surface with invalid nearby vertex.");
@@ -238,7 +238,7 @@ void Surface::connect(const std::shared_ptr<Vertex>& vertex, const std::set<std:
 
     // create edges
     std::set<std::shared_ptr<Vertex>> used_vertices;
-    for (auto nearby_vertex : nearby_vertices)
+    for (const auto& nearby_vertex : nearby_vertices)
     {
         // skip if edge is intersected
         if (edge_bvh_.intersect_edges(vertex, nearby_vertex)) continue;
@@ -249,9 +249,9 @@ void Surface::connect(const std::shared_ptr<Vertex>& vertex, const std::set<std:
     }
 
     // create faces
-    for (std::shared_ptr<Vertex> nearby_vertex0 : used_vertices)
+    for (const std::shared_ptr<Vertex>& nearby_vertex0 : used_vertices)
     {
-        for (std::shared_ptr<Vertex> nearby_vertex1 : used_vertices)
+        for (const std::shared_ptr<Vertex>& nearby_vertex1 : used_vertices)
         {
             // skip if repeated
             if (nearby_vertex1 <= nearby_vertex0) continue;

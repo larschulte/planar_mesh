@@ -177,7 +177,7 @@ private:
         
         if (node->isLeaf())
         {
-            for (std::shared_ptr<Vertex> boundary_vertex : node->boundary_vertices)
+            for (const std::shared_ptr<Vertex>& boundary_vertex : node->boundary_vertices)
             {
                 if (boundary_vertex->approx_contains(point)) 
                 {
@@ -203,7 +203,7 @@ private:
         std::vector<std::shared_ptr<Vertex>> boundary_vertex_list;
         if (node->isLeaf())
         {
-            for (std::shared_ptr<Vertex> boundary_vertex : node->boundary_vertices)
+            for (const std::shared_ptr<Vertex>& boundary_vertex : node->boundary_vertices)
             {
                 boundary_vertex_list.push_back(boundary_vertex);
             }
@@ -222,7 +222,7 @@ private:
     {
         if (node->isLeaf())
         {
-            for (std::shared_ptr<Vertex> boundary_vertex : node->boundary_vertices)
+            for (const std::shared_ptr<Vertex>& boundary_vertex : node->boundary_vertices)
             {
                 std::cout << "Level: " <<  level << " | ID: " << boundary_vertex->get_id() << " | Position: " << boundary_vertex->get_position().transpose() << " | Radius: " << boundary_vertex->get_radius() << std::endl;
             }
