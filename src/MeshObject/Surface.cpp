@@ -141,7 +141,7 @@ void Surface::merge_surface(const std::shared_ptr<Surface>& surface)
     // merge EdgeBVH, since this is maintained per surface
     for (const auto& edge : surface_valid->edges_)
     {
-        edge_bvh_.add_edge(edge);
+        if (edge->is_searchable()) edge_bvh_.add_edge(edge);
     }
 
     // log

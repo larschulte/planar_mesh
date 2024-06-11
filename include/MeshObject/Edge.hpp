@@ -34,6 +34,7 @@ public:
 
     bool has_vertex(const std::shared_ptr<Vertex>& vertex) const;
     bool is_boundary() const;
+    bool is_searchable() const;
     void update_boundary_state();
 
     bool intersects_edge(const std::shared_ptr<Vertex>& vertex0, const std::shared_ptr<Vertex>& vertex1);

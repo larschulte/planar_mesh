@@ -535,7 +535,7 @@ public:
         // ------------- add point by triangle intersection
 
         // get list of intersected triangle by the point
-        std::set<std::shared_ptr<Face>> searched_faces = bvhRoot.intersection_search(thisPointOriginVEC, thisPointVEC); // may include deleted triangles
+        std::set<std::shared_ptr<Face>> searched_faces = storage_->face_intersection_search(thisPointOriginVEC, thisPointVEC); // may include deleted triangles
 
         // group the faces by surface
         std::map<std::shared_ptr<Surface>, std::set<std::shared_ptr<Face>>> surface_to_searched_faces_map;
@@ -631,8 +631,12 @@ public:
         if (!smallest_surface->is_expired() && std::abs(smallest_distance) < distance_threshold)
         {
             // from searched_faces find the first face that belongs to the smallest surface
-            for (std::shared_ptr<Face> face : searched_faces)
+            for (const std::shared_ptr<Face>& face : searched_faces)
             {
+                // if face is expired
+                if (face->is_expired()) continue;
+
+                // if not the same surface
                 if (face->get_surface() != smallest_surface) continue;
                 
                 // add point as interior point
@@ -793,6 +797,8 @@ public:
 
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr point_to_vector3d_set_colored_cloud()
     {
+        vertex_to_cloud_indices_map.clear();
+
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
         for (const std::shared_ptr<Vertex>& vertex : storage_->get_vertices())
         {
@@ -813,6 +819,8 @@ public:
 
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr point_to_vector3d_set_distance_cloud()
     {
+        vertex_to_cloud_indices_map.clear();
+
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
         for (const std::shared_ptr<Vertex>& vertex : storage_->get_vertices())
         {
@@ -835,6 +843,8 @@ public:
 
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr projected_point_to_vector3d_set_colored_cloud()
     {
+        vertex_to_cloud_indices_map.clear();
+
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
         for (std::shared_ptr<Vertex> vertex : storage_->get_vertices())
         {
@@ -855,6 +865,8 @@ public:
 
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr projected_point_to_vector3d_set_distance_cloud()
     {
+        vertex_to_cloud_indices_map.clear();
+        
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
         for (const std::shared_ptr<Vertex>& vertex : storage_->get_vertices())
         {

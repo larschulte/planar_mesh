@@ -57,6 +57,12 @@ void Edge::delete_()
     // set deletion flag
     deleting_ = true;
 
+    // remove from EdgeBVH
+    if (is_boundary_ && is_searchable_)
+    {
+        get_surface()->remove_searchable_edge(shared_from_this());
+    }
+
     // disconnect
     while (!vertices_.empty())
     {
@@ -70,9 +76,6 @@ void Edge::delete_()
     {
         disconnect(*surfaces_.begin());
     }
-
-    // update boundary state
-    update_boundary_state();
 
     // log
     std::cout << "---------- edge " << id_ << " destroyed" << std::endl;
@@ -198,6 +201,11 @@ bool Edge::has_vertex(const std::shared_ptr<Vertex>& vertex) const
 bool Edge::is_boundary() const
 {
     return is_boundary_;
+}
+
+bool Edge::is_searchable() const
+{
+    return is_searchable_;
 }
 
 void Edge::update_boundary_state()

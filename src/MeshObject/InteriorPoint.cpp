@@ -37,6 +37,16 @@ void InteriorPoint::delete_()
     // set deletion flag
     deleting_ = true;
 
+    // disconnect
+    while (!faces_.empty())
+    {
+        disconnect(*faces_.begin());
+    }
+    while (!surfaces_.empty())
+    {
+        disconnect(*surfaces_.begin());
+    }
+
     // add to storage as generic point
     storage_->add_generic_point(get_position(), get_origin());
 
