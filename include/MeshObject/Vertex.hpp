@@ -14,8 +14,8 @@ class Vertex : public std::enable_shared_from_this<Vertex>
 {
 protected:
     friend class Storage;
-    void initialize_(std::weak_ptr<Storage> storage, Eigen::Vector3d position, Eigen::Vector3d origin);
-    void initialize_(std::weak_ptr<Storage> storage, Eigen::Vector3d position, Eigen::Vector3d origin, double radius);
+    void initialize_(std::shared_ptr<Storage> storage, Eigen::Vector3d position, Eigen::Vector3d origin);
+    void initialize_(std::shared_ptr<Storage> storage, Eigen::Vector3d position, Eigen::Vector3d origin, double radius);
     void delete_();
 
 public:
@@ -23,16 +23,17 @@ public:
     Eigen::Vector3d get_position() const;
     Eigen::Vector3d get_projected_position() const;
     Eigen::Vector3d get_origin() const;
-    std::weak_ptr<Surface> get_surface() const;
-    std::set<std::weak_ptr<Edge>> get_edges() const;
+    std::shared_ptr<Surface> get_surface() const;
+    std::set<std::shared_ptr<Edge>> get_edges() const;
     Eigen::Vector2d get_surface_coordinate();
+    bool is_expired() const;
 
-    void connect(std::weak_ptr<Edge> edge);
-    void connect(std::weak_ptr<Face> face);
-    void connect(std::weak_ptr<Surface> surface);
-    void disconnect(std::weak_ptr<Edge> edge);
-    void disconnect(std::weak_ptr<Face> face);
-    void disconnect(std::weak_ptr<Surface> surface);
+    void connect(std::shared_ptr<Edge> edge);
+    void connect(std::shared_ptr<Face> face);
+    void connect(std::shared_ptr<Surface> surface);
+    void disconnect(std::shared_ptr<Edge> edge);
+    void disconnect(std::shared_ptr<Face> face);
+    void disconnect(std::shared_ptr<Surface> surface);
 
     void update_boundary_state();
 
@@ -53,13 +54,14 @@ private:
     bool deleting_ = false;
     bool is_boundary_ = false;
     bool is_searchable_ = false;
+    bool is_expired_ = true;
 
     int id_;
-    std::weak_ptr<Storage> storage_;
+    std::shared_ptr<Storage> storage_;
 
-    std::set<std::weak_ptr<Edge>> edges_;
-    std::set<std::weak_ptr<Face>> faces_;
-    std::set<std::weak_ptr<Surface>> surfaces_;
+    std::set<std::shared_ptr<Edge>> edges_;
+    std::set<std::shared_ptr<Face>> faces_;
+    std::set<std::shared_ptr<Surface>> surfaces_;
 
     Eigen::Vector2d surface_coordinate_;
     Eigen::Matrix3d eigenvectors_used_;
@@ -68,6 +70,6 @@ private:
     Eigen::Vector3d origin_;
 };
 
-bool operator<(const std::weak_ptr<Vertex>& lhs, const std::weak_ptr<Vertex>& rhs);
-bool operator<=(const std::weak_ptr<Vertex>& lhs, const std::weak_ptr<Vertex>& rhs);
-bool operator==(const std::weak_ptr<Vertex>& lhs, const std::weak_ptr<Vertex>& rhs);
+bool operator<(const std::shared_ptr<Vertex>& lhs, const std::shared_ptr<Vertex>& rhs);
+bool operator<=(const std::shared_ptr<Vertex>& lhs, const std::shared_ptr<Vertex>& rhs);
+bool operator==(const std::shared_ptr<Vertex>& lhs, const std::shared_ptr<Vertex>& rhs);

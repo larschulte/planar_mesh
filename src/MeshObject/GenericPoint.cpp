@@ -1,16 +1,19 @@
 #include "MeshObject/Storage.hpp"
 #include "MeshObject/GenericPoint.hpp"
 
-void GenericPoint::initialize_(std::weak_ptr<Storage> storage, Eigen::Vector3d position, Eigen::Vector3d origin)
+void GenericPoint::initialize_(std::shared_ptr<Storage> storage, Eigen::Vector3d position, Eigen::Vector3d origin)
 {
+    // set expired
+    is_expired_ = false;
+
     // check pointer validity
-    if (storage.expired()) throw std::runtime_error("Attempts to create generic point with invalid storage.");
+    if (storage->is_expired()) throw std::runtime_error("Attempts to create generic point with invalid storage.");
 
     // store
     storage_ = storage;
     
     // get id
-    id_ = storage_.lock()->get_next_generic_point_id();
+    id_ = storage_->get_next_generic_point_id();
 
     // store
     position_ = position;
@@ -30,6 +33,9 @@ void GenericPoint::delete_()
 
     // log
     std::cout << "---------- GenericPoint " << id_ << " destroyed" << std::endl;
+
+    // set expired
+    is_expired_ = true;
 }
 
 int GenericPoint::get_id() const
@@ -47,14 +53,19 @@ Eigen::Vector3d GenericPoint::get_origin() const
     return origin_;
 }
 
-bool operator<(const std::weak_ptr<GenericPoint>& lhs, const std::weak_ptr<GenericPoint>& rhs)
+bool GenericPoint::is_expired() const
 {
-    if (lhs.expired() || rhs.expired()) throw std::runtime_error("Comparing expired GenericPoints");
-    return lhs.lock()->get_id() < rhs.lock()->get_id();
+    return is_expired_;
 }
 
-bool operator==(const std::weak_ptr<GenericPoint>& lhs, const std::weak_ptr<GenericPoint>& rhs)
+bool operator<(const std::shared_ptr<GenericPoint>& lhs, const std::shared_ptr<GenericPoint>& rhs)
 {
-    if (lhs.expired() || rhs.expired()) throw std::runtime_error("Comparing expired GenericPoints");
-    return lhs.lock()->get_id() == rhs.lock()->get_id();
+    if (lhs->is_expired() || rhs->is_expired()) throw std::runtime_error("Comparing expired GenericPoints");
+    return lhs->get_id() < rhs->get_id();
+}
+
+bool operator==(const std::shared_ptr<GenericPoint>& lhs, const std::shared_ptr<GenericPoint>& rhs)
+{
+    if (lhs->is_expired() || rhs->is_expired()) throw std::runtime_error("Comparing expired GenericPoints");
+    return lhs->get_id() == rhs->get_id();
 }

@@ -3,16 +3,19 @@
 #include "MeshObject/Face.hpp"
 #include "MeshObject/Surface.hpp"
 
-void InteriorPoint::initialize_(std::weak_ptr<Storage> storage, std::weak_ptr<Face> face, Eigen::Vector3d position, Eigen::Vector3d origin)
+void InteriorPoint::initialize_(std::shared_ptr<Storage> storage, std::shared_ptr<Face> face, Eigen::Vector3d position, Eigen::Vector3d origin)
 {
+    // set expired
+    is_expired_ = false;
+
     // check pointer validity
-    if (storage.expired()) throw std::runtime_error("Attempts to create interior point with invalid storage.");
+    if (storage->is_expired()) throw std::runtime_error("Attempts to create interior point with invalid storage.");
 
     // store
     storage_ = storage;
 
     // get id
-    id_ = storage_.lock()->get_next_interior_point_id();
+    id_ = storage_->get_next_interior_point_id();
 
     // store
     position_ = position;
@@ -20,7 +23,7 @@ void InteriorPoint::initialize_(std::weak_ptr<Storage> storage, std::weak_ptr<Fa
 
     // connect
     connect(face);
-    connect(face.lock()->get_surface());
+    connect(face->get_surface());
 
     // log
     std::cout << "InteriorPoint " << id_ << " created.\n";
@@ -35,10 +38,13 @@ void InteriorPoint::delete_()
     deleting_ = true;
 
     // add to storage as generic point
-    storage_.lock()->add_generic_point(get_position(), get_origin());
+    storage_->add_generic_point(get_position(), get_origin());
 
     // log
     std::cout << "---------- InteriorPoint " << id_ << " destroyed" << std::endl;
+
+    // set expired
+    is_expired_ = true;
 }
 
 int InteriorPoint::get_id() const
@@ -56,60 +62,65 @@ Eigen::Vector3d InteriorPoint::get_origin() const
     return origin_;
 }
 
-void InteriorPoint::connect(std::weak_ptr<Face> face)
+bool InteriorPoint::is_expired() const
+{
+    return is_expired_;
+}
+
+void InteriorPoint::connect(std::shared_ptr<Face> face)
 {
     // check input
-    if (face.expired()) throw std::runtime_error("Attempts to connect interior point with invalid face.");
+    if (face->is_expired()) throw std::runtime_error("Attempts to connect interior point with invalid face.");
 
     // connect
     bool inserted = faces_.insert(face).second;
-    if (inserted) face.lock()->connect(shared_from_this());
+    if (inserted) face->connect(shared_from_this());
 }
 
-void InteriorPoint::connect(std::weak_ptr<Surface> surface)
+void InteriorPoint::connect(std::shared_ptr<Surface> surface)
 {
     // check input
-    if (surface.expired()) throw std::runtime_error("Attempts to connect interior point with invalid surface.");
+    if (surface->is_expired()) throw std::runtime_error("Attempts to connect interior point with invalid surface.");
 
     // connect
     bool inserted = surfaces_.insert(surface).second;
-    if (inserted) surface.lock()->connect(shared_from_this());
+    if (inserted) surface->connect(shared_from_this());
 }
 
-void InteriorPoint::disconnect(std::weak_ptr<Face> face)
+void InteriorPoint::disconnect(std::shared_ptr<Face> face)
 {
     // check input
-    if (face.expired()) return;
+    if (face->is_expired()) return;
 
     // disconnect
     bool erased = faces_.erase(face);
-    if (erased) face.lock()->disconnect(shared_from_this());
+    if (erased) face->disconnect(shared_from_this());
 
     // self destruct
-    if (!deleting_ && faces_.empty()) storage_.lock()->delete_interior_point(shared_from_this());
+    if (!deleting_ && faces_.empty()) storage_->delete_interior_point(shared_from_this());
 }
 
-void InteriorPoint::disconnect(std::weak_ptr<Surface> surface)
+void InteriorPoint::disconnect(std::shared_ptr<Surface> surface)
 {
     // check input
-    if (surface.expired()) return;
+    if (surface->is_expired()) return;
 
     // disconnect
     bool erased = surfaces_.erase(surface);
-    if (erased) surface.lock()->disconnect(shared_from_this());
+    if (erased) surface->disconnect(shared_from_this());
 
     // self destruct
-    if (!deleting_ && surfaces_.empty()) storage_.lock()->delete_interior_point(shared_from_this());
+    if (!deleting_ && surfaces_.empty()) storage_->delete_interior_point(shared_from_this());
 }
 
-bool operator<(const std::weak_ptr<InteriorPoint>& lhs, const std::weak_ptr<InteriorPoint>& rhs)
+bool operator<(const std::shared_ptr<InteriorPoint>& lhs, const std::shared_ptr<InteriorPoint>& rhs)
 {
-    if (lhs.expired() || rhs.expired()) throw std::runtime_error("Comparing expired InteriorPoints");
-    return lhs.lock()->get_id() < rhs.lock()->get_id();
+    if (lhs->is_expired() || rhs->is_expired()) throw std::runtime_error("Comparing expired InteriorPoints");
+    return lhs->get_id() < rhs->get_id();
 }
 
-bool operator==(const std::weak_ptr<InteriorPoint>& lhs, const std::weak_ptr<InteriorPoint>& rhs)
+bool operator==(const std::shared_ptr<InteriorPoint>& lhs, const std::shared_ptr<InteriorPoint>& rhs)
 {
-    if (lhs.expired() || rhs.expired()) throw std::runtime_error("Comparing expired InteriorPoints");
-    return lhs.lock()->get_id() == rhs.lock()->get_id();
+    if (lhs->is_expired() || rhs->is_expired()) throw std::runtime_error("Comparing expired InteriorPoints");
+    return lhs->get_id() == rhs->get_id();
 }

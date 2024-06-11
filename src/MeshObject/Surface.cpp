@@ -7,11 +7,14 @@
 #include <iostream>
 #include "MeshObject/InteriorPoint.hpp"
 
-void Surface::initialize_(std::weak_ptr<Storage> storage)
+void Surface::initialize_(std::shared_ptr<Storage> storage)
 {
+    // set expired
+    is_expired_ = false;
+    
     // check pointer validity
-    if (storage.expired()) throw std::runtime_error("Attempts to create surface with invalid storage.");
-    auto storage_valid = storage.lock();
+    if (storage->is_expired()) throw std::runtime_error("Attempts to create surface with invalid storage.");
+    auto storage_valid = storage;
 
     // get id
     id_ = storage_valid->get_next_surface_id();
@@ -61,6 +64,9 @@ void Surface::delete_()
 
     // log
     std::cout << "---------- surface " << id_ << " destroyed" << std::endl;
+
+    // set expired
+    is_expired_ = true;
 }
 
 int Surface::get_id() const
@@ -120,13 +126,13 @@ Eigen::Vector3d Surface::compute_point_to_surface_position(const Eigen::Vector3d
     return intersection;
 }
 
-void Surface::merge_surface(std::weak_ptr<Surface> surface)
+void Surface::merge_surface(std::shared_ptr<Surface> surface)
 {
     // check input
-    if (surface.expired()) throw std::runtime_error("Attempts to merge surface with invalid surface.");
+    if (surface->is_expired()) throw std::runtime_error("Attempts to merge surface with invalid surface.");
 
     // merge
-    auto surface_valid = surface.lock();
+    auto surface_valid = surface;
     for (auto vertex : surface_valid->vertices_) connect(vertex);
     for (auto edge : surface_valid->edges_) connect(edge);
     for (auto face : surface_valid->faces_) connect(face);
@@ -142,7 +148,7 @@ void Surface::merge_surface(std::weak_ptr<Surface> surface)
     std::cout << "Surface " << surface_valid->get_id() << " merged into surface " << id_ << std::endl;
 
     // delete
-    storage_.lock()->delete_surface(surface);
+    storage_->delete_surface(surface);
 }
 
 Eigen::Vector3d Surface::get_mean() const
@@ -180,77 +186,82 @@ std::tuple<int, int, int> Surface::get_color() const
     return color_;
 }
 
-void Surface::connect(std::weak_ptr<Vertex> vertex)
+bool Surface::is_expired() const
+{
+    return is_expired_;
+}
+
+void Surface::connect(std::shared_ptr<Vertex> vertex)
 {
     // check input
-    if (vertex.expired()) throw std::runtime_error("Attempts to connect surface with invalid vertex.");
+    if (vertex->is_expired()) throw std::runtime_error("Attempts to connect surface with invalid vertex.");
 
     // connect
-    if (vertices_.insert(vertex.lock()).second)
+    if (vertices_.insert(vertex).second)
     {
-        vertex.lock()->connect(shared_from_this());
-        add_point_to_surface_fitting(vertex.lock()->get_position(), vertex.lock()->get_origin());
+        vertex->connect(shared_from_this());
+        add_point_to_surface_fitting(vertex->get_position(), vertex->get_origin());
     }
 
     // will need to create edges and faces
 
 }
 
-void Surface::connect(std::weak_ptr<Vertex> vertex, std::set<std::weak_ptr<Vertex>> all_nearby_vertices)
+void Surface::connect(std::shared_ptr<Vertex> vertex, std::set<std::shared_ptr<Vertex>> all_nearby_vertices)
 {
     // check input
-    if (vertex.expired()) throw std::runtime_error("Attempts to connect surface with invalid vertex.");
+    if (vertex->is_expired()) throw std::runtime_error("Attempts to connect surface with invalid vertex.");
 
     // connect
-    if (vertices_.insert(vertex.lock()).second)
+    if (vertices_.insert(vertex).second)
     {
-        vertex.lock()->connect(shared_from_this());
-        add_point_to_surface_fitting(vertex.lock()->get_position(), vertex.lock()->get_origin());
+        vertex->connect(shared_from_this());
+        add_point_to_surface_fitting(vertex->get_position(), vertex->get_origin());
     }
 
     // get nearby vertices in the same surface
-    std::set<std::weak_ptr<Vertex>> nearby_vertices;
+    std::set<std::shared_ptr<Vertex>> nearby_vertices;
     for (auto nearby_vertex : all_nearby_vertices)
     {
         // check input
-        if (nearby_vertex.expired()) throw std::runtime_error("Attempts to connect surface with invalid nearby vertex.");
+        if (nearby_vertex->is_expired()) throw std::runtime_error("Attempts to connect surface with invalid nearby vertex.");
 
         // skip if same vertex
         if (nearby_vertex == vertex) continue;
 
         // skip if not in the same surface
-        if (nearby_vertex.lock()->get_surface() != shared_from_this()) continue;
+        if (nearby_vertex->get_surface() != shared_from_this()) continue;
 
         // add to nearby vertices
         nearby_vertices.insert(nearby_vertex);
     }
 
     // create edges
-    std::set<std::weak_ptr<Vertex>> used_vertices;
+    std::set<std::shared_ptr<Vertex>> used_vertices;
     for (auto nearby_vertex : nearby_vertices)
     {
         // skip if edge is intersected
         if (edge_bvh_.intersect_edges(vertex, nearby_vertex)) continue;
 
         // create edge
-        std::weak_ptr<Edge> new_edge = storage_.lock()->add_edge(shared_from_this(), vertex, nearby_vertex);
+        std::shared_ptr<Edge> new_edge = storage_->add_edge(shared_from_this(), vertex, nearby_vertex);
         used_vertices.insert(nearby_vertex);
     }
 
     // create faces
-    for (std::weak_ptr<Vertex> nearby_vertex0 : used_vertices)
+    for (std::shared_ptr<Vertex> nearby_vertex0 : used_vertices)
     {
-        for (std::weak_ptr<Vertex> nearby_vertex1 : used_vertices)
+        for (std::shared_ptr<Vertex> nearby_vertex1 : used_vertices)
         {
             // skip if repeated
             if (nearby_vertex1 <= nearby_vertex0) continue;
 
             // skip if edge does not exist
             bool edge_exist = false;
-            std::weak_ptr<Edge> existing_edge;
-            for (auto edge : nearby_vertex0.lock()->get_edges())
+            std::shared_ptr<Edge> existing_edge;
+            for (auto edge : nearby_vertex0->get_edges())
             {
-                if (edge.lock()->has_vertex(nearby_vertex1))
+                if (edge->has_vertex(nearby_vertex1))
                 {
                     edge_exist = true;
                     existing_edge = edge;
@@ -260,97 +271,97 @@ void Surface::connect(std::weak_ptr<Vertex> vertex, std::set<std::weak_ptr<Verte
             if (!edge_exist) continue;
 
             // skip if edge is not boundary
-            if (!existing_edge.lock()->is_boundary()) continue;
+            if (!existing_edge->is_boundary()) continue;
 
             // skip if face have intersections
             // // todo
 
             // create face
-            std::weak_ptr<Face> new_face = storage_.lock()->add_face(vertex, nearby_vertex0, nearby_vertex1);
+            std::shared_ptr<Face> new_face = storage_->add_face(vertex, nearby_vertex0, nearby_vertex1);
             connect(new_face);
         }
     }
 }
 
-void Surface::connect(std::weak_ptr<Edge> edge)
+void Surface::connect(std::shared_ptr<Edge> edge)
 {
     // check input
-    if (edge.expired()) throw std::runtime_error("Attempts to connect surface with invalid edge.");
+    if (edge->is_expired()) throw std::runtime_error("Attempts to connect surface with invalid edge.");
 
     // connect
     bool inserted = edges_.insert(edge).second;
-    if (inserted) edge.lock()->connect(shared_from_this());
+    if (inserted) edge->connect(shared_from_this());
 }
 
-void Surface::connect(std::weak_ptr<Face> face)
+void Surface::connect(std::shared_ptr<Face> face)
 {
     // check input
-    if (face.expired()) throw std::runtime_error("Attempts to connect surface with invalid face.");
+    if (face->is_expired()) throw std::runtime_error("Attempts to connect surface with invalid face.");
 
     // connect
     bool inserted = faces_.insert(face).second;
-    if (inserted) face.lock()->connect(shared_from_this());
+    if (inserted) face->connect(shared_from_this());
 }
 
-void Surface::connect(std::weak_ptr<InteriorPoint> interior_point)
+void Surface::connect(std::shared_ptr<InteriorPoint> interior_point)
 {
     // check input
-    if (interior_point.expired()) throw std::runtime_error("Attempts to connect surface with invalid interior point.");
+    if (interior_point->is_expired()) throw std::runtime_error("Attempts to connect surface with invalid interior point.");
 
     // connect
     bool inserted = interior_points_.insert(interior_point).second;
-    if (inserted) interior_point.lock()->connect(shared_from_this());
+    if (inserted) interior_point->connect(shared_from_this());
 
     // update surface fitting
-    if (inserted) add_point_to_surface_fitting(interior_point.lock()->get_position(), interior_point.lock()->get_origin());
+    if (inserted) add_point_to_surface_fitting(interior_point->get_position(), interior_point->get_origin());
 }
 
-void Surface::disconnect(std::weak_ptr<Vertex> vertex)
+void Surface::disconnect(std::shared_ptr<Vertex> vertex)
 {
     // check input
-    if (vertex.expired()) return;
+    if (vertex->is_expired()) return;
 
     // disconnect
-    bool erased = vertices_.erase(vertex.lock());
-    if (erased) vertex.lock()->disconnect(shared_from_this());
+    bool erased = vertices_.erase(vertex);
+    if (erased) vertex->disconnect(shared_from_this());
 }
 
-void Surface::disconnect(std::weak_ptr<Edge> edge)
+void Surface::disconnect(std::shared_ptr<Edge> edge)
 {
     // check input
-    if (edge.expired()) return;
+    if (edge->is_expired()) return;
 
     // disconnect
     bool erased = edges_.erase(edge);
-    if (erased) edge.lock()->disconnect(shared_from_this());
+    if (erased) edge->disconnect(shared_from_this());
 }
 
-void Surface::disconnect(std::weak_ptr<Face> face)
+void Surface::disconnect(std::shared_ptr<Face> face)
 {
     // check input
-    if (face.expired()) return;
+    if (face->is_expired()) return;
 
     // disconnect
     bool erased = faces_.erase(face);
-    if (erased) face.lock()->disconnect(shared_from_this());
+    if (erased) face->disconnect(shared_from_this());
 }
 
-void Surface::disconnect(std::weak_ptr<InteriorPoint> interior_point)
+void Surface::disconnect(std::shared_ptr<InteriorPoint> interior_point)
 {
     // check input
-    if (interior_point.expired()) return;
+    if (interior_point->is_expired()) return;
 
     // disconnect
     bool erased = interior_points_.erase(interior_point);
-    if (erased) interior_point.lock()->disconnect(shared_from_this());
+    if (erased) interior_point->disconnect(shared_from_this());
 }
 
-void Surface::add_searchable_edge(std::weak_ptr<Edge> edge)
+void Surface::add_searchable_edge(std::shared_ptr<Edge> edge)
 {
     edge_bvh_.add_edge(edge);
 }
 
-void Surface::remove_searchable_edge(std::weak_ptr<Edge> edge)
+void Surface::remove_searchable_edge(std::shared_ptr<Edge> edge)
 {
     edge_bvh_.delete_edge(edge);
 }
@@ -393,32 +404,32 @@ void Surface::set_random_color()
     color_ = std::make_tuple(rand() % 256, rand() % 256, rand() % 256);
 }
 
-bool operator<(const std::weak_ptr<Surface> &lhs, const std::weak_ptr<Surface> &rhs)
+bool operator<(const std::shared_ptr<Surface> &lhs, const std::shared_ptr<Surface> &rhs)
 {
     // check pointer validity
-    if (lhs.expired() || rhs.expired()) throw std::runtime_error("Comparing expired surfaces");
-    return lhs.lock()->get_id() < rhs.lock()->get_id();
+    if (lhs->is_expired() || rhs->is_expired()) throw std::runtime_error("Comparing expired surfaces");
+    return lhs->get_id() < rhs->get_id();
 }
 
-bool operator==(const std::weak_ptr<Surface>& lhs, const std::weak_ptr<Surface>& rhs)
+bool operator==(const std::shared_ptr<Surface>& lhs, const std::shared_ptr<Surface>& rhs)
 {
     // check pointer validity
-    if (lhs.expired() || rhs.expired()) throw std::runtime_error("Comparing expired surfaces");
-    return lhs.lock()->get_id() == rhs.lock()->get_id();
+    if (lhs->is_expired() || rhs->is_expired()) throw std::runtime_error("Comparing expired surfaces");
+    return lhs->get_id() == rhs->get_id();
 }
 
-bool operator>= (const std::weak_ptr<Surface>& lhs, const std::weak_ptr<Surface>& rhs)
+bool operator>= (const std::shared_ptr<Surface>& lhs, const std::shared_ptr<Surface>& rhs)
 {
     // check pointer validity
-    if (lhs.expired() || rhs.expired()) throw std::runtime_error("Comparing expired surfaces");
-    return lhs.lock()->get_id() >= rhs.lock()->get_id();
+    if (lhs->is_expired() || rhs->is_expired()) throw std::runtime_error("Comparing expired surfaces");
+    return lhs->get_id() >= rhs->get_id();
 }
 
-bool operator!= (const std::weak_ptr<Surface>& lhs, const std::weak_ptr<Surface>& rhs)
+bool operator!= (const std::shared_ptr<Surface>& lhs, const std::shared_ptr<Surface>& rhs)
 {
     // check pointer validity
-    if (lhs.expired() || rhs.expired()) throw std::runtime_error("Comparing expired surfaces");
-    return lhs.lock()->get_id() != rhs.lock()->get_id();
+    if (lhs->is_expired() || rhs->is_expired()) throw std::runtime_error("Comparing expired surfaces");
+    return lhs->get_id() != rhs->get_id();
 }
 
 Eigen::Vector3d merge_means(const Eigen::Vector3d& mean1, const Eigen::Vector3d& mean2, int size1, int size2) 

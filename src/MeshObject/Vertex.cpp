@@ -7,13 +7,16 @@
 
 #include "MeshObject/GenericPoint.hpp"
 
-void Vertex::initialize_(std::weak_ptr<Storage> storage, Eigen::Vector3d position, Eigen::Vector3d origin)
+void Vertex::initialize_(std::shared_ptr<Storage> storage, Eigen::Vector3d position, Eigen::Vector3d origin)
 {
+    // set expired
+    is_expired_ = false;
+
     // check pointer validity
-    if (storage.expired()) throw std::runtime_error("Attempts to create vertex with invalid storage.");
+    if (storage->is_expired()) throw std::runtime_error("Attempts to create vertex with invalid storage.");
 
     // get id
-    id_ = storage.lock()->get_next_vertex_id();
+    id_ = storage->get_next_vertex_id();
 
     // store
     storage_ = storage;
@@ -33,13 +36,16 @@ void Vertex::initialize_(std::weak_ptr<Storage> storage, Eigen::Vector3d positio
     std::cout << "Vertex " << id_ << " created.\n";
 }
 
-void Vertex::initialize_(std::weak_ptr<Storage> storage, Eigen::Vector3d position, Eigen::Vector3d origin, double radius)
+void Vertex::initialize_(std::shared_ptr<Storage> storage, Eigen::Vector3d position, Eigen::Vector3d origin, double radius)
 {
+    // set expired
+    is_expired_ = false;
+    
     // check pointer validity
-    if (storage.expired()) throw std::runtime_error("Attempts to create vertex with invalid storage.");
+    if (storage->is_expired()) throw std::runtime_error("Attempts to create vertex with invalid storage.");
 
     // get id
-    id_ = storage.lock()->get_next_vertex_id();
+    id_ = storage->get_next_vertex_id();
 
     // store
     storage_ = storage;
@@ -81,14 +87,17 @@ void Vertex::delete_()
     // remove from search tree
     if (is_boundary_)
     {
-        storage_.lock()->remove_searchable_vertex(shared_from_this());
+        storage_->remove_searchable_vertex(shared_from_this());
     }
 
     // add to storage as generic point
-    storage_.lock()->add_generic_point(get_position(), get_origin());
+    storage_->add_generic_point(get_position(), get_origin());
 
     // log
     std::cout << "---------- vertex " << id_ << " destroyed" << std::endl;
+
+    // set expired
+    is_expired_ = true;
 }
 
 int Vertex::get_id() const 
@@ -103,7 +112,7 @@ Eigen::Vector3d Vertex::get_position() const
 
 Eigen::Vector3d Vertex::get_projected_position() const
 {
-    return get_surface().lock()->compute_point_to_surface_position(get_origin(), get_position());
+    return get_surface()->compute_point_to_surface_position(get_origin(), get_position());
 }
 
 Eigen::Vector3d Vertex::get_origin() const 
@@ -111,20 +120,20 @@ Eigen::Vector3d Vertex::get_origin() const
     return origin_; 
 }
 
-std::weak_ptr<Surface> Vertex::get_surface() const
+std::shared_ptr<Surface> Vertex::get_surface() const
 {    
-    // return surfaces_.empty() ? std::weak_ptr<Surface>() : *surfaces_.begin();
+    // return surfaces_.empty() ? std::shared_ptr<Surface>() : *surfaces_.begin();
     return *surfaces_.begin();
 }
 
-std::set<std::weak_ptr<Edge>> Vertex::get_edges() const 
+std::set<std::shared_ptr<Edge>> Vertex::get_edges() const 
 { 
     return edges_; 
 }
 
 Eigen::Vector2d Vertex::get_surface_coordinate()
 {
-    Eigen::Matrix3d eigenvectors = get_surface().lock()->get_eigenvectors();
+    Eigen::Matrix3d eigenvectors = get_surface()->get_eigenvectors();
     if (eigenvectors_used_ == eigenvectors)
     {
         // use stored coordinate if eigenvectors are the same
@@ -141,82 +150,87 @@ Eigen::Vector2d Vertex::get_surface_coordinate()
     }
 }
 
-void Vertex::connect(std::weak_ptr<Edge> edge)
+bool Vertex::is_expired() const
+{
+    return is_expired_;
+}
+
+void Vertex::connect(std::shared_ptr<Edge> edge)
 {
     // check input
-    if (edge.expired()) throw std::runtime_error("Attempts to connect vertex with invalid edge.");
+    if (edge->is_expired()) throw std::runtime_error("Attempts to connect vertex with invalid edge.");
 
     // connect
     bool inserted = edges_.insert(edge).second;
-    if (inserted) edge.lock()->connect(shared_from_this());
+    if (inserted) edge->connect(shared_from_this());
 
     // update boundary state
     update_boundary_state();
 }
 
-void Vertex::connect(std::weak_ptr<Face> face) 
+void Vertex::connect(std::shared_ptr<Face> face) 
 {
     // check input
-    if (face.expired()) throw std::runtime_error("Attempts to connect vertex with invalid face.");
+    if (face->is_expired()) throw std::runtime_error("Attempts to connect vertex with invalid face.");
 
     // connect
     bool inserted = faces_.insert(face).second;
-    if (inserted) face.lock()->connect(shared_from_this());
+    if (inserted) face->connect(shared_from_this());
 }
 
-void Vertex::connect(std::weak_ptr<Surface> surface)
+void Vertex::connect(std::shared_ptr<Surface> surface)
 {
     // check input
-    if (surface.expired()) throw std::runtime_error("Attempts to connect vertex with invalid surface.");
+    if (surface->is_expired()) throw std::runtime_error("Attempts to connect vertex with invalid surface.");
 
     // connect
     bool inserted = surfaces_.insert(surface).second;
-    if (inserted) surface.lock()->connect(shared_from_this());
+    if (inserted) surface->connect(shared_from_this());
 }
 
-void Vertex::disconnect(std::weak_ptr<Edge> edge) 
+void Vertex::disconnect(std::shared_ptr<Edge> edge) 
 {
     // check input
-    if (edge.expired()) return;
+    if (edge->is_expired()) return;
 
     // disconnect
     bool erased = edges_.erase(edge);
-    if (erased) edge.lock()->disconnect(shared_from_this());
+    if (erased) edge->disconnect(shared_from_this());
 
     // update boundary state
     update_boundary_state();
 
     // check self destruct
-    if (!deleting_ && edges_.empty()) storage_.lock()->delete_vertex(shared_from_this());
+    if (!deleting_ && edges_.empty()) storage_->delete_vertex(shared_from_this());
 }
 
-void Vertex::disconnect(std::weak_ptr<Face> face)
+void Vertex::disconnect(std::shared_ptr<Face> face)
 {
     // check pointer validity
-    if (face.expired()) return;
+    if (face->is_expired()) return;
 
     // disconnect
     bool erased = faces_.erase(face);
-    if (erased) face.lock()->disconnect(shared_from_this());
+    if (erased) face->disconnect(shared_from_this());
 }
 
-void Vertex::disconnect(std::weak_ptr<Surface> surface)
+void Vertex::disconnect(std::shared_ptr<Surface> surface)
 {
     // check input
-    if (surface.expired()) return;
+    if (surface->is_expired()) return;
 
     // disconnect
     bool erased = surfaces_.erase(surface);
-    if (erased) surface.lock()->disconnect(shared_from_this());
+    if (erased) surface->disconnect(shared_from_this());
 }
 
 void Vertex::update_boundary_state()
 {
     // becomes boundary when one of the connected edges is boundary, or when the point is alone
     is_boundary_ = false;
-    for (std::weak_ptr<Edge> edge : edges_)
+    for (std::shared_ptr<Edge> edge : edges_)
     {
-        if (edge.lock()->is_boundary())
+        if (edge->is_boundary())
         {
             is_boundary_ = true;
             break;
@@ -230,12 +244,12 @@ void Vertex::update_boundary_state()
     // update search tree
     if (is_boundary_ && !is_searchable_)
     {
-        storage_.lock()->add_searchable_vertex(shared_from_this());
+        storage_->add_searchable_vertex(shared_from_this());
         is_searchable_ = true;
     }
     else if (!is_boundary_ && is_searchable_)
     {
-        storage_.lock()->remove_searchable_vertex(shared_from_this());
+        storage_->remove_searchable_vertex(shared_from_this());
         is_searchable_ = false;
     }
 }
@@ -280,22 +294,22 @@ bool Vertex::approx_contains(const Eigen::Vector3d& point) const
             point.z() > min_.z() && point.z() < max_.z());
 }
 
-bool operator<(const std::weak_ptr<Vertex>& lhs, const std::weak_ptr<Vertex>& rhs)
+bool operator<(const std::shared_ptr<Vertex>& lhs, const std::shared_ptr<Vertex>& rhs)
 {
     // when updating the third point's boundary state (due to first point deleted), the first point is already deleted. 
-    if (lhs.expired() || rhs.expired()) throw std::runtime_error("Comparing expired edges");
-    return lhs.lock()->get_id() < rhs.lock()->get_id();
+    if (lhs->is_expired() || rhs->is_expired()) throw std::runtime_error("Comparing expired edges");
+    return lhs->get_id() < rhs->get_id();
 }
 
-bool operator<=(const std::weak_ptr<Vertex>& lhs, const std::weak_ptr<Vertex>& rhs)
+bool operator<=(const std::shared_ptr<Vertex>& lhs, const std::shared_ptr<Vertex>& rhs)
 {
     // when updating the third point's boundary state (due to first point deleted), the first point is already deleted. 
-    if (lhs.expired() || rhs.expired()) throw std::runtime_error("Comparing expired edges");
-    return lhs.lock()->get_id() <= rhs.lock()->get_id();
+    if (lhs->is_expired() || rhs->is_expired()) throw std::runtime_error("Comparing expired edges");
+    return lhs->get_id() <= rhs->get_id();
 }
 
-bool operator==(const std::weak_ptr<Vertex>& lhs, const std::weak_ptr<Vertex>& rhs)
+bool operator==(const std::shared_ptr<Vertex>& lhs, const std::shared_ptr<Vertex>& rhs)
 {
-    if (lhs.expired() || rhs.expired()) throw std::runtime_error("Comparing expired edges");
-    return lhs.lock()->get_id() == rhs.lock()->get_id();
+    if (lhs->is_expired() || rhs->is_expired()) throw std::runtime_error("Comparing expired edges");
+    return lhs->get_id() == rhs->get_id();
 }

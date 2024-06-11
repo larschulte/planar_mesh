@@ -15,42 +15,44 @@ class Face : public std::enable_shared_from_this<Face>
 {
 protected:
     friend class Storage;
-    void initialize_(std::weak_ptr<Storage> storage, std::weak_ptr<Vertex> vertex0, std::weak_ptr<Vertex> vertex1, std::weak_ptr<Vertex> vertex2);
+    void initialize_(std::shared_ptr<Storage> storage, std::shared_ptr<Vertex> vertex0, std::shared_ptr<Vertex> vertex1, std::shared_ptr<Vertex> vertex2);
     void delete_();
 
 public:
     int get_id() const;
     Eigen::Vector3d get_center() const;
-    std::set<std::weak_ptr<Vertex>> get_vertices() const;
-    std::weak_ptr<Vertex> get_vertex(int index) const;
-    std::weak_ptr<Surface> get_surface() const;
+    std::set<std::shared_ptr<Vertex>> get_vertices() const;
+    std::shared_ptr<Vertex> get_vertex(int index) const;
+    std::shared_ptr<Surface> get_surface() const;
+    bool is_expired() const;
 
     bool intersects_point(const Eigen::Vector3d& origin, const Eigen::Vector3d& direction);
     Eigen::Vector3d compute_intersection_point(const Eigen::Vector3d& origin, const Eigen::Vector3d& direction);
 
-    void connect(std::weak_ptr<Vertex> vertex);
-    void connect(std::weak_ptr<Edge> edge);
-    void connect(std::weak_ptr<Surface> surface);
-    void connect(std::weak_ptr<InteriorPoint> interior_point);
-    void disconnect(std::weak_ptr<Vertex> vertex);
-    void disconnect(std::weak_ptr<Edge> edge);
-    void disconnect(std::weak_ptr<Surface> surface);
-    void disconnect(std::weak_ptr<InteriorPoint> interior_point);
+    void connect(std::shared_ptr<Vertex> vertex);
+    void connect(std::shared_ptr<Edge> edge);
+    void connect(std::shared_ptr<Surface> surface);
+    void connect(std::shared_ptr<InteriorPoint> interior_point);
+    void disconnect(std::shared_ptr<Vertex> vertex);
+    void disconnect(std::shared_ptr<Edge> edge);
+    void disconnect(std::shared_ptr<Surface> surface);
+    void disconnect(std::shared_ptr<InteriorPoint> interior_point);
 
 private:
     Eigen::Vector3d center_;
 
     bool deleting_ = false;
     bool is_searchable_ = false;
+    bool is_expired_ = true;
 
     int id_;
-    std::weak_ptr<Storage> storage_;
+    std::shared_ptr<Storage> storage_;
 
-    std::set<std::weak_ptr<Vertex>> vertices_;
-    std::set<std::weak_ptr<Edge>> edges_;
-    std::set<std::weak_ptr<Surface>> surfaces_;
-    std::set<std::weak_ptr<InteriorPoint>> interior_points_;
+    std::set<std::shared_ptr<Vertex>> vertices_;
+    std::set<std::shared_ptr<Edge>> edges_;
+    std::set<std::shared_ptr<Surface>> surfaces_;
+    std::set<std::shared_ptr<InteriorPoint>> interior_points_;
 };
 
-bool operator<(const std::weak_ptr<Face>& lhs, const std::weak_ptr<Face>& rhs);
-bool operator==(const std::weak_ptr<Face>& lhs, const std::weak_ptr<Face>& rhs);
+bool operator<(const std::shared_ptr<Face>& lhs, const std::shared_ptr<Face>& rhs);
+bool operator==(const std::shared_ptr<Face>& lhs, const std::shared_ptr<Face>& rhs);

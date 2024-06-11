@@ -5,16 +5,19 @@
 #include "MeshObject/Surface.hpp"
 #include <iostream>
 
-void Edge::initialize_(std::weak_ptr<Storage> storage, std::weak_ptr<Surface> surface, std::weak_ptr<Vertex> vertex1, std::weak_ptr<Vertex> vertex2)
+void Edge::initialize_(std::shared_ptr<Storage> storage, std::shared_ptr<Surface> surface, std::shared_ptr<Vertex> vertex1, std::shared_ptr<Vertex> vertex2)
 {
+    // set expired
+    is_expired_ = false;
+
     // check pointer validity
-    if (storage.expired()) throw std::runtime_error("Attempts to create edge with invalid storage.");
-    if (surface.expired()) throw std::runtime_error("Attempts to create edge with invalid surface.");
-    if (vertex1.expired()) throw std::runtime_error("Attempts to create edge with invalid vertex1.");
-    if (vertex2.expired()) throw std::runtime_error("Attempts to create edge with invalid vertex2.");
-    auto storage_valid = storage.lock();
-    auto vertex1_valid = vertex1.lock();
-    auto vertex2_valid = vertex2.lock();
+    if (storage->is_expired()) throw std::runtime_error("Attempts to create edge with invalid storage.");
+    if (surface->is_expired()) throw std::runtime_error("Attempts to create edge with invalid surface.");
+    if (vertex1->is_expired()) throw std::runtime_error("Attempts to create edge with invalid vertex1.");
+    if (vertex2->is_expired()) throw std::runtime_error("Attempts to create edge with invalid vertex2.");
+    auto storage_valid = storage;
+    auto vertex1_valid = vertex1;
+    auto vertex2_valid = vertex2;
 
     // store
     storage_ = storage;
@@ -35,8 +38,8 @@ void Edge::initialize_(std::weak_ptr<Storage> storage, std::weak_ptr<Surface> su
 
     // compute max and min
     double margin = 0.05;
-    max_ = vertex1.lock()->get_position().cwiseMax(vertex2.lock()->get_position()) + margin * Eigen::Vector3d::Ones();
-    min_ = vertex1.lock()->get_position().cwiseMin(vertex2.lock()->get_position()) - margin * Eigen::Vector3d::Ones();
+    max_ = vertex1->get_position().cwiseMax(vertex2->get_position()) + margin * Eigen::Vector3d::Ones();
+    min_ = vertex1->get_position().cwiseMin(vertex2->get_position()) - margin * Eigen::Vector3d::Ones();
 
     // update boundary state
     update_boundary_state();
@@ -73,65 +76,68 @@ void Edge::delete_()
 
     // log
     std::cout << "---------- edge " << id_ << " destroyed" << std::endl;
+
+    // set expired
+    is_expired_ = true;
 }
 
-void Edge::connect(std::weak_ptr<Vertex> vertex)
+void Edge::connect(std::shared_ptr<Vertex> vertex)
 {
     // check input
-    if (vertex.expired()) throw std::runtime_error("Attempts to connect edge with invalid vertex.");
+    if (vertex->is_expired()) throw std::runtime_error("Attempts to connect edge with invalid vertex.");
 
     // connect
     bool inserted = vertices_.insert(vertex).second;
-    if (inserted) vertex.lock()->connect(shared_from_this());
+    if (inserted) vertex->connect(shared_from_this());
 
     // check size
     if (vertices_.size() > 2) throw std::runtime_error("Edge connected to more than 2 vertices.");
 }
 
-void Edge::connect(std::weak_ptr<Face> face) 
+void Edge::connect(std::shared_ptr<Face> face) 
 {
     // check input
-    if (face.expired()) throw std::runtime_error("Attempts to connect edge with invalid face.");
+    if (face->is_expired()) throw std::runtime_error("Attempts to connect edge with invalid face.");
 
     // connect
     bool inserted = faces_.insert(face).second;
-    if (inserted) face.lock()->connect(shared_from_this());
+    if (inserted) face->connect(shared_from_this());
 
     // update boundary state
     update_boundary_state();
 }
 
-void Edge::connect(std::weak_ptr<Surface> surface)
+void Edge::connect(std::shared_ptr<Surface> surface)
 {
     // check input
-    if (surface.expired()) throw std::runtime_error("Attempts to connect edge with invalid surface.");
+    if (surface->is_expired()) throw std::runtime_error("Attempts to connect edge with invalid surface.");
 
     // connect
     bool inserted = surfaces_.insert(surface).second;
-    if (inserted) surface.lock()->connect(shared_from_this());
+    if (inserted) surface->connect(shared_from_this());
 }
 
-void Edge::disconnect(std::weak_ptr<Vertex> vertex)
+void Edge::disconnect(std::shared_ptr<Vertex> vertex)
 {
     // check input
-    if (vertex.expired()) return;
+    if (vertex->is_expired()) return;
 
     // disconnect
     bool erased = vertices_.erase(vertex);
-    if (erased) vertex.lock()->disconnect(shared_from_this());
+    if (erased) vertex->disconnect(shared_from_this());
 
     // self destruct
-    if (!deleting_) storage_.lock()->delete_edge(shared_from_this());
+    if (!deleting_) storage_->delete_edge(shared_from_this());
 }
 
-void Edge::disconnect(std::weak_ptr<Face> face)
+void Edge::disconnect(std::shared_ptr<Face> face)
 {
     // check input
-    if (face.expired()) return;
+    if (face->is_expired()) return;
 
     // disconnect
     bool erased = faces_.erase(face);
-    if (erased) face.lock()->disconnect(shared_from_this());
+    if (erased) face->disconnect(shared_from_this());
 
     // update boundary state
     update_boundary_state();
@@ -139,18 +145,18 @@ void Edge::disconnect(std::weak_ptr<Face> face)
     // check self destruct
     if (faces_.empty())
     {
-        if (!deleting_) storage_.lock()->delete_edge(shared_from_this());
+        if (!deleting_) storage_->delete_edge(shared_from_this());
     }
 }
 
-void Edge::disconnect(std::weak_ptr<Surface> surface)
+void Edge::disconnect(std::shared_ptr<Surface> surface)
 {
     // check input
-    if (surface.expired()) return;
+    if (surface->is_expired()) return;
 
     // disconnect
     bool erased = surfaces_.erase(surface);
-    if (erased) surface.lock()->disconnect(shared_from_this());
+    if (erased) surface->disconnect(shared_from_this());
 }
 
 int Edge::get_id() const 
@@ -158,28 +164,33 @@ int Edge::get_id() const
     return id_; 
 }
 
-std::weak_ptr<Vertex> Edge::get_vertex(int index) const
+std::shared_ptr<Vertex> Edge::get_vertex(int index) const
 {
     if (index < 0 || index > 1) throw std::runtime_error("Invalid vertex index.");
     if (vertices_.size() != 2) throw std::runtime_error("Edge does not have 2 vertices.");
     return *std::next(vertices_.begin(), index);
 }
 
-std::weak_ptr<Surface> Edge::get_surface() const
+std::shared_ptr<Surface> Edge::get_surface() const
 {
     if (surfaces_.size() != 1) 
     {
         for (auto surface : surfaces_)
         {
-            std::cout << "Surface " << surface.lock()->get_id() << std::endl;
+            std::cout << "Surface " << surface->get_id() << std::endl;
         }
         throw std::runtime_error("Edge does not have 1 exact surface.");
     }
     return *surfaces_.begin();
 }
 
+bool Edge::is_expired() const
+{
+    return is_expired_;
+}
+
 // has vertex
-bool Edge::has_vertex(std::weak_ptr<Vertex> vertex) const
+bool Edge::has_vertex(std::shared_ptr<Vertex> vertex) const
 {
     return vertices_.find(vertex) != vertices_.end();
 }
@@ -202,20 +213,20 @@ void Edge::update_boundary_state()
     }
 
     // update boundary state of connected vertices
-    for (std::weak_ptr<Vertex> vertex : vertices_)
+    for (std::shared_ptr<Vertex> vertex : vertices_)
     {
-        vertex.lock()->update_boundary_state();
+        vertex->update_boundary_state();
     }
 
     // update search tree in connected surface
     if (is_boundary_ && !is_searchable_)
     {
-        get_surface().lock()->add_searchable_edge(shared_from_this());
+        get_surface()->add_searchable_edge(shared_from_this());
         is_searchable_ = true;
     }
     else if (!is_boundary_ && is_searchable_)
     {   
-        get_surface().lock()->remove_searchable_edge(shared_from_this());
+        get_surface()->remove_searchable_edge(shared_from_this());
         is_searchable_ = false;
     }
     else
@@ -247,23 +258,23 @@ bool Edge::intersects_edge(const std::shared_ptr<Vertex>& vertex0, const std::sh
     // get surface coordinates
     Eigen::Vector2d p1 = vertex0->get_surface_coordinate();
     Eigen::Vector2d p2 = vertex1->get_surface_coordinate();
-    Eigen::Vector2d q1 = get_vertex(0).lock()->get_surface_coordinate();
-    Eigen::Vector2d q2 = get_vertex(1).lock()->get_surface_coordinate();
+    Eigen::Vector2d q1 = get_vertex(0)->get_surface_coordinate();
+    Eigen::Vector2d q2 = get_vertex(1)->get_surface_coordinate();
     
     // check if edge intersects
     return segments_intersect(p1, p2, q1, q2);
 }
 
-bool operator<(const std::weak_ptr<Edge>& lhs, const std::weak_ptr<Edge>& rhs)
+bool operator<(const std::shared_ptr<Edge>& lhs, const std::shared_ptr<Edge>& rhs)
 {
-    if (lhs.expired() || rhs.expired()) throw std::runtime_error("Comparing expired edges");
-    return lhs.lock()->get_id() < rhs.lock()->get_id();
+    if (lhs->is_expired() || rhs->is_expired()) throw std::runtime_error("Comparing expired edges");
+    return lhs->get_id() < rhs->get_id();
 }
 
-bool operator==(const std::weak_ptr<Edge>& lhs, const std::weak_ptr<Edge>& rhs)
+bool operator==(const std::shared_ptr<Edge>& lhs, const std::shared_ptr<Edge>& rhs)
 {
-    if (lhs.expired() || rhs.expired()) throw std::runtime_error("Comparing expired edges");
-    return lhs.lock()->get_id() == rhs.lock()->get_id();
+    if (lhs->is_expired() || rhs->is_expired()) throw std::runtime_error("Comparing expired edges");
+    return lhs->get_id() == rhs->get_id();
 }
 
 // Function to check if two 2D segments (p1, p2) and (q1, q2) intersect

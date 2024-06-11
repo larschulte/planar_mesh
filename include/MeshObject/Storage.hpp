@@ -18,33 +18,37 @@ class InteriorPoint;
 class Storage : public std::enable_shared_from_this<Storage> 
 {
 public: // to user
-    std::weak_ptr<Vertex> add_vertex(Eigen::Vector3d origin, Eigen::Vector3d position);
-    std::weak_ptr<Vertex> add_vertex(Eigen::Vector3d origin, Eigen::Vector3d position, double radius);
-    std::weak_ptr<Edge> add_edge(std::weak_ptr<Surface> surface, std::weak_ptr<Vertex> vertex1, std::weak_ptr<Vertex> vertex2);
-    std::weak_ptr<Face> add_face(std::weak_ptr<Vertex> vertex1, std::weak_ptr<Vertex> vertex2, std::weak_ptr<Vertex> vertex3);
-    std::weak_ptr<Surface> add_surface();
-    std::weak_ptr<GenericPoint> add_generic_point(Eigen::Vector3d position, Eigen::Vector3d origin);
-    std::weak_ptr<InteriorPoint> add_interior_point(std::weak_ptr<Face> face, Eigen::Vector3d position, Eigen::Vector3d origin);
+    Storage();
+    ~Storage();
 
-    void delete_vertex(std::weak_ptr<Vertex> vertex);
-    void delete_edge(std::weak_ptr<Edge> edge);
-    void delete_face(std::weak_ptr<Face> face);
-    void delete_surface(std::weak_ptr<Surface> surface);
-    void delete_genertic_point(std::weak_ptr<GenericPoint> genertic_point);
-    void delete_interior_point(std::weak_ptr<InteriorPoint> interior_point);
+    std::shared_ptr<Vertex> add_vertex(Eigen::Vector3d origin, Eigen::Vector3d position);
+    std::shared_ptr<Vertex> add_vertex(Eigen::Vector3d origin, Eigen::Vector3d position, double radius);
+    std::shared_ptr<Edge> add_edge(std::shared_ptr<Surface> surface, std::shared_ptr<Vertex> vertex1, std::shared_ptr<Vertex> vertex2);
+    std::shared_ptr<Face> add_face(std::shared_ptr<Vertex> vertex1, std::shared_ptr<Vertex> vertex2, std::shared_ptr<Vertex> vertex3);
+    std::shared_ptr<Surface> add_surface();
+    std::shared_ptr<GenericPoint> add_generic_point(Eigen::Vector3d position, Eigen::Vector3d origin);
+    std::shared_ptr<InteriorPoint> add_interior_point(std::shared_ptr<Face> face, Eigen::Vector3d position, Eigen::Vector3d origin);
+
+    void delete_vertex(std::shared_ptr<Vertex> vertex);
+    void delete_edge(std::shared_ptr<Edge> edge);
+    void delete_face(std::shared_ptr<Face> face);
+    void delete_surface(std::shared_ptr<Surface> surface);
+    void delete_genertic_point(std::shared_ptr<GenericPoint> genertic_point);
+    void delete_interior_point(std::shared_ptr<InteriorPoint> interior_point);
 
     bool can_reverse_radius_search();
-    std::set<std::weak_ptr<Vertex>> reverse_radius_search(Eigen::Vector3d point);
-    std::set<std::weak_ptr<Face>> face_intersection_search(Eigen::Vector3d origin, Eigen::Vector3d point);
+    std::set<std::shared_ptr<Vertex>> reverse_radius_search(Eigen::Vector3d point);
+    std::set<std::shared_ptr<Face>> face_intersection_search(Eigen::Vector3d origin, Eigen::Vector3d point);
 
-    std::set<std::weak_ptr<Vertex>> get_vertices() const;
-    std::set<std::weak_ptr<Edge>> get_edges() const;
-    std::set<std::weak_ptr<Face>> get_faces() const;
-    std::set<std::weak_ptr<Surface>> get_surfaces() const;
-    std::vector<std::weak_ptr<Vertex>> get_rrs_vertices() const;
-    std::map<std::weak_ptr<Vertex>, int> get_vertex_to_cloud_indices_map() const;
+    std::set<std::shared_ptr<Vertex>> get_vertices() const;
+    std::set<std::shared_ptr<Edge>> get_edges() const;
+    std::set<std::shared_ptr<Face>> get_faces() const;
+    std::set<std::shared_ptr<Surface>> get_surfaces() const;
+    std::vector<std::shared_ptr<Vertex>> get_rrs_vertices() const;
+    std::map<std::shared_ptr<Vertex>, int> get_vertex_to_cloud_indices_map() const;
+    bool is_expired() const;
 
-    std::weak_ptr<Edge> get_edge(std::weak_ptr<Vertex> vertex1, std::weak_ptr<Vertex> vertex2) const;
+    std::shared_ptr<Edge> get_edge(std::shared_ptr<Vertex> vertex1, std::shared_ptr<Vertex> vertex2) const;
 
     void print_rrs() const;
     void print_bvh() const;
@@ -53,11 +57,11 @@ public: // to user
 private: // to Vertex and Face class
     friend class Vertex;
     friend class Face;
-    void add_searchable_vertex(std::weak_ptr<Vertex> vertex);
-    void remove_searchable_vertex(std::weak_ptr<Vertex> vertex);
+    void add_searchable_vertex(std::shared_ptr<Vertex> vertex);
+    void remove_searchable_vertex(std::shared_ptr<Vertex> vertex);
 
-    void add_searchable_face(std::weak_ptr<Face> face);
-    void remove_searchable_face(std::weak_ptr<Face> face);
+    void add_searchable_face(std::shared_ptr<Face> face);
+    void remove_searchable_face(std::shared_ptr<Face> face);
 
 public: // to MeshObject class
     int get_next_vertex_id();
@@ -68,6 +72,8 @@ public: // to MeshObject class
     int get_next_interior_point_id();
 
 private:
+    bool is_expired_ = true;
+
     RRSTree rrs_tree_;
     TriangleBVH triangle_bvh_;
 
