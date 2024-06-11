@@ -760,21 +760,24 @@ public:
     const std::set<std::shared_ptr<Face>>& get_faces() {return storage_->get_faces();};
     const std::set<std::shared_ptr<Edge>>& get_edges() {return storage_->get_edges();};
     std::vector<std::shared_ptr<Vertex>> get_rrs_vertices() {return storage_->get_rrs_vertices();};
-    // std::set<std::shared_ptr<Vertex>> get_boundary_edges() 
-    // {
-    //     // all edges
-    //     std::set<std::shared_ptr<Edge>> edges = storage_->get_edges();
+    
+    std::set<std::shared_ptr<Edge>> get_boundary_edges() 
+    {
+        // initialize
+        std::set<std::shared_ptr<Edge>> boundary_edges;
 
-    //     // boundary edges
-    //     std::set<std::shared_ptr<Edge>> boundary_edges;
-    //     for (std::shared_ptr<Edge> edge : edges)
-    //     {
-    //         if (edge->is_boundary()) 
-    //         {
-    //             boundary_edges.insert(edge);
-    //         }
-    //     }
-    // }
+        // process
+        for (const std::shared_ptr<Edge>& edge : storage_->get_edges())
+        {
+            if (edge->is_boundary()) 
+            {
+                boundary_edges.insert(edge);
+            }
+        }
+
+        // return
+        return boundary_edges;
+    }
 
     std::map<int, std::array<int, 3>> get_triangle_to_cloud_indices_map() 
     {
@@ -1084,8 +1087,7 @@ private:
         }
         std::map<std::shared_ptr<Vertex>, int> vertex_to_cloud_indices_map = app_.get_vertex_to_cloud_indices_map();
         std::set<std::shared_ptr<Face>> faces = app_.get_faces();
-        std::set<std::shared_ptr<Edge>> edges = app_.get_edges();
-        // std::set<std::shared_ptr<Edge>> boundary_edges = app_.get_boundary_edges();
+        std::set<std::shared_ptr<Edge>> boundary_edges = app_.get_boundary_edges();
 
         // point cloud
         viewer_->removeShape("point_cloud");
@@ -1113,23 +1115,23 @@ private:
             viewer_->addPolygonMesh(triangle_mesh, "triangle_mesh");
         }
 
-        // // boundary edges
-        // viewer_->removeShape("boundary_edges");        
-        // if (show_edge)
-        // {
-        //     pcl::PolygonMesh boundary_mesh;
-        //     pcl::toPCLPointCloud2(*point_cloud, boundary_mesh.cloud);
-        //     for (const std::shared_ptr<Edge>& edge : boundary_edges)
-        //     {
-        //         pcl::Vertices boundary_edge;
-        //         boundary_edge.vertices.push_back(vertex_to_cloud_indices_map.at(edge->get_vertex(0)));
-        //         boundary_edge.vertices.push_back(vertex_to_cloud_indices_map.at(edge->get_vertex(1)));
-        //         boundary_mesh.polygons.push_back(boundary_edge);
-        //     }
-        //     viewer_->addPolylineFromPolygonMesh(boundary_mesh, "boundary_edges");
-        //     viewer_->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, 1, 1, 1, "boundary_edges");
-        //     viewer_->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, 2, "boundary_edges");
-        // }
+        // boundary edges
+        viewer_->removeShape("boundary_edges");        
+        if (show_edge)
+        {
+            pcl::PolygonMesh boundary_mesh;
+            pcl::toPCLPointCloud2(*point_cloud, boundary_mesh.cloud);
+            for (const std::shared_ptr<Edge>& edge : boundary_edges)
+            {
+                pcl::Vertices boundary_edge;
+                boundary_edge.vertices.push_back(vertex_to_cloud_indices_map.at(edge->get_vertex(0)));
+                boundary_edge.vertices.push_back(vertex_to_cloud_indices_map.at(edge->get_vertex(1)));
+                boundary_mesh.polygons.push_back(boundary_edge);
+            }
+            viewer_->addPolylineFromPolygonMesh(boundary_mesh, "boundary_edges");
+            viewer_->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, 1, 1, 1, "boundary_edges");
+            viewer_->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, 2, "boundary_edges");
+        }
 
         // boundary points spheres
         for (const std::string& sphere_name : sphere_name_list) viewer_->removeShape(sphere_name);
