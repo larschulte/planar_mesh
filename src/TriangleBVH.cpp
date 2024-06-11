@@ -97,26 +97,22 @@ void TriangleBVH::expand_node_box(std::shared_ptr<Node> node, std::weak_ptr<Face
     }
 }
 
-std::set<std::weak_ptr<Face>> TriangleBVH::node_intersection_search(const std::shared_ptr<Node>& node, const Eigen::Vector3d& orig, const Eigen::Vector3d& dir) 
+void TriangleBVH::node_intersection_search(const std::shared_ptr<Node>& node, const Eigen::Vector3d& orig, const Eigen::Vector3d& dir, std::set<std::weak_ptr<Face>>& faces_intersected) const
 {
     bool intersected = node->box.intersect(orig, dir);
-    if (!intersected) return std::set<std::weak_ptr<Face>>();
+    if (!intersected) return;
     
     if (node->isLeaf())
     {
-        std::set<std::weak_ptr<Face>> intersected_faces;
         for (std::weak_ptr<Face> face : node->faces)
         {
-            if (face.lock()->intersects_point(orig, dir)) intersected_faces.insert(face);
+            if (face.lock()->intersects_point(orig, dir)) faces_intersected.insert(face);
         }
-        return intersected_faces;
     }
     else
     {
-        std::set<std::weak_ptr<Face>> faces_left = node_intersection_search(node->left, orig, dir);
-        std::set<std::weak_ptr<Face>> faces_right = node_intersection_search(node->right, orig, dir);
-        faces_left.insert(faces_right.begin(), faces_right.end());
-        return faces_left;
+        node_intersection_search(node->left, orig, dir, faces_intersected);
+        node_intersection_search(node->right, orig, dir, faces_intersected);
     }
 }
 
@@ -266,8 +262,12 @@ void TriangleBVH::add_face(std::weak_ptr<Face> face)
 
 std::set<std::weak_ptr<Face>> TriangleBVH::intersection_search(Eigen::Vector3d origin, Eigen::Vector3d endPoint)
 {
+    std::set<std::weak_ptr<Face>> faces_intersected;
+
     Eigen::Vector3d dir = (endPoint - origin).normalized();
-    return node_intersection_search(root, origin, dir);
+    node_intersection_search(root, origin, dir, faces_intersected);
+
+    return faces_intersected;
 }
 
 void TriangleBVH::print() const

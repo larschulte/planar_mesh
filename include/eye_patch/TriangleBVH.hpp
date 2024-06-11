@@ -50,7 +50,7 @@ private:
     std::shared_ptr<Node> build_node(std::vector<std::weak_ptr<Face>> face_list);
     void convert_leaf_to_branch(std::shared_ptr<Node> node);
 
-    std::set<std::weak_ptr<Face>> node_intersection_search(const std::shared_ptr<Node>& node, const Eigen::Vector3d& orig, const Eigen::Vector3d& dir);
+    void node_intersection_search(const std::shared_ptr<Node>& node, const Eigen::Vector3d& orig, const Eigen::Vector3d& dir, std::set<std::weak_ptr<Face>>& faces_intersected) const;
     void node_add_face(std::shared_ptr<Node> node, std::weak_ptr<Face> face);
     void node_delete_face(std::shared_ptr<Node> node, std::weak_ptr<Face> face);
     void node_print(const std::shared_ptr<Node>& node, int level) const;
