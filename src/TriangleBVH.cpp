@@ -238,12 +238,6 @@ void TriangleBVH::delete_face(std::weak_ptr<Face> face)
     // check input
     if (face.expired()) throw std::runtime_error("Attempts to delete expired face.");
 
-    // check if face exists
-    if (face_set.find(face) == face_set.end()) return;
-
-    // delete from face set
-    face_set.erase(face);
-
     // decrement face size
     face_size--;
     
@@ -277,12 +271,6 @@ void TriangleBVH::add_face(std::weak_ptr<Face> face)
 {
     // check input
     if (face.expired()) throw std::runtime_error("Attempts to add expired face.");
-
-    // check if face already exists
-    if (face_set.find(face) != face_set.end()) return;
-
-    // add to face set
-    face_set.insert(face);
 
     // increment face size
     face_size++;

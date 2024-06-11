@@ -41,6 +41,7 @@ private:
     Eigen::Vector3d center_;
 
     bool deleting_ = false;
+    bool is_searchable_ = false;
 
     int id_;
     std::weak_ptr<Storage> storage_;

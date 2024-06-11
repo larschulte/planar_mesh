@@ -66,7 +66,11 @@ void Face::initialize_(std::weak_ptr<Storage> storage, std::weak_ptr<Vertex> ver
     center_ = (pos0 + pos1 + pos2) / 3;
 
     // add to search
-    storage_.lock()->add_searchable_face(shared_from_this());
+    if (!is_searchable_)
+    {
+        storage_.lock()->add_searchable_face(shared_from_this());
+        is_searchable_ = true;
+    }
 
     // log
     std::cout << "Face " << id_ << " created between vertex " << vertex0.lock()->get_id() << ", vertex " << vertex1.lock()->get_id() << " and vertex " << vertex2.lock()->get_id() << std::endl;
@@ -99,7 +103,11 @@ void Face::delete_()
     }
 
     // remove from search tree
-    storage_.lock()->remove_searchable_face(shared_from_this());
+    if (is_searchable_)
+    {
+        storage_.lock()->remove_searchable_face(shared_from_this());
+        is_searchable_ = false;
+    }
 
     // log
     std::cout << "---------- face " << id_ << " destroyed" << std::endl;
