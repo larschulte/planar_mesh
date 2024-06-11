@@ -84,25 +84,23 @@ private:
         
         node->split_axis = axis;
         node->split_value = split_value;
-        node->left = build_node(std::vector<std::shared_ptr<Vertex>>(node->boundary_vertices.begin(), node->boundary_vertices.begin() + mid));
-        node->right = build_node(std::vector<std::shared_ptr<Vertex>>(node->boundary_vertices.begin() + mid, node->boundary_vertices.end()));
+        node->left = build_node(node->boundary_vertices, start, mid);
+        node->right = build_node(node->boundary_vertices, mid, end);
         node->boundary_vertices.clear();
     }
 
-    std::shared_ptr<Node> build_node(const std::vector<std::shared_ptr<Vertex>>& boundary_vertex_list)
+    std::shared_ptr<Node> build_node(const std::vector<std::shared_ptr<Vertex>>& boundary_vertex_list, const int& start, const int& end)
     {
         auto node = std::make_shared<Node>();
 
         // expand box
-        for (const std::shared_ptr<Vertex>& boundary_vertex : boundary_vertex_list) 
+        for (int i = start; i < end; i++)
         {
-            // check input
-            if (boundary_vertex->is_expired()) throw std::invalid_argument("Invalid vertex in boundary_vertex_list");
-            expand_node_box(node, boundary_vertex);            
+            expand_node_box(node, boundary_vertex_list[i]);
         }
 
         // store vertices
-        node->boundary_vertices = boundary_vertex_list;
+        node->boundary_vertices = std::vector<std::shared_ptr<Vertex>>(boundary_vertex_list.begin() + start, boundary_vertex_list.begin() + end);
 
         // convert to branch
         if (node->boundary_vertices.size() > 4) convert_leaf_to_branch(node);
@@ -253,12 +251,12 @@ public:
     {
         if (tree_size == 0)
         {
-            root = build_node(std::vector<std::shared_ptr<Vertex>>());
+            root = build_node(std::vector<std::shared_ptr<Vertex>>(), 0, 0);
         }
         else
         {
             std::vector<std::shared_ptr<Vertex>> boundary_vertex_list = get_vertices_list();
-            root = build_node(boundary_vertex_list);
+            root = build_node(boundary_vertex_list, 0, boundary_vertex_list.size());
         }
     }
 

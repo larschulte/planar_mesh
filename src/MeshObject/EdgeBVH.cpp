@@ -111,24 +111,24 @@ void EdgeBVH::convert_leaf_to_branch(const std::shared_ptr<Node>& node)
     
     node->split_axis = axis;
     node->split_value = split_value;
-    node->left = build_node(std::vector<std::shared_ptr<Edge>>(node->edges.begin(), node->edges.begin() + mid));
-    node->right = build_node(std::vector<std::shared_ptr<Edge>>(node->edges.begin() + mid, node->edges.end()));
+    node->left = build_node(node->edges, start, mid);
+    node->right = build_node(node->edges, mid, end);
 
     node->edges.clear();
 }
 
-std::shared_ptr<EdgeBVH::Node> EdgeBVH::build_node(const std::vector<std::shared_ptr<Edge>>& edge_list)
+std::shared_ptr<EdgeBVH::Node> EdgeBVH::build_node(const std::vector<std::shared_ptr<Edge>>& edge_list, const int& start, const int& end)
 {
     auto node = std::make_shared<Node>();
 
     // expand box
-    for (const std::shared_ptr<Edge>& edge : edge_list) 
+    for (int i = start; i < end; ++i)
     {
-        expand_node_box(node, edge);
+        expand_node_box(node, edge_list[i]);
     }
 
     // store vector
-    node->edges = edge_list;
+    node->edges = std::vector<std::shared_ptr<Edge>>(edge_list.begin() + start, edge_list.begin() + end);
 
     // convert to branch if necessary
     if (node->edges.size() > 4) convert_leaf_to_branch(node);
@@ -239,12 +239,12 @@ void EdgeBVH::rebuild()
 {
     if (edge_size == 0)
     {
-        root = build_node(std::vector<std::shared_ptr<Edge>>());
+        root = build_node(std::vector<std::shared_ptr<Edge>>(), 0, 0);
     }
     else
     {
         std::vector<std::shared_ptr<Edge>> edge_list = get_edge_list();
-        root = build_node(edge_list);
+        root = build_node(edge_list, 0, edge_list.size());
     }
 }
 

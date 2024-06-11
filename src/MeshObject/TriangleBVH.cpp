@@ -126,25 +126,23 @@ void TriangleBVH::convert_leaf_to_branch(const std::shared_ptr<Node>& node)
     
     node->split_axis = axis;
     node->split_value = split_value;
-    node->left = build_node(std::vector<std::shared_ptr<Face>>(node->faces.begin(), node->faces.begin() + mid));
-    node->right = build_node(std::vector<std::shared_ptr<Face>>(node->faces.begin() + mid, node->faces.end()));
+    node->left = build_node(node->faces, start, mid);
+    node->right = build_node(node->faces, mid, end);
     node->faces.clear();
 }
 
-std::shared_ptr<TriangleBVH::Node> TriangleBVH::build_node(const std::vector<std::shared_ptr<Face>>& face_list)
+std::shared_ptr<TriangleBVH::Node> TriangleBVH::build_node(const std::vector<std::shared_ptr<Face>>& face_list, const int& start, const int& end)
 {
     auto node = std::make_shared<Node>();
 
     // expand box
-    for (const std::shared_ptr<Face>& face : face_list) 
+    for (int i = start; i < end; i++)
     {
-        // check input
-        if (face->is_expired()) throw std::runtime_error("Attempts to add expired face.");
-        expand_node_box(node, face);
+        expand_node_box(node, face_list[i]);
     }
 
     // store faces    
-    node->faces = face_list;
+    node->faces = std::vector<std::shared_ptr<Face>>(face_list.begin() + start, face_list.begin() + end);
 
     // convert to branch
     if (node->faces.size() > 4) convert_leaf_to_branch(node);
@@ -256,12 +254,12 @@ void TriangleBVH::rebuild()
 {
     if (face_size == 0)
     {
-        root = build_node(std::vector<std::shared_ptr<Face>>());
+        root = build_node(std::vector<std::shared_ptr<Face>>(), 0, 0);
     }
     else
     {
         std::vector<std::shared_ptr<Face>> face_list = get_face_list();
-        root = build_node(face_list);
+        root = build_node(face_list, 0, face_list.size());
     }
 }
 

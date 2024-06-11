@@ -45,7 +45,7 @@ private:
     double sort_edge_list_in_axis(std::vector<std::shared_ptr<Edge>>& edge_list, int axis, int start, int mid, int end);
     void expand_node_box(const std::shared_ptr<Node>& node, const std::shared_ptr<Edge>& edge);
     
-    std::shared_ptr<EdgeBVH::Node> build_node(const std::vector<std::shared_ptr<Edge>>& edge_list);
+    std::shared_ptr<EdgeBVH::Node> build_node(const std::vector<std::shared_ptr<Edge>>& edge_list, const int& start, const int& end);
     void convert_leaf_to_branch(const std::shared_ptr<Node>& node);
 
     void node_add_edge(const std::shared_ptr<Node>& node, const std::shared_ptr<Edge>& edge);
