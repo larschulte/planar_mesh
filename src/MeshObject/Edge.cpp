@@ -28,6 +28,9 @@ void Edge::initialize_(std::weak_ptr<Storage> storage, std::weak_ptr<Vertex> ver
     connect(vertex1);
     connect(vertex2);
 
+    // update boundary state
+    update_boundary_state();
+
     // compute center
     center_ = 0.5 * (vertex1_valid->get_position() + vertex2_valid->get_position());
 

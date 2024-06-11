@@ -190,7 +190,7 @@ void Surface::connect(std::weak_ptr<Vertex> vertex)
 
 }
 
-void Surface::connect(std::weak_ptr<Vertex> vertex, std::set<std::weak_ptr<Vertex>> nearby_vertices)
+void Surface::connect(std::weak_ptr<Vertex> vertex, std::set<std::weak_ptr<Vertex>> all_nearby_vertices)
 {
     // check input
     if (vertex.expired()) throw std::runtime_error("Attempts to connect surface with invalid vertex.");
@@ -200,6 +200,23 @@ void Surface::connect(std::weak_ptr<Vertex> vertex, std::set<std::weak_ptr<Verte
     {
         vertex.lock()->connect(shared_from_this());
         add_point_to_surface_fitting(vertex.lock()->get_position(), vertex.lock()->get_origin());
+    }
+
+    // get nearby vertices in the same surface
+    std::set<std::weak_ptr<Vertex>> nearby_vertices;
+    for (auto nearby_vertex : all_nearby_vertices)
+    {
+        // check input
+        if (nearby_vertex.expired()) throw std::runtime_error("Attempts to connect surface with invalid nearby vertex.");
+
+        // skip if same vertex
+        if (nearby_vertex == vertex) continue;
+
+        // skip if not in the same surface
+        if (nearby_vertex.lock()->get_surface() != shared_from_this()) continue;
+
+        // add to nearby vertices
+        nearby_vertices.insert(nearby_vertex);
     }
 
     // create edges

@@ -466,7 +466,7 @@ public:
 
             // add the point to the closest set
             std::weak_ptr<Vertex> new_vertex = storage_->add_vertex(thisPointOriginVEC, thisPointVEC);
-            closest_surface.lock()->connect(new_vertex);
+            closest_surface.lock()->connect(new_vertex, searched_boundary_vertices_set);
             return;
         }
 
@@ -486,7 +486,7 @@ public:
         if (!nearest_surface.expired())
         {
             std::weak_ptr<Vertex> new_vertex = storage_->add_vertex(thisPointOriginVEC, thisPointVEC);
-            nearest_surface.lock()->connect(new_vertex);
+            nearest_surface.lock()->connect(new_vertex, searched_boundary_vertices_set);
             return;
         }
 
@@ -751,7 +751,7 @@ public:
 
     std::map<std::weak_ptr<Vertex>, int> get_vertex_to_cloud_indices_map()
     {
-        return storage_->get_vertex_to_cloud_indices_map();
+        return vertex_to_cloud_indices_map;
     } 
 
     std::set<std::weak_ptr<Face>> get_faces() {return storage_->get_faces();};
@@ -807,6 +807,7 @@ public:
             point.g = std::get<1>(color);
             point.b = std::get<2>(color);
             cloud->push_back(point);
+            vertex_to_cloud_indices_map[vertex] = cloud->size() - 1;
         }
         return cloud;
     }
@@ -828,6 +829,7 @@ public:
             point.g = std::get<1>(color);
             point.b = std::get<2>(color);
             cloud->push_back(point);
+            vertex_to_cloud_indices_map[vertex] = cloud->size() - 1;
         }
         return cloud;
     }
@@ -847,6 +849,7 @@ public:
             point.g = std::get<1>(color);
             point.b = std::get<2>(color);
             cloud->push_back(point);
+            vertex_to_cloud_indices_map[vertex] = cloud->size() - 1;
         }
         return cloud;
     }
@@ -869,6 +872,7 @@ public:
             point.g = std::get<1>(color);
             point.b = std::get<2>(color);
             cloud->push_back(point);
+            vertex_to_cloud_indices_map[vertex] = cloud->size() - 1;
         }
         return cloud;
     }
@@ -907,6 +911,8 @@ public:
     std::size_t ith_size = 0;
 
 private:
+    std::map<std::weak_ptr<Vertex>, int> vertex_to_cloud_indices_map;
+
     // storage
     std::shared_ptr<Storage> storage_;
 

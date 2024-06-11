@@ -286,8 +286,9 @@ std::weak_ptr<Edge> Storage::get_edge(std::weak_ptr<Vertex> vertex1, std::weak_p
         if (edge->has_vertex(vertex1) && edge->has_vertex(vertex2)) return edge;
     }
 
-    // error
-    throw std::runtime_error("Edge not found.");
+    // not found
+    // throw std::runtime_error("Edge not found.");
+    return std::weak_ptr<Edge>();
 }
 
 void Storage::print_rrs() const
