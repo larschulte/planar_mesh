@@ -68,13 +68,13 @@ private:
         return boundary_vertex_list[mid].lock()->get_position()[axis];
     }
 
-    void expand_node_box(std::shared_ptr<Node> node, std::weak_ptr<Vertex> boundary_vertex)
+    void expand_node_box(const std::shared_ptr<Node>& node, const std::shared_ptr<Vertex>& boundary_vertex)
     {
-        node->box.expand(boundary_vertex.lock()->get_min());
-        node->box.expand(boundary_vertex.lock()->get_max());
+        node->box.expand(boundary_vertex->get_min());
+        node->box.expand(boundary_vertex->get_max());
     }
 
-    void convert_leaf_to_branch(std::shared_ptr<Node> node)
+    void convert_leaf_to_branch(const std::shared_ptr<Node>& node)
     {
         std::vector<std::weak_ptr<Vertex>> boundary_vertex_list = node->boundary_vertices;
         int start = 0;
@@ -97,7 +97,9 @@ private:
         // expand box
         for (std::weak_ptr<Vertex> boundary_vertex : boundary_vertex_list) 
         {
-            expand_node_box(node, boundary_vertex);            
+            // check input
+            if (boundary_vertex.expired()) throw std::invalid_argument("Invalid vertex in boundary_vertex_list");
+            expand_node_box(node, boundary_vertex.lock());            
         }
 
         // store vertices
@@ -109,7 +111,7 @@ private:
         return node;
     }
 
-    void add_vertex_to_node(std::shared_ptr<Node> node, std::weak_ptr<Vertex> boundary_vertex)
+    void add_vertex_to_node(const std::shared_ptr<Node>& node, const std::shared_ptr<Vertex>& boundary_vertex)
     {
         if (node->isLeaf())
         {
@@ -121,7 +123,7 @@ private:
         {
             expand_node_box(node, boundary_vertex);
 
-            if (boundary_vertex.lock()->get_position()[node->split_axis] < node->split_value)
+            if (boundary_vertex->get_position()[node->split_axis] < node->split_value)
             {
                 add_vertex_to_node(node->left, boundary_vertex);
             }
@@ -132,13 +134,13 @@ private:
         }
     }
 
-    void increase_vertex_radius_to_node(std::shared_ptr<Node> node, std::weak_ptr<Vertex> boundary_vertex)
+    void increase_vertex_radius_to_node(const std::shared_ptr<Node>& node, const std::shared_ptr<Vertex>& boundary_vertex)
     {
         expand_node_box(node, boundary_vertex);
 
         if (!node->isLeaf())
         {
-            if (boundary_vertex.lock()->get_position()[node->split_axis] < node->split_value)
+            if (boundary_vertex->get_position()[node->split_axis] < node->split_value)
             {
                 increase_vertex_radius_to_node(node->left, boundary_vertex);
             }
@@ -149,7 +151,7 @@ private:
         }
     }
 
-    void delete_vertex_from_node(std::shared_ptr<Node> node, std::weak_ptr<Vertex> boundary_vertex)
+    void delete_vertex_from_node(const std::shared_ptr<Node>& node, const std::shared_ptr<Vertex>& boundary_vertex)
     {
         if (node->isLeaf())
         {
@@ -157,7 +159,7 @@ private:
         }
         else
         {
-            if (boundary_vertex.lock()->get_position()[node->split_axis] < node->split_value)
+            if (boundary_vertex->get_position()[node->split_axis] < node->split_value)
             {
                 delete_vertex_from_node(node->left, boundary_vertex);
             }
@@ -196,7 +198,7 @@ private:
         }
     }
 
-    std::vector<std::weak_ptr<Vertex>> flatten_node(std::shared_ptr<Node> node) const
+    std::vector<std::weak_ptr<Vertex>> flatten_node(const std::shared_ptr<Node>& node) const
     {
         std::vector<std::weak_ptr<Vertex>> boundary_vertex_list;
         if (node->isLeaf())
@@ -216,7 +218,7 @@ private:
         return boundary_vertex_list;
     }
 
-    void print_node(std::shared_ptr<Node> node, int level) const
+    void print_node(const std::shared_ptr<Node>& node, int level) const
     {
         if (node->isLeaf())
         {
@@ -270,6 +272,9 @@ public:
 
     void add_vertex(std::weak_ptr<Vertex> boundary_vertex)
     {   
+        // check input
+        if (boundary_vertex.expired()) throw std::invalid_argument("Invalid vertex in boundary_vertex_list");
+
         // check if vertex already exists
         if (vertex_set.find(boundary_vertex) != vertex_set.end()) return;
 
@@ -282,18 +287,21 @@ public:
         // add to tree
         if (tree_size > size_at_last_rebuild * rebuild_threshold)
         {
-            add_vertex_to_node(root, boundary_vertex);
+            add_vertex_to_node(root, boundary_vertex.lock());
             rebuild();
             size_at_last_rebuild = tree_size;
         }
         else
         {
-            add_vertex_to_node(root, boundary_vertex);
+            add_vertex_to_node(root, boundary_vertex.lock());
         }
     }
 
     void delete_vertex(std::weak_ptr<Vertex> boundary_vertex)
     {
+        // check input
+        if (boundary_vertex.expired()) throw std::invalid_argument("Invalid vertex in boundary_vertex_list");
+
         // check if vertex exists
         if (vertex_set.find(boundary_vertex) == vertex_set.end()) return;
 
@@ -304,7 +312,7 @@ public:
         tree_size--;
 
         // delete from BVH
-        delete_vertex_from_node(root, boundary_vertex);
+        delete_vertex_from_node(root, boundary_vertex.lock());
     }
 
     std::set<std::weak_ptr<Vertex>> reverse_radius_search(const Eigen::Vector3d& point)
@@ -316,7 +324,10 @@ public:
 
     void increase_vertex_radius(std::weak_ptr<Vertex> boundary_vertex)
     {   
-        increase_vertex_radius_to_node(root, boundary_vertex);
+        // check input
+        if (boundary_vertex.expired()) throw std::invalid_argument("Invalid vertex in boundary_vertex_list");
+
+        increase_vertex_radius_to_node(root, boundary_vertex.lock());
     }
 
     void print() const

@@ -89,9 +89,9 @@ double TriangleBVH::sort_face_list_in_axis(std::vector<std::weak_ptr<Face>>& fac
     return face_list[mid].lock()->get_center()[axis];
 }
 
-void TriangleBVH::expand_node_box(std::shared_ptr<Node> node, std::weak_ptr<Face> face)
+void TriangleBVH::expand_node_box(const std::shared_ptr<Node>& node, const std::shared_ptr<Face>& face)
 {
-    for (std::weak_ptr<Vertex> vertex : face.lock()->get_vertices())
+    for (std::weak_ptr<Vertex> vertex : face->get_vertices())
     {
         node->box.expand(vertex.lock()->get_position());
     }
@@ -116,7 +116,7 @@ void TriangleBVH::node_intersection_search(const std::shared_ptr<Node>& node, co
     }
 }
 
-void TriangleBVH::convert_leaf_to_branch(std::shared_ptr<Node> node)
+void TriangleBVH::convert_leaf_to_branch(const std::shared_ptr<Node>& node)
 {
     std::vector<std::weak_ptr<Face>> face_list(node->faces.begin(), node->faces.end());
     int start = 0;
@@ -139,7 +139,9 @@ std::shared_ptr<TriangleBVH::Node> TriangleBVH::build_node(std::vector<std::weak
     // expand box
     for (std::weak_ptr<Face> face : face_list) 
     {
-        expand_node_box(node, face);
+        // check input
+        if (face.expired()) throw std::runtime_error("Attempts to add expired face.");
+        expand_node_box(node, face.lock());
     }
 
     // store faces    
@@ -151,7 +153,7 @@ std::shared_ptr<TriangleBVH::Node> TriangleBVH::build_node(std::vector<std::weak
     return node;
 }
 
-void TriangleBVH::node_add_face(std::shared_ptr<Node> node, std::weak_ptr<Face> face)
+void TriangleBVH::node_add_face(const std::shared_ptr<Node>& node, const std::shared_ptr<Face>& face)
 {
     if (node->isLeaf())
     {
@@ -163,7 +165,7 @@ void TriangleBVH::node_add_face(std::shared_ptr<Node> node, std::weak_ptr<Face> 
     {
         expand_node_box(node, face);
 
-        if (face.lock()->get_center()[node->split_axis] < node->split_value)
+        if (face->get_center()[node->split_axis] < node->split_value)
         {
             node_add_face(node->left, face);
         }
@@ -174,7 +176,7 @@ void TriangleBVH::node_add_face(std::shared_ptr<Node> node, std::weak_ptr<Face> 
     }
 }
 
-void TriangleBVH::node_delete_face(std::shared_ptr<Node> node, std::weak_ptr<Face> face)
+void TriangleBVH::node_delete_face(const std::shared_ptr<Node>& node, const std::shared_ptr<Face>& face)
 {
     if (node->isLeaf())
     {
@@ -183,7 +185,7 @@ void TriangleBVH::node_delete_face(std::shared_ptr<Node> node, std::weak_ptr<Fac
     }
     else
     {
-        if (face.lock()->get_center()[node->split_axis] < node->split_value)
+        if (face->get_center()[node->split_axis] < node->split_value)
         {
             node_delete_face(node->left, face);
         }
@@ -211,7 +213,7 @@ void TriangleBVH::node_print(const std::shared_ptr<Node> &node, int level) const
     }
 }
 
-void TriangleBVH::node_flatten(std::shared_ptr<TriangleBVH::Node> node, std::vector<std::weak_ptr<Face>>& face_list) const
+void TriangleBVH::node_flatten(const std::shared_ptr<TriangleBVH::Node>& node, std::vector<std::weak_ptr<Face>>& face_list) const
 {
     if (node->isLeaf())
     {
@@ -246,7 +248,7 @@ void TriangleBVH::delete_face(std::weak_ptr<Face> face)
     face_size--;
     
     // delete from BVH
-    node_delete_face(root, face);
+    node_delete_face(root, face.lock());
 }
 
 TriangleBVH::TriangleBVH()
@@ -292,7 +294,7 @@ void TriangleBVH::add_face(std::weak_ptr<Face> face)
     }
     else
     {
-        node_add_face(root, face);
+        node_add_face(root, face.lock());
     }
 }
 

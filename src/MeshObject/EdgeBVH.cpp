@@ -80,9 +80,9 @@ void EdgeBVH::expand_node_box(std::shared_ptr<Node> node, std::weak_ptr<Edge> ed
     node->box.expand(edge.lock()->get_min());
 }
 
-bool EdgeBVH::node_intersect_edge(const std::shared_ptr<Node>& node, std::weak_ptr<Vertex> vertex0, std::weak_ptr<Vertex> vertex1)
+bool EdgeBVH::node_intersect_edge(const std::shared_ptr<Node>& node, const std::shared_ptr<Vertex>& vertex0, const std::shared_ptr<Vertex>& vertex1)
 {
-    bool intersected = node->box.intersect(vertex0.lock()->get_position(), vertex1.lock()->get_position());
+    bool intersected = node->box.intersect(vertex0->get_position(), vertex1->get_position());
     if (!intersected) return false;
     
     if (node->isLeaf())
@@ -101,7 +101,7 @@ bool EdgeBVH::node_intersect_edge(const std::shared_ptr<Node>& node, std::weak_p
     return false;
 }
 
-void EdgeBVH::convert_leaf_to_branch(std::shared_ptr<Node> node)
+void EdgeBVH::convert_leaf_to_branch(const std::shared_ptr<Node>& node)
 {
     std::vector<std::weak_ptr<Edge>> edge_list(node->edges.begin(), node->edges.end());
     int start = 0;
@@ -136,7 +136,7 @@ std::shared_ptr<EdgeBVH::Node> EdgeBVH::build_node(std::vector<std::weak_ptr<Edg
     return node;
 }
 
-void EdgeBVH::node_add_edge(std::shared_ptr<Node> node, std::weak_ptr<Edge> edge)
+void EdgeBVH::node_add_edge(const std::shared_ptr<Node>& node, const std::shared_ptr<Edge>& edge)
 {
     if (node->isLeaf())
     {
@@ -148,7 +148,7 @@ void EdgeBVH::node_add_edge(std::shared_ptr<Node> node, std::weak_ptr<Edge> edge
     {
         expand_node_box(node, edge);
 
-        if (edge.lock()->get_center()[node->split_axis] < node->split_value)
+        if (edge->get_center()[node->split_axis] < node->split_value)
         {
             node_add_edge(node->left, edge);
         }
@@ -159,7 +159,7 @@ void EdgeBVH::node_add_edge(std::shared_ptr<Node> node, std::weak_ptr<Edge> edge
     }
 }
 
-void EdgeBVH::node_delete_edge(std::shared_ptr<Node> node, std::weak_ptr<Edge> edge)
+void EdgeBVH::node_delete_edge(const std::shared_ptr<Node>& node, const std::shared_ptr<Edge>& edge)
 {
     if (node->isLeaf())
     {
@@ -167,7 +167,7 @@ void EdgeBVH::node_delete_edge(std::shared_ptr<Node> node, std::weak_ptr<Edge> e
     }
     else
     {
-        if (edge.lock()->get_center()[node->split_axis] < node->split_value)
+        if (edge->get_center()[node->split_axis] < node->split_value)
         {
             node_delete_edge(node->left, edge);
         }
@@ -230,7 +230,7 @@ void EdgeBVH::delete_edge(std::weak_ptr<Edge> edge)
     edge_size--;
     
     // delete from BVH
-    node_delete_edge(root, edge);
+    node_delete_edge(root, edge.lock());
 }
 
 EdgeBVH::EdgeBVH()
@@ -276,13 +276,16 @@ void EdgeBVH::add_edge(std::weak_ptr<Edge> edge)
     }
     else
     {
-        node_add_edge(root, edge);
+        node_add_edge(root, edge.lock());
     }
 }
 
 bool EdgeBVH::intersect_edges(std::weak_ptr<Vertex> vertex0, std::weak_ptr<Vertex> vertex1)
 {
-    return node_intersect_edge(root, vertex0, vertex1);
+    // check input
+    if (vertex0.expired() || vertex1.expired()) throw std::runtime_error("Attempts to intersect with expired vertex.");
+
+    return node_intersect_edge(root, vertex0.lock(), vertex1.lock());
 }
 
 void EdgeBVH::print() const

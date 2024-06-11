@@ -248,14 +248,14 @@ Eigen::Vector3d Edge::get_min() const
     return min_;
 }
 
-bool Edge::intersects_edge(std::weak_ptr<Vertex> vertex0, std::weak_ptr<Vertex> vertex1)
+bool Edge::intersects_edge(const std::shared_ptr<Vertex>& vertex0, const std::shared_ptr<Vertex>& vertex1)
 {
     // skip if vertices are connected
     if (has_vertex(vertex0) || has_vertex(vertex1)) return false;
 
     // get surface coordinates
-    Eigen::Vector2d p1 = vertex0.lock()->get_surface_coordinate();
-    Eigen::Vector2d p2 = vertex1.lock()->get_surface_coordinate();
+    Eigen::Vector2d p1 = vertex0->get_surface_coordinate();
+    Eigen::Vector2d p2 = vertex1->get_surface_coordinate();
     Eigen::Vector2d q1 = get_vertex(0).lock()->get_surface_coordinate();
     Eigen::Vector2d q2 = get_vertex(1).lock()->get_surface_coordinate();
     

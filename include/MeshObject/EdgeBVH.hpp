@@ -46,11 +46,11 @@ private:
     void expand_node_box(std::shared_ptr<Node> node, std::weak_ptr<Edge> edge);
     
     std::shared_ptr<EdgeBVH::Node> build_node(std::vector<std::weak_ptr<Edge>> edge_list);
-    void convert_leaf_to_branch(std::shared_ptr<Node> node);
+    void convert_leaf_to_branch(const std::shared_ptr<Node>& node);
 
-    void node_add_edge(std::shared_ptr<Node> node, std::weak_ptr<Edge> edge);
-    void node_delete_edge(std::shared_ptr<Node> node, std::weak_ptr<Edge> edge);
-    bool node_intersect_edge(const std::shared_ptr<Node>& node, std::weak_ptr<Vertex> vertex1, std::weak_ptr<Vertex> vertex2);
+    void node_add_edge(const std::shared_ptr<Node>& node, const std::shared_ptr<Edge>& edge);
+    void node_delete_edge(const std::shared_ptr<Node>& node, const std::shared_ptr<Edge>& edge);
+    bool node_intersect_edge(const std::shared_ptr<Node>& node, const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2);
     void node_print(const std::shared_ptr<Node>& node, int level) const;    
     void node_flatten(std::shared_ptr<Node> node, std::vector<std::weak_ptr<Edge>>& flat_vector) const;
 

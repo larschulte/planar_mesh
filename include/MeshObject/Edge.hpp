@@ -37,7 +37,7 @@ public:
     Eigen::Vector3d get_max() const;
     Eigen::Vector3d get_min() const;
 
-    bool intersects_edge(std::weak_ptr<Vertex> vertex0, std::weak_ptr<Vertex> vertex1);
+    bool intersects_edge(const std::shared_ptr<Vertex>& vertex0, const std::shared_ptr<Vertex>& vertex1);
 
 private:
     bool deleting_ = false;
