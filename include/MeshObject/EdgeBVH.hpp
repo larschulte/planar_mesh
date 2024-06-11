@@ -52,7 +52,7 @@ private:
     void node_delete_edge(const std::shared_ptr<Node>& node, const std::shared_ptr<Edge>& edge);
     bool node_intersect_edge(const std::shared_ptr<Node>& node, const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2);
     void node_print(const std::shared_ptr<Node>& node, int level) const;    
-    void node_flatten(std::shared_ptr<Node> node, std::vector<std::shared_ptr<Edge>>& flat_vector) const;
+    void node_flatten(const std::shared_ptr<Node>& node, std::vector<std::shared_ptr<Edge>>& flat_vector) const;
 
     std::vector<std::shared_ptr<Edge>> get_edge_list() const;
     
@@ -69,8 +69,8 @@ public:
     EdgeBVH();
     void rebuild();
 
-    void add_edge(std::shared_ptr<Edge> edge);
-    void delete_edge(std::shared_ptr<Edge> edge);
-    bool intersect_edges(std::shared_ptr<Vertex> vertex0, std::shared_ptr<Vertex> vertex1);
+    void add_edge(const std::shared_ptr<Edge>& edge);
+    void delete_edge(const std::shared_ptr<Edge>& edge);
+    bool intersect_edges(const std::shared_ptr<Vertex>& vertex0, const std::shared_ptr<Vertex>& vertex1);
     void print() const;
 };
