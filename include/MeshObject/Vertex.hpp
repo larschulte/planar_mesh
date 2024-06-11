@@ -29,12 +29,12 @@ public:
     Eigen::Vector2d get_surface_coordinate();
     bool is_expired() const;
 
-    void connect(std::shared_ptr<Edge> edge);
-    void connect(std::shared_ptr<Face> face);
-    void connect(std::shared_ptr<Surface> surface);
-    void disconnect(std::shared_ptr<Edge> edge);
-    void disconnect(std::shared_ptr<Face> face);
-    void disconnect(std::shared_ptr<Surface> surface);
+    void connect(const std::shared_ptr<Edge>& edge);
+    void connect(const std::shared_ptr<Face>& face);
+    void connect(const std::shared_ptr<Surface>& surface);
+    void disconnect(const std::shared_ptr<Edge>& edge);
+    void disconnect(const std::shared_ptr<Face>& face);
+    void disconnect(const std::shared_ptr<Surface>& surface);
 
     void update_boundary_state();
 

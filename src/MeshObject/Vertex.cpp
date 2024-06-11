@@ -133,7 +133,7 @@ const std::set<std::shared_ptr<Edge>>& Vertex::get_edges() const
 
 Eigen::Vector2d Vertex::get_surface_coordinate()
 {
-    Eigen::Matrix3d eigenvectors = get_surface()->get_eigenvectors();
+    const Eigen::Matrix3d& eigenvectors = get_surface()->get_eigenvectors();
     if (eigenvectors_used_ == eigenvectors)
     {
         // use stored coordinate if eigenvectors are the same
@@ -155,7 +155,7 @@ bool Vertex::is_expired() const
     return is_expired_;
 }
 
-void Vertex::connect(std::shared_ptr<Edge> edge)
+void Vertex::connect(const std::shared_ptr<Edge>& edge)
 {
     // check input
     if (edge->is_expired()) throw std::runtime_error("Attempts to connect vertex with invalid edge.");
@@ -168,7 +168,7 @@ void Vertex::connect(std::shared_ptr<Edge> edge)
     update_boundary_state();
 }
 
-void Vertex::connect(std::shared_ptr<Face> face) 
+void Vertex::connect(const std::shared_ptr<Face>& face) 
 {
     // check input
     if (face->is_expired()) throw std::runtime_error("Attempts to connect vertex with invalid face.");
@@ -178,7 +178,7 @@ void Vertex::connect(std::shared_ptr<Face> face)
     if (inserted) face->connect(shared_from_this());
 }
 
-void Vertex::connect(std::shared_ptr<Surface> surface)
+void Vertex::connect(const std::shared_ptr<Surface>& surface)
 {
     // check input
     if (surface->is_expired()) throw std::runtime_error("Attempts to connect vertex with invalid surface.");
@@ -188,7 +188,7 @@ void Vertex::connect(std::shared_ptr<Surface> surface)
     if (inserted) surface->connect(shared_from_this());
 }
 
-void Vertex::disconnect(std::shared_ptr<Edge> edge) 
+void Vertex::disconnect(const std::shared_ptr<Edge>& edge) 
 {
     // check input
     if (edge->is_expired()) return;
@@ -204,7 +204,7 @@ void Vertex::disconnect(std::shared_ptr<Edge> edge)
     if (!deleting_ && edges_.empty()) storage_->delete_vertex(shared_from_this());
 }
 
-void Vertex::disconnect(std::shared_ptr<Face> face)
+void Vertex::disconnect(const std::shared_ptr<Face>& face)
 {
     // check pointer validity
     if (face->is_expired()) return;
@@ -214,7 +214,7 @@ void Vertex::disconnect(std::shared_ptr<Face> face)
     if (erased) face->disconnect(shared_from_this());
 }
 
-void Vertex::disconnect(std::shared_ptr<Surface> surface)
+void Vertex::disconnect(const std::shared_ptr<Surface>& surface)
 {
     // check input
     if (surface->is_expired()) return;

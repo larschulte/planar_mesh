@@ -67,7 +67,7 @@ bool InteriorPoint::is_expired() const
     return is_expired_;
 }
 
-void InteriorPoint::connect(std::shared_ptr<Face> face)
+void InteriorPoint::connect(const std::shared_ptr<Face>& face)
 {
     // check input
     if (face->is_expired()) throw std::runtime_error("Attempts to connect interior point with invalid face.");
@@ -77,7 +77,7 @@ void InteriorPoint::connect(std::shared_ptr<Face> face)
     if (inserted) face->connect(shared_from_this());
 }
 
-void InteriorPoint::connect(std::shared_ptr<Surface> surface)
+void InteriorPoint::connect(const std::shared_ptr<Surface>& surface)
 {
     // check input
     if (surface->is_expired()) throw std::runtime_error("Attempts to connect interior point with invalid surface.");
@@ -87,7 +87,7 @@ void InteriorPoint::connect(std::shared_ptr<Surface> surface)
     if (inserted) surface->connect(shared_from_this());
 }
 
-void InteriorPoint::disconnect(std::shared_ptr<Face> face)
+void InteriorPoint::disconnect(const std::shared_ptr<Face>& face)
 {
     // check input
     if (face->is_expired()) return;
@@ -100,7 +100,7 @@ void InteriorPoint::disconnect(std::shared_ptr<Face> face)
     if (!deleting_ && faces_.empty()) storage_->delete_interior_point(shared_from_this());
 }
 
-void InteriorPoint::disconnect(std::shared_ptr<Surface> surface)
+void InteriorPoint::disconnect(const std::shared_ptr<Surface>& surface)
 {
     // check input
     if (surface->is_expired()) return;

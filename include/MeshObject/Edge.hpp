@@ -25,14 +25,14 @@ public:
     const Eigen::Vector3d& get_min() const;
     bool is_expired() const;
 
-    void connect(std::shared_ptr<Vertex> vertex);
-    void connect(std::shared_ptr<Face> face);
-    void connect(std::shared_ptr<Surface> surface);
-    void disconnect(std::shared_ptr<Vertex> vertex);
-    void disconnect(std::shared_ptr<Face> face);
-    void disconnect(std::shared_ptr<Surface> surface);
+    void connect(const std::shared_ptr<Vertex>& vertex);
+    void connect(const std::shared_ptr<Face>& face);
+    void connect(const std::shared_ptr<Surface>& surface);
+    void disconnect(const std::shared_ptr<Vertex>& vertex);
+    void disconnect(const std::shared_ptr<Face>& face);
+    void disconnect(const std::shared_ptr<Surface>& surface);
 
-    bool has_vertex(std::shared_ptr<Vertex> vertex) const;
+    bool has_vertex(const std::shared_ptr<Vertex>& vertex) const;
     bool is_boundary() const;
     void update_boundary_state();
 

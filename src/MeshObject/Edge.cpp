@@ -81,7 +81,7 @@ void Edge::delete_()
     is_expired_ = true;
 }
 
-void Edge::connect(std::shared_ptr<Vertex> vertex)
+void Edge::connect(const std::shared_ptr<Vertex>& vertex)
 {
     // check input
     if (vertex->is_expired()) throw std::runtime_error("Attempts to connect edge with invalid vertex.");
@@ -94,7 +94,7 @@ void Edge::connect(std::shared_ptr<Vertex> vertex)
     if (vertices_.size() > 2) throw std::runtime_error("Edge connected to more than 2 vertices.");
 }
 
-void Edge::connect(std::shared_ptr<Face> face) 
+void Edge::connect(const std::shared_ptr<Face>& face) 
 {
     // check input
     if (face->is_expired()) throw std::runtime_error("Attempts to connect edge with invalid face.");
@@ -107,7 +107,7 @@ void Edge::connect(std::shared_ptr<Face> face)
     update_boundary_state();
 }
 
-void Edge::connect(std::shared_ptr<Surface> surface)
+void Edge::connect(const std::shared_ptr<Surface>& surface)
 {
     // check input
     if (surface->is_expired()) throw std::runtime_error("Attempts to connect edge with invalid surface.");
@@ -117,7 +117,7 @@ void Edge::connect(std::shared_ptr<Surface> surface)
     if (inserted) surface->connect(shared_from_this());
 }
 
-void Edge::disconnect(std::shared_ptr<Vertex> vertex)
+void Edge::disconnect(const std::shared_ptr<Vertex>& vertex)
 {
     // check input
     if (vertex->is_expired()) return;
@@ -130,7 +130,7 @@ void Edge::disconnect(std::shared_ptr<Vertex> vertex)
     if (!deleting_) storage_->delete_edge(shared_from_this());
 }
 
-void Edge::disconnect(std::shared_ptr<Face> face)
+void Edge::disconnect(const std::shared_ptr<Face>& face)
 {
     // check input
     if (face->is_expired()) return;
@@ -149,7 +149,7 @@ void Edge::disconnect(std::shared_ptr<Face> face)
     }
 }
 
-void Edge::disconnect(std::shared_ptr<Surface> surface)
+void Edge::disconnect(const std::shared_ptr<Surface>& surface)
 {
     // check input
     if (surface->is_expired()) return;
@@ -190,7 +190,7 @@ bool Edge::is_expired() const
 }
 
 // has vertex
-bool Edge::has_vertex(std::shared_ptr<Vertex> vertex) const
+bool Edge::has_vertex(const std::shared_ptr<Vertex>& vertex) const
 {
     return vertices_.find(vertex) != vertices_.end();
 }

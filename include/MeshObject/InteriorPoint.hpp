@@ -22,10 +22,10 @@ public:
     const Eigen::Vector3d& get_origin() const;
     bool is_expired() const;
 
-    void connect(std::shared_ptr<Face> face);
-    void connect(std::shared_ptr<Surface> surface);
-    void disconnect(std::shared_ptr<Face> face);
-    void disconnect(std::shared_ptr<Surface> surface);
+    void connect(const std::shared_ptr<Face>& face);
+    void connect(const std::shared_ptr<Surface>& surface);
+    void disconnect(const std::shared_ptr<Face>& face);
+    void disconnect(const std::shared_ptr<Surface>& surface);
 
 private:
     bool deleting_ = false;

@@ -37,19 +37,19 @@ public:
     const std::tuple<int, int, int>& get_color() const;
     bool is_expired() const;
 
-    void connect(std::shared_ptr<Vertex> vertex);
-    void connect(std::shared_ptr<Vertex> vertex, std::set<std::shared_ptr<Vertex>> nearby_vertices);
-    void connect(std::shared_ptr<Edge> edge);
-    void connect(std::shared_ptr<Face> face);
-    void connect(std::shared_ptr<InteriorPoint> interior_point);
-    void disconnect(std::shared_ptr<Vertex> vertex);
-    void disconnect(std::shared_ptr<Edge> edge);
-    void disconnect(std::shared_ptr<Face> face);
-    void disconnect(std::shared_ptr<InteriorPoint> interior_point);
+    void connect(const std::shared_ptr<Vertex>& vertex);
+    void connect(const std::shared_ptr<Vertex>& vertex, const std::set<std::shared_ptr<Vertex>>& nearby_vertices);
+    void connect(const std::shared_ptr<Edge>& edge);
+    void connect(const std::shared_ptr<Face>& face);
+    void connect(const std::shared_ptr<InteriorPoint>& interior_point);
+    void disconnect(const std::shared_ptr<Vertex>& vertex);
+    void disconnect(const std::shared_ptr<Edge>& edge);
+    void disconnect(const std::shared_ptr<Face>& face);
+    void disconnect(const std::shared_ptr<InteriorPoint>& interior_point);
     void set_random_color();
 
-    void add_searchable_edge(std::shared_ptr<Edge> edge);
-    void remove_searchable_edge(std::shared_ptr<Edge> edge);
+    void add_searchable_edge(const std::shared_ptr<Edge>& edge);
+    void remove_searchable_edge(const std::shared_ptr<Edge>& edge);
     
 private:
     bool deleting_ = false;
@@ -65,7 +65,7 @@ private:
     std::set<std::shared_ptr<Face>> faces_;
     std::set<std::shared_ptr<InteriorPoint>> interior_points_;
 
-    void add_point_to_surface_fitting(Eigen::Vector3d point, Eigen::Vector3d origin);
+    void add_point_to_surface_fitting(const Eigen::Vector3d& point, const Eigen::Vector3d& origin);
     Eigen::Vector3d mean_;
     Eigen::Matrix3d covariance_;
     Eigen::Matrix3d eigenvectors_;

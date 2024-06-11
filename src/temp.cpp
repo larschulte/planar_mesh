@@ -269,10 +269,10 @@ public:
 
     Eigen::Matrix3d merge_covariances_of_surfaces(std::shared_ptr<Surface> surface1, std::shared_ptr<Surface> surface2) 
     {
-        Eigen::Matrix3d cov1 = surface1->get_covariance();
-        Eigen::Matrix3d cov2 = surface2->get_covariance();
-        Eigen::Vector3d mean1 = surface1->get_mean();
-        Eigen::Vector3d mean2 = surface2->get_mean();
+        const Eigen::Matrix3d& cov1 = surface1->get_covariance();
+        const Eigen::Matrix3d& cov2 = surface2->get_covariance();
+        const Eigen::Vector3d& mean1 = surface1->get_mean();
+        const Eigen::Vector3d& mean2 = surface2->get_mean();
         int size1 = surface1->get_total_point_size();
         int size2 = surface2->get_total_point_size();
         return merge_covariances(cov1, cov2, mean1, mean2, size1, size2);
@@ -475,7 +475,7 @@ public:
         double nearest_distance = std::numeric_limits<double>::max();
         for (std::shared_ptr<Surface> surface : surfaces_without_plane)
         {
-            Eigen::Vector3d mean = surface->get_mean();
+            const Eigen::Vector3d& mean = surface->get_mean();
             double distance = (thisPointVEC - mean).norm();
             if (distance < nearest_distance)
             {
@@ -541,8 +541,7 @@ public:
         std::map<std::shared_ptr<Surface>, std::set<std::shared_ptr<Face>>> surface_to_searched_faces_map;
         for (std::shared_ptr<Face> face : searched_faces)
         {
-            std::shared_ptr<Surface> surface = face->get_surface();
-            surface_to_searched_faces_map[surface].insert(face);
+            surface_to_searched_faces_map[face->get_surface()].insert(face);
         }
 
         // compute the intersection distance to the sets (distance measured in plane normal direction)
@@ -754,8 +753,8 @@ public:
         return vertex_to_cloud_indices_map;
     } 
 
-    std::set<std::shared_ptr<Face>> get_faces() {return storage_->get_faces();};
-    std::set<std::shared_ptr<Edge>> get_edges() {return storage_->get_edges();};
+    const std::set<std::shared_ptr<Face>>& get_faces() {return storage_->get_faces();};
+    const std::set<std::shared_ptr<Edge>>& get_edges() {return storage_->get_edges();};
     std::vector<std::shared_ptr<Vertex>> get_rrs_vertices() {return storage_->get_rrs_vertices();};
     // std::set<std::shared_ptr<Vertex>> get_boundary_edges() 
     // {
@@ -795,11 +794,11 @@ public:
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr point_to_vector3d_set_colored_cloud()
     {
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
-        for (std::shared_ptr<Vertex> vertex : storage_->get_vertices())
+        for (const std::shared_ptr<Vertex>& vertex : storage_->get_vertices())
         {
             pcl::PointXYZRGB point;
-            Eigen::Vector3d position = vertex->get_position();
-            std::tuple<int, int, int> color = vertex->get_surface()->get_color();
+            const Eigen::Vector3d& position = vertex->get_position();
+            const std::tuple<int, int, int>& color = vertex->get_surface()->get_color();
             point.x = position[0];
             point.y = position[1];
             point.z = position[2];
@@ -815,11 +814,11 @@ public:
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr point_to_vector3d_set_distance_cloud()
     {
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
-        for (std::shared_ptr<Vertex> vertex : storage_->get_vertices())
+        for (const std::shared_ptr<Vertex>& vertex : storage_->get_vertices())
         {
             pcl::PointXYZRGB point;
-            Eigen::Vector3d origin = vertex->get_origin();
-            Eigen::Vector3d position = vertex->get_position();
+            const Eigen::Vector3d& origin = vertex->get_origin();
+            const Eigen::Vector3d& position = vertex->get_position();
             point.x = position[0];
             point.y = position[1];
             point.z = position[2];
@@ -841,7 +840,7 @@ public:
         {
             pcl::PointXYZRGB point;
             Eigen::Vector3d projected_position = vertex->get_projected_position();
-            std::tuple<int, int, int> color = vertex->get_surface()->get_color();
+            const std::tuple<int, int, int>& color = vertex->get_surface()->get_color();
             point.x = projected_position[0];
             point.y = projected_position[1];
             point.z = projected_position[2];
@@ -857,11 +856,11 @@ public:
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr projected_point_to_vector3d_set_distance_cloud()
     {
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
-        for (std::shared_ptr<Vertex> vertex : storage_->get_vertices())
+        for (const std::shared_ptr<Vertex>& vertex : storage_->get_vertices())
         {
             pcl::PointXYZRGB point;
-            Eigen::Vector3d origin = vertex->get_origin();
-            Eigen::Vector3d position = vertex->get_position();
+            const Eigen::Vector3d& origin = vertex->get_origin();
+            const Eigen::Vector3d& position = vertex->get_position();
             Eigen::Vector3d projected_position = vertex->get_projected_position();
             point.x = projected_position[0];
             point.y = projected_position[1];
@@ -884,8 +883,7 @@ public:
 
     void change_color()
     {
-        std::set<std::shared_ptr<Surface>> surfaces = storage_->get_surfaces();
-        for (std::shared_ptr<Surface> surface : surfaces)
+        for (const std::shared_ptr<Surface>& surface : storage_->get_surfaces())
         {
             surface->set_random_color();
         }
@@ -1136,7 +1134,7 @@ private:
                 std::shared_ptr<Vertex> boundary_vertex = boundary_vertices[boundary_vertices.size() - 1 - i];
                 std::string sphere_name = "boundary_point_" + std::to_string(boundary_vertex->get_id());
                 sphere_name_list.push_back(sphere_name);
-                Eigen::Vector3d position = boundary_vertex->get_position();
+                const Eigen::Vector3d& position = boundary_vertex->get_position();
                 viewer_->addSphere(pcl::PointXYZ(position[0], position[1], position[2]), boundary_vertex->get_radius(), 1, 1, 1, sphere_name);
             }
         }

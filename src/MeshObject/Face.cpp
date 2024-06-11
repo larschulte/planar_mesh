@@ -34,7 +34,7 @@ void Face::initialize_(std::shared_ptr<Storage> storage, std::shared_ptr<Vertex>
     std::shared_ptr<Edge> edge0;
     std::shared_ptr<Edge> edge1;
     std::shared_ptr<Edge> edge2;
-    for (auto edge : vertex0->get_edges())
+    for (const std::shared_ptr<Edge>& edge : vertex0->get_edges())
     {
         if (edge->has_vertex(vertex1))
         {
@@ -42,7 +42,7 @@ void Face::initialize_(std::shared_ptr<Storage> storage, std::shared_ptr<Vertex>
             break;
         }
     }
-    for (auto edge : vertex1->get_edges())
+    for (const std::shared_ptr<Edge>& edge : vertex1->get_edges())
     {
         if (edge->has_vertex(vertex2))
         {
@@ -50,7 +50,7 @@ void Face::initialize_(std::shared_ptr<Storage> storage, std::shared_ptr<Vertex>
             break;
         }
     }
-    for (auto edge : vertex2->get_edges())
+    for (const std::shared_ptr<Edge>& edge : vertex2->get_edges())
     {
         if (edge->has_vertex(vertex0))
         {
@@ -63,9 +63,9 @@ void Face::initialize_(std::shared_ptr<Storage> storage, std::shared_ptr<Vertex>
     connect(edge2);
 
     // compute center
-    Eigen::Vector3d pos0 = vertex0->get_position();
-    Eigen::Vector3d pos1 = vertex1->get_position();
-    Eigen::Vector3d pos2 = vertex2->get_position();
+    const Eigen::Vector3d& pos0 = vertex0->get_position();
+    const Eigen::Vector3d& pos1 = vertex1->get_position();
+    const Eigen::Vector3d& pos2 = vertex2->get_position();
     center_ = (pos0 + pos1 + pos2) / 3;
 
     // add to search
@@ -160,9 +160,9 @@ bool Face::intersects_point(const Eigen::Vector3d& origin, const Eigen::Vector3d
     std::shared_ptr vertex0 = *(it++);
     std::shared_ptr vertex1 = *(it++);
     std::shared_ptr vertex2 = *(it++);
-    Eigen::Vector3d v0 = vertex0->get_position();
-    Eigen::Vector3d v1 = vertex1->get_position();
-    Eigen::Vector3d v2 = vertex2->get_position();
+    const Eigen::Vector3d& v0 = vertex0->get_position();
+    const Eigen::Vector3d& v1 = vertex1->get_position();
+    const Eigen::Vector3d& v2 = vertex2->get_position();
 
 
     const double EPSILON = 1e-8;
@@ -196,9 +196,9 @@ Eigen::Vector3d Face::compute_intersection_point(const Eigen::Vector3d& origin, 
     std::shared_ptr vertex0 = *(it++);
     std::shared_ptr vertex1 = *(it++);
     std::shared_ptr vertex2 = *(it++);
-    Eigen::Vector3d v0 = vertex0->get_position();
-    Eigen::Vector3d v1 = vertex1->get_position();
-    Eigen::Vector3d v2 = vertex2->get_position();
+    const Eigen::Vector3d& v0 = vertex0->get_position();
+    const Eigen::Vector3d& v1 = vertex1->get_position();
+    const Eigen::Vector3d& v2 = vertex2->get_position();
 
     const double EPSILON = 1e-8;
     Eigen::Vector3d edge1 = v1 - v0;
@@ -225,7 +225,7 @@ Eigen::Vector3d Face::compute_intersection_point(const Eigen::Vector3d& origin, 
 }
 
 
-void Face::connect(std::shared_ptr<Vertex> vertex)
+void Face::connect(const std::shared_ptr<Vertex>& vertex)
 {
     // check input
     if (vertex->is_expired()) throw std::runtime_error("Attempts to connect face with invalid vertex.");
@@ -238,7 +238,7 @@ void Face::connect(std::shared_ptr<Vertex> vertex)
     if (vertices_.size() > 3) throw std::runtime_error("Face connected to more than 3 vertices.");
 }
 
-void Face::connect(std::shared_ptr<Edge> edge)
+void Face::connect(const std::shared_ptr<Edge>& edge)
 {
     // check input
     if (edge->is_expired()) throw std::runtime_error("Attempts to connect face with invalid edge.");
@@ -251,7 +251,7 @@ void Face::connect(std::shared_ptr<Edge> edge)
     if (edges_.size() > 3) throw std::runtime_error("Face connected to more than 3 edges.");
 }
 
-void Face::connect(std::shared_ptr<Surface> surface)
+void Face::connect(const std::shared_ptr<Surface>& surface)
 {
     // check input
     if (surface->is_expired()) throw std::runtime_error("Attempts to connect face with invalid surface.");
@@ -261,7 +261,7 @@ void Face::connect(std::shared_ptr<Surface> surface)
     if (inserted) surface->connect(shared_from_this());
 }
 
-void Face::connect(std::shared_ptr<InteriorPoint> interior_point)
+void Face::connect(const std::shared_ptr<InteriorPoint>& interior_point)
 {
     // check input
     if (interior_point->is_expired()) throw std::runtime_error("Attempts to connect face with invalid interior point.");
@@ -271,7 +271,7 @@ void Face::connect(std::shared_ptr<InteriorPoint> interior_point)
     if (inserted) interior_point->connect(shared_from_this());
 }
 
-void Face::disconnect(std::shared_ptr<Vertex> vertex)
+void Face::disconnect(const std::shared_ptr<Vertex>& vertex)
 {
     // check input
     if (vertex->is_expired()) return;
@@ -284,7 +284,7 @@ void Face::disconnect(std::shared_ptr<Vertex> vertex)
     if (!deleting_) storage_->delete_face(shared_from_this());
 }
 
-void Face::disconnect(std::shared_ptr<Edge> edge)
+void Face::disconnect(const std::shared_ptr<Edge>& edge)
 {
     // check input
     if (edge->is_expired()) return;
@@ -297,7 +297,7 @@ void Face::disconnect(std::shared_ptr<Edge> edge)
     if (!deleting_) storage_->delete_face(shared_from_this());
 }
 
-void Face::disconnect(std::shared_ptr<Surface> surface)
+void Face::disconnect(const std::shared_ptr<Surface>& surface)
 {
     // check input
     if (surface->is_expired()) return;
@@ -307,7 +307,7 @@ void Face::disconnect(std::shared_ptr<Surface> surface)
     if (erased) surface->disconnect(shared_from_this());
 }
 
-void Face::disconnect(std::shared_ptr<InteriorPoint> interior_point)
+void Face::disconnect(const std::shared_ptr<InteriorPoint>& interior_point)
 {
     // check input
     if (interior_point->is_expired()) return;

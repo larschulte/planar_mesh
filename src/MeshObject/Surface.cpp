@@ -191,7 +191,7 @@ bool Surface::is_expired() const
     return is_expired_;
 }
 
-void Surface::connect(std::shared_ptr<Vertex> vertex)
+void Surface::connect(const std::shared_ptr<Vertex>& vertex)
 {
     // check input
     if (vertex->is_expired()) throw std::runtime_error("Attempts to connect surface with invalid vertex.");
@@ -207,7 +207,7 @@ void Surface::connect(std::shared_ptr<Vertex> vertex)
 
 }
 
-void Surface::connect(std::shared_ptr<Vertex> vertex, std::set<std::shared_ptr<Vertex>> all_nearby_vertices)
+void Surface::connect(const std::shared_ptr<Vertex>& vertex, const std::set<std::shared_ptr<Vertex>>& all_nearby_vertices)
 {
     // check input
     if (vertex->is_expired()) throw std::runtime_error("Attempts to connect surface with invalid vertex.");
@@ -259,7 +259,7 @@ void Surface::connect(std::shared_ptr<Vertex> vertex, std::set<std::shared_ptr<V
             // skip if edge does not exist
             bool edge_exist = false;
             std::shared_ptr<Edge> existing_edge;
-            for (auto edge : nearby_vertex0->get_edges())
+            for (const std::shared_ptr<Edge>& edge : nearby_vertex0->get_edges())
             {
                 if (edge->has_vertex(nearby_vertex1))
                 {
@@ -283,7 +283,7 @@ void Surface::connect(std::shared_ptr<Vertex> vertex, std::set<std::shared_ptr<V
     }
 }
 
-void Surface::connect(std::shared_ptr<Edge> edge)
+void Surface::connect(const std::shared_ptr<Edge>& edge)
 {
     // check input
     if (edge->is_expired()) throw std::runtime_error("Attempts to connect surface with invalid edge.");
@@ -293,7 +293,7 @@ void Surface::connect(std::shared_ptr<Edge> edge)
     if (inserted) edge->connect(shared_from_this());
 }
 
-void Surface::connect(std::shared_ptr<Face> face)
+void Surface::connect(const std::shared_ptr<Face>& face)
 {
     // check input
     if (face->is_expired()) throw std::runtime_error("Attempts to connect surface with invalid face.");
@@ -303,7 +303,7 @@ void Surface::connect(std::shared_ptr<Face> face)
     if (inserted) face->connect(shared_from_this());
 }
 
-void Surface::connect(std::shared_ptr<InteriorPoint> interior_point)
+void Surface::connect(const std::shared_ptr<InteriorPoint>& interior_point)
 {
     // check input
     if (interior_point->is_expired()) throw std::runtime_error("Attempts to connect surface with invalid interior point.");
@@ -316,7 +316,7 @@ void Surface::connect(std::shared_ptr<InteriorPoint> interior_point)
     if (inserted) add_point_to_surface_fitting(interior_point->get_position(), interior_point->get_origin());
 }
 
-void Surface::disconnect(std::shared_ptr<Vertex> vertex)
+void Surface::disconnect(const std::shared_ptr<Vertex>& vertex)
 {
     // check input
     if (vertex->is_expired()) return;
@@ -326,7 +326,7 @@ void Surface::disconnect(std::shared_ptr<Vertex> vertex)
     if (erased) vertex->disconnect(shared_from_this());
 }
 
-void Surface::disconnect(std::shared_ptr<Edge> edge)
+void Surface::disconnect(const std::shared_ptr<Edge>& edge)
 {
     // check input
     if (edge->is_expired()) return;
@@ -336,7 +336,7 @@ void Surface::disconnect(std::shared_ptr<Edge> edge)
     if (erased) edge->disconnect(shared_from_this());
 }
 
-void Surface::disconnect(std::shared_ptr<Face> face)
+void Surface::disconnect(const std::shared_ptr<Face>& face)
 {
     // check input
     if (face->is_expired()) return;
@@ -346,7 +346,7 @@ void Surface::disconnect(std::shared_ptr<Face> face)
     if (erased) face->disconnect(shared_from_this());
 }
 
-void Surface::disconnect(std::shared_ptr<InteriorPoint> interior_point)
+void Surface::disconnect(const std::shared_ptr<InteriorPoint>& interior_point)
 {
     // check input
     if (interior_point->is_expired()) return;
@@ -356,17 +356,17 @@ void Surface::disconnect(std::shared_ptr<InteriorPoint> interior_point)
     if (erased) interior_point->disconnect(shared_from_this());
 }
 
-void Surface::add_searchable_edge(std::shared_ptr<Edge> edge)
+void Surface::add_searchable_edge(const std::shared_ptr<Edge>& edge)
 {
     edge_bvh_.add_edge(edge);
 }
 
-void Surface::remove_searchable_edge(std::shared_ptr<Edge> edge)
+void Surface::remove_searchable_edge(const std::shared_ptr<Edge>& edge)
 {
     edge_bvh_.delete_edge(edge);
 }
 
-void Surface::add_point_to_surface_fitting(Eigen::Vector3d position, Eigen::Vector3d origin)
+void Surface::add_point_to_surface_fitting(const Eigen::Vector3d& position, const Eigen::Vector3d& origin)
 {
     // surface
     int size1 = get_total_point_size()-1; // need to exclude the new point

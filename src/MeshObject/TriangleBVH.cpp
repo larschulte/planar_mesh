@@ -91,7 +91,7 @@ double TriangleBVH::sort_face_list_in_axis(std::vector<std::shared_ptr<Face>>& f
 
 void TriangleBVH::expand_node_box(const std::shared_ptr<Node>& node, const std::shared_ptr<Face>& face)
 {
-    for (std::shared_ptr<Vertex> vertex : face->get_vertices())
+    for (const std::shared_ptr<Vertex>& vertex : face->get_vertices())
     {
         node->box.expand(vertex->get_position());
     }

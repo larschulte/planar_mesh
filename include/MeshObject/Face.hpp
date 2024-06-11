@@ -29,14 +29,14 @@ public:
     bool intersects_point(const Eigen::Vector3d& origin, const Eigen::Vector3d& direction);
     Eigen::Vector3d compute_intersection_point(const Eigen::Vector3d& origin, const Eigen::Vector3d& direction);
 
-    void connect(std::shared_ptr<Vertex> vertex);
-    void connect(std::shared_ptr<Edge> edge);
-    void connect(std::shared_ptr<Surface> surface);
-    void connect(std::shared_ptr<InteriorPoint> interior_point);
-    void disconnect(std::shared_ptr<Vertex> vertex);
-    void disconnect(std::shared_ptr<Edge> edge);
-    void disconnect(std::shared_ptr<Surface> surface);
-    void disconnect(std::shared_ptr<InteriorPoint> interior_point);
+    void connect(const std::shared_ptr<Vertex>& vertex);
+    void connect(const std::shared_ptr<Edge>& edge);
+    void connect(const std::shared_ptr<Surface>& surface);
+    void connect(const std::shared_ptr<InteriorPoint>& interior_point);
+    void disconnect(const std::shared_ptr<Vertex>& vertex);
+    void disconnect(const std::shared_ptr<Edge>& edge);
+    void disconnect(const std::shared_ptr<Surface>& surface);
+    void disconnect(const std::shared_ptr<InteriorPoint>& interior_point);
 
 private:
     Eigen::Vector3d center_;
