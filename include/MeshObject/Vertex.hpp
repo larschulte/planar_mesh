@@ -52,6 +52,7 @@ private: // for reverse radius search
 private:
     bool deleting_ = false;
     bool is_boundary_ = false;
+    bool is_searchable_ = false;
 
     int id_;
     std::weak_ptr<Storage> storage_;

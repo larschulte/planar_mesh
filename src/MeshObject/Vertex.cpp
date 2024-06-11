@@ -228,14 +228,15 @@ void Vertex::update_boundary_state()
     }
 
     // update search tree
-    if (is_boundary_)
+    if (is_boundary_ && !is_searchable_)
     {
-        if (storage_.expired()) throw std::runtime_error("Storage expired in vertex update boundary state.");
         storage_.lock()->add_searchable_vertex(shared_from_this());
+        is_searchable_ = true;
     }
-    else
+    else if (!is_boundary_ && is_searchable_)
     {
         storage_.lock()->remove_searchable_vertex(shared_from_this());
+        is_searchable_ = false;
     }
 }
 

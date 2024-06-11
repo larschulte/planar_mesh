@@ -241,14 +241,11 @@ private:
     std::shared_ptr<Node> root;
     int tree_size;
 
-    std::set<std::weak_ptr<Vertex>> vertex_set;
-
 public:
 
     RRSTree() : rebuild_threshold(2), size_at_last_rebuild(0), tree_size(0)
     {
         rebuild();
-        vertex_set.clear();
     }
 
     void rebuild()
@@ -275,12 +272,6 @@ public:
         // check input
         if (boundary_vertex.expired()) throw std::invalid_argument("Invalid vertex in boundary_vertex_list");
 
-        // check if vertex already exists
-        if (vertex_set.find(boundary_vertex) != vertex_set.end()) return;
-
-        // add to vertex set
-        vertex_set.insert(boundary_vertex);
-
         // increase size
         tree_size++;
 
@@ -301,12 +292,6 @@ public:
     {
         // check input
         if (boundary_vertex.expired()) throw std::invalid_argument("Invalid vertex in boundary_vertex_list");
-
-        // check if vertex exists
-        if (vertex_set.find(boundary_vertex) == vertex_set.end()) return;
-
-        // delete from vertex set
-        vertex_set.erase(boundary_vertex);
 
         // decrease size
         tree_size--;
