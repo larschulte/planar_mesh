@@ -132,6 +132,12 @@ void Surface::merge_surface(std::weak_ptr<Surface> surface)
     for (auto face : surface_valid->faces_) connect(face);
     for (auto interior_point : surface_valid->interior_points_) connect(interior_point);
 
+    // merge EdgeBVH, since this is maintained per surface
+    for (auto edge : surface_valid->edges_)
+    {
+        edge_bvh_.add_edge(edge);
+    }
+
     // log
     std::cout << "Surface " << surface_valid->get_id() << " merged into surface " << id_ << std::endl;
 

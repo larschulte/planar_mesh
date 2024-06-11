@@ -31,7 +31,6 @@ public:
     bool has_vertex(std::weak_ptr<Vertex> vertex) const;
     bool is_boundary() const;
     void update_boundary_state();
-    void update_edge_search_tree();
 
     Eigen::Vector3d get_center() const;
     Eigen::Vector3d get_max() const;
