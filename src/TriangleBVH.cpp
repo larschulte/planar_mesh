@@ -135,12 +135,17 @@ void TriangleBVH::convert_leaf_to_branch(std::shared_ptr<Node> node)
 std::shared_ptr<TriangleBVH::Node> TriangleBVH::build_node(std::vector<std::weak_ptr<Face>> face_list)
 {
     auto node = std::make_shared<Node>();
+
+    // expand box
     for (std::weak_ptr<Face> face : face_list) 
     {
         expand_node_box(node, face);
-        node->faces.insert(face);
     }
 
+    // store faces    
+    node->faces = face_list;
+
+    // convert to branch
     if (node->faces.size() > 4) convert_leaf_to_branch(node);
 
     return node;
@@ -151,7 +156,7 @@ void TriangleBVH::node_add_face(std::shared_ptr<Node> node, std::weak_ptr<Face> 
     if (node->isLeaf())
     {
         expand_node_box(node, face);
-        node->faces.insert(face);
+        node->faces.push_back(face);
         if (node->faces.size() > 4) convert_leaf_to_branch(node);
     }
     else
@@ -173,7 +178,8 @@ void TriangleBVH::node_delete_face(std::shared_ptr<Node> node, std::weak_ptr<Fac
 {
     if (node->isLeaf())
     {
-        node->faces.erase(face);
+        node->faces.erase(std::remove(node->faces.begin(), node->faces.end(), face), node->faces.end());
+
     }
     else
     {

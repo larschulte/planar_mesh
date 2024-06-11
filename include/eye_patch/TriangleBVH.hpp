@@ -41,7 +41,7 @@ private:
         std::shared_ptr<Node> left;
         std::shared_ptr<Node> right;
         bool isLeaf() const;
-        std::set<std::weak_ptr<Face>> faces;
+        std::vector<std::weak_ptr<Face>> faces;
     };
 
     double sort_face_list_in_axis(std::vector<std::weak_ptr<Face>>& face_list, int axis, int start, int mid, int end);
