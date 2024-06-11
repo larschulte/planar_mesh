@@ -46,6 +46,9 @@ public:
     void disconnect(std::weak_ptr<Face> face);
     void disconnect(std::weak_ptr<InteriorPoint> interior_point);
     void set_random_color();
+
+    void add_searchable_edge(std::weak_ptr<Edge> edge);
+    void remove_searchable_edge(std::weak_ptr<Edge> edge);
     
 private:
     bool deleting_ = false;

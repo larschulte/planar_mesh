@@ -26,9 +26,35 @@ void Face::initialize_(std::weak_ptr<Storage> storage, std::weak_ptr<Vertex> ver
     connect(vertex0);
     connect(vertex1);
     connect(vertex2);
-    std::weak_ptr<Edge> edge0 = storage.lock()->get_edge(vertex0, vertex1);
-    std::weak_ptr<Edge> edge1 = storage.lock()->get_edge(vertex1, vertex2);
-    std::weak_ptr<Edge> edge2 = storage.lock()->get_edge(vertex2, vertex0);
+    
+    // get edges
+    std::weak_ptr<Edge> edge0;
+    std::weak_ptr<Edge> edge1;
+    std::weak_ptr<Edge> edge2;
+    for (auto edge : vertex0.lock()->get_edges())
+    {
+        if (edge.lock()->has_vertex(vertex1))
+        {
+            edge0 = edge;
+            break;
+        }
+    }
+    for (auto edge : vertex1.lock()->get_edges())
+    {
+        if (edge.lock()->has_vertex(vertex2))
+        {
+            edge1 = edge;
+            break;
+        }
+    }
+    for (auto edge : vertex2.lock()->get_edges())
+    {
+        if (edge.lock()->has_vertex(vertex0))
+        {
+            edge2 = edge;
+            break;
+        }
+    }
     connect(edge0);
     connect(edge1);
     connect(edge2);

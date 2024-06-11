@@ -24,6 +24,7 @@ public:
     Eigen::Vector3d get_projected_position() const;
     Eigen::Vector3d get_origin() const;
     std::weak_ptr<Surface> get_surface() const;
+    std::set<std::weak_ptr<Edge>> get_edges() const;
     Eigen::Vector2d get_surface_coordinate();
 
     void connect(std::weak_ptr<Edge> edge);

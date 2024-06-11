@@ -104,6 +104,9 @@ void Edge::connect(std::weak_ptr<Surface> surface)
     // connect
     bool inserted = surfaces_.insert(surface).second;
     if (inserted) surface.lock()->connect(shared_from_this());
+
+    // update edge search tree
+    update_edge_search_tree();
 }
 
 void Edge::disconnect(std::weak_ptr<Vertex> vertex)
@@ -146,6 +149,9 @@ void Edge::disconnect(std::weak_ptr<Surface> surface)
     // disconnect
     bool erased = surfaces_.erase(surface);
     if (erased) surface.lock()->disconnect(shared_from_this());
+
+    // update edge search tree
+    update_edge_search_tree();
 }
 
 int Edge::get_id() const 
@@ -158,6 +164,19 @@ std::weak_ptr<Vertex> Edge::get_vertex(int index) const
     if (index < 0 || index > 1) throw std::runtime_error("Invalid vertex index.");
     if (vertices_.size() != 2) throw std::runtime_error("Edge does not have 2 vertices.");
     return *std::next(vertices_.begin(), index);
+}
+
+std::weak_ptr<Surface> Edge::get_surface() const
+{
+    if (surfaces_.size() != 1) 
+    {
+        for (auto surface : surfaces_)
+        {
+            std::cout << "Surface " << surface.lock()->get_id() << std::endl;
+        }
+        throw std::runtime_error("Edge does not have 1 exact surface.");
+    }
+    return *surfaces_.begin();
 }
 
 // has vertex
@@ -187,6 +206,30 @@ void Edge::update_boundary_state()
     for (std::weak_ptr<Vertex> vertex : vertices_)
     {
         vertex.lock()->update_boundary_state();
+    }
+
+    update_edge_search_tree();
+}
+
+void Edge::update_edge_search_tree()
+{
+    // skip if no surface connected
+    if (surfaces_.size() == 0) return;
+
+    // update search tree in connected surface
+    if (is_boundary_)
+    {
+        for (auto surface : surfaces_)
+        {
+            surface.lock()->add_searchable_edge(shared_from_this());
+        }
+    }
+    else
+    {
+        for (auto surface : surfaces_)
+        {
+            surface.lock()->remove_searchable_edge(shared_from_this());
+        }
     }
 }
 

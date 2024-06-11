@@ -117,6 +117,11 @@ std::weak_ptr<Surface> Vertex::get_surface() const
     return *surfaces_.begin();
 }
 
+std::set<std::weak_ptr<Edge>> Vertex::get_edges() const 
+{ 
+    return edges_; 
+}
+
 Eigen::Vector2d Vertex::get_surface_coordinate()
 {
     Eigen::Matrix3d eigenvectors = get_surface().lock()->get_eigenvectors();
