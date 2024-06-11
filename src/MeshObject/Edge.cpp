@@ -192,7 +192,7 @@ bool Edge::is_expired() const
 // has vertex
 bool Edge::has_vertex(const std::shared_ptr<Vertex>& vertex) const
 {
-    return vertices_.find(vertex) != vertices_.end();
+    return get_vertex(0) == vertex || get_vertex(1) == vertex;
 }
 
 bool Edge::is_boundary() const
