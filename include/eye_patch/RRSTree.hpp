@@ -93,12 +93,17 @@ private:
     std::shared_ptr<Node> build_node(std::vector<std::weak_ptr<Vertex>> boundary_vertex_list)
     {
         auto node = std::make_shared<Node>();
+
+        // expand box
         for (std::weak_ptr<Vertex> boundary_vertex : boundary_vertex_list) 
         {
-            expand_node_box(node, boundary_vertex);
-            node->boundary_vertices.push_back(boundary_vertex);
+            expand_node_box(node, boundary_vertex);            
         }
 
+        // store vertices
+        node->boundary_vertices = boundary_vertex_list;
+
+        // convert to branch
         if (node->boundary_vertices.size() > 4) convert_leaf_to_branch(node);
 
         return node;
