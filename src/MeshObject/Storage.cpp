@@ -6,8 +6,8 @@
 #include "MeshObject/GenericPoint.hpp"
 #include "MeshObject/InteriorPoint.hpp"
 
-#include "eye_patch/RRSTree.hpp"
-#include "eye_patch/TriangleBVH.hpp"
+#include "MeshObject/RRSTree.hpp"
+#include "MeshObject/TriangleBVH.hpp"
 
 Storage::Storage()
 {

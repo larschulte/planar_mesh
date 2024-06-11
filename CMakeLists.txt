@@ -47,7 +47,7 @@ set(MeshObject_SOURCE
   src/MeshObject/Storage.cpp
   src/MeshObject/GenericPoint.cpp
   src/MeshObject/InteriorPoint.cpp
-  src/TriangleBVH.cpp
+  src/MeshObject/TriangleBVH.cpp
   src/MeshObject/EdgeBVH.cpp
 )
 
@@ -66,7 +66,7 @@ install(TARGETS
 )
 
 # add executable
-add_executable(temp src/temp.cpp src/TriangleBVH.cpp ${MeshObject_SOURCE})
+add_executable(temp src/temp.cpp ${MeshObject_SOURCE})
 target_link_libraries (temp ${PCL_LIBRARIES})
 target_include_directories(temp
   PUBLIC
@@ -80,7 +80,7 @@ install(TARGETS
 )
 
 # add executable
-add_executable(Surface_test src/Surface_test.cpp src/TriangleBVH.cpp ${MeshObject_SOURCE})
+add_executable(Surface_test src/Surface_test.cpp ${MeshObject_SOURCE})
 target_link_libraries (Surface_test ${PCL_LIBRARIES})
 target_include_directories(Surface_test
   PUBLIC
@@ -105,7 +105,7 @@ target_include_directories(MeshObject_test
     $<INSTALL_INTERFACE:include>)
 
 # add executable
-add_executable(TriangleBVH_test src/TriangleBVH_test.cpp ${MeshObject_SOURCE} src/TriangleBVH.cpp)
+add_executable(TriangleBVH_test src/TriangleBVH_test.cpp ${MeshObject_SOURCE})
 target_link_libraries (TriangleBVH_test ${PCL_LIBRARIES})
 target_include_directories(TriangleBVH_test
   PUBLIC

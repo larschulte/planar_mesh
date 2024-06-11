@@ -4,8 +4,8 @@
 #include <set>
 #include <Eigen/Dense> 
 
-#include "eye_patch/RRSTree.hpp"
-#include "eye_patch/TriangleBVH.hpp"
+#include "MeshObject/RRSTree.hpp"
+#include "MeshObject/TriangleBVH.hpp"
 
 // forward declarations
 class Vertex;

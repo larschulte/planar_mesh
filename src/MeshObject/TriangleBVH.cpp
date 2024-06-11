@@ -1,4 +1,4 @@
-#include "eye_patch/TriangleBVH.hpp"
+#include "MeshObject/TriangleBVH.hpp"
 #include <iostream>
 
 bool ray_triangle_intersect(const Eigen::Vector3d& orig, const Eigen::Vector3d& dir,

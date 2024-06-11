@@ -4,8 +4,8 @@
 
 #include "point_type/VilensPointT.hpp"
 #include "eye_patch/DataLoader.hpp"
-#include "eye_patch/TriangleBVH.hpp"
-#include "eye_patch/RRSTree.hpp"
+#include "MeshObject/TriangleBVH.hpp"
+#include "MeshObject/RRSTree.hpp"
 #include "eye_patch/utilities.hpp"
 
 // queue
