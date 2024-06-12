@@ -427,11 +427,10 @@ public:
         for (const std::shared_ptr<Vertex>& vertex : storage_->get_vertices())
         {
             pcl::PointXYZRGB point;
-            const Eigen::Vector3d& position = vertex->get_position();
+            point.x = vertex->get_position()[0];
+            point.y = vertex->get_position()[1];
+            point.z = vertex->get_position()[2];
             const std::tuple<int, int, int>& color = vertex->get_surface()->get_color();
-            point.x = position[0];
-            point.y = position[1];
-            point.z = position[2];
             point.r = std::get<0>(color);
             point.g = std::get<1>(color);
             point.b = std::get<2>(color);
@@ -449,12 +448,10 @@ public:
         for (const std::shared_ptr<Vertex>& vertex : storage_->get_vertices())
         {
             pcl::PointXYZRGB point;
-            const Eigen::Vector3d& origin = vertex->get_origin();
-            const Eigen::Vector3d& position = vertex->get_position();
-            point.x = position[0];
-            point.y = position[1];
-            point.z = position[2];
-            double value = vertex->compute_projected_distance() / 0.05;
+            point.x = vertex->get_position()[0];
+            point.y = vertex->get_position()[1];
+            point.z = vertex->get_position()[2];
+            double value = vertex->get_projected_distance() / 0.05;
             std::tuple<int, int, int> color = valueToJet(value);
             point.r = std::get<0>(color);
             point.g = std::get<1>(color);
@@ -473,11 +470,10 @@ public:
         for (std::shared_ptr<Vertex> vertex : storage_->get_vertices())
         {
             pcl::PointXYZRGB point;
-            Eigen::Vector3d projected_position = vertex->get_projected_position();
+            point.x = vertex->get_projected_position()[0];
+            point.y = vertex->get_projected_position()[1];
+            point.z = vertex->get_projected_position()[2];
             const std::tuple<int, int, int>& color = vertex->get_surface()->get_color();
-            point.x = projected_position[0];
-            point.y = projected_position[1];
-            point.z = projected_position[2];
             point.r = std::get<0>(color);
             point.g = std::get<1>(color);
             point.b = std::get<2>(color);
@@ -495,13 +491,10 @@ public:
         for (const std::shared_ptr<Vertex>& vertex : storage_->get_vertices())
         {
             pcl::PointXYZRGB point;
-            const Eigen::Vector3d& origin = vertex->get_origin();
-            const Eigen::Vector3d& position = vertex->get_position();
-            Eigen::Vector3d projected_position = vertex->get_projected_position();
-            point.x = projected_position[0];
-            point.y = projected_position[1];
-            point.z = projected_position[2];
-            double value = vertex->compute_projected_distance() / 0.05;
+            point.x = vertex->get_projected_position()[0];
+            point.y = vertex->get_projected_position()[1];
+            point.z = vertex->get_projected_position()[2];
+            double value = vertex->get_projected_distance() / 0.05;
             std::tuple<int, int, int> color = valueToJet(value);
             point.r = std::get<0>(color);
             point.g = std::get<1>(color);

@@ -18,6 +18,9 @@ protected:
     void initialize_(const std::shared_ptr<Storage>& storage, const Eigen::Vector3d& position, const Eigen::Vector3d& origin, const double& radius);
     void delete_();
 
+private:
+    void try_update_surface_projection();
+
 public:
     const int& get_id() const;
     const Eigen::Vector3d& get_position() const;
@@ -25,8 +28,8 @@ public:
     const std::shared_ptr<Surface>& get_surface() const;
     const std::set<std::shared_ptr<Edge>>& get_edges() const;
 
-    Eigen::Vector3d get_projected_position() const;
-    double compute_projected_distance();
+    const Eigen::Vector3d& get_projected_position();
+    const double& get_projected_distance();
 
     Eigen::Vector2d get_surface_coordinate();
     bool is_expired() const;
@@ -66,8 +69,12 @@ private:
     std::set<std::shared_ptr<Face>> faces_;
     std::set<std::shared_ptr<Surface>> surfaces_;
 
-    Eigen::Vector2d surface_coordinate_;
     Eigen::Matrix3d eigenvectors_used_;
+    Eigen::Vector2d surface_coordinate_;
+    Eigen::Vector3d normal_used_;
+    Eigen::Vector3d projected_position_;
+    double projected_distance_;
+    
 
     Eigen::Vector3d position_;
     Eigen::Vector3d origin_;

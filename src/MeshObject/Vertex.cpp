@@ -110,15 +110,27 @@ const Eigen::Vector3d& Vertex::get_position() const
     return position_; 
 }
 
-Eigen::Vector3d Vertex::get_projected_position() const
+void Vertex::try_update_surface_projection()
 {
-    return get_surface()->compute_point_to_surface_position(get_origin(), get_position());
+    // update if surface changes
+    if (normal_used_ != get_surface()->get_normal())
+    {
+        normal_used_ = get_surface()->get_normal();
+        projected_position_ = get_surface()->compute_point_to_surface_position(get_origin(), get_position());
+        projected_distance_ = get_surface()->compute_point_to_surface_distance(get_origin(), get_position());
+    }
 }
 
-double Vertex::compute_projected_distance()
+const Eigen::Vector3d& Vertex::get_projected_position()
 {
-    double distance = get_surface()->compute_point_to_surface_distance(get_origin(), get_position());
-    return distance;
+    try_update_surface_projection();
+    return projected_position_;
+}
+
+const double& Vertex::get_projected_distance()
+{
+    try_update_surface_projection();
+    return projected_distance_;
 
     // if (std::fabs(distance) > 0.03)
     // {
