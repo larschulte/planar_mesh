@@ -46,7 +46,7 @@ public: // to user
     const std::set<std::shared_ptr<Face>>& get_faces() const;
     const std::set<std::shared_ptr<Surface>>& get_surfaces() const;
 
-    const std::vector<std::shared_ptr<Vertex>>& get_rrs_vertices();
+    std::vector<std::shared_ptr<Vertex>> get_rrs_vertices();
     std::map<std::shared_ptr<Vertex>, int> get_vertex_to_cloud_indices_map() const;
     bool is_expired() const;
 

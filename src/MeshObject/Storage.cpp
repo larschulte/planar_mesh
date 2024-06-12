@@ -165,13 +165,13 @@ void Storage::delete_interior_point(const std::shared_ptr<InteriorPoint>& interi
 void Storage::add_searchable_vertex(const std::shared_ptr<Vertex>& vertex)
 {
     // add to rrs_tree
-    rrs_tree_.add_vertex(vertex);
+    rrs_tree_.tree_add_vertex(vertex);
 }
 
 void Storage::remove_searchable_vertex(const std::shared_ptr<Vertex>& vertex)
 {
     // remove from rrs_tree
-    rrs_tree_.delete_vertex(vertex);
+    rrs_tree_.tree_delete_vertex(vertex);
 }
 
 void Storage::add_searchable_face(const std::shared_ptr<Face>& face)
@@ -202,7 +202,9 @@ bool Storage::can_reverse_radius_search()
 // reverse radius search
 std::set<std::shared_ptr<Vertex>> Storage::reverse_radius_search(const Eigen::Vector3d& point) 
 {
-    return rrs_tree_.reverse_radius_search(point);
+    std::set<std::shared_ptr<Vertex>> result;
+    rrs_tree_.tree_reverse_radius_search(point, result);
+    return result;
 }
 
 // face intersection search
@@ -231,9 +233,9 @@ const std::set<std::shared_ptr<Surface>>& Storage::get_surfaces() const
     return surfaces_;
 }
 
-const std::vector<std::shared_ptr<Vertex>>& Storage::get_rrs_vertices()
+std::vector<std::shared_ptr<Vertex>> Storage::get_rrs_vertices()
 {
-    return rrs_tree_.get_vertices();
+    return rrs_tree_.compute_vertices_list();
 }
 
 std::map<std::shared_ptr<Vertex>, int> Storage::get_vertex_to_cloud_indices_map() const
@@ -276,7 +278,7 @@ const std::shared_ptr<Edge>& Storage::get_edge(std::shared_ptr<Vertex> vertex1, 
 
 void Storage::print_rrs() const
 {
-    rrs_tree_.print();
+    rrs_tree_.tree_print();
 }
 
 void Storage::print_bvh() const

@@ -40,6 +40,7 @@ set(MeshObject_SOURCE
   src/MeshObject/InteriorPoint.cpp
   src/MeshObject/TriangleBVH.cpp
   src/MeshObject/EdgeBVH.cpp
+  src/MeshObject/RRSTree.cpp
 )
 
 # add executable
