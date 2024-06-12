@@ -66,6 +66,7 @@ private:
     std::set<std::shared_ptr<InteriorPoint>> interior_points_;
 
     void add_point_to_surface_fitting(const Eigen::Vector3d& point, const Eigen::Vector3d& origin);
+    void remove_point_from_surface_fitting(const Eigen::Vector3d& position, const Eigen::Vector3d& origin);
     Eigen::Vector3d mean_;
     Eigen::Matrix3d covariance_;
     Eigen::Matrix3d eigenvectors_;
@@ -79,9 +80,3 @@ bool operator<(const std::shared_ptr<Surface>& lhs, const std::shared_ptr<Surfac
 bool operator==(const std::shared_ptr<Surface>& lhs, const std::shared_ptr<Surface>& rhs);
 bool operator>=(const std::shared_ptr<Surface>& lhs, const std::shared_ptr<Surface>& rhs);
 bool operator!=(const std::shared_ptr<Surface>& lhs, const std::shared_ptr<Surface>& rhs);
-
-
-Eigen::Vector3d merge_means(const Eigen::Vector3d& mean1, const Eigen::Vector3d& mean2, int size1, int size2);
-Eigen::Matrix3d merge_covariances(const Eigen::Matrix3d& cov1, const Eigen::Matrix3d& cov2, 
-                                const Eigen::Vector3d& mean1, const Eigen::Vector3d& mean2, 
-                                int size1, int size2);

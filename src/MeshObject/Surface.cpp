@@ -6,6 +6,7 @@
 #include "MeshObject/Surface.hpp"
 #include <iostream>
 #include "MeshObject/InteriorPoint.hpp"
+#include "utilities/covariance_math.hpp"
 
 void Surface::initialize_(const std::shared_ptr<Storage>& storage)
 {
@@ -97,8 +98,8 @@ double Surface::compute_point_to_surface_distance_with_improved_covariance(const
     Eigen::Matrix3d cov2 = Eigen::Matrix3d::Zero();
 
     // set + point
-    Eigen::Vector3d new_mean = merge_means(mean1, mean2, size1, size2);
-    Eigen::Matrix3d new_cov = merge_covariances(cov1, cov2, mean1, mean2, size1, size2);
+    Eigen::Vector3d new_mean = merge_mean(mean1, mean2, size1, size2);
+    Eigen::Matrix3d new_cov = merge_covariance(cov1, cov2, mean1, mean2, size1, size2);
 
     // plane estimate
     Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> solver(new_cov);
@@ -324,6 +325,9 @@ void Surface::disconnect(const std::shared_ptr<Vertex>& vertex)
     // disconnect
     bool erased = vertices_.erase(vertex);
     if (erased) vertex->disconnect(shared_from_this());
+
+    // remove from surface fitting
+    if (erased) remove_point_from_surface_fitting(vertex->get_position(), vertex->get_origin());
 }
 
 void Surface::disconnect(const std::shared_ptr<Edge>& edge)
@@ -354,6 +358,9 @@ void Surface::disconnect(const std::shared_ptr<InteriorPoint>& interior_point)
     // disconnect
     bool erased = interior_points_.erase(interior_point);
     if (erased) interior_point->disconnect(shared_from_this());
+
+    // remove from surface fitting
+    if (erased) remove_point_from_surface_fitting(interior_point->get_position(), interior_point->get_origin());
 }
 
 void Surface::add_searchable_edge(const std::shared_ptr<Edge>& edge)
@@ -379,8 +386,8 @@ void Surface::add_point_to_surface_fitting(const Eigen::Vector3d& position, cons
     Eigen::Matrix3d cov2 = Eigen::Matrix3d::Zero();
 
     // set + point
-    Eigen::Vector3d new_mean = merge_means(mean1, mean2, size1, size2);
-    Eigen::Matrix3d new_cov = merge_covariances(cov1, cov2, mean1, mean2, size1, size2);
+    Eigen::Vector3d new_mean = merge_mean(mean1, mean2, size1, size2);
+    Eigen::Matrix3d new_cov = merge_covariance(cov1, cov2, mean1, mean2, size1, size2);
 
     // plane estimate
     Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> solver(new_cov);
@@ -396,6 +403,49 @@ void Surface::add_point_to_surface_fitting(const Eigen::Vector3d& position, cons
     eigenvectors_ = new_eigenvectors;
     eigenvalues_ = new_eigenvalues;
     normal_ = new_normal;
+}
+
+void Surface::remove_point_from_surface_fitting(const Eigen::Vector3d& position, const Eigen::Vector3d& origin)
+{
+    // surface
+    int combined_size = get_total_point_size()+1; // need to include the point just removed
+    Eigen::Vector3d combined_mean = mean_;
+    Eigen::Matrix3d combined_cov = covariance_;
+
+    // point
+    int size2 = 1;
+    Eigen::Vector3d mean2 = position;
+    Eigen::Matrix3d cov2 = Eigen::Matrix3d::Zero();
+
+    // set + point
+    Eigen::Vector3d mean1 = remove_mean(combined_mean, mean2, combined_size, size2);
+    Eigen::Matrix3d cov1 = remove_covariance(combined_cov, cov2, combined_mean, mean2, combined_size, size2);
+
+    // plane estimate
+    if (mean1 == Eigen::Vector3d::Zero() || cov1 == Eigen::Matrix3d::Zero())
+    {
+        mean_ = Eigen::Vector3d::Zero();
+        covariance_ = Eigen::Matrix3d::Zero();
+        eigenvectors_ = Eigen::Matrix3d::Identity();
+        eigenvalues_ = Eigen::Vector3d::Zero();
+        normal_ = Eigen::Vector3d(0, 0, 1);
+        return;
+    }
+    else
+    {
+        Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> solver(cov1);
+        Eigen::Matrix3d eigenvectors1 = solver.eigenvectors();
+        Eigen::Vector3d eigenvalues1 = solver.eigenvalues();
+        Eigen::Vector3d normal1 = eigenvectors1.col(0); // Assuming the smallest eigenvalue corresponds to the normal
+        Eigen::Vector3d vector_towards_origin = origin - position;
+        if (normal1.dot(vector_towards_origin) < 0) normal1 *= -1; // normal should points towards the origin
+
+        mean_ = mean1;
+        covariance_ = cov1;
+        eigenvectors_ = eigenvectors1;
+        eigenvalues_ = eigenvalues1;
+        normal_ = normal1;
+    }
 }
 
 void Surface::set_random_color()
@@ -430,26 +480,4 @@ bool operator!= (const std::shared_ptr<Surface>& lhs, const std::shared_ptr<Surf
     // check pointer validity
     if (lhs->is_expired() || rhs->is_expired()) throw std::runtime_error("Comparing expired surfaces");
     return lhs->get_id() != rhs->get_id();
-}
-
-Eigen::Vector3d merge_means(const Eigen::Vector3d& mean1, const Eigen::Vector3d& mean2, int size1, int size2) 
-{
-    return (size1 * mean1 + size2 * mean2) / (size1 + size2);
-}
-
-Eigen::Matrix3d merge_covariances(const Eigen::Matrix3d& cov1, const Eigen::Matrix3d& cov2, 
-                                const Eigen::Vector3d& mean1, const Eigen::Vector3d& mean2, 
-                                int size1, int size2) 
-{
-    // Handle the edge case where one of the sizes is zero
-    if (size1 == 0 && size2 == 0) throw std::invalid_argument("Both sizes are zero");
-    if (size1 == 0) return cov2;
-    if (size2 == 0) return cov1;
-
-    Eigen::Vector3d combined_mean = merge_means(mean1, mean2, size1, size2);
-    Eigen::Matrix3d mean_diff1 = (mean1 - combined_mean) * (mean1 - combined_mean).transpose();
-    Eigen::Matrix3d mean_diff2 = (mean2 - combined_mean) * (mean2 - combined_mean).transpose();
-    Eigen::Matrix3d combined_covariance = (size1 * cov1 + size2 * cov2 + size1 * mean_diff1 + size2 * mean_diff2) / (size1 + size2);
-
-    return combined_covariance;
 }

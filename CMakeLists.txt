@@ -41,6 +41,7 @@ set(MeshObject_SOURCE
   src/MeshObject/TriangleBVH.cpp
   src/MeshObject/EdgeBVH.cpp
   src/MeshObject/RRSTree.cpp
+  src/utilities/covariance_math.cpp
 )
 
 # add executable
@@ -86,6 +87,13 @@ target_include_directories(MeshObject_test
 add_executable(TriangleBVH_test src/test/TriangleBVH_test.cpp ${MeshObject_SOURCE})
 target_link_libraries (TriangleBVH_test ${PCL_LIBRARIES})
 target_include_directories(TriangleBVH_test
+  PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>)
+
+add_executable(covariance_math_test src/test/covariance_math_test.cpp src/utilities/covariance_math.cpp)
+target_link_libraries (covariance_math_test ${PCL_LIBRARIES})
+target_include_directories(covariance_math_test
   PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>)

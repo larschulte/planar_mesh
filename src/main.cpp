@@ -13,6 +13,7 @@
 #include "MeshObject/Storage.hpp"
 #include "MeshObject/TriangleBVH.hpp"
 #include "MeshObject/RRSTree.hpp"
+#include "utilities/covariance_math.hpp"
 
 // application class
 template <typename PointT>
@@ -28,7 +29,7 @@ public:
         const Eigen::Vector3d& mean2 = surface2->get_mean();
         int size1 = surface1->get_total_point_size();
         int size2 = surface2->get_total_point_size();
-        return merge_covariances(cov1, cov2, mean1, mean2, size1, size2);
+        return merge_covariance(cov1, cov2, mean1, mean2, size1, size2);
     }
 
     // try merge sets
