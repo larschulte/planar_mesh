@@ -215,7 +215,7 @@ std::vector<std::shared_ptr<Edge>> EdgeBVH::get_edge_list() const
     return edge_list;
 }
 
-void EdgeBVH::delete_edge(const std::shared_ptr<Edge>& edge)
+void EdgeBVH::tree_delete_edge(const std::shared_ptr<Edge>& edge)
 {
     // check input
     if (edge->is_expired()) throw std::runtime_error("Attempts to delete expired edge.");
@@ -248,7 +248,7 @@ void EdgeBVH::rebuild()
     }
 }
 
-void EdgeBVH::add_edge(const std::shared_ptr<Edge>& edge)
+void EdgeBVH::tree_add_edge(const std::shared_ptr<Edge>& edge)
 {
     // check input
     if (edge->is_expired()) throw std::runtime_error("Attempts to add expired edge.");
@@ -267,7 +267,7 @@ void EdgeBVH::add_edge(const std::shared_ptr<Edge>& edge)
     }
 }
 
-bool EdgeBVH::intersect_edges(const std::shared_ptr<Vertex>& vertex0, const std::shared_ptr<Vertex>& vertex1)
+bool EdgeBVH::tree_intersect_edge(const std::shared_ptr<Vertex>& vertex0, const std::shared_ptr<Vertex>& vertex1)
 {
     // check input
     if (vertex0->is_expired() || vertex1->is_expired()) throw std::runtime_error("Attempts to intersect with expired vertex.");
@@ -275,7 +275,7 @@ bool EdgeBVH::intersect_edges(const std::shared_ptr<Vertex>& vertex0, const std:
     return node_intersect_edge(root, vertex0, vertex1);
 }
 
-void EdgeBVH::print() const
+void EdgeBVH::tree_print() const
 {
     node_print(root, 0);
 }

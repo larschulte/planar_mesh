@@ -141,7 +141,7 @@ void Surface::merge_surface(const std::shared_ptr<Surface>& surface)
     // merge EdgeBVH, since this is maintained per surface
     for (const auto& edge : surface_valid->edges_)
     {
-        if (edge->is_searchable()) edge_bvh_.add_edge(edge);
+        if (edge->is_searchable()) edge_bvh_.tree_add_edge(edge);
     }
 
     // log
@@ -241,7 +241,7 @@ void Surface::connect(const std::shared_ptr<Vertex>& vertex, const std::set<std:
     for (const auto& nearby_vertex : nearby_vertices)
     {
         // skip if edge is intersected
-        if (edge_bvh_.intersect_edges(vertex, nearby_vertex)) continue;
+        if (edge_bvh_.tree_intersect_edge(vertex, nearby_vertex)) continue;
 
         // create edge
         std::shared_ptr<Edge> new_edge = storage_->add_edge(shared_from_this(), vertex, nearby_vertex);
@@ -358,12 +358,12 @@ void Surface::disconnect(const std::shared_ptr<InteriorPoint>& interior_point)
 
 void Surface::add_searchable_edge(const std::shared_ptr<Edge>& edge)
 {
-    edge_bvh_.add_edge(edge);
+    edge_bvh_.tree_add_edge(edge);
 }
 
 void Surface::remove_searchable_edge(const std::shared_ptr<Edge>& edge)
 {
-    edge_bvh_.delete_edge(edge);
+    edge_bvh_.tree_delete_edge(edge);
 }
 
 void Surface::add_point_to_surface_fitting(const Eigen::Vector3d& position, const Eigen::Vector3d& origin)
