@@ -1,4 +1,6 @@
 #include "MeshObject/TriangleBVH.hpp"
+#include "MeshObject/Face.hpp"
+#include "MeshObject/Vertex.hpp"
 #include <iostream>
 
 bool ray_triangle_intersect(const Eigen::Vector3d& orig, const Eigen::Vector3d& dir,
@@ -229,7 +231,7 @@ std::vector<std::shared_ptr<Face>> TriangleBVH::get_face_list() const
     return face_list;
 }
 
-void TriangleBVH::delete_face(std::shared_ptr<Face> face)
+void TriangleBVH::tree_delete_face(std::shared_ptr<Face> face)
 {
     // check input
     if (face->is_expired()) throw std::runtime_error("Attempts to delete expired face.");
@@ -262,7 +264,7 @@ void TriangleBVH::rebuild()
     }
 }
 
-void TriangleBVH::add_face(std::shared_ptr<Face> face)
+void TriangleBVH::tree_add_face(std::shared_ptr<Face> face)
 {
     // check input
     if (face->is_expired()) throw std::runtime_error("Attempts to add expired face.");
@@ -281,17 +283,13 @@ void TriangleBVH::add_face(std::shared_ptr<Face> face)
     }
 }
 
-std::set<std::shared_ptr<Face>> TriangleBVH::intersection_search(Eigen::Vector3d origin, Eigen::Vector3d endPoint)
+void TriangleBVH::tree_intersection_search(Eigen::Vector3d origin, Eigen::Vector3d endPoint, std::set<std::shared_ptr<Face>> &faces_intersected) const
 {
-    std::set<std::shared_ptr<Face>> faces_intersected;
-
     Eigen::Vector3d dir = (endPoint - origin).normalized();
     node_intersection_search(root, origin, dir, faces_intersected);
-
-    return faces_intersected;
 }
 
-void TriangleBVH::print() const
+void TriangleBVH::tree_print() const
 {
     node_print(root, 0);
 }

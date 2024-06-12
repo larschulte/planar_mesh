@@ -177,13 +177,13 @@ void Storage::remove_searchable_vertex(const std::shared_ptr<Vertex>& vertex)
 void Storage::add_searchable_face(const std::shared_ptr<Face>& face)
 {
     // add to triangle_bvh
-    triangle_bvh_.add_face(face);
+    triangle_bvh_.tree_add_face(face);
 }
 
 void Storage::remove_searchable_face(const std::shared_ptr<Face>& face)
 {
     // remove from triangle_bvh
-    triangle_bvh_.delete_face(face);
+    triangle_bvh_.tree_delete_face(face);
 }
 
 // get id
@@ -210,7 +210,9 @@ std::set<std::shared_ptr<Vertex>> Storage::reverse_radius_search(const Eigen::Ve
 // face intersection search
 std::set<std::shared_ptr<Face>> Storage::face_intersection_search(const Eigen::Vector3d& origin, const Eigen::Vector3d& point) 
 {
-    return triangle_bvh_.intersection_search(origin, point);
+    std::set<std::shared_ptr<Face>> result;
+    triangle_bvh_.tree_intersection_search(origin, point, result);
+    return result;
 }
 
 const std::set<std::shared_ptr<Vertex>>& Storage::get_vertices() const
@@ -283,7 +285,7 @@ void Storage::print_rrs() const
 
 void Storage::print_bvh() const
 {
-    triangle_bvh_.print();
+    triangle_bvh_.tree_print();
 }
 
 void Storage::rebuild_tree()
