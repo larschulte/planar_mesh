@@ -72,6 +72,39 @@ const Eigen::Vector3d& InteriorPoint::get_origin() const
     return origin_;
 }
 
+const std::shared_ptr<Surface>& InteriorPoint::get_surface() const
+{    
+    return *surfaces_.begin();
+}
+
+void InteriorPoint::try_update_surface_projection()
+{
+    // update if surface changes
+    if (normal_used_ != get_surface()->get_normal())
+    {
+        normal_used_ = get_surface()->get_normal();
+        projected_position_ = get_surface()->compute_point_to_surface_position(get_origin(), get_position());
+        projected_distance_ = get_surface()->compute_point_to_surface_distance(get_origin(), get_position());
+    }
+}
+
+const Eigen::Vector3d& InteriorPoint::get_projected_position()
+{
+    try_update_surface_projection();
+    return projected_position_;
+}
+
+const double& InteriorPoint::get_projected_distance()
+{
+    try_update_surface_projection();
+    return projected_distance_;
+
+    // if (std::fabs(distance) > 0.03)
+    // {
+    //     storage_->delete_vertex(shared_from_this());
+    // }    
+}
+
 bool InteriorPoint::is_expired() const
 {
     return is_expired_;

@@ -289,31 +289,31 @@ public:
         // intersected faces
         std::set<std::shared_ptr<Face>> searched_faces = storage_->face_intersection_search(thisPointOriginVEC, thisPointVEC); // may include deleted triangles
 
-        // update projected position of the vertices of the searced faces
-        std::set<std::shared_ptr<Vertex>> vertices_to_be_deleted;
-        for (const std::shared_ptr<Face>& face : searched_faces)
-        {
-            for (const std::shared_ptr<Vertex>& vertex : face->get_vertices())
-            {
-                vertex->try_update_surface_projection();
-                if (vertex->is_to_be_deleted()) vertices_to_be_deleted.insert(vertex);
-            }
-        }
+        // // update projected position of the vertices of the searced faces
+        // std::set<std::shared_ptr<Vertex>> vertices_to_be_deleted;
+        // for (const std::shared_ptr<Face>& face : searched_faces)
+        // {
+        //     for (const std::shared_ptr<Vertex>& vertex : face->get_vertices())
+        //     {
+        //         vertex->try_update_surface_projection();
+        //         if (vertex->is_to_be_deleted()) vertices_to_be_deleted.insert(vertex);
+        //     }
+        // }
 
-        // delete vertices
-        for (const std::shared_ptr<Vertex>& vertex : vertices_to_be_deleted)
-        {
-            if (vertex->is_expired()) continue;
-            storage_->delete_vertex(vertex);
-        }
+        // // delete vertices
+        // for (const std::shared_ptr<Vertex>& vertex : vertices_to_be_deleted)
+        // {
+        //     if (vertex->is_expired()) continue;
+        //     storage_->delete_vertex(vertex);
+        // }
 
-        // remove expired faces from searched face
-        std::set<std::shared_ptr<Face>> searched_faces_cleaned;
-        for (const std::shared_ptr<Face>& face : searched_faces)
-        {
-            if (!face->is_expired()) searched_faces_cleaned.insert(face);
-        }
-        searched_faces = searched_faces_cleaned;
+        // // remove expired faces from searched face
+        // std::set<std::shared_ptr<Face>> searched_faces_cleaned;
+        // for (const std::shared_ptr<Face>& face : searched_faces)
+        // {
+        //     if (!face->is_expired()) searched_faces_cleaned.insert(face);
+        // }
+        // searched_faces = searched_faces_cleaned;
 
         // intersected surface to intersected faces
         std::map<std::shared_ptr<Surface>, std::set<std::shared_ptr<Face>>> searched_surface_to_searched_faces;
@@ -444,6 +444,14 @@ public:
 
         // return
         return boundary_edges;
+    }
+
+    void refine_surfaces()
+    {
+        for (const std::shared_ptr<Surface>& surface : storage_->get_surfaces())
+        {
+            surface->refine_surface();
+        }
     }
 
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr point_to_vector3d_set_colored_cloud()
@@ -849,6 +857,11 @@ private:
         if (event.getKeySym() == "m" && event.keyDown())
         {
             show_sphere = !show_sphere;
+            update_display();
+        }
+        if (event.getKeySym() == "b" && event.keyDown())
+        {
+            app_.refine_surfaces();
             update_display();
         }
     }  
