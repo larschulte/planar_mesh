@@ -115,6 +115,17 @@ Eigen::Vector3d Vertex::get_projected_position() const
     return get_surface()->compute_point_to_surface_position(get_origin(), get_position());
 }
 
+double Vertex::compute_projected_distance()
+{
+    double distance = get_surface()->compute_point_to_surface_distance(get_origin(), get_position());
+    return distance;
+
+    // if (std::fabs(distance) > 0.03)
+    // {
+    //     storage_->delete_vertex(shared_from_this());
+    // }    
+}
+
 const Eigen::Vector3d& Vertex::get_origin() const 
 { 
     return origin_; 

@@ -454,7 +454,7 @@ public:
             point.x = position[0];
             point.y = position[1];
             point.z = position[2];
-            double value = vertex->get_surface()->compute_point_to_surface_distance(origin, position) / 0.05;
+            double value = vertex->compute_projected_distance() / 0.05;
             std::tuple<int, int, int> color = valueToJet(value);
             point.r = std::get<0>(color);
             point.g = std::get<1>(color);
@@ -501,7 +501,7 @@ public:
             point.x = projected_position[0];
             point.y = projected_position[1];
             point.z = projected_position[2];
-            double value = vertex->get_surface()->compute_point_to_surface_distance(origin, position) / 0.05;
+            double value = vertex->compute_projected_distance() / 0.05;
             std::tuple<int, int, int> color = valueToJet(value);
             point.r = std::get<0>(color);
             point.g = std::get<1>(color);

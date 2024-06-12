@@ -26,6 +26,8 @@ public:
     const std::set<std::shared_ptr<Edge>>& get_edges() const;
 
     Eigen::Vector3d get_projected_position() const;
+    double compute_projected_distance();
+
     Eigen::Vector2d get_surface_coordinate();
     bool is_expired() const;
 
