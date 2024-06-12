@@ -285,135 +285,57 @@ public:
         Eigen::Vector3d thisPointOriginVEC = origin;
         ith_point ++;
     
-        // ------------- add point by triangle intersection
-
-        // get list of intersected triangle by the point
+        // intersected faces
         std::set<std::shared_ptr<Face>> searched_faces = storage_->face_intersection_search(thisPointOriginVEC, thisPointVEC); // may include deleted triangles
 
-        // group the faces by surface
-        std::map<std::shared_ptr<Surface>, std::set<std::shared_ptr<Face>>> surface_to_searched_faces_map;
-        for (std::shared_ptr<Face> face : searched_faces)
+        // intersected surface to intersected faces
+        std::map<std::shared_ptr<Surface>, std::set<std::shared_ptr<Face>>> searched_surface_to_searched_faces;
+        for (const std::shared_ptr<Face>& face : searched_faces)
         {
-            surface_to_searched_faces_map[face->get_surface()].insert(face);
+            searched_surface_to_searched_faces[face->get_surface()].insert(face);
         }
 
-        // compute the intersection distance to the sets (distance measured in plane normal direction)
-        std::map<std::shared_ptr<Surface>, double> surface_to_point_distance_map;
-        for (const auto& pair : surface_to_searched_faces_map)
+        // for each surface
+        bool point_added = false;
+        for (const auto& pair : searched_surface_to_searched_faces)
         {
-            std::shared_ptr<Surface> surface = pair.first;
+            const std::shared_ptr<Surface>& surface = pair.first;
+            const std::set<std::shared_ptr<Face>>& searched_faces = pair.second;
+
+            // compute distance
             double distance = surface->compute_point_to_surface_distance(thisPointOriginVEC, thisPointVEC);
-            surface_to_point_distance_map[surface] = distance;
-        }
-
-        // split the sets into three categories
-        std::set<std::shared_ptr<Surface>> surface_with_point_before_it;
-        std::set<std::shared_ptr<Surface>> surface_with_point_within_it;
-        std::set<std::shared_ptr<Surface>> surface_with_point_behind_it;
-        double split_distance_threshold = distance_threshold;
-        for (const auto& pair : surface_to_point_distance_map)
-        {
-            std::shared_ptr<Surface> surface = pair.first;
-            double distance = pair.second;
-            if (distance > split_distance_threshold) 
+            bool points_before_surface = distance > distance_threshold;
+            bool points_behind_surface = distance < -distance_threshold;
+            bool points_within_surface = !points_before_surface && !points_behind_surface;
+            
+            // cases
+            if (points_behind_surface) // case1
             {
-                surface_with_point_before_it.insert(surface);
+                for (const std::shared_ptr<Face>& face : searched_faces) storage_->delete_face(face);
             }
-            else if (distance < -split_distance_threshold) 
+            else if (points_within_surface) // case2
             {
-                surface_with_point_behind_it.insert(surface);
+                if (!point_added)
+                {
+                    storage_->add_interior_point(*searched_faces.begin(), thisPointVEC, thisPointOriginVEC);
+                    point_added = true;
+                }
+                else
+                {
+                    // throw std::runtime_error("point within multiple surface");
+                    std::cout << "point within multiple surface" << std::endl;
+                }
             }
-            else 
+            else if (points_before_surface) // case3
             {
-                surface_with_point_within_it.insert(surface);
-            }
-        }
-        
-        // process point behind set set
-
-        // get the set of triangles that are penetrated by the point
-        std::set<std::shared_ptr<Face>> penetrated_faces;
-        for (std::shared_ptr<Surface> surface : surface_with_point_behind_it)
-        {
-            penetrated_faces.insert(surface_to_searched_faces_map.at(surface).begin(), surface_to_searched_faces_map.at(surface).end());
-        }
-
-        // collect the list of points that are within the penetrated triangles, and isolated by the triangle
-        for (std::shared_ptr<Face> face : penetrated_faces)
-        {
-            // for now, just delete the face
-            storage_->delete_face(face);
-        }
-
-        // // re add the list points by radius search
-        // // todo - while avoid covering the new point
-        // // process point in the queue free_points_vector3d_and_origin_vector3d
-        // while (!free_points_queue.empty())
-        // {
-        //     std::pair<Eigen::Vector3d, Eigen::Vector3d> pair = free_points_queue.front(); free_points_queue.pop();
-
-        //     std::cout << "---------------------------------------------------------------------------------------------------- re-adding point by radius search" << std::endl;
-        //     Eigen::Vector3d pointVEC = pair.first;
-        //     Eigen::Vector3d pointOriginVEC = pair.second;
-        //     int pointID = getNewPointID();
-        //     add_point_by_radius_search(pointID, pointVEC, pointOriginVEC);
-        // }
-        
-        // process point within set set
-        bool point_added_to_surface = false;
-
-        // try merge them
-        std::set<std::shared_ptr<Surface>> merged_surface = surface_with_point_within_it;
-        try_merge_surfaces(merged_surface);        
-
-        // find the set with the smallest distance
-        std::shared_ptr<Surface> smallest_surface = std::make_shared<Surface>();
-        double smallest_distance = std::numeric_limits<double>::max();
-        for (std::shared_ptr<Surface> surface : merged_surface)
-        {
-            // update if smaller
-            double distance = surface->compute_point_to_surface_distance(thisPointOriginVEC, thisPointVEC);
-            if (std::abs(distance) < smallest_distance)
-            {
-                smallest_distance = distance;
-                smallest_surface = surface;
+                continue;
             }
         }
+        if (!point_added) add_point_by_radius_search(thisPointVEC, thisPointOriginVEC);
 
-        // if the smallest set is within threshold, add the point to the set
-        if (!smallest_surface->is_expired() && std::abs(smallest_distance) < distance_threshold)
-        {
-            // from searched_faces find the first face that belongs to the smallest surface
-            for (const std::shared_ptr<Face>& face : searched_faces)
-            {
-                // if face is expired
-                if (face->is_expired()) continue;
-
-                // if not the same surface
-                if (face->get_surface() != smallest_surface) continue;
-                
-                // add point as interior point
-                storage_->add_interior_point(face, thisPointVEC, thisPointOriginVEC);
-
-                std::cout << ith_point << " / " << ith_size << " of pointcloud " << ith_cloud << " added to set " << smallest_surface->get_id() << std::endl;
-                point_added_to_surface = true;
-                break;
-            }
-        }
-        if (!point_added_to_surface)
-        {
-            add_point_by_radius_search(thisPointVEC, thisPointOriginVEC);
-            std::cout << ith_point << " / " << ith_size << " of pointcloud " << ith_cloud << " added by radius search" << std::endl;
-        }
-
-
-        // todo - process point before set set
-
-
-        // check if end of point cloud
+        // next cloud
         if (ith_point == ith_size) 
-        {
-            // next cloud
+        {   
             ith_cloud += 1;
             ith_point = 0;
             load_point_cloud();
