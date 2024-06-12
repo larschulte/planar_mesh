@@ -85,9 +85,10 @@ void Vertex::delete_()
     }
 
     // remove from search tree
-    if (is_boundary_)
+    if (is_searchable_)
     {
         storage_->remove_searchable_vertex(shared_from_this());
+        is_searchable_ = false;
     }
 
     // add to storage as generic point
@@ -118,6 +119,11 @@ void Vertex::try_update_surface_projection()
         normal_used_ = get_surface()->get_normal();
         projected_position_ = get_surface()->compute_point_to_surface_position(get_origin(), get_position());
         projected_distance_ = get_surface()->compute_point_to_surface_distance(get_origin(), get_position());
+    }
+
+    if (std::fabs(projected_distance_) > 0.02)
+    {
+        is_to_be_deleted_ = true;
     }
 }
 
@@ -176,6 +182,11 @@ Eigen::Vector2d Vertex::get_surface_coordinate()
 bool Vertex::is_expired() const
 {
     return is_expired_;
+}
+
+bool Vertex::is_to_be_deleted() const
+{
+    return is_to_be_deleted_;
 }
 
 void Vertex::connect(const std::shared_ptr<Edge>& edge)
@@ -249,6 +260,8 @@ void Vertex::disconnect(const std::shared_ptr<Surface>& surface)
 
 void Vertex::update_boundary_state()
 {
+    if (deleting_) return;
+
     // becomes boundary when one of the connected edges is boundary, or when the point is alone
     is_boundary_ = false;
     for (const std::shared_ptr<Edge>& edge : edges_)

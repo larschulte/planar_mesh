@@ -58,9 +58,10 @@ void Edge::delete_()
     deleting_ = true;
 
     // remove from EdgeBVH
-    if (is_boundary_ && is_searchable_)
+    if (is_searchable_)
     {
         get_surface()->remove_searchable_edge(shared_from_this());
+        is_searchable_ = false;
     }
 
     // disconnect
@@ -210,6 +211,8 @@ bool Edge::is_searchable() const
 
 void Edge::update_boundary_state()
 {
+    if (deleting_) return;
+
     // becomes boundary when 0 or 1 face connected
     if (faces_.size() <= 1) 
     {
