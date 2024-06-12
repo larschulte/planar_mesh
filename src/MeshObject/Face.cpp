@@ -5,35 +5,78 @@
 #include "MeshObject/Surface.hpp"
 #include <iostream>
 
-void Face::initialize_(std::weak_ptr<Storage> storage, std::weak_ptr<Edge> edge1, std::weak_ptr<Edge> edge2, std::weak_ptr<Edge> edge3)
-{
-    // check pointer validity
-    if (storage.expired()) throw std::runtime_error("Attempts to create face with invalid storage.");
-    if (edge1.expired()) throw std::runtime_error("Attempts to create face with invalid edge1.");
-    if (edge2.expired()) throw std::runtime_error("Attempts to create face with invalid edge2.");
-    if (edge3.expired()) throw std::runtime_error("Attempts to create face with invalid edge3.");
-    auto storage_valid = storage.lock();
-    auto edge0_valid = edge1.lock();
-    auto edge1_valid = edge2.lock();
-    auto edge2_valid = edge3.lock();
-    
-    // get id
-    id_ = storage_valid->get_next_face_id();
+#include "MeshObject/InteriorPoint.hpp"
 
-    // sort edges by edge id
-    std::vector<std::shared_ptr<Edge>> edges = {edge0_valid, edge1_valid, edge2_valid};
-    std::sort(edges.begin(), edges.end(), [](const std::shared_ptr<Edge> &a, const std::shared_ptr<Edge> &b){return a->get_id() < b->get_id();});
+void Face::initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<Vertex>& vertex0, const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2)
+{
+    // set expired
+    is_expired_ = false;
+
+    // check pointer validity
+    if (storage->is_expired()) throw std::runtime_error("Attempts to create face with invalid storage.");
+    if (vertex0->is_expired()) throw std::runtime_error("Attempts to create face with invalid vertex0.");
+    if (vertex1->is_expired()) throw std::runtime_error("Attempts to create face with invalid vertex1.");
+    if (vertex2->is_expired()) throw std::runtime_error("Attempts to create face with invalid vertex2.");
 
     // store
-    storage_ = storage_valid;
+    storage_ = storage;
+
+    // get id
+    id_ = storage_->get_next_face_id();
+
 
     // connect
-    connect(edges[0]);
-    connect(edges[1]);
-    connect(edges[2]);
+    connect(vertex0);
+    connect(vertex1);
+    connect(vertex2);
+    
+    // get edges
+    std::shared_ptr<Edge> edge0;
+    std::shared_ptr<Edge> edge1;
+    std::shared_ptr<Edge> edge2;
+    for (const std::shared_ptr<Edge>& edge : vertex0->get_edges())
+    {
+        if (edge->has_vertex(vertex1))
+        {
+            edge0 = edge;
+            break;
+        }
+    }
+    for (const std::shared_ptr<Edge>& edge : vertex1->get_edges())
+    {
+        if (edge->has_vertex(vertex2))
+        {
+            edge1 = edge;
+            break;
+        }
+    }
+    for (const std::shared_ptr<Edge>& edge : vertex2->get_edges())
+    {
+        if (edge->has_vertex(vertex0))
+        {
+            edge2 = edge;
+            break;
+        }
+    }
+    connect(edge0);
+    connect(edge1);
+    connect(edge2);
+
+    // compute center
+    const Eigen::Vector3d& pos0 = vertex0->get_position();
+    const Eigen::Vector3d& pos1 = vertex1->get_position();
+    const Eigen::Vector3d& pos2 = vertex2->get_position();
+    center_ = (pos0 + pos1 + pos2) / 3;
+
+    // add to search
+    if (!is_searchable_)
+    {
+        storage_->add_searchable_face(shared_from_this());
+        is_searchable_ = true;
+    }
 
     // log
-    std::cout << "Face " << id_ << " created between edge " << edge0_valid->get_id() << ", edge " << edge1_valid->get_id() << " and edge " << edge2_valid->get_id() << std::endl;
+    std::cout << "Face " << id_ << " created between vertex " << vertex0->get_id() << ", vertex " << vertex1->get_id() << " and vertex " << vertex2->get_id() << std::endl;
 }
 
 void Face::delete_()
@@ -57,96 +100,231 @@ void Face::delete_()
     {
         disconnect(*surfaces_.begin());
     }
-    
+    while (!interior_points_.empty())
+    {
+        disconnect(*interior_points_.begin());
+    }
+
+    // remove from search tree
+    if (is_searchable_)
+    {
+        storage_->remove_searchable_face(shared_from_this());
+        is_searchable_ = false;
+    }
+
     // log
     std::cout << "---------- face " << id_ << " destroyed" << std::endl;
+
+    // set expired
+    is_expired_ = true;
 }
 
-int Face::get_id() const
+const int& Face::get_id() const
 {
     return id_;
 }
 
-void Face::connect(std::weak_ptr<Vertex> vertex)
+const Eigen::Vector3d& Face::get_center() const
+{
+    return center_;
+}
+
+const std::set<std::shared_ptr<Vertex>>& Face::get_vertices() const
+{
+    return vertices_;
+}
+
+const std::shared_ptr<Vertex>& Face::get_vertex(int index) const
+{
+    if (index < 0 || index > 2) throw std::runtime_error("Invalid index for vertex.");
+    auto it = vertices_.begin();
+    for (int i = 0; i < index; i++) it++;
+    return *it;
+}
+
+const std::shared_ptr<Surface>& Face::get_surface() const
+{
+    if (surfaces_.empty()) throw std::runtime_error("Face has no surface.");
+    return *surfaces_.begin();
+}
+
+bool Face::is_expired() const
+{
+    return is_expired_;
+}
+
+bool Face::intersects_point(const Eigen::Vector3d& origin, const Eigen::Vector3d& direction)
+{
+    // get first Vertex in vertices_
+    auto it = vertices_.begin();
+    std::shared_ptr vertex0 = *(it++);
+    std::shared_ptr vertex1 = *(it++);
+    std::shared_ptr vertex2 = *(it++);
+    const Eigen::Vector3d& v0 = vertex0->get_position();
+    const Eigen::Vector3d& v1 = vertex1->get_position();
+    const Eigen::Vector3d& v2 = vertex2->get_position();
+
+
+    const double EPSILON = 1e-8;
+    Eigen::Vector3d edge1 = v1 - v0;
+    Eigen::Vector3d edge2 = v2 - v0;
+    
+    Eigen::Vector3d pvec = direction.cross(edge2);
+    double det = edge1.dot(pvec);
+    if (std::fabs(det) < EPSILON) return false;
+
+    double invDet = 1.0 / det;
+
+    Eigen::Vector3d tvec = origin - v0;
+    double u = tvec.dot(pvec) * invDet;
+    if (u < 0.0 || u > 1.0) return false;
+    
+    Eigen::Vector3d qvec = tvec.cross(edge1);
+    double v = direction.dot(qvec) * invDet;
+    if (v < 0.0 || u + v > 1.0) return false;
+
+    double t = edge2.dot(qvec) * invDet;
+    if (t < EPSILON) return false;
+
+    return true;
+}   
+
+Eigen::Vector3d Face::compute_intersection_point(const Eigen::Vector3d& origin, const Eigen::Vector3d& direction)
+{
+    // get first Vertex in vertices_
+    auto it = vertices_.begin();
+    std::shared_ptr vertex0 = *(it++);
+    std::shared_ptr vertex1 = *(it++);
+    std::shared_ptr vertex2 = *(it++);
+    const Eigen::Vector3d& v0 = vertex0->get_position();
+    const Eigen::Vector3d& v1 = vertex1->get_position();
+    const Eigen::Vector3d& v2 = vertex2->get_position();
+
+    const double EPSILON = 1e-8;
+    Eigen::Vector3d edge1 = v1 - v0;
+    Eigen::Vector3d edge2 = v2 - v0;
+    
+    Eigen::Vector3d pvec = direction.cross(edge2);
+    double det = edge1.dot(pvec);
+    if (std::fabs(det) < EPSILON) throw std::runtime_error("No intersection point found.");
+
+    double invDet = 1.0 / det;
+
+    Eigen::Vector3d tvec = origin - v0;
+    double u = tvec.dot(pvec) * invDet;
+    if (u < 0.0 || u > 1.0) throw std::runtime_error("No intersection point found.");
+    
+    Eigen::Vector3d qvec = tvec.cross(edge1);
+    double v = direction.dot(qvec) * invDet;
+    if (v < 0.0 || u + v > 1.0) throw std::runtime_error("No intersection point found.");
+
+    double t = edge2.dot(qvec) * invDet;
+    if (t < EPSILON) throw std::runtime_error("No intersection point found.");
+
+    return origin + direction * t;
+}
+
+
+void Face::connect(const std::shared_ptr<Vertex>& vertex)
 {
     // check input
-    if (vertex.expired()) throw std::runtime_error("Attempts to connect face with invalid vertex.");
+    if (vertex->is_expired()) throw std::runtime_error("Attempts to connect face with invalid vertex.");
 
     // connect
     bool inserted = vertices_.insert(vertex).second;
-    if (inserted) vertex.lock()->connect(shared_from_this());
+    if (inserted) vertex->connect(shared_from_this());
 
     // check size
     if (vertices_.size() > 3) throw std::runtime_error("Face connected to more than 3 vertices.");
 }
 
-void Face::connect(std::weak_ptr<Edge> edge)
+void Face::connect(const std::shared_ptr<Edge>& edge)
 {
     // check input
-    if (edge.expired()) throw std::runtime_error("Attempts to connect face with invalid edge.");
+    if (edge->is_expired()) throw std::runtime_error("Attempts to connect face with invalid edge.");
 
     // connect
     bool inserted = edges_.insert(edge).second;
-    if (inserted) edge.lock()->connect(shared_from_this());
+    if (inserted) edge->connect(shared_from_this());
 
     // check size
     if (edges_.size() > 3) throw std::runtime_error("Face connected to more than 3 edges.");
 }
 
-void Face::connect(std::weak_ptr<Surface> surface)
+void Face::connect(const std::shared_ptr<Surface>& surface)
 {
     // check input
-    if (surface.expired()) throw std::runtime_error("Attempts to connect face with invalid surface.");
+    if (surface->is_expired()) throw std::runtime_error("Attempts to connect face with invalid surface.");
 
     // connect
     bool inserted = surfaces_.insert(surface).second;
-    if (inserted) surface.lock()->connect(shared_from_this());
+    if (inserted) surface->connect(shared_from_this());
 }
 
-void Face::disconnect(std::weak_ptr<Vertex> vertex)
+void Face::connect(const std::shared_ptr<InteriorPoint>& interior_point)
 {
     // check input
-    if (vertex.expired()) return;
+    if (interior_point->is_expired()) throw std::runtime_error("Attempts to connect face with invalid interior point.");
+
+    // connect
+    bool inserted = interior_points_.insert(interior_point).second;
+    if (inserted) interior_point->connect(shared_from_this());
+}
+
+void Face::disconnect(const std::shared_ptr<Vertex>& vertex)
+{
+    // check input
+    if (vertex->is_expired()) return;
 
     // delete
     bool erased = vertices_.erase(vertex);
-    if (erased) vertex.lock()->disconnect(shared_from_this());
+    if (erased) vertex->disconnect(shared_from_this());
 
     // self destruct
-    if (!deleting_) storage_.lock()->delete_face(shared_from_this());
+    if (!deleting_) storage_->delete_face(shared_from_this());
 }
 
-void Face::disconnect(std::weak_ptr<Edge> edge)
+void Face::disconnect(const std::shared_ptr<Edge>& edge)
 {
     // check input
-    if (edge.expired()) return;
+    if (edge->is_expired()) return;
 
     // delete
     bool erased = edges_.erase(edge);
-    if (erased) edge.lock()->disconnect(shared_from_this());
+    if (erased) edge->disconnect(shared_from_this());
 
     // self destruct
-    if (!deleting_) storage_.lock()->delete_face(shared_from_this());
+    if (!deleting_) storage_->delete_face(shared_from_this());
 }
 
-void Face::disconnect(std::weak_ptr<Surface> surface)
+void Face::disconnect(const std::shared_ptr<Surface>& surface)
 {
     // check input
-    if (surface.expired()) return;
+    if (surface->is_expired()) return;
 
     // delete
     bool erased = surfaces_.erase(surface);
-    if (erased) surface.lock()->disconnect(shared_from_this());
+    if (erased) surface->disconnect(shared_from_this());
 }
 
-bool operator<(const std::weak_ptr<Face>& lhs, const std::weak_ptr<Face>& rhs)
+void Face::disconnect(const std::shared_ptr<InteriorPoint>& interior_point)
 {
-    if (lhs.expired() || rhs.expired()) throw std::runtime_error("Comparing expired edges");
-    return lhs.lock()->get_id() < rhs.lock()->get_id();
+    // check input
+    if (interior_point->is_expired()) return;
+
+    // delete
+    bool erased = interior_points_.erase(interior_point);
+    if (erased) interior_point->disconnect(shared_from_this());
 }
 
-bool operator==(const std::weak_ptr<Face>& lhs, const std::weak_ptr<Face>& rhs)
+bool operator<(const std::shared_ptr<Face>& lhs, const std::shared_ptr<Face>& rhs)
 {
-    if (lhs.expired() || rhs.expired()) throw std::runtime_error("Comparing expired edges");
-    return lhs.lock()->get_id() == rhs.lock()->get_id();
+    if (lhs->is_expired() || rhs->is_expired()) throw std::runtime_error("Comparing expired edges");
+    return lhs->get_id() < rhs->get_id();
+}
+
+bool operator==(const std::shared_ptr<Face>& lhs, const std::shared_ptr<Face>& rhs)
+{
+    if (lhs->is_expired() || rhs->is_expired()) throw std::runtime_error("Comparing expired edges");
+    return lhs->get_id() == rhs->get_id();
 }
