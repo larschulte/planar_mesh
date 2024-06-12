@@ -120,11 +120,6 @@ void Vertex::try_update_surface_projection()
         projected_position_ = get_surface()->compute_point_to_surface_position(get_origin(), get_position());
         projected_distance_ = get_surface()->compute_point_to_surface_distance(get_origin(), get_position());
     }
-
-    if (std::fabs(projected_distance_) > 0.02)
-    {
-        is_to_be_deleted_ = true;
-    }
 }
 
 const Eigen::Vector3d& Vertex::get_projected_position()
@@ -182,11 +177,6 @@ Eigen::Vector2d Vertex::get_surface_coordinate()
 bool Vertex::is_expired() const
 {
     return is_expired_;
-}
-
-bool Vertex::is_to_be_deleted() const
-{
-    return is_to_be_deleted_;
 }
 
 void Vertex::connect(const std::shared_ptr<Edge>& edge)

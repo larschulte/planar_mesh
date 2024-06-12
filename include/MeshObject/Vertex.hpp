@@ -31,7 +31,6 @@ public:
 
     Eigen::Vector2d get_surface_coordinate();
     bool is_expired() const;
-    bool is_to_be_deleted() const;
 
     void connect(const std::shared_ptr<Edge>& edge);
     void connect(const std::shared_ptr<Face>& face);
@@ -60,7 +59,6 @@ private:
     bool is_boundary_ = false;
     bool is_searchable_ = false;
     bool is_expired_ = true;
-    bool is_to_be_deleted_ = false;
 
     int id_;
     std::shared_ptr<Storage> storage_;
