@@ -45,6 +45,7 @@ public: // to user
     const std::shared_ptr<Edge>& get_edge(std::shared_ptr<Vertex> vertex1, std::shared_ptr<Vertex> vertex2) const;
     const std::set<std::shared_ptr<Face>>& get_faces() const;
     const std::set<std::shared_ptr<Surface>>& get_surfaces() const;
+    const std::set<std::shared_ptr<GenericPoint>>& get_generic_points() const;
 
     std::vector<std::shared_ptr<Vertex>> get_rrs_vertices();
     std::map<std::shared_ptr<Vertex>, int> get_vertex_to_cloud_indices_map() const;

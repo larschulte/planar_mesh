@@ -13,6 +13,7 @@
 #include "MeshObject/Storage.hpp"
 #include "MeshObject/TriangleBVH.hpp"
 #include "MeshObject/RRSTree.hpp"
+#include "MeshObject/GenericPoint.hpp"
 #include "utilities/covariance_math.hpp"
 
 // application class
@@ -279,41 +280,10 @@ public:
         }
     }
 
-    void step()
-    {        
-        // get point
-        Eigen::Vector3d thisPointVEC = pointcloud->points[ith_point].getVector3fMap().cast<double>();
-        Eigen::Vector3d thisPointOriginVEC = origin;
-        ith_point ++;
-    
+    void process_point(Eigen::Vector3d thisPointOriginVEC, Eigen::Vector3d thisPointVEC)
+    {
         // intersected faces
         std::set<std::shared_ptr<Face>> searched_faces = storage_->face_intersection_search(thisPointOriginVEC, thisPointVEC); // may include deleted triangles
-
-        // // update projected position of the vertices of the searced faces
-        // std::set<std::shared_ptr<Vertex>> vertices_to_be_deleted;
-        // for (const std::shared_ptr<Face>& face : searched_faces)
-        // {
-        //     for (const std::shared_ptr<Vertex>& vertex : face->get_vertices())
-        //     {
-        //         vertex->try_update_surface_projection();
-        //         if (vertex->is_to_be_deleted()) vertices_to_be_deleted.insert(vertex);
-        //     }
-        // }
-
-        // // delete vertices
-        // for (const std::shared_ptr<Vertex>& vertex : vertices_to_be_deleted)
-        // {
-        //     if (vertex->is_expired()) continue;
-        //     storage_->delete_vertex(vertex);
-        // }
-
-        // // remove expired faces from searched face
-        // std::set<std::shared_ptr<Face>> searched_faces_cleaned;
-        // for (const std::shared_ptr<Face>& face : searched_faces)
-        // {
-        //     if (!face->is_expired()) searched_faces_cleaned.insert(face);
-        // }
-        // searched_faces = searched_faces_cleaned;
 
         // intersected surface to intersected faces
         std::map<std::shared_ptr<Surface>, std::set<std::shared_ptr<Face>>> searched_surface_to_searched_faces;
@@ -366,6 +336,27 @@ public:
             ith_cloud += 1;
             ith_point = 0;
             load_point_cloud();
+        }
+    }
+    
+    void step()
+    {        
+        // get point
+        Eigen::Vector3d thisPointVEC = pointcloud->points[ith_point].getVector3fMap().cast<double>();
+        Eigen::Vector3d thisPointOriginVEC = origin;
+        ith_point ++;
+
+        // process point
+        process_point(thisPointOriginVEC, thisPointVEC);
+    }
+
+    void add_back_generic_points()
+    {
+        while (!storage_->get_generic_points().empty())
+        {
+            const std::shared_ptr<GenericPoint>& generic_point = *storage_->get_generic_points().begin();
+            process_point(generic_point->get_origin(), generic_point->get_position());
+            storage_->delete_genertic_point(generic_point);
         }
     }
 
@@ -452,6 +443,9 @@ public:
         {
             surface->refine_surface();
         }
+
+        // show number of generic points
+        std::cout << "number of generic points after refine: " << storage_->get_generic_points().size() << std::endl;
     }
 
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr point_to_vector3d_set_colored_cloud()
@@ -862,6 +856,11 @@ private:
         if (event.getKeySym() == "b" && event.keyDown())
         {
             app_.refine_surfaces();
+            update_display();
+        }
+        if (event.getKeySym() == "n" && event.keyDown())
+        {
+            app_.add_back_generic_points();
             update_display();
         }
     }  

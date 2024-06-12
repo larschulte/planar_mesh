@@ -235,6 +235,11 @@ const std::set<std::shared_ptr<Surface>>& Storage::get_surfaces() const
     return surfaces_;
 }
 
+const std::set<std::shared_ptr<GenericPoint>>& Storage::get_generic_points() const
+{
+    return genertic_points_;
+}
+
 std::vector<std::shared_ptr<Vertex>> Storage::get_rrs_vertices()
 {
     return rrs_tree_.compute_vertices_list();
