@@ -81,3 +81,15 @@ private:
 bool operator<(const std::shared_ptr<Vertex>& lhs, const std::shared_ptr<Vertex>& rhs);
 bool operator<=(const std::shared_ptr<Vertex>& lhs, const std::shared_ptr<Vertex>& rhs);
 bool operator==(const std::shared_ptr<Vertex>& lhs, const std::shared_ptr<Vertex>& rhs);
+
+namespace std 
+{
+    template<>
+    struct hash<std::shared_ptr<Vertex>> 
+    {
+        std::size_t operator()(const std::shared_ptr<Vertex>& v) const 
+        {
+            return std::hash<int>()(v->get_id());
+        }
+    };
+}

@@ -41,6 +41,7 @@ set(MeshObject_SOURCE
   src/MeshObject/TriangleBVH.cpp
   src/MeshObject/EdgeBVH.cpp
   src/MeshObject/RRSTree.cpp
+  src/MeshObject/UnionFind.cpp
   src/utilities/covariance_math.cpp
 )
 
@@ -94,6 +95,13 @@ target_include_directories(TriangleBVH_test
 add_executable(covariance_math_test src/test/covariance_math_test.cpp src/utilities/covariance_math.cpp)
 target_link_libraries (covariance_math_test ${PCL_LIBRARIES})
 target_include_directories(covariance_math_test
+  PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>)
+
+add_executable(test_UnionFind src/test/test_UnionFind.cpp ${MeshObject_SOURCE})
+target_link_libraries (test_UnionFind ${PCL_LIBRARIES})
+target_include_directories(test_UnionFind
   PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>)
