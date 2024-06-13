@@ -439,7 +439,8 @@ public:
 
     void refine_surfaces()
     {
-        for (const std::shared_ptr<Surface>& surface : storage_->get_surfaces())
+        std::set<std::shared_ptr<Surface>> copy_of_surfaces = storage_->get_surfaces();
+        for (const std::shared_ptr<Surface>& surface : copy_of_surfaces)
         {
             surface->refine_surface();
         }

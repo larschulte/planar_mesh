@@ -7,6 +7,7 @@
 #include <iostream>
 #include "MeshObject/InteriorPoint.hpp"
 #include "utilities/covariance_math.hpp"
+#include "MeshObject/UnionFind.hpp"
 
 void Surface::initialize_(const std::shared_ptr<Storage>& storage)
 {
@@ -490,6 +491,26 @@ void Surface::refine_surface()
     {
         if (interior_point->is_expired()) continue;
         storage_->delete_interior_point(interior_point);
+    }
+
+    // split surface
+    UnionFind uf;
+    uf.add_vertices(vertices_);
+    uf.add_edges(edges_);
+    std::vector<std::pair<std::shared_ptr<Vertex>, std::vector<std::shared_ptr<Vertex>>>> sorted_grouped_vertices = uf.compute_sorted_grouped_vertices();
+
+    // create new surfaces from the second group onwards
+    for (std::size_t i = 1; i < sorted_grouped_vertices.size(); i++)
+    {
+        // get root vertex
+        const auto& root_vertex = sorted_grouped_vertices[i].first;
+
+        // disconnect from current surface
+        disconnect(root_vertex);
+
+        // connect to new surface
+        std::shared_ptr<Surface> new_surface = storage_->add_surface();
+        new_surface->connect(root_vertex);
     }
 }
 
