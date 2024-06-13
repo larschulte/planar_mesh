@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <set>
+#include <map>
 
 // Forward declarations
 class Vertex;
@@ -13,7 +14,7 @@ class Edge : public std::enable_shared_from_this<Edge>
 {
 protected:
     friend class Storage;
-    void initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<Surface>& surface, const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2);
+    void initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2);
     void delete_();
 
 public:
@@ -34,15 +35,15 @@ public:
 
     bool has_vertex(const std::shared_ptr<Vertex>& vertex) const;
     bool is_boundary() const;
-    bool is_searchable() const;
     void update_boundary_state();
+    void update_searchable_state();
+    void update_searchable_state(const std::shared_ptr<Surface>& surface);
 
     bool intersects_edge(const std::shared_ptr<Vertex>& vertex0, const std::shared_ptr<Vertex>& vertex1);
 
 private:
     bool deleting_ = false;
     bool is_boundary_ = false;
-    bool is_searchable_ = false;
     bool is_expired_ = true;
 
     Eigen::Vector3d center_;
@@ -55,6 +56,7 @@ private:
     std::set<std::shared_ptr<Vertex>> vertices_;
     std::set<std::shared_ptr<Face>> faces_;
     std::set<std::shared_ptr<Surface>> surfaces_;
+    std::map<std::shared_ptr<Surface>, bool> is_searchable_in_surface_;
 };
 
 bool operator<(const std::shared_ptr<Edge>& lhs, const std::shared_ptr<Edge>& rhs);

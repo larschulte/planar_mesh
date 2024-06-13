@@ -139,12 +139,6 @@ void Surface::merge_surface(const std::shared_ptr<Surface>& surface)
     for (const auto& face : surface_valid->faces_) connect(face);
     for (const auto& interior_point : surface_valid->interior_points_) connect(interior_point);
 
-    // merge EdgeBVH, since this is maintained per surface
-    for (const auto& edge : surface_valid->edges_)
-    {
-        if (edge->is_searchable()) edge_bvh_.tree_add_edge(edge);
-    }
-
     // log
     std::cout << "Surface " << surface_valid->get_id() << " merged into surface " << id_ << std::endl;
 
@@ -245,7 +239,8 @@ void Surface::connect(const std::shared_ptr<Vertex>& vertex, const std::set<std:
         if (edge_bvh_.tree_intersect_edge(vertex, nearby_vertex)) continue;
 
         // create edge
-        std::shared_ptr<Edge> new_edge = storage_->add_edge(shared_from_this(), vertex, nearby_vertex);
+        std::shared_ptr<Edge> new_edge = storage_->add_edge(vertex, nearby_vertex);
+        connect(new_edge);
         used_vertices.insert(nearby_vertex);
     }
 

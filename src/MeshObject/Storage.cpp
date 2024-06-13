@@ -39,11 +39,11 @@ const std::shared_ptr<Vertex>& Storage::add_vertex(const Eigen::Vector3d& origin
     return *vertices_.insert(vertex).first;
 }
 
-const std::shared_ptr<Edge>& Storage::add_edge(const std::shared_ptr<Surface>& surface, const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2)
+const std::shared_ptr<Edge>& Storage::add_edge(const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2)
 {    
     // create
     std::shared_ptr<Edge> edge = std::make_shared<Edge>();
-    edge->initialize_(shared_from_this(), surface, vertex1, vertex2);
+    edge->initialize_(shared_from_this(), vertex1, vertex2);
 
     // store
     return *edges_.insert(edge).first;

@@ -5,14 +5,13 @@
 #include "MeshObject/Surface.hpp"
 #include <iostream>
 
-void Edge::initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<Surface>& surface, const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2)
+void Edge::initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2)
 {
     // set expired
     is_expired_ = false;
 
     // check pointer validity
     if (storage->is_expired()) throw std::runtime_error("Attempts to create edge with invalid storage.");
-    if (surface->is_expired()) throw std::runtime_error("Attempts to create edge with invalid surface.");
     if (vertex1->is_expired()) throw std::runtime_error("Attempts to create edge with invalid vertex1.");
     if (vertex2->is_expired()) throw std::runtime_error("Attempts to create edge with invalid vertex2.");
     auto storage_valid = storage;
@@ -31,7 +30,6 @@ void Edge::initialize_(const std::shared_ptr<Storage>& storage, const std::share
     // make connections
     connect(vertex1);
     connect(vertex2);
-    connect(surface);
 
     // compute center
     center_ = 0.5 * (vertex1_valid->get_position() + vertex2_valid->get_position());
@@ -56,13 +54,6 @@ void Edge::delete_()
 
     // set deletion flag
     deleting_ = true;
-
-    // remove from EdgeBVH
-    if (is_searchable_)
-    {
-        get_surface()->remove_searchable_edge(shared_from_this());
-        is_searchable_ = false;
-    }
 
     // disconnect
     while (!vertices_.empty())
@@ -116,9 +107,17 @@ void Edge::connect(const std::shared_ptr<Surface>& surface)
     // check input
     if (surface->is_expired()) throw std::runtime_error("Attempts to connect edge with invalid surface.");
 
-    // connect
+    // connect edge to surface
     bool inserted = surfaces_.insert(surface).second;
-    if (inserted) surface->connect(shared_from_this());
+    if (inserted) 
+    {
+        // connect surface to edge
+        surface->connect(shared_from_this());
+
+        // initialize searchable state
+        is_searchable_in_surface_[surface] = false;
+        update_searchable_state(surface);
+    }
 }
 
 void Edge::disconnect(const std::shared_ptr<Vertex>& vertex)
@@ -158,9 +157,17 @@ void Edge::disconnect(const std::shared_ptr<Surface>& surface)
     // check input
     if (surface->is_expired()) return;
 
-    // disconnect
+    // disconnect edge from surface
     bool erased = surfaces_.erase(surface);
-    if (erased) surface->disconnect(shared_from_this());
+    if (erased) 
+    {
+        // disconnect surface from edge
+        surface->disconnect(shared_from_this());
+        
+        // remove searchable state
+        update_searchable_state(surface);
+        is_searchable_in_surface_.erase(surface);
+    }
 }
 
 const int& Edge::get_id() const 
@@ -170,6 +177,7 @@ const int& Edge::get_id() const
 
 const std::shared_ptr<Vertex>& Edge::get_vertex(int index) const
 {
+    if (is_expired_) throw std::runtime_error("Accessing expired edge.");
     if (index < 0 || index > 1) throw std::runtime_error("Invalid vertex index.");
     if (vertices_.size() != 2) throw std::runtime_error("Edge does not have 2 vertices.");
     return *std::next(vertices_.begin(), index);
@@ -204,16 +212,12 @@ bool Edge::is_boundary() const
     return is_boundary_;
 }
 
-bool Edge::is_searchable() const
-{
-    return is_searchable_;
-}
-
 void Edge::update_boundary_state()
 {
     if (deleting_) return;
 
-    // becomes boundary when 0 or 1 face connected
+    // update boundary state
+    bool previous_boundary_state = is_boundary_;
     if (faces_.size() <= 1) 
     {
         is_boundary_ = true;
@@ -222,27 +226,57 @@ void Edge::update_boundary_state()
     {
         is_boundary_ = false;
     }
+    bool changed_boundary_state = previous_boundary_state != is_boundary_;
 
-    // update boundary state of connected vertices
-    for (const std::shared_ptr<Vertex>& vertex : vertices_)
+    // if changed state
+    if (changed_boundary_state) 
     {
-        vertex->update_boundary_state();
+        // update connected surfaces
+        update_searchable_state();
+
+        // update connected vertices
+        for (const std::shared_ptr<Vertex>& vertex : vertices_)
+        {
+            vertex->update_boundary_state();
+        }
+    }
+}
+
+void Edge::update_searchable_state()
+{
+    for (const std::shared_ptr<Surface>& surface : surfaces_)
+    {
+        update_searchable_state(surface);
+    }
+}
+
+void Edge::update_searchable_state(const std::shared_ptr<Surface>& surface)
+{
+    bool& is_searchable = is_searchable_in_surface_.at(surface);
+
+    // upon changes of deleting state
+    if (deleting_)
+    {
+        if (is_searchable)
+        {
+            surface->remove_searchable_edge(shared_from_this());
+            is_searchable = false;
+        }
+        return;
     }
 
-    // update search tree in connected surface
-    if (is_boundary_ && !is_searchable_)
+    // upon changes of boundary state
+    // add
+    if (is_boundary_ && !is_searchable)
     {
-        get_surface()->add_searchable_edge(shared_from_this());
-        is_searchable_ = true;
+        surface->add_searchable_edge(shared_from_this());
+        is_searchable = true;
     }
-    else if (!is_boundary_ && is_searchable_)
+    // remove
+    if (!is_boundary_ && is_searchable)
     {   
-        get_surface()->remove_searchable_edge(shared_from_this());
-        is_searchable_ = false;
-    }
-    else
-    {
-        // do nothing
+        surface->remove_searchable_edge(shared_from_this());
+        is_searchable = false;
     }
 }
 
