@@ -165,8 +165,7 @@ void Edge::disconnect(const std::shared_ptr<Surface>& surface)
         surface->disconnect(shared_from_this());
         
         // remove searchable state
-        update_searchable_state(surface);
-        is_searchable_in_surface_.erase(surface);
+        remove_searchable_state(surface);
     }
 }
 
@@ -254,17 +253,6 @@ void Edge::update_searchable_state(const std::shared_ptr<Surface>& surface)
 {
     bool& is_searchable = is_searchable_in_surface_.at(surface);
 
-    // upon changes of deleting state
-    if (deleting_)
-    {
-        if (is_searchable)
-        {
-            surface->remove_searchable_edge(shared_from_this());
-            is_searchable = false;
-        }
-        return;
-    }
-
     // upon changes of boundary state
     // add
     if (is_boundary_ && !is_searchable)
@@ -278,6 +266,17 @@ void Edge::update_searchable_state(const std::shared_ptr<Surface>& surface)
         surface->remove_searchable_edge(shared_from_this());
         is_searchable = false;
     }
+}
+
+void Edge::remove_searchable_state(const std::shared_ptr<Surface>& surface)
+{
+    bool& is_searchable = is_searchable_in_surface_.at(surface);
+    if (is_searchable)
+    {
+        surface->remove_searchable_edge(shared_from_this());
+        is_searchable = false;
+    }
+    is_searchable_in_surface_.erase(surface);
 }
 
 const Eigen::Vector3d& Edge::get_center() const

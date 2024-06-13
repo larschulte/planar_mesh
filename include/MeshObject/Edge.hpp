@@ -38,6 +38,7 @@ public:
     void update_boundary_state();
     void update_searchable_state();
     void update_searchable_state(const std::shared_ptr<Surface>& surface);
+    void remove_searchable_state(const std::shared_ptr<Surface>& surface);
 
     bool intersects_edge(const std::shared_ptr<Vertex>& vertex0, const std::shared_ptr<Vertex>& vertex1);
 
