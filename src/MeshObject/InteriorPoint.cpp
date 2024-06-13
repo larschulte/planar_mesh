@@ -151,9 +151,6 @@ void InteriorPoint::disconnect(const std::shared_ptr<Surface>& surface)
     // disconnect
     bool erased = surfaces_.erase(surface);
     if (erased) surface->disconnect(shared_from_this());
-
-    // self destruct
-    if (!deleting_ && surfaces_.empty()) storage_->delete_interior_point(shared_from_this());
 }
 
 bool operator<(const std::shared_ptr<InteriorPoint>& lhs, const std::shared_ptr<InteriorPoint>& rhs)
