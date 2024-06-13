@@ -135,9 +135,6 @@ void Surface::merge_surface(const std::shared_ptr<Surface>& surface)
     // merge
     const auto& surface_valid = surface;
     for (const auto& vertex : surface_valid->vertices_) connect(vertex);
-    for (const auto& edge : surface_valid->edges_) connect(edge);
-    for (const auto& face : surface_valid->faces_) connect(face);
-    for (const auto& interior_point : surface_valid->interior_points_) connect(interior_point);
 
     // log
     std::cout << "Surface " << surface_valid->get_id() << " merged into surface " << id_ << std::endl;

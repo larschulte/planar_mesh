@@ -210,6 +210,19 @@ void Vertex::connect(const std::shared_ptr<Surface>& surface)
     // connect
     bool inserted = surfaces_.insert(surface).second;
     if (inserted) surface->connect(shared_from_this());
+
+    // cascade connect edges and faces to surface
+    if (inserted) 
+    {
+        for (const std::shared_ptr<Edge>& edge : edges_)
+        {
+            edge->connect(surface);
+        }
+        for (const std::shared_ptr<Face>& face : faces_)
+        {
+            face->connect(surface);
+        }
+    }
 }
 
 void Vertex::disconnect(const std::shared_ptr<Edge>& edge) 
@@ -246,6 +259,19 @@ void Vertex::disconnect(const std::shared_ptr<Surface>& surface)
     // disconnect
     bool erased = surfaces_.erase(surface);
     if (erased) surface->disconnect(shared_from_this());
+
+    // cascade disconnect edges and faces from surface
+    if (erased)
+    {
+        for (const std::shared_ptr<Edge>& edge : edges_)
+        {
+            edge->disconnect(surface);
+        }
+        for (const std::shared_ptr<Face>& face : faces_)
+        {
+            face->disconnect(surface);
+        }
+    }
 }
 
 void Vertex::update_boundary_state()

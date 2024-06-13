@@ -118,6 +118,19 @@ void Edge::connect(const std::shared_ptr<Surface>& surface)
         is_searchable_in_surface_[surface] = false;
         update_searchable_state(surface);
     }
+
+    // cascade connect vertices and faces to surface
+    if (inserted)
+    {
+        for (const std::shared_ptr<Vertex>& vertex : vertices_)
+        {
+            vertex->connect(surface);
+        }
+        for (const std::shared_ptr<Face>& face : faces_)
+        {
+            face->connect(surface);
+        }
+    }
 }
 
 void Edge::disconnect(const std::shared_ptr<Vertex>& vertex)
@@ -166,6 +179,19 @@ void Edge::disconnect(const std::shared_ptr<Surface>& surface)
         
         // remove searchable state
         remove_searchable_state(surface);
+    }
+
+    // cascade disconnect vertices and faces from surface
+    if (erased)
+    {
+        for (const std::shared_ptr<Vertex>& vertex : vertices_)
+        {
+            vertex->disconnect(surface);
+        }
+        for (const std::shared_ptr<Face>& face : faces_)
+        {
+            face->disconnect(surface);
+        }
     }
 }
 

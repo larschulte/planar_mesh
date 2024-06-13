@@ -259,6 +259,23 @@ void Face::connect(const std::shared_ptr<Surface>& surface)
     // connect
     bool inserted = surfaces_.insert(surface).second;
     if (inserted) surface->connect(shared_from_this());
+
+    // cascade connect vertices and edges and interior points to surface
+    if (inserted)
+    {
+        for (const std::shared_ptr<Vertex>& vertex : vertices_)
+        {
+            vertex->connect(surface);
+        }
+        for (const std::shared_ptr<Edge>& edge : edges_)
+        {
+            edge->connect(surface);
+        }
+        for (const std::shared_ptr<InteriorPoint>& interior_point : interior_points_)
+        {
+            interior_point->connect(surface);
+        }
+    }
 }
 
 void Face::connect(const std::shared_ptr<InteriorPoint>& interior_point)
@@ -305,6 +322,23 @@ void Face::disconnect(const std::shared_ptr<Surface>& surface)
     // delete
     bool erased = surfaces_.erase(surface);
     if (erased) surface->disconnect(shared_from_this());
+
+    // cascade disconnect vertices and edges and interior points from surface
+    if (erased)
+    {
+        for (const std::shared_ptr<Vertex>& vertex : vertices_)
+        {
+            vertex->disconnect(surface);
+        }
+        for (const std::shared_ptr<Edge>& edge : edges_)
+        {
+            edge->disconnect(surface);
+        }
+        for (const std::shared_ptr<InteriorPoint>& interior_point : interior_points_)
+        {
+            interior_point->disconnect(surface);
+        }
+    }
 }
 
 void Face::disconnect(const std::shared_ptr<InteriorPoint>& interior_point)
