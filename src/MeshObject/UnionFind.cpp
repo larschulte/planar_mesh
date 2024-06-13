@@ -70,7 +70,7 @@ std::vector<std::pair<std::shared_ptr<Vertex>, std::vector<std::shared_ptr<Verte
     std::unordered_map<std::shared_ptr<Vertex>, std::vector<std::shared_ptr<Vertex>>> groups;
     for (const auto& pair : parent) 
     {
-        groups[pair.second].push_back(pair.first);
+        groups[find_root(pair.second)].push_back(pair.first);
     }
 
     // sorted group
@@ -88,6 +88,9 @@ std::vector<std::pair<std::shared_ptr<Vertex>, std::vector<std::shared_ptr<Verte
 void UnionFind::print_sorted_grouped_vertices()
 {
     std::vector<std::pair<std::shared_ptr<Vertex>, std::vector<std::shared_ptr<Vertex>>>> sorted_groups = compute_sorted_grouped_vertices();
+
+    std::cout << "Total number of groups: " << sorted_groups.size() << std::endl;
+
     for (const auto& pair : sorted_groups) 
     {
         std::cout << "root: " << pair.first->get_id() <<  ", size: " << pair.second.size() << std::endl;
