@@ -325,9 +325,9 @@ void Application<PointT>::step()
 template <typename PointT>
 void Application<PointT>::add_back_generic_points()
 {
-    while (!storage_->get_generic_points().empty())
+    std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash> copy_of_generic_points = storage_->get_generic_points();
+    for (const std::shared_ptr<GenericPoint>& generic_point : copy_of_generic_points)
     {
-        const std::shared_ptr<GenericPoint>& generic_point = *storage_->get_generic_points().begin();
         process_point(generic_point->get_origin(), generic_point->get_position());
         storage_->delete_genertic_point(generic_point);
     }
