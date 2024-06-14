@@ -457,85 +457,40 @@ void Application<PointT>::refine_surfaces()
 }
 
 template <typename PointT>
-pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::point_to_vector3d_set_colored_cloud()
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_vertex_point_pointcloud(bool show_projected_point, bool show_error_color)
 {
     vertex_to_cloud_indices_map.clear();
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
     for (const std::shared_ptr<Vertex>& vertex : storage_->get_vertices())
     {
         pcl::PointXYZRGB point;
-        point.x = vertex->get_position()[0];
-        point.y = vertex->get_position()[1];
-        point.z = vertex->get_position()[2];
-        const std::tuple<int, int, int>& color = vertex->get_surface()->get_color();
-        point.r = std::get<0>(color);
-        point.g = std::get<1>(color);
-        point.b = std::get<2>(color);
-        cloud->push_back(point);
-        vertex_to_cloud_indices_map[vertex] = cloud->size() - 1;
-    }
-    return cloud;
-}
-
-template <typename PointT>
-pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::point_to_vector3d_set_distance_cloud()
-{
-    vertex_to_cloud_indices_map.clear();
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
-    for (const std::shared_ptr<Vertex>& vertex : storage_->get_vertices())
-    {
-        pcl::PointXYZRGB point;
-        point.x = vertex->get_position()[0];
-        point.y = vertex->get_position()[1];
-        point.z = vertex->get_position()[2];
-        double value = vertex->get_projected_distance() / 0.05;
-        std::tuple<int, int, int> color = valueToJet(value);
-        point.r = std::get<0>(color);
-        point.g = std::get<1>(color);
-        point.b = std::get<2>(color);
-        cloud->push_back(point);
-        vertex_to_cloud_indices_map[vertex] = cloud->size() - 1;
-    }
-    return cloud;
-}
-
-template <typename PointT>
-pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::projected_point_to_vector3d_set_colored_cloud()
-{
-    vertex_to_cloud_indices_map.clear();
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
-    for (std::shared_ptr<Vertex> vertex : storage_->get_vertices())
-    {
-        pcl::PointXYZRGB point;
-        point.x = vertex->get_projected_position()[0];
-        point.y = vertex->get_projected_position()[1];
-        point.z = vertex->get_projected_position()[2];
-        const std::tuple<int, int, int>& color = vertex->get_surface()->get_color();
-        point.r = std::get<0>(color);
-        point.g = std::get<1>(color);
-        point.b = std::get<2>(color);
-        cloud->push_back(point);
-        vertex_to_cloud_indices_map[vertex] = cloud->size() - 1;
-    }
-    return cloud;
-}
-
-template <typename PointT>
-pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::projected_point_to_vector3d_set_distance_cloud()
-{
-    vertex_to_cloud_indices_map.clear();
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
-    for (const std::shared_ptr<Vertex>& vertex : storage_->get_vertices())
-    {
-        pcl::PointXYZRGB point;
-        point.x = vertex->get_projected_position()[0];
-        point.y = vertex->get_projected_position()[1];
-        point.z = vertex->get_projected_position()[2];
-        double value = vertex->get_projected_distance() / 0.05;
-        std::tuple<int, int, int> color = valueToJet(value);
-        point.r = std::get<0>(color);
-        point.g = std::get<1>(color);
-        point.b = std::get<2>(color);
+        if (show_projected_point)
+        {
+            point.x = vertex->get_projected_position()[0];
+            point.y = vertex->get_projected_position()[1];
+            point.z = vertex->get_projected_position()[2];
+        }
+        else
+        {
+            point.x = vertex->get_position()[0];
+            point.y = vertex->get_position()[1];
+            point.z = vertex->get_position()[2];
+        }
+        if (show_error_color)
+        {
+            double distance = vertex->get_projected_distance() / 0.05;
+            std::tuple<int, int, int> color = valueToJet(distance);
+            point.r = std::get<0>(color);
+            point.g = std::get<1>(color);
+            point.b = std::get<2>(color);
+        }
+        else
+        {
+            const std::tuple<int, int, int>& color = vertex->get_surface()->get_color();
+            point.r = std::get<0>(color);
+            point.g = std::get<1>(color);
+            point.b = std::get<2>(color);
+        }
         cloud->push_back(point);
         vertex_to_cloud_indices_map[vertex] = cloud->size() - 1;
     }

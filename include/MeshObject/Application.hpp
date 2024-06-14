@@ -38,12 +38,9 @@ public:
     void restart();
 
     // getter
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr point_to_vector3d_set_colored_cloud();
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr point_to_vector3d_set_distance_cloud();
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr projected_point_to_vector3d_set_colored_cloud();
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr projected_point_to_vector3d_set_distance_cloud();
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr compute_vertex_point_pointcloud(bool show_projected_point, bool show_error_color);
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr compute_interior_point_pointcloud(bool show_projected_point, bool show_error_color);
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr compute_generic_point_pointcloud();
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr compute_interior_point_pointcloud(bool projected, bool surface_color);
     std::map<std::shared_ptr<Vertex>, int> get_vertex_to_cloud_indices_map();
     const std::set<std::shared_ptr<Face>>& get_faces();
     const std::set<std::shared_ptr<Edge>>& get_edges();

@@ -23,29 +23,7 @@ InteractiveViewer<PointT>::InteractiveViewer(Application<PointT>& app)
 template <typename PointT>
 void InteractiveViewer<PointT>::update_display()
 {
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr point_cloud;
-    if (show_projected_point)
-    {
-        if (show_error_color) 
-        {
-            point_cloud = app_.projected_point_to_vector3d_set_distance_cloud();
-        }
-        else
-        {
-            point_cloud = app_.projected_point_to_vector3d_set_colored_cloud();
-        }
-    }
-    else
-    {
-        if (show_error_color) 
-        {
-            point_cloud = app_.point_to_vector3d_set_distance_cloud();
-        }
-        else
-        {
-            point_cloud = app_.point_to_vector3d_set_colored_cloud();
-        }
-    }
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr vertex_pointcloud = app_.compute_vertex_point_pointcloud(show_projected_point, show_error_color);
     std::map<std::shared_ptr<Vertex>, int> vertex_to_cloud_indices_map = app_.get_vertex_to_cloud_indices_map();
     std::set<std::shared_ptr<Face>> faces = app_.get_faces();
     std::set<std::shared_ptr<Edge>> boundary_edges = app_.get_boundary_edges();
@@ -54,8 +32,7 @@ void InteractiveViewer<PointT>::update_display()
     viewer_->removeShape("point_cloud");
     if (show_pointcloud)
     {
-        pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> color_handler(point_cloud);
-        viewer_->addPointCloud<pcl::PointXYZRGB>(point_cloud, color_handler, "point_cloud");
+        viewer_->addPointCloud<pcl::PointXYZRGB>(vertex_pointcloud, "point_cloud");
         viewer_->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 6, "point_cloud");
     }
 
@@ -82,7 +59,7 @@ void InteractiveViewer<PointT>::update_display()
     if (show_triangle)
     {
         pcl::PolygonMesh triangle_mesh;
-        pcl::toPCLPointCloud2(*point_cloud, triangle_mesh.cloud);
+        pcl::toPCLPointCloud2(*vertex_pointcloud, triangle_mesh.cloud);
         for (const std::shared_ptr<Face>& face : faces)
         {
             pcl::Vertices triangle;
@@ -99,7 +76,7 @@ void InteractiveViewer<PointT>::update_display()
     if (show_edge)
     {
         pcl::PolygonMesh boundary_mesh;
-        pcl::toPCLPointCloud2(*point_cloud, boundary_mesh.cloud);
+        pcl::toPCLPointCloud2(*vertex_pointcloud, boundary_mesh.cloud);
         for (const std::shared_ptr<Edge>& edge : boundary_edges)
         {
             pcl::Vertices boundary_edge;
