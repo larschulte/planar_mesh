@@ -56,18 +56,13 @@ void Edge::delete_()
     deleting_ = true;
 
     // disconnect
-    while (!vertices_.empty())
-    {
-        disconnect(*vertices_.begin());
-    }
-    while (!faces_.empty())
-    {
-        disconnect(*faces_.begin());
-    }
-    while (!surfaces_.empty())
-    {
-        disconnect(*surfaces_.begin());
-    }
+    // make copy of vertices_ and faces_ to avoid iterator invalidation
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertices = vertices_;
+    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces = faces_;
+    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces = surfaces_;
+    for (const auto& vertex : vertices) disconnect(vertex);
+    for (const auto& face : faces) disconnect(face);
+    for (const auto& surface : surfaces) disconnect(surface);
 
     // log
     std::cout << "---------- edge " << id_ << " destroyed" << std::endl;

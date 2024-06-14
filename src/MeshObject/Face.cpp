@@ -88,22 +88,15 @@ void Face::delete_()
     deleting_ = true;
 
     // disconnect
-    while (!vertices_.empty())
-    {
-        disconnect(*vertices_.begin());
-    }
-    while (!edges_.empty())
-    {
-        disconnect(*edges_.begin());
-    }
-    while (!surfaces_.empty())
-    {
-        disconnect(*surfaces_.begin());
-    }
-    while (!interior_points_.empty())
-    {
-        disconnect(*interior_points_.begin());
-    }
+    // make a copy of the set to avoid iterator invalidation
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertices = vertices_;
+    std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges = edges_;
+    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces = surfaces_;
+    std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> interior_points = interior_points_;
+    for (const auto& vertex : vertices) disconnect(vertex);
+    for (const auto& edge : edges) disconnect(edge);
+    for (const auto& surface : surfaces) disconnect(surface);
+    for (const auto& interior_point : interior_points) disconnect(interior_point);
 
     // remove from search tree
     if (is_searchable_)

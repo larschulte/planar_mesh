@@ -71,18 +71,12 @@ void Vertex::delete_()
     deleting_ = true;
 
     // disconnect
-    while (!edges_.empty())
-    {
-        disconnect(*edges_.begin());
-    }
-    while (!faces_.empty())
-    {
-        disconnect(*faces_.begin());
-    }
-    while (!surfaces_.empty())
-    {
-        disconnect(*surfaces_.begin());
-    }
+    std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges = edges_;
+    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces = faces_;
+    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces = surfaces_;
+    for (const auto& edge : edges) disconnect(edge);
+    for (const auto& face : faces) disconnect(face);
+    for (const auto& surface : surfaces) disconnect(surface);
 
     // remove from search tree
     if (is_searchable_)

@@ -38,14 +38,10 @@ void InteriorPoint::delete_()
     deleting_ = true;
 
     // disconnect
-    while (!faces_.empty())
-    {
-        disconnect(*faces_.begin());
-    }
-    while (!surfaces_.empty())
-    {
-        disconnect(*surfaces_.begin());
-    }
+    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces = faces_;
+    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces = surfaces_;
+    for (const auto& face : faces) disconnect(face);
+    for (const auto& surface : surfaces) disconnect(surface);
 
     // add to storage as generic point
     storage_->add_generic_point(get_position(), get_origin());
