@@ -2,14 +2,16 @@
 
 #include <memory>
 #include <Eigen/Dense>
-#include <set>
+#include <unordered_set>
+
+#include "MeshObject/MeshObject.hpp"
 
 // Forward declarations
 class Storage;
 class Face;
 class Surface;
 
-class InteriorPoint : public std::enable_shared_from_this<InteriorPoint> 
+class InteriorPoint : public std::enable_shared_from_this<InteriorPoint>, public MeshObject 
 {
 protected:
     friend class Storage;
@@ -39,8 +41,8 @@ private:
     int id_;
     std::shared_ptr<Storage> storage_;
 
-    std::set<std::shared_ptr<Face>> faces_;
-    std::set<std::shared_ptr<Surface>> surfaces_;
+    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces_;
+    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_;
 
     Eigen::Vector3d position_;
     Eigen::Vector3d origin_;

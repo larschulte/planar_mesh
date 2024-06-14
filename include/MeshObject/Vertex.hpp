@@ -2,7 +2,9 @@
 
 #include <memory>
 #include <Eigen/Dense>
-#include <set>
+#include <unordered_set>
+
+#include "MeshObject/MeshObject.hpp"
 
 // Forward declarations
 class Edge;
@@ -10,7 +12,7 @@ class Face;
 class Storage;
 class Surface;
 
-class Vertex : public std::enable_shared_from_this<Vertex> 
+class Vertex : public std::enable_shared_from_this<Vertex>, public MeshObject
 {
 protected:
     friend class Storage;
@@ -23,7 +25,7 @@ public:
     const Eigen::Vector3d& get_position() const;
     const Eigen::Vector3d& get_origin() const;
     const std::shared_ptr<Surface>& get_surface() const;
-    const std::set<std::shared_ptr<Edge>>& get_edges() const;
+    const std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& get_edges() const;
 
     void try_update_surface_projection();
     const Eigen::Vector3d& get_projected_position();
@@ -63,9 +65,9 @@ private:
     int id_;
     std::shared_ptr<Storage> storage_;
 
-    std::set<std::shared_ptr<Edge>> edges_;
-    std::set<std::shared_ptr<Face>> faces_;
-    std::set<std::shared_ptr<Surface>> surfaces_;
+    std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges_;
+    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces_;
+    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_;
 
     Eigen::Matrix3d eigenvectors_used_;
     Eigen::Vector2d surface_coordinate_;
@@ -81,15 +83,3 @@ private:
 bool operator<(const std::shared_ptr<Vertex>& lhs, const std::shared_ptr<Vertex>& rhs);
 bool operator<=(const std::shared_ptr<Vertex>& lhs, const std::shared_ptr<Vertex>& rhs);
 bool operator==(const std::shared_ptr<Vertex>& lhs, const std::shared_ptr<Vertex>& rhs);
-
-namespace std 
-{
-    template<>
-    struct hash<std::shared_ptr<Vertex>> 
-    {
-        std::size_t operator()(const std::shared_ptr<Vertex>& v) const 
-        {
-            return std::hash<int>()(v->get_id());
-        }
-    };
-}

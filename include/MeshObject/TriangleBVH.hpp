@@ -4,7 +4,8 @@
 #include <limits>
 #include <vector>
 #include <map>
-#include <set>
+#include <unordered_set>
+#include "MeshObject/MeshObject.hpp"
 #include <memory>
 #include <array>
 
@@ -50,7 +51,7 @@ private:
     std::shared_ptr<Node> build_node(const std::vector<std::shared_ptr<Face>>& face_list, const int& start, const int& end);
     void convert_leaf_to_branch(const std::shared_ptr<Node>& node);
 
-    void node_intersection_search(const std::shared_ptr<Node>& node, const Eigen::Vector3d& orig, const Eigen::Vector3d& dir, std::set<std::shared_ptr<Face>>& faces_intersected) const;
+    void node_intersection_search(const std::shared_ptr<Node>& node, const Eigen::Vector3d& orig, const Eigen::Vector3d& dir, std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& faces_intersected) const;
     void node_add_face(const std::shared_ptr<Node>& node, const std::shared_ptr<Face>& face);
     void node_delete_face(const std::shared_ptr<Node>& node, const std::shared_ptr<Face>& face);
     void node_print(const std::shared_ptr<Node>& node, int level) const;
@@ -63,6 +64,6 @@ public:
 
     void tree_add_face(std::shared_ptr<Face> face);
     void tree_delete_face(std::shared_ptr<Face> face);
-    void tree_intersection_search(Eigen::Vector3d origin, Eigen::Vector3d endPoint, std::set<std::shared_ptr<Face>> &faces_intersected) const;
+    void tree_intersection_search(Eigen::Vector3d origin, Eigen::Vector3d endPoint, std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> &faces_intersected) const;
     void tree_print() const;
 };

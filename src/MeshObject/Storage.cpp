@@ -200,47 +200,47 @@ bool Storage::can_reverse_radius_search()
 }
 
 // reverse radius search
-std::set<std::shared_ptr<Vertex>> Storage::reverse_radius_search(const Eigen::Vector3d& point) 
+std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> Storage::reverse_radius_search(const Eigen::Vector3d& point) 
 {
-    std::set<std::shared_ptr<Vertex>> result;
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> result;
     rrs_tree_.tree_reverse_radius_search(point, result);
     return result;
 }
 
 // face intersection search
-std::set<std::shared_ptr<Face>> Storage::face_intersection_search(const Eigen::Vector3d& origin, const Eigen::Vector3d& point) 
+std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> Storage::face_intersection_search(const Eigen::Vector3d& origin, const Eigen::Vector3d& point) 
 {
-    std::set<std::shared_ptr<Face>> result;
+    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> result;
     triangle_bvh_.tree_intersection_search(origin, point, result);
     return result;
 }
 
-const std::set<std::shared_ptr<Vertex>>& Storage::get_vertices() const
+const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& Storage::get_vertices() const
 {
     return vertices_;
 }
 
-const std::set<std::shared_ptr<Edge>>& Storage::get_edges() const
+const std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& Storage::get_edges() const
 {
     return edges_;
 }
 
-const std::set<std::shared_ptr<Face>>& Storage::get_faces() const
+const std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& Storage::get_faces() const
 {
     return faces_;
 }
 
-const std::set<std::shared_ptr<Surface>>& Storage::get_surfaces() const
+const std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash>& Storage::get_surfaces() const
 {
     return surfaces_;
 }
 
-const std::set<std::shared_ptr<GenericPoint>>& Storage::get_generic_points() const
+const std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash>& Storage::get_generic_points() const
 {
     return genertic_points_;
 }
 
-const std::set<std::shared_ptr<InteriorPoint>>& Storage::get_interior_points() const
+const std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash>& Storage::get_interior_points() const
 {
     return interior_points_;
 }

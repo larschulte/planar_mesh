@@ -1,7 +1,7 @@
 #pragma once
 
 #include <memory>
-#include <set>
+#include <unordered_set>
 #include <Eigen/Dense> 
 
 #include "MeshObject/RRSTree.hpp"
@@ -37,16 +37,16 @@ public: // to user
     void delete_interior_point(const std::shared_ptr<InteriorPoint>& interior_point);
 
     bool can_reverse_radius_search();
-    std::set<std::shared_ptr<Vertex>> reverse_radius_search(const Eigen::Vector3d& point);
-    std::set<std::shared_ptr<Face>> face_intersection_search(const Eigen::Vector3d& origin, const Eigen::Vector3d& point);
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> reverse_radius_search(const Eigen::Vector3d& point);
+    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> face_intersection_search(const Eigen::Vector3d& origin, const Eigen::Vector3d& point);
 
-    const std::set<std::shared_ptr<Vertex>>& get_vertices() const;
-    const std::set<std::shared_ptr<Edge>>& get_edges() const;
+    const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& get_vertices() const;
+    const std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& get_edges() const;
     const std::shared_ptr<Edge>& get_edge(std::shared_ptr<Vertex> vertex1, std::shared_ptr<Vertex> vertex2) const;
-    const std::set<std::shared_ptr<Face>>& get_faces() const;
-    const std::set<std::shared_ptr<Surface>>& get_surfaces() const;
-    const std::set<std::shared_ptr<GenericPoint>>& get_generic_points() const;
-    const std::set<std::shared_ptr<InteriorPoint>>& get_interior_points() const;
+    const std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& get_faces() const;
+    const std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash>& get_surfaces() const;
+    const std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash>& get_generic_points() const;
+    const std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash>& get_interior_points() const;
 
     std::vector<std::shared_ptr<Vertex>> get_rrs_vertices();
     std::map<std::shared_ptr<Vertex>, int> get_vertex_to_cloud_indices_map() const;
@@ -79,12 +79,12 @@ private:
     RRSTree rrs_tree_;
     TriangleBVH triangle_bvh_;
 
-    std::set<std::shared_ptr<Vertex>> vertices_;
-    std::set<std::shared_ptr<Edge>> edges_;
-    std::set<std::shared_ptr<Face>> faces_;
-    std::set<std::shared_ptr<Surface>> surfaces_;
-    std::set<std::shared_ptr<GenericPoint>> genertic_points_;
-    std::set<std::shared_ptr<InteriorPoint>> interior_points_;
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertices_;
+    std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges_;
+    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces_;
+    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_;
+    std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash> genertic_points_;
+    std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> interior_points_;
 
     int next_vertex_id_ = 0;
     int next_edge_id_ = 0;

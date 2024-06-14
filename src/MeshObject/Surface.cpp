@@ -200,7 +200,7 @@ void Surface::connect(const std::shared_ptr<Vertex>& vertex)
 
 }
 
-void Surface::connect(const std::shared_ptr<Vertex>& vertex, const std::set<std::shared_ptr<Vertex>>& all_nearby_vertices)
+void Surface::connect(const std::shared_ptr<Vertex>& vertex, const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& all_nearby_vertices)
 {
     // check input
     if (vertex->is_expired()) throw std::runtime_error("Attempts to connect surface with invalid vertex.");
@@ -213,7 +213,7 @@ void Surface::connect(const std::shared_ptr<Vertex>& vertex, const std::set<std:
     }
 
     // get nearby vertices in the same surface
-    std::set<std::shared_ptr<Vertex>> nearby_vertices;
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> nearby_vertices;
     for (const auto& nearby_vertex : all_nearby_vertices)
     {
         // check input
@@ -230,7 +230,7 @@ void Surface::connect(const std::shared_ptr<Vertex>& vertex, const std::set<std:
     }
 
     // create edges
-    std::set<std::shared_ptr<Vertex>> used_vertices;
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> used_vertices;
     for (const auto& nearby_vertex : nearby_vertices)
     {
         // skip if edge is intersected

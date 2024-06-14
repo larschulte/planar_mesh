@@ -18,7 +18,7 @@ int main()
 
     storage->print_rrs();
 
-    std::set<std::shared_ptr<Vertex>> search_results = storage->reverse_radius_search(Eigen::Vector3d(2.1, 0, 0));
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> search_results = storage->reverse_radius_search(Eigen::Vector3d(2.1, 0, 0));
     for (auto vertex : search_results)
     {
         std::cout << vertex->get_position().transpose() << std::endl;

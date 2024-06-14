@@ -4,6 +4,8 @@
 #include <vector>
 #include <Eigen/Dense>
 
+#include "MeshObject/MeshObject.hpp"
+
 // Forward declarations
 class Vertex;
 class Edge;
@@ -11,7 +13,7 @@ class Storage;
 class Surface;
 class InteriorPoint;
 
-class Face : public std::enable_shared_from_this<Face> 
+class Face : public std::enable_shared_from_this<Face>, public MeshObject
 {
 protected:
     friend class Storage;
@@ -21,7 +23,7 @@ protected:
 public:
     const int& get_id() const;
     const Eigen::Vector3d& get_center() const;
-    const std::set<std::shared_ptr<Vertex>>& get_vertices() const;
+    const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& get_vertices() const;
     const std::shared_ptr<Vertex>& get_vertex(int index) const;
     const std::shared_ptr<Surface>& get_surface() const;
     bool is_expired() const;
@@ -48,10 +50,10 @@ private:
     int id_;
     std::shared_ptr<Storage> storage_;
 
-    std::set<std::shared_ptr<Vertex>> vertices_;
-    std::set<std::shared_ptr<Edge>> edges_;
-    std::set<std::shared_ptr<Surface>> surfaces_;
-    std::set<std::shared_ptr<InteriorPoint>> interior_points_;
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertices_;
+    std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges_;
+    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_;
+    std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> interior_points_;
 };
 
 bool operator<(const std::shared_ptr<Face>& lhs, const std::shared_ptr<Face>& rhs);

@@ -129,7 +129,7 @@ const Eigen::Vector3d& Face::get_center() const
     return center_;
 }
 
-const std::set<std::shared_ptr<Vertex>>& Face::get_vertices() const
+const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& Face::get_vertices() const
 {
     return vertices_;
 }

@@ -34,7 +34,7 @@ int main()
     std::cout << "\nPrint tree" << std::endl;
     storage->print_bvh();
 
-    std::set<std::shared_ptr<Face>> searched_results = storage->face_intersection_search(Eigen::Vector3d(0, 0, 0), Eigen::Vector3d(0, 0, 0.95));
+    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> searched_results = storage->face_intersection_search(Eigen::Vector3d(0, 0, 0), Eigen::Vector3d(0, 0, 0.95));
     std::cout << "\nPrint searched results" << std::endl;
     for (auto face : searched_results)
     {

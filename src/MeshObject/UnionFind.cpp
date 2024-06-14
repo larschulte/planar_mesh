@@ -4,13 +4,13 @@
 #include <vector>
 #include <unordered_map>
 #include <memory>
-#include <set>
+#include <unordered_set>
 #include <algorithm>
 
 #include "MeshObject/Vertex.hpp"
 #include "MeshObject/Edge.hpp"
 
-void UnionFind::add_vertices(const std::set<std::shared_ptr<Vertex>>& vertices) 
+void UnionFind::add_vertices(const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& vertices) 
 {
     for (const auto& vertex : vertices) 
     {
@@ -19,7 +19,7 @@ void UnionFind::add_vertices(const std::set<std::shared_ptr<Vertex>>& vertices)
     }
 }
 
-void UnionFind::add_edges(const std::set<std::shared_ptr<Edge>>& edges) 
+void UnionFind::add_edges(const std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& edges) 
 {
     for (const auto& edge : edges) 
     {

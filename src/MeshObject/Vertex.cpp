@@ -150,7 +150,7 @@ const std::shared_ptr<Surface>& Vertex::get_surface() const
     return *surfaces_.begin();
 }
 
-const std::set<std::shared_ptr<Edge>>& Vertex::get_edges() const 
+const std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& Vertex::get_edges() const 
 { 
     return edges_; 
 }

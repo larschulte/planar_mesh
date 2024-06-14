@@ -12,6 +12,8 @@
 #include <iostream>
 #include <random>
 #include <algorithm>
+#include <unordered_set>
+#include "MeshObject/MeshObject.hpp"
 
 template class Application<VilensPointT>;
 
@@ -61,7 +63,7 @@ Eigen::Matrix3d Application<PointT>::merge_covariances_of_surfaces(std::shared_p
 }
 
 template <typename PointT>
-void Application<PointT>::try_merge_surfaces(std::set<std::shared_ptr<Surface>>& surfaces_to_merge)
+void Application<PointT>::try_merge_surfaces(std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash>& surfaces_to_merge)
 {
     while (true) 
     {
@@ -104,7 +106,7 @@ void Application<PointT>::add_point_by_radius_search(const Eigen::Vector3d& this
     }
 
     std::map<int, double> point_to_radius_map;
-    std::set<std::shared_ptr<Vertex>> searched_boundary_vertices_set = storage_->reverse_radius_search(thisPointVEC);
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> searched_boundary_vertices_set = storage_->reverse_radius_search(thisPointVEC);
 
     if (searched_boundary_vertices_set.size() == 0)
     {
@@ -114,7 +116,7 @@ void Application<PointT>::add_point_by_radius_search(const Eigen::Vector3d& this
         return;
     }
 
-    std::set<std::shared_ptr<Surface>> neighboring_surfaces; 
+    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> neighboring_surfaces; 
     for (std::shared_ptr<Vertex> vertex : searched_boundary_vertices_set)
     {
         neighboring_surfaces.insert(vertex->get_surface());
@@ -122,7 +124,7 @@ void Application<PointT>::add_point_by_radius_search(const Eigen::Vector3d& this
 
     try_merge_surfaces(neighboring_surfaces);
 
-    std::map<std::shared_ptr<Surface>, std::set<std::shared_ptr<Vertex>>> surface_to_searched_vertices_map;
+    std::map<std::shared_ptr<Surface>, std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>> surface_to_searched_vertices_map;
     for (std::shared_ptr<Vertex> vertex : searched_boundary_vertices_set)
     {
         surface_to_searched_vertices_map[vertex->get_surface()].insert(vertex);
@@ -131,7 +133,7 @@ void Application<PointT>::add_point_by_radius_search(const Eigen::Vector3d& this
     for (const auto& pair : surface_to_searched_vertices_map)
     {
         std::shared_ptr<Surface> surface = pair.first;
-        const std::set<std::shared_ptr<Vertex>>& searched_boundary_vertices_set = pair.second;
+        const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& searched_boundary_vertices_set = pair.second;
 
         if (surface->get_total_point_size() < fit_plane_threshold) continue;
 
@@ -152,8 +154,8 @@ void Application<PointT>::add_point_by_radius_search(const Eigen::Vector3d& this
         }
     }
 
-    std::set<std::shared_ptr<Surface>> surfaces_with_plane;
-    std::set<std::shared_ptr<Surface>> surfaces_without_plane;
+    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_with_plane;
+    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_without_plane;
     for (std::shared_ptr<Surface> surface : neighboring_surfaces)
     {
         if (surface->get_total_point_size() > fit_plane_threshold) surfaces_with_plane.insert(surface);
@@ -167,7 +169,7 @@ void Application<PointT>::add_point_by_radius_search(const Eigen::Vector3d& this
         surface_distance_map[surface] = std::fabs(distance);
     }
 
-    std::set<std::shared_ptr<Surface>> surfaces_within_threshold;
+    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_within_threshold;
     for (const auto& pair : surface_distance_map)
     {
         if (pair.second < distance_threshold) surfaces_within_threshold.insert(pair.first);
@@ -261,9 +263,9 @@ void Application<PointT>::load_point_cloud()
 template <typename PointT>
 void Application<PointT>::process_point(Eigen::Vector3d thisPointOriginVEC, Eigen::Vector3d thisPointVEC)
 {
-    std::set<std::shared_ptr<Face>> searched_faces = storage_->face_intersection_search(thisPointOriginVEC, thisPointVEC);
+    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> searched_faces = storage_->face_intersection_search(thisPointOriginVEC, thisPointVEC);
 
-    std::map<std::shared_ptr<Surface>, std::set<std::shared_ptr<Face>>> searched_surface_to_searched_faces;
+    std::map<std::shared_ptr<Surface>, std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>> searched_surface_to_searched_faces;
     for (const std::shared_ptr<Face>& face : searched_faces)
     {
         searched_surface_to_searched_faces[face->get_surface()].insert(face);
@@ -273,7 +275,7 @@ void Application<PointT>::process_point(Eigen::Vector3d thisPointOriginVEC, Eige
     for (const auto& pair : searched_surface_to_searched_faces)
     {
         const std::shared_ptr<Surface>& surface = pair.first;
-        const std::set<std::shared_ptr<Face>>& searched_faces = pair.second;
+        const std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& searched_faces = pair.second;
 
         double distance = surface->compute_point_to_surface_distance(thisPointOriginVEC, thisPointVEC);
         bool points_before_surface = distance > distance_threshold;
@@ -414,13 +416,13 @@ std::map<std::shared_ptr<Vertex>, int> Application<PointT>::get_vertex_to_cloud_
 } 
 
 template <typename PointT>
-const std::set<std::shared_ptr<Face>>& Application<PointT>::get_faces() 
+const std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& Application<PointT>::get_faces() 
 {
     return storage_->get_faces();
 }
 
 template <typename PointT>
-const std::set<std::shared_ptr<Edge>>& Application<PointT>::get_edges() 
+const std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& Application<PointT>::get_edges() 
 {
     return storage_->get_edges();
 }
@@ -432,9 +434,9 @@ std::vector<std::shared_ptr<Vertex>> Application<PointT>::get_rrs_vertices()
 }
 
 template <typename PointT>
-std::set<std::shared_ptr<Edge>> Application<PointT>::get_boundary_edges() 
+std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> Application<PointT>::get_boundary_edges() 
 {
-    std::set<std::shared_ptr<Edge>> boundary_edges;
+    std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> boundary_edges;
     for (const std::shared_ptr<Edge>& edge : storage_->get_edges())
     {
         if (edge->is_boundary()) 
@@ -448,7 +450,7 @@ std::set<std::shared_ptr<Edge>> Application<PointT>::get_boundary_edges()
 template <typename PointT>
 void Application<PointT>::refine_surfaces()
 {
-    std::set<std::shared_ptr<Surface>> copy_of_surfaces = storage_->get_surfaces();
+    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> copy_of_surfaces = storage_->get_surfaces();
     for (const std::shared_ptr<Surface>& surface : copy_of_surfaces)
     {
         surface->refine_surface();

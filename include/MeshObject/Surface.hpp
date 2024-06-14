@@ -6,6 +6,8 @@
 
 #include "MeshObject/EdgeBVH.hpp"
 
+#include "MeshObject/MeshObject.hpp"
+
 // forward declarations
 class Vertex;
 class Edge;
@@ -38,7 +40,7 @@ public:
     bool is_expired() const;
 
     void connect(const std::shared_ptr<Vertex>& vertex);
-    void connect(const std::shared_ptr<Vertex>& vertex, const std::set<std::shared_ptr<Vertex>>& nearby_vertices);
+    void connect(const std::shared_ptr<Vertex>& vertex, const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& nearby_vertices);
     void connect(const std::shared_ptr<Edge>& edge);
     void connect(const std::shared_ptr<Face>& face);
     void connect(const std::shared_ptr<InteriorPoint>& interior_point);
@@ -62,10 +64,10 @@ private:
     int id_;
     std::shared_ptr<Storage> storage_;
 
-    std::set<std::shared_ptr<Vertex>> vertices_;
-    std::set<std::shared_ptr<Edge>> edges_;
-    std::set<std::shared_ptr<Face>> faces_;
-    std::set<std::shared_ptr<InteriorPoint>> interior_points_;
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertices_;
+    std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges_;
+    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces_;
+    std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> interior_points_;
 
     void add_point_to_surface_fitting(const Eigen::Vector3d& point, const Eigen::Vector3d& origin);
     void remove_point_from_surface_fitting(const Eigen::Vector3d& position, const Eigen::Vector3d& origin);

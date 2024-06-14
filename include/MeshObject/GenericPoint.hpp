@@ -2,12 +2,14 @@
 
 #include <memory>
 #include <Eigen/Dense>
-#include <set>
+#include <unordered_set>
+
+#include "MeshObject/MeshObject.hpp"
 
 // Forward declarations
 class Storage;
 
-class GenericPoint : public std::enable_shared_from_this<GenericPoint> 
+class GenericPoint : public std::enable_shared_from_this<GenericPoint>, public MeshObject
 {
 protected:
     friend class Storage;

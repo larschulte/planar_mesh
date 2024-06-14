@@ -6,6 +6,8 @@
 
 
 #include "utilities/DataLoader.hpp"
+#include <unordered_set>
+#include "MeshObject/MeshObject.hpp"
 
 class Vertex;
 class Edge;
@@ -23,7 +25,7 @@ public:
 
     // helper function
     Eigen::Matrix3d merge_covariances_of_surfaces(std::shared_ptr<Surface> surface1, std::shared_ptr<Surface> surface2);
-    void try_merge_surfaces(std::set<std::shared_ptr<Surface>>& surfaces_to_merge);
+    void try_merge_surfaces(std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash>& surfaces_to_merge);
     
     // algorithm
     void process_point(Eigen::Vector3d thisPointOriginVEC, Eigen::Vector3d thisPointVEC);
@@ -42,10 +44,10 @@ public:
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr compute_interior_point_pointcloud(bool show_projected_point, bool show_error_color);
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr compute_generic_point_pointcloud();
     std::map<std::shared_ptr<Vertex>, int> get_vertex_to_cloud_indices_map();
-    const std::set<std::shared_ptr<Face>>& get_faces();
-    const std::set<std::shared_ptr<Edge>>& get_edges();
+    const std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& get_faces();
+    const std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& get_edges();
     std::vector<std::shared_ptr<Vertex>> get_rrs_vertices();
-    std::set<std::shared_ptr<Edge>> get_boundary_edges();
+    std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> get_boundary_edges();
     
     // data
     void load_point_cloud();

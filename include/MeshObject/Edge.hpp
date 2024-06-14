@@ -1,8 +1,10 @@
 #pragma once
 
 #include <memory>
-#include <set>
+#include <unordered_set>
 #include <map>
+
+#include "MeshObject/MeshObject.hpp"
 
 // Forward declarations
 class Vertex;
@@ -10,7 +12,7 @@ class Face;
 class Storage;
 class Surface;
 
-class Edge : public std::enable_shared_from_this<Edge> 
+class Edge : public std::enable_shared_from_this<Edge>, public MeshObject
 {
 protected:
     friend class Storage;
@@ -54,9 +56,9 @@ private:
     int id_;
     std::shared_ptr<Storage> storage_;
 
-    std::set<std::shared_ptr<Vertex>> vertices_;
-    std::set<std::shared_ptr<Face>> faces_;
-    std::set<std::shared_ptr<Surface>> surfaces_;
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertices_;
+    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces_;
+    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_;
     std::map<std::shared_ptr<Surface>, bool> is_searchable_in_surface_;
 };
 

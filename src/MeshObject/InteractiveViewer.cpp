@@ -2,6 +2,7 @@
 #include "MeshObject/Vertex.hpp"
 #include "MeshObject/Edge.hpp"
 #include "MeshObject/Face.hpp"
+#include <unordered_set>
 
 template class InteractiveViewer<VilensPointT>;
 
@@ -25,8 +26,8 @@ void InteractiveViewer<PointT>::update_display()
 {
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr vertex_pointcloud = app_.compute_vertex_point_pointcloud(show_projected_point, show_error_color);
     std::map<std::shared_ptr<Vertex>, int> vertex_to_cloud_indices_map = app_.get_vertex_to_cloud_indices_map();
-    std::set<std::shared_ptr<Face>> faces = app_.get_faces();
-    std::set<std::shared_ptr<Edge>> boundary_edges = app_.get_boundary_edges();
+    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces = app_.get_faces();
+    std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> boundary_edges = app_.get_boundary_edges();
 
     // pointcloud
     viewer_->removeShape("point_cloud");
