@@ -59,6 +59,15 @@ void InteractiveViewer<PointT>::update_display()
         viewer_->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 6, "point_cloud");
     }
 
+    // interior points
+    viewer_->removeShape("interior_points");
+    if (show_interior_points)
+    {
+        pcl::PointCloud<pcl::PointXYZRGB>::Ptr interior_point_cloud = app_.compute_interior_point_pointcloud(show_projected_point, show_error_color);
+        viewer_->addPointCloud<pcl::PointXYZRGB>(interior_point_cloud, "interior_points");
+        viewer_->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 6, "interior_points");
+    }
+
     // generic points
     viewer_->removeShape("generic_points");
     if (show_generic_points)
@@ -263,6 +272,12 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
     {
         // toggle generic points
         show_generic_points = !show_generic_points;
+        update_display();
+    }
+    if (event.getKeySym() == "l" && event.keyDown())
+    {
+        // toggle generic points
+        show_interior_points = !show_interior_points;
         update_display();
     }
     if (event.getKeySym() == "r" && event.keyDown())

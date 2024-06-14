@@ -368,6 +368,44 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_generic_poin
     return cloud;
 }
 
+template <typename PointT>
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_interior_point_pointcloud(bool show_projected_point, bool show_error_color)
+{
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+    for (const std::shared_ptr<InteriorPoint>& interior_point : storage_->get_interior_points())
+    {
+        pcl::PointXYZRGB point;
+        if (show_projected_point)
+        {
+            point.x = interior_point->get_projected_position()[0];
+            point.y = interior_point->get_projected_position()[1];
+            point.z = interior_point->get_projected_position()[2];
+        }
+        else
+        {
+            point.x = interior_point->get_position()[0];
+            point.y = interior_point->get_position()[1];
+            point.z = interior_point->get_position()[2];
+        }
+        if (show_error_color)
+        {
+            double distance = interior_point->get_projected_distance() / 0.05;
+            std::tuple<int, int, int> color = valueToJet(distance);
+            point.r = std::get<0>(color);
+            point.g = std::get<1>(color);
+            point.b = std::get<2>(color);
+        }
+        else
+        {
+            const std::tuple<int, int, int>& color = interior_point->get_surface()->get_color();
+            point.r = std::get<0>(color);
+            point.g = std::get<1>(color);
+            point.b = std::get<2>(color);
+        }
+        cloud->push_back(point);
+    }
+    return cloud;
+}
 
 template <typename PointT>
 std::map<std::shared_ptr<Vertex>, int> Application<PointT>::get_vertex_to_cloud_indices_map()

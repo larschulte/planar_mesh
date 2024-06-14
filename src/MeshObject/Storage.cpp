@@ -240,6 +240,11 @@ const std::set<std::shared_ptr<GenericPoint>>& Storage::get_generic_points() con
     return genertic_points_;
 }
 
+const std::set<std::shared_ptr<InteriorPoint>>& Storage::get_interior_points() const
+{
+    return interior_points_;
+}
+
 std::vector<std::shared_ptr<Vertex>> Storage::get_rrs_vertices()
 {
     return rrs_tree_.compute_vertices_list();
