@@ -109,6 +109,14 @@ target_include_directories(test_UnionFind
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>)
 
+add_executable(test_MeshObjectHash src/test/test_MeshObjectHash.cpp ${MeshObject_SOURCE})
+target_link_libraries (test_MeshObjectHash ${PCL_LIBRARIES})
+target_include_directories(test_MeshObjectHash
+PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
+
+
 # add executable
 add_executable(optimization src/utilities/optimization.cpp)
 target_link_libraries (optimization ${PCL_LIBRARIES} Ceres::ceres)
