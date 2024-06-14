@@ -342,6 +342,25 @@ void Application<PointT>::loop()
 }
 
 template <typename PointT>
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_generic_point_pointcloud()
+{
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+    for (const std::shared_ptr<GenericPoint>& generic_point : storage_->get_generic_points())
+    {
+        pcl::PointXYZRGB point;
+        point.x = generic_point->get_position()[0];
+        point.y = generic_point->get_position()[1];
+        point.z = generic_point->get_position()[2];
+        point.r = 255;
+        point.g = 0;
+        point.b = 0;
+        cloud->push_back(point);
+    }
+    return cloud;
+}
+
+
+template <typename PointT>
 std::map<std::shared_ptr<Vertex>, int> Application<PointT>::get_vertex_to_cloud_indices_map()
 {
     return vertex_to_cloud_indices_map;

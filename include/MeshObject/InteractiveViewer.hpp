@@ -19,6 +19,7 @@ private:
     pcl::visualization::PCLVisualizer::Ptr viewer_;
 
     // settings
+    bool show_generic_points = true;
     bool show_pointcloud = true;
     bool show_triangle = true;
     bool show_edge = true;

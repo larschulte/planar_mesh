@@ -50,6 +50,7 @@ void InteractiveViewer<PointT>::update_display()
     std::set<std::shared_ptr<Face>> faces = app_.get_faces();
     std::set<std::shared_ptr<Edge>> boundary_edges = app_.get_boundary_edges();
 
+    // pointcloud
     viewer_->removeShape("point_cloud");
     if (show_pointcloud)
     {
@@ -57,7 +58,17 @@ void InteractiveViewer<PointT>::update_display()
         viewer_->addPointCloud<pcl::PointXYZRGB>(point_cloud, color_handler, "point_cloud");
         viewer_->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 6, "point_cloud");
     }
-    
+
+    // generic points
+    viewer_->removeShape("generic_points");
+    if (show_generic_points)
+    {
+        pcl::PointCloud<pcl::PointXYZRGB>::Ptr generic_point_cloud = app_.compute_generic_point_pointcloud();
+        viewer_->addPointCloud<pcl::PointXYZRGB>(generic_point_cloud, "generic_points");
+        viewer_->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 6, "generic_points");
+    }
+
+    // triangle
     viewer_->removeShape("triangle_mesh");
     if (show_triangle)
     {
@@ -74,6 +85,7 @@ void InteractiveViewer<PointT>::update_display()
         viewer_->addPolygonMesh(triangle_mesh, "triangle_mesh");
     }
 
+    // boundary edge
     viewer_->removeShape("boundary_edges");        
     if (show_edge)
     {
@@ -91,6 +103,7 @@ void InteractiveViewer<PointT>::update_display()
         viewer_->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, 2, "boundary_edges");
     }
 
+    // spheres
     for (const std::string& sphere_name : sphere_name_list) viewer_->removeShape(sphere_name);
     sphere_name_list.clear();
     if (show_sphere)
@@ -107,6 +120,7 @@ void InteractiveViewer<PointT>::update_display()
         }
     }
 
+    // wireframe
     if (show_wireframe)
     {
         viewer_->setRepresentationToWireframeForAllActors();
@@ -243,6 +257,12 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
     if (event.getKeySym() == "n" && event.keyDown())
     {
         app_.add_back_generic_points();
+        update_display();
+    }
+    if (event.getKeySym() == "k" && event.keyDown())
+    {
+        // toggle generic points
+        show_generic_points = !show_generic_points;
         update_display();
     }
 }
