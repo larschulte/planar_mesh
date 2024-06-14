@@ -1,0 +1,486 @@
+#include "MeshObject/Application.hpp"
+#include "MeshObject/Vertex.hpp"
+#include "MeshObject/Edge.hpp"
+#include "MeshObject/Face.hpp"
+#include "MeshObject/Surface.hpp"
+#include "MeshObject/GenericPoint.hpp"
+#include "MeshObject/InteriorPoint.hpp"
+#include "MeshObject/Storage.hpp"
+#include "utilities/utilities.hpp"
+#include "utilities/covariance_math.hpp"
+
+#include <iostream>
+#include <random>
+#include <algorithm>
+
+template class Application<VilensPointT>;
+
+template <typename PointT>
+Application<PointT>::Application() 
+{
+    // Initialization code
+    std::map<std::string, std::pair<std::string, std::string>> dataset_map;
+    dataset_map["room"] = std::make_pair(
+        "/home/jiahao/datasets/bag2pcd_output/mission2_reverse/slam_clouds/",
+        "/home/jiahao/datasets/bag2pcd_output/mission2_reverse/slam_poses/slam_poss_graph.slam"
+    );
+    dataset_map["osney"] = std::make_pair(
+        "/home/jiahao/datasets/osney power station/2024-03-26_13-47-27_rec004_osney_power_station/slam_clouds/",
+        "/home/jiahao/datasets/osney power station/2024-03-26_13-47-27_rec004_osney_power_station/slam_pose_graph.slam"
+    );
+    dataset_map["blenheim"] = std::make_pair(
+        "/home/jiahao/datasets/2024-03-14-09-09-02-lenord-walk-for-lintong/individual_clouds/",
+        "/home/jiahao/datasets/2024-03-14-09-09-02-lenord-walk-for-lintong/slam_pose_graph.g2o"
+    );
+
+    distance_threshold = 0.05;
+    fit_plane_threshold = 10;
+    merged_eigenvalue_threshold = 15e-5;
+    dataset = "room";
+    ith_cloud = 50;
+    ith_point = 0;
+    shuffle_pointcloud = false;
+    pointcloud_fraction = 1;
+    distance_to_radius_ratio = tan(4 * M_PI / 180);
+
+    storage_ = std::make_shared<Storage>();
+    data_loader.load_dataset(dataset_map.at(dataset).first, dataset_map.at(dataset).second);
+    load_point_cloud();
+}
+
+template <typename PointT>
+Eigen::Matrix3d Application<PointT>::merge_covariances_of_surfaces(std::shared_ptr<Surface> surface1, std::shared_ptr<Surface> surface2) 
+{
+    const Eigen::Matrix3d& cov1 = surface1->get_covariance();
+    const Eigen::Matrix3d& cov2 = surface2->get_covariance();
+    const Eigen::Vector3d& mean1 = surface1->get_mean();
+    const Eigen::Vector3d& mean2 = surface2->get_mean();
+    int size1 = surface1->get_total_point_size();
+    int size2 = surface2->get_total_point_size();
+    return merge_covariance(cov1, cov2, mean1, mean2, size1, size2);
+}
+
+template <typename PointT>
+void Application<PointT>::try_merge_surfaces(std::set<std::shared_ptr<Surface>>& surfaces_to_merge)
+{
+    while (true) 
+    {
+        std::set<std::pair<std::shared_ptr<Surface>, std::shared_ptr<Surface>>> surface_pairs;
+        for (std::shared_ptr<Surface> surface1 : surfaces_to_merge) 
+        {
+            for (std::shared_ptr<Surface> surface2 : surfaces_to_merge) 
+            {
+                if (surface1 >= surface2) continue;
+                surface_pairs.insert(std::make_pair(surface1, surface2));
+            }
+        }
+        
+        bool again = false;
+        for (const auto& pairs : surface_pairs) 
+        {
+            Eigen::Matrix3d covariance_matrix = merge_covariances_of_surfaces(pairs.first, pairs.second);
+            double eigenvalue = Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d>(covariance_matrix).eigenvalues()[0];
+            if (eigenvalue > merged_eigenvalue_threshold) continue;
+
+            surfaces_to_merge.erase(pairs.second);
+            pairs.first->merge_surface(pairs.second);
+
+            again = true;
+            break;
+        }
+        if (!again) break;
+    }
+}
+
+template <typename PointT>
+void Application<PointT>::add_point_by_radius_search(const Eigen::Vector3d& thisPointVEC, const Eigen::Vector3d& thisPointOriginVEC)
+{
+    if (!storage_->can_reverse_radius_search())
+    {
+        std::shared_ptr<Surface> new_surface = storage_->add_surface();
+        std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(thisPointOriginVEC, thisPointVEC);
+        new_surface->connect(new_vertex);
+        return;
+    }
+
+    std::map<int, double> point_to_radius_map;
+    std::set<std::shared_ptr<Vertex>> searched_boundary_vertices_set = storage_->reverse_radius_search(thisPointVEC);
+
+    if (searched_boundary_vertices_set.size() == 0)
+    {
+        std::shared_ptr<Surface> new_surface = storage_->add_surface();
+        std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(thisPointOriginVEC, thisPointVEC);
+        new_surface->connect(new_vertex);
+        return;
+    }
+
+    std::set<std::shared_ptr<Surface>> neighboring_surfaces; 
+    for (std::shared_ptr<Vertex> vertex : searched_boundary_vertices_set)
+    {
+        neighboring_surfaces.insert(vertex->get_surface());
+    }
+
+    try_merge_surfaces(neighboring_surfaces);
+
+    std::map<std::shared_ptr<Surface>, std::set<std::shared_ptr<Vertex>>> surface_to_searched_vertices_map;
+    for (std::shared_ptr<Vertex> vertex : searched_boundary_vertices_set)
+    {
+        surface_to_searched_vertices_map[vertex->get_surface()].insert(vertex);
+    }
+
+    for (const auto& pair : surface_to_searched_vertices_map)
+    {
+        std::shared_ptr<Surface> surface = pair.first;
+        const std::set<std::shared_ptr<Vertex>>& searched_boundary_vertices_set = pair.second;
+
+        if (surface->get_total_point_size() < fit_plane_threshold) continue;
+
+        for (std::shared_ptr<Vertex> this_vertex : searched_boundary_vertices_set)
+        {
+            double smallest_distance = std::numeric_limits<double>::max();
+            for (const auto& other_pair : surface_to_searched_vertices_map)
+            {
+                if (other_pair.first == surface) continue;
+                if (other_pair.first->get_total_point_size() < fit_plane_threshold) continue;
+                for (std::shared_ptr<Vertex> other_vertex : other_pair.second)
+                {
+                    double distance = (other_vertex->get_position() - this_vertex->get_position()).norm();
+                    if (distance < smallest_distance) smallest_distance = distance;
+                }
+            }
+            if (smallest_distance < this_vertex->get_radius()) this_vertex->set_reverse_radius_search_radius(smallest_distance);
+        }
+    }
+
+    std::set<std::shared_ptr<Surface>> surfaces_with_plane;
+    std::set<std::shared_ptr<Surface>> surfaces_without_plane;
+    for (std::shared_ptr<Surface> surface : neighboring_surfaces)
+    {
+        if (surface->get_total_point_size() > fit_plane_threshold) surfaces_with_plane.insert(surface);
+        else surfaces_without_plane.insert(surface);
+    }
+    
+    std::map<std::shared_ptr<Surface>, double> surface_distance_map;
+    for (std::shared_ptr<Surface> surface : surfaces_with_plane)
+    {
+        double distance = surface->compute_point_to_surface_distance(thisPointOriginVEC, thisPointVEC);
+        surface_distance_map[surface] = std::fabs(distance);
+    }
+
+    std::set<std::shared_ptr<Surface>> surfaces_within_threshold;
+    for (const auto& pair : surface_distance_map)
+    {
+        if (pair.second < distance_threshold) surfaces_within_threshold.insert(pair.first);
+    }
+
+    std::shared_ptr<Surface> closest_surface = std::make_shared<Surface>();
+    double closest_distance = std::numeric_limits<double>::max();
+    for (std::shared_ptr<Surface> surface : surfaces_within_threshold)
+    {
+        double distance = surface_distance_map.at(surface);
+        if (distance < closest_distance)
+        {
+            closest_distance = distance;
+            closest_surface = surface;
+        }
+    }
+    if (!closest_surface->is_expired() && closest_distance < distance_threshold)
+    {
+        for (std::shared_ptr<Vertex> vertex : searched_boundary_vertices_set)
+        {
+            if (surfaces_with_plane.find(vertex->get_surface()) != surfaces_with_plane.end())
+            {
+                if (vertex->get_surface() != closest_surface)
+                {
+                    double reduced_radius = (thisPointVEC - vertex->get_position()).norm();
+                    if (reduced_radius < vertex->get_radius())
+                    {
+                        vertex->set_reverse_radius_search_radius(reduced_radius);
+                    }
+                }
+            }
+        }
+
+        std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(thisPointOriginVEC, thisPointVEC);
+        closest_surface->connect(new_vertex, searched_boundary_vertices_set);
+        return;
+    }
+
+    std::shared_ptr<Surface> nearest_surface = std::make_shared<Surface>();
+    double nearest_distance = std::numeric_limits<double>::max();
+    for (std::shared_ptr<Surface> surface : surfaces_without_plane)
+    {
+        const Eigen::Vector3d& mean = surface->get_mean();
+        double distance = (thisPointVEC - mean).norm();
+        if (distance < nearest_distance)
+        {
+            nearest_distance = distance;
+            nearest_surface = surface;
+        }
+    }
+    if (!nearest_surface->is_expired())
+    {
+        std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(thisPointOriginVEC, thisPointVEC);
+        nearest_surface->connect(new_vertex, searched_boundary_vertices_set);
+        return;
+    }
+
+    std::shared_ptr<Surface> new_surface = storage_->add_surface();
+    std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(thisPointOriginVEC, thisPointVEC);
+    new_surface->connect(new_vertex);
+}
+
+template <typename PointT>
+void Application<PointT>::load_point_cloud()
+{
+    if (ith_cloud < 0)
+    {
+        std::cout << "reached the first pointcloud" << std::endl;
+        ith_cloud = 0;
+    }
+    if (ith_cloud >= data_loader.size())
+    {
+        std::cout << "reached the last pointcloud" << std::endl;
+        ith_cloud = data_loader.size() - 1;
+    }
+    
+    typename pcl::PointCloud<PointT>::Ptr pointcloud_local = data_loader.get_cloud(ith_cloud);
+    Eigen::Affine3d pose = data_loader.get_pose(ith_cloud);
+    pointcloud = transform_cloud_to_global<PointT>(pointcloud_local, pose);
+    origin = pose.translation();
+    ith_size = pointcloud->size() * pointcloud_fraction;
+
+    std::cout << "loaded pointcloud " << ith_cloud << " with " << pointcloud->size() << " points" << std::endl;
+
+    if (shuffle_pointcloud) 
+    {
+        std::random_shuffle(pointcloud->points.begin(), pointcloud->points.end());
+    }
+}
+
+template <typename PointT>
+void Application<PointT>::process_point(Eigen::Vector3d thisPointOriginVEC, Eigen::Vector3d thisPointVEC)
+{
+    std::set<std::shared_ptr<Face>> searched_faces = storage_->face_intersection_search(thisPointOriginVEC, thisPointVEC);
+
+    std::map<std::shared_ptr<Surface>, std::set<std::shared_ptr<Face>>> searched_surface_to_searched_faces;
+    for (const std::shared_ptr<Face>& face : searched_faces)
+    {
+        searched_surface_to_searched_faces[face->get_surface()].insert(face);
+    }
+
+    bool point_added = false;
+    for (const auto& pair : searched_surface_to_searched_faces)
+    {
+        const std::shared_ptr<Surface>& surface = pair.first;
+        const std::set<std::shared_ptr<Face>>& searched_faces = pair.second;
+
+        double distance = surface->compute_point_to_surface_distance(thisPointOriginVEC, thisPointVEC);
+        bool points_before_surface = distance > distance_threshold;
+        bool points_behind_surface = distance < -distance_threshold;
+        bool points_within_surface = !points_before_surface && !points_behind_surface;
+        
+        if (points_behind_surface)
+        {
+            for (const std::shared_ptr<Face>& face : searched_faces) storage_->delete_face(face);
+        }
+        else if (points_within_surface)
+        {
+            if (!point_added)
+            {
+                storage_->add_interior_point(*searched_faces.begin(), thisPointVEC, thisPointOriginVEC);
+                point_added = true;
+            }
+            else
+            {
+                std::cout << "point within multiple surface" << std::endl;
+            }
+        }
+        else if (points_before_surface)
+        {
+            continue;
+        }
+    }
+    if (!point_added) add_point_by_radius_search(thisPointVEC, thisPointOriginVEC);
+
+    if (ith_point == ith_size) 
+    {   
+        ith_cloud += 1;
+        ith_point = 0;
+        load_point_cloud();
+    }
+}
+
+template <typename PointT>
+void Application<PointT>::step()
+{        
+    Eigen::Vector3d thisPointVEC = pointcloud->points[ith_point].getVector3fMap().cast<double>();
+    Eigen::Vector3d thisPointOriginVEC = origin;
+    ith_point++;
+    process_point(thisPointOriginVEC, thisPointVEC);
+}
+
+template <typename PointT>
+void Application<PointT>::add_back_generic_points()
+{
+    while (!storage_->get_generic_points().empty())
+    {
+        const std::shared_ptr<GenericPoint>& generic_point = *storage_->get_generic_points().begin();
+        process_point(generic_point->get_origin(), generic_point->get_position());
+        storage_->delete_genertic_point(generic_point);
+    }
+}
+
+template <typename PointT>
+void Application<PointT>::loop()
+{
+    step();
+    while (ith_point != 0)
+    {
+        step();
+    }
+}
+
+template <typename PointT>
+std::map<std::shared_ptr<Vertex>, int> Application<PointT>::get_vertex_to_cloud_indices_map()
+{
+    return vertex_to_cloud_indices_map;
+} 
+
+template <typename PointT>
+const std::set<std::shared_ptr<Face>>& Application<PointT>::get_faces() 
+{
+    return storage_->get_faces();
+}
+
+template <typename PointT>
+const std::set<std::shared_ptr<Edge>>& Application<PointT>::get_edges() 
+{
+    return storage_->get_edges();
+}
+
+template <typename PointT>
+std::vector<std::shared_ptr<Vertex>> Application<PointT>::get_rrs_vertices() 
+{
+    return storage_->get_rrs_vertices();
+}
+
+template <typename PointT>
+std::set<std::shared_ptr<Edge>> Application<PointT>::get_boundary_edges() 
+{
+    std::set<std::shared_ptr<Edge>> boundary_edges;
+    for (const std::shared_ptr<Edge>& edge : storage_->get_edges())
+    {
+        if (edge->is_boundary()) 
+        {
+            boundary_edges.insert(edge);
+        }
+    }
+    return boundary_edges;
+}
+
+template <typename PointT>
+void Application<PointT>::refine_surfaces()
+{
+    std::set<std::shared_ptr<Surface>> copy_of_surfaces = storage_->get_surfaces();
+    for (const std::shared_ptr<Surface>& surface : copy_of_surfaces)
+    {
+        surface->refine_surface();
+    }
+    std::cout << "number of generic points after refine: " << storage_->get_generic_points().size() << std::endl;
+}
+
+template <typename PointT>
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::point_to_vector3d_set_colored_cloud()
+{
+    vertex_to_cloud_indices_map.clear();
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+    for (const std::shared_ptr<Vertex>& vertex : storage_->get_vertices())
+    {
+        pcl::PointXYZRGB point;
+        point.x = vertex->get_position()[0];
+        point.y = vertex->get_position()[1];
+        point.z = vertex->get_position()[2];
+        const std::tuple<int, int, int>& color = vertex->get_surface()->get_color();
+        point.r = std::get<0>(color);
+        point.g = std::get<1>(color);
+        point.b = std::get<2>(color);
+        cloud->push_back(point);
+        vertex_to_cloud_indices_map[vertex] = cloud->size() - 1;
+    }
+    return cloud;
+}
+
+template <typename PointT>
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::point_to_vector3d_set_distance_cloud()
+{
+    vertex_to_cloud_indices_map.clear();
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+    for (const std::shared_ptr<Vertex>& vertex : storage_->get_vertices())
+    {
+        pcl::PointXYZRGB point;
+        point.x = vertex->get_position()[0];
+        point.y = vertex->get_position()[1];
+        point.z = vertex->get_position()[2];
+        double value = vertex->get_projected_distance() / 0.05;
+        std::tuple<int, int, int> color = valueToJet(value);
+        point.r = std::get<0>(color);
+        point.g = std::get<1>(color);
+        point.b = std::get<2>(color);
+        cloud->push_back(point);
+        vertex_to_cloud_indices_map[vertex] = cloud->size() - 1;
+    }
+    return cloud;
+}
+
+template <typename PointT>
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::projected_point_to_vector3d_set_colored_cloud()
+{
+    vertex_to_cloud_indices_map.clear();
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+    for (std::shared_ptr<Vertex> vertex : storage_->get_vertices())
+    {
+        pcl::PointXYZRGB point;
+        point.x = vertex->get_projected_position()[0];
+        point.y = vertex->get_projected_position()[1];
+        point.z = vertex->get_projected_position()[2];
+        const std::tuple<int, int, int>& color = vertex->get_surface()->get_color();
+        point.r = std::get<0>(color);
+        point.g = std::get<1>(color);
+        point.b = std::get<2>(color);
+        cloud->push_back(point);
+        vertex_to_cloud_indices_map[vertex] = cloud->size() - 1;
+    }
+    return cloud;
+}
+
+template <typename PointT>
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::projected_point_to_vector3d_set_distance_cloud()
+{
+    vertex_to_cloud_indices_map.clear();
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+    for (const std::shared_ptr<Vertex>& vertex : storage_->get_vertices())
+    {
+        pcl::PointXYZRGB point;
+        point.x = vertex->get_projected_position()[0];
+        point.y = vertex->get_projected_position()[1];
+        point.z = vertex->get_projected_position()[2];
+        double value = vertex->get_projected_distance() / 0.05;
+        std::tuple<int, int, int> color = valueToJet(value);
+        point.r = std::get<0>(color);
+        point.g = std::get<1>(color);
+        point.b = std::get<2>(color);
+        cloud->push_back(point);
+        vertex_to_cloud_indices_map[vertex] = cloud->size() - 1;
+    }
+    return cloud;
+}
+
+template <typename PointT>
+void Application<PointT>::change_color()
+{
+    for (const std::shared_ptr<Surface>& surface : storage_->get_surfaces())
+    {
+        surface->set_random_color();
+    }
+}

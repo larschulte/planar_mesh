@@ -42,6 +42,9 @@ set(MeshObject_SOURCE
   src/MeshObject/EdgeBVH.cpp
   src/MeshObject/RRSTree.cpp
   src/MeshObject/UnionFind.cpp
+  src/MeshObject/Application.cpp
+  src/MeshObject/InteractiveViewer.cpp
+  src/utilities/DataLoader.cpp
   src/utilities/covariance_math.cpp
 )
 
