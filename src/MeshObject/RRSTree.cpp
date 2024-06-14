@@ -82,16 +82,15 @@ std::shared_ptr<RRSTree::Node> RRSTree::build_node(const std::vector<std::shared
 
 void RRSTree::node_add_vertex(const std::shared_ptr<Node>& node, const std::shared_ptr<Vertex>& boundary_vertex)
 {
+    expand_node_box(node, boundary_vertex);
+
     if (node->isLeaf())
-    {
-        expand_node_box(node, boundary_vertex);
+    {    
         node->boundary_vertices.push_back(boundary_vertex);
         if (node->boundary_vertices.size() > 4) convert_leaf_to_branch(node);
     }
     else
     {
-        expand_node_box(node, boundary_vertex);
-
         if (boundary_vertex->get_position()[node->split_axis] < node->split_value)
         {
             node_add_vertex(node->left, boundary_vertex);
@@ -124,7 +123,24 @@ void RRSTree::node_delete_vertex(const std::shared_ptr<Node>& node, const std::s
 {
     if (node->isLeaf())
     {
-        node->boundary_vertices.erase(std::remove(node->boundary_vertices.begin(), node->boundary_vertices.end(), boundary_vertex), node->boundary_vertices.end());
+        auto it = std::remove(node->boundary_vertices.begin(), node->boundary_vertices.end(), boundary_vertex);
+        if (it != node->boundary_vertices.end())
+        {
+            node->boundary_vertices.erase(it, node->boundary_vertices.end());
+        }
+        else
+        {
+            // Vertex not found, handle this case appropriately
+            auto list = compute_vertices_list();
+            if (std::find(list.begin(), list.end(), boundary_vertex) != list.end())
+            {
+                throw std::invalid_argument("Vertex found in the tree boundary vertices but not in node boundary vertices");
+            }
+            else
+            {
+                throw std::invalid_argument("Vertex not found in the tree boundary vertices");
+            }
+        }
     }
     else
     {
@@ -235,16 +251,13 @@ void RRSTree::tree_add_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
     // increase size
     tree_size++;
 
+    node_add_vertex(root, boundary_vertex);
+
     // add to tree
     if (tree_size > size_at_last_rebuild * rebuild_threshold)
-    {
-        node_add_vertex(root, boundary_vertex);
+    {    
         rebuild();
         size_at_last_rebuild = tree_size;
-    }
-    else
-    {
-        node_add_vertex(root, boundary_vertex);
     }
 }
 

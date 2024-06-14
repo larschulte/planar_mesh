@@ -153,16 +153,15 @@ std::shared_ptr<TriangleBVH::Node> TriangleBVH::build_node(const std::vector<std
 
 void TriangleBVH::node_add_face(const std::shared_ptr<Node>& node, const std::shared_ptr<Face>& face)
 {
+    expand_node_box(node, face);
+
     if (node->isLeaf())
-    {
-        expand_node_box(node, face);
+    {    
         node->faces.push_back(face);
         if (node->faces.size() > 4) convert_leaf_to_branch(node);
     }
     else
     {
-        expand_node_box(node, face);
-
         if (face->get_center()[node->split_axis] < node->split_value)
         {
             node_add_face(node->left, face);
@@ -178,8 +177,24 @@ void TriangleBVH::node_delete_face(const std::shared_ptr<Node>& node, const std:
 {
     if (node->isLeaf())
     {
-        node->faces.erase(std::remove(node->faces.begin(), node->faces.end(), face), node->faces.end());
-
+        auto it = std::remove(node->faces.begin(), node->faces.end(), face);
+        if (it != node->faces.end())
+        {
+            node->faces.erase(it, node->faces.end());
+        }
+        else
+        {
+            // Vertex not found, handle this case appropriately
+            auto list = get_face_list();
+            if (std::find(list.begin(), list.end(), face) != list.end())
+            {
+                throw std::invalid_argument("Face found in the tree list but not in node list");
+            }
+            else
+            {
+                throw std::invalid_argument("Face not found in tree list");
+            }
+        }
     }
     else
     {
@@ -272,14 +287,12 @@ void TriangleBVH::tree_add_face(std::shared_ptr<Face> face)
     // increment face size
     face_size++;
 
+    node_add_face(root, face);
+
     if (face_size > size_at_last_rebuild * rebuild_threshold)
-    {
+    {   
         rebuild();
         size_at_last_rebuild = face_size;
-    }
-    else
-    {
-        node_add_face(root, face);
     }
 }
 

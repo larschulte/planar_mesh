@@ -138,16 +138,15 @@ std::shared_ptr<EdgeBVH::Node> EdgeBVH::build_node(const std::vector<std::shared
 
 void EdgeBVH::node_add_edge(const std::shared_ptr<Node>& node, const std::shared_ptr<Edge>& edge)
 {
+    expand_node_box(node, edge);
+
     if (node->isLeaf())
-    {
-        expand_node_box(node, edge);
+    {   
         node->edges.push_back(edge);
         if (node->edges.size() > 4) convert_leaf_to_branch(node);
     }
     else
     {
-        expand_node_box(node, edge);
-
         if (edge->get_center()[node->split_axis] < node->split_value)
         {
             node_add_edge(node->left, edge);
@@ -163,7 +162,24 @@ void EdgeBVH::node_delete_edge(const std::shared_ptr<Node>& node, const std::sha
 {
     if (node->isLeaf())
     {
-        node->edges.erase(std::remove(node->edges.begin(), node->edges.end(), edge), node->edges.end());
+        auto it = std::remove(node->edges.begin(), node->edges.end(), edge);
+        if (it != node->edges.end())
+        {
+            node->edges.erase(it, node->edges.end());
+        }
+        else
+        {
+            // Vertex not found, handle this case appropriately
+            auto list = get_edge_list();
+            if (std::find(list.begin(), list.end(), edge) != list.end())
+            {
+                throw std::invalid_argument("Edge found in the tree list but not in node list");
+            }
+            else
+            {
+                throw std::invalid_argument("Edge not found in tree list");
+            }
+        }
     }
     else
     {
@@ -256,14 +272,12 @@ void EdgeBVH::tree_add_edge(const std::shared_ptr<Edge>& edge)
     // increment count
     edge_size++;
 
+    node_add_edge(root, edge);
+
     if (edge_size > size_at_last_rebuild * rebuild_threshold)
-    {
+    {    
         rebuild();
         size_at_last_rebuild = edge_size;
-    }
-    else
-    {
-        node_add_edge(root, edge);
     }
 }
 
