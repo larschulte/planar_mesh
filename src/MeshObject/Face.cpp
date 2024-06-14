@@ -349,6 +349,9 @@ void Face::disconnect(const std::shared_ptr<InteriorPoint>& interior_point)
     // delete
     bool erased = interior_points_.erase(interior_point);
     if (erased) interior_point->disconnect(shared_from_this());
+
+    // self destruct
+    if (!deleting_) storage_->delete_face(shared_from_this());
 }
 
 bool operator<(const std::shared_ptr<Face>& lhs, const std::shared_ptr<Face>& rhs)
