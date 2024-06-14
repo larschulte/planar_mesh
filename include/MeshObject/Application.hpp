@@ -35,6 +35,7 @@ public:
     void add_back_generic_points();
     void step();
     void loop();
+    void restart();
 
     // getter
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr point_to_vector3d_set_colored_cloud();

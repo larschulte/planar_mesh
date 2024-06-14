@@ -342,6 +342,15 @@ void Application<PointT>::loop()
 }
 
 template <typename PointT>
+void Application<PointT>::restart()
+{
+    storage_ = std::make_shared<Storage>();
+    ith_cloud = 50;
+    ith_point = 0;
+    load_point_cloud();
+}
+
+template <typename PointT>
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_generic_point_pointcloud()
 {
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);

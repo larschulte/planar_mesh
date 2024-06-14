@@ -265,4 +265,10 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
         show_generic_points = !show_generic_points;
         update_display();
     }
+    if (event.getKeySym() == "r" && event.keyDown())
+    {
+        // restart
+        app_.restart();
+        update_display();
+    }
 }
