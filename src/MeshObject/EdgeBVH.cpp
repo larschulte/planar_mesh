@@ -66,7 +66,7 @@ bool EdgeBVH::Node::isLeaf() const
 
 double EdgeBVH::sort_edge_list_in_axis(std::vector<std::shared_ptr<Edge>>& edge_list, int axis, int start, int mid, int end)
 {
-    std::nth_element(edge_list.begin() + start, edge_list.begin() + mid, edge_list.begin() + end, 
+    std::sort(edge_list.begin() + start, edge_list.begin() + end, 
         [&](const std::shared_ptr<Edge>& edge_a, const std::shared_ptr<Edge>& edge_b) 
         {
             return edge_a->get_center()[axis] < edge_b->get_center()[axis];
@@ -109,6 +109,32 @@ void EdgeBVH::convert_leaf_to_branch(const std::shared_ptr<Node>& node)
     int axis = node->box.get_longest_axis();
     double split_value = sort_edge_list_in_axis(node->edges, axis, start, mid, end);
     
+    // find the lower and upper bound with custom comparator
+    auto lower_bound = std::lower_bound(node->edges.begin(), node->edges.end(), split_value, 
+        [&](const std::shared_ptr<Edge>& edge, const double& value) 
+        {
+            return edge->get_center()[axis] < value;
+        });
+    auto upper_bound = std::upper_bound(node->edges.begin(), node->edges.end(), split_value, 
+        [&](const double& value, const std::shared_ptr<Edge>& edge) 
+        {
+            return value < edge->get_center()[axis];
+        });
+
+    if (lower_bound != node->edges.begin())
+    {
+        mid = std::distance(node->edges.begin(), lower_bound);
+    } 
+    else if (upper_bound != node->edges.end())
+    {
+        mid = std::distance(node->edges.begin(), upper_bound);
+    }
+    else
+    {
+        // all edges have the same center, can't split
+        throw std::invalid_argument("All edges have the same center, need larger threshold to split");
+    }
+
     node->split_axis = axis;
     node->split_value = split_value;
     node->left = build_node(node->edges, start, mid);

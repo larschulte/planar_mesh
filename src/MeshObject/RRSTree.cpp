@@ -32,7 +32,7 @@ bool RRSTree::Node::isLeaf() const
 
 double RRSTree::sort_boundary_vertex_list_in_axis(std::vector<std::shared_ptr<Vertex>>& boundary_vertex_list, int axis, int start, int mid, int end)
 {
-    std::nth_element(boundary_vertex_list.begin() + start, boundary_vertex_list.begin() + mid, boundary_vertex_list.begin() + end, 
+    std::sort(boundary_vertex_list.begin() + start, boundary_vertex_list.begin() + end, 
         [&](const std::shared_ptr<Vertex>& boundary_vertex_a, const std::shared_ptr<Vertex>& boundary_vertex_b) 
         {
             return boundary_vertex_a->get_position()[axis] < boundary_vertex_b->get_position()[axis];
@@ -53,6 +53,32 @@ void RRSTree::convert_leaf_to_branch(const std::shared_ptr<Node>& node)
     int mid = (start + end) / 2;
     int axis = node->box.get_longest_axis();
     double split_value = sort_boundary_vertex_list_in_axis(node->boundary_vertices, axis, start, mid, end);
+
+    // find the lower and upper bound with custom comparator
+    auto lower_bound = std::lower_bound(node->boundary_vertices.begin(), node->boundary_vertices.end(), split_value, 
+        [&](const std::shared_ptr<Vertex>& vertex, const double& value) 
+        {
+            return vertex->get_position()[axis] < value;
+        });
+    auto upper_bound = std::upper_bound(node->boundary_vertices.begin(), node->boundary_vertices.end(), split_value, 
+        [&](const double& value, const std::shared_ptr<Vertex>& vertex) 
+        {
+            return value < vertex->get_position()[axis];
+        });
+
+    if (lower_bound != node->boundary_vertices.begin())
+    {
+        mid = std::distance(node->boundary_vertices.begin(), lower_bound);
+    } 
+    else if (upper_bound != node->boundary_vertices.end())
+    {
+        mid = std::distance(node->boundary_vertices.begin(), upper_bound);
+    }
+    else
+    {
+        // all edges have the same center, can't split
+        throw std::invalid_argument("All edges have the same center, need larger threshold to split");
+    }
     
     node->split_axis = axis;
     node->split_value = split_value;

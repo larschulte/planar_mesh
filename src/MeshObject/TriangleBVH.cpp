@@ -83,7 +83,7 @@ bool TriangleBVH::Node::isLeaf() const
 
 double TriangleBVH::sort_face_list_in_axis(std::vector<std::shared_ptr<Face>>& face_list, int axis, int start, int mid, int end)
 {
-    std::nth_element(face_list.begin() + start, face_list.begin() + mid, face_list.begin() + end, 
+    std::sort(face_list.begin() + start, face_list.begin() + end, 
         [&](const std::shared_ptr<Face>& triangle_a, const std::shared_ptr<Face>& triangle_b) 
         {
             return triangle_a->get_center()[axis] < triangle_b->get_center()[axis];
@@ -127,6 +127,33 @@ void TriangleBVH::convert_leaf_to_branch(const std::shared_ptr<Node>& node)
     
     node->split_axis = axis;
     node->split_value = split_value;
+
+    // find the lower and upper bound with custom comparator
+    auto lower_bound = std::lower_bound(node->faces.begin(), node->faces.end(), split_value, 
+        [&](const std::shared_ptr<Face>& face, const double& value) 
+        {
+            return face->get_center()[axis] < value;
+        });
+    auto upper_bound = std::upper_bound(node->faces.begin(), node->faces.end(), split_value, 
+        [&](const double& value, const std::shared_ptr<Face>& face) 
+        {
+            return value < face->get_center()[axis];
+        });
+
+    if (lower_bound != node->faces.begin())
+    {
+        mid = std::distance(node->faces.begin(), lower_bound);
+    } 
+    else if (upper_bound != node->faces.end())
+    {
+        mid = std::distance(node->faces.begin(), upper_bound);
+    }
+    else
+    {
+        // all faces have the same center, can't split
+        throw std::invalid_argument("All faces have the same center, need larger threshold to split");
+    }
+
     node->left = build_node(node->faces, start, mid);
     node->right = build_node(node->faces, mid, end);
     node->faces.clear();
