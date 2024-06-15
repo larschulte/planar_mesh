@@ -28,8 +28,8 @@ public:
     void try_merge_surfaces(std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash>& surfaces_to_merge);
     
     // algorithm
-    void process_point(Eigen::Vector3d thisPointOriginVEC, Eigen::Vector3d thisPointVEC);
-    void add_point_by_radius_search(const Eigen::Vector3d& thisPointVEC, const Eigen::Vector3d& thisPointOriginVEC);
+    void process_point(const std::shared_ptr<GenericPoint>& generic_point);
+    void add_point_by_radius_search(const std::shared_ptr<GenericPoint>& generic_point);
     
     // interaction
     void refine_surfaces();

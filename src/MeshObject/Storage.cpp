@@ -39,6 +39,16 @@ const std::shared_ptr<Vertex>& Storage::add_vertex(const Eigen::Vector3d& origin
     return *vertices_.insert(vertex).first;
 }
 
+const std::shared_ptr<Vertex>& Storage::add_vertex(const std::shared_ptr<GenericPoint>& generic_point)
+{
+    // create
+    std::shared_ptr<Vertex> vertex = std::make_shared<Vertex>();
+    vertex->initialize_(shared_from_this(), generic_point);
+
+    // store
+    return *vertices_.insert(vertex).first;
+}
+
 const std::shared_ptr<Edge>& Storage::add_edge(const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2)
 {    
     // create
@@ -79,11 +89,41 @@ const std::shared_ptr<GenericPoint>& Storage::add_generic_point(const Eigen::Vec
     return *genertic_points_.insert(genertic_point).first;
 }
 
+const std::shared_ptr<GenericPoint>& Storage::add_generic_point(const std::shared_ptr<Vertex>& vertex) 
+{
+    // create
+    std::shared_ptr<GenericPoint> genertic_point = std::make_shared<GenericPoint>();
+    genertic_point->initialize_(shared_from_this(), vertex);
+
+    // store
+    return *genertic_points_.insert(genertic_point).first;
+}
+
+const std::shared_ptr<GenericPoint>& Storage::add_generic_point(const std::shared_ptr<InteriorPoint>& interiror_point) 
+{
+    // create
+    std::shared_ptr<GenericPoint> genertic_point = std::make_shared<GenericPoint>();
+    genertic_point->initialize_(shared_from_this(), interiror_point);
+
+    // store
+    return *genertic_points_.insert(genertic_point).first;
+}
+
 const std::shared_ptr<InteriorPoint>& Storage::add_interior_point(const std::shared_ptr<Face>& face, const Eigen::Vector3d& position, const Eigen::Vector3d& origin) 
 {
     // create
     std::shared_ptr<InteriorPoint> interior_point = std::make_shared<InteriorPoint>();
     interior_point->initialize_(shared_from_this(), face, position, origin);
+
+    // store
+    return *interior_points_.insert(interior_point).first;
+}
+
+const std::shared_ptr<InteriorPoint>& Storage::add_interior_point(const std::shared_ptr<Face>& face, const std::shared_ptr<GenericPoint>& generic_point) 
+{
+    // create
+    std::shared_ptr<InteriorPoint> interior_point = std::make_shared<InteriorPoint>();
+    interior_point->initialize_(shared_from_this(), face, generic_point);
 
     // store
     return *interior_points_.insert(interior_point).first;
@@ -138,16 +178,19 @@ void Storage::delete_surface(const std::shared_ptr<Surface>& surface)
     surface->delete_();
 }
 
-void Storage::delete_genertic_point(const std::shared_ptr<GenericPoint>& genertic_point) 
+void Storage::delete_generic_point(const std::shared_ptr<GenericPoint>& genertic_point) 
 {
     // check input
     if (genertic_point->is_expired()) throw std::runtime_error("Attempts to delete expired genertic point.");
+
+    // make a copy of the generic point
+    std::shared_ptr<GenericPoint> genertic_point_copy = genertic_point;
 
     // storage delete
     genertic_points_.erase(genertic_point);
 
     // member delete
-    genertic_point->delete_();
+    genertic_point_copy->delete_();
 }
 
 void Storage::delete_interior_point(const std::shared_ptr<InteriorPoint>& interior_point) 
@@ -207,11 +250,25 @@ std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> Storage::reverse_rad
     return result;
 }
 
+std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> Storage::reverse_radius_search(const std::shared_ptr<GenericPoint>& generic_point) 
+{
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> result;
+    rrs_tree_.tree_reverse_radius_search(generic_point->get_position(), result);
+    return result;
+}
+
 // face intersection search
 std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> Storage::face_intersection_search(const Eigen::Vector3d& origin, const Eigen::Vector3d& point) 
 {
     std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> result;
     triangle_bvh_.tree_intersection_search(origin, point, result);
+    return result;
+}
+
+std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> Storage::face_intersection_search(const std::shared_ptr<GenericPoint>& generic_point) 
+{
+    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> result;
+    triangle_bvh_.tree_intersection_search(generic_point->get_origin(), generic_point->get_position(), result);
     return result;
 }
 
@@ -270,6 +327,27 @@ std::map<std::shared_ptr<Vertex>, int> Storage::get_vertex_to_cloud_indices_map(
 bool Storage::is_expired() const
 {
     return is_expired_;
+}
+
+void Storage::set_penetrating_point(const std::shared_ptr<GenericPoint>& generic_point)
+{
+    penetrating_point_ = generic_point->get_position();
+    has_penetrating_point_ = true;
+}
+
+const Eigen::Vector3d& Storage::get_penetrating_point()
+{
+    return penetrating_point_;
+}
+
+void Storage::clear_penetrating_point()
+{
+    has_penetrating_point_ = false;
+}
+
+bool Storage::has_penetrating_point() const
+{
+    return has_penetrating_point_;
 }
 
 // get edge

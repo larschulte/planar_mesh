@@ -2,8 +2,9 @@
 #include "MeshObject/InteriorPoint.hpp"
 #include "MeshObject/Face.hpp"
 #include "MeshObject/Surface.hpp"
+#include "MeshObject/GenericPoint.hpp"
 
-void InteriorPoint::initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<Face>& face, const Eigen::Vector3d& position, const Eigen::Vector3d& origin)
+void InteriorPoint::initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<Face>& face, const Eigen::Vector3d& position, const Eigen::Vector3d& origin, const double& radius)
 {
     // set expired
     is_expired_ = false;
@@ -20,6 +21,7 @@ void InteriorPoint::initialize_(const std::shared_ptr<Storage>& storage, const s
     // store
     position_ = position;
     origin_ = origin;
+    radius_ = radius;
 
     // connect
     connect(face);
@@ -27,6 +29,18 @@ void InteriorPoint::initialize_(const std::shared_ptr<Storage>& storage, const s
 
     // log
     std::cout << "InteriorPoint " << id_ << " created.\n";
+}
+
+void InteriorPoint::initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<Face>& face, const std::shared_ptr<GenericPoint>& generic_point)
+{
+    initialize_(storage, face, generic_point->get_position(), generic_point->get_origin(), generic_point->get_radius());
+}
+
+void InteriorPoint::initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<Face>& face, const Eigen::Vector3d& position, const Eigen::Vector3d& origin)
+{
+    std::shared_ptr<GenericPoint> generic_point = storage->add_generic_point(position, origin);
+    initialize_(storage, face, generic_point);
+    storage->delete_generic_point(generic_point);
 }
 
 void InteriorPoint::delete_()
@@ -43,8 +57,16 @@ void InteriorPoint::delete_()
     for (const auto& face : faces) disconnect(face);
     for (const auto& surface : surfaces) disconnect(surface);
 
+    // compute radius
+    if (storage_->has_penetrating_point())
+    {
+        // compute radius from storage
+        double radius = (storage_->get_penetrating_point() - get_position()).norm();
+        if (radius < radius_) radius_ = radius;
+    }
+
     // add to storage as generic point
-    storage_->add_generic_point(get_position(), get_origin());
+    storage_->add_generic_point(shared_from_this());
 
     // log
     std::cout << "---------- InteriorPoint " << id_ << " destroyed" << std::endl;
@@ -71,6 +93,11 @@ const Eigen::Vector3d& InteriorPoint::get_origin() const
 const std::shared_ptr<Surface>& InteriorPoint::get_surface() const
 {    
     return *surfaces_.begin();
+}
+
+const double& InteriorPoint::get_radius() const
+{
+    return radius_;
 }
 
 void InteriorPoint::try_update_surface_projection()

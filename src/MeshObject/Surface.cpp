@@ -8,6 +8,7 @@
 #include "MeshObject/InteriorPoint.hpp"
 #include "utilities/covariance_math.hpp"
 #include "MeshObject/UnionFind.hpp"
+#include "MeshObject/GenericPoint.hpp"
 
 void Surface::initialize_(const std::shared_ptr<Storage>& storage)
 {
@@ -73,6 +74,16 @@ double Surface::compute_point_to_surface_distance(const Eigen::Vector3d& origin,
     // if perpendicular, return NaN
     Eigen::Vector3d rayDirection = (position - origin).normalized();
     double distance = (mean_ - position).dot(normal_) / rayDirection.dot(normal_);
+
+    // return
+    return distance;
+}
+
+double Surface::compute_point_to_surface_distance(const std::shared_ptr<GenericPoint>& generic_point) const
+{
+    // if perpendicular, return NaN
+    Eigen::Vector3d rayDirection = (generic_point->get_position() - generic_point->get_origin()).normalized();
+    double distance = (mean_ - generic_point->get_position()).dot(normal_) / rayDirection.dot(normal_);
 
     // return
     return distance;

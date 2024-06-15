@@ -7,35 +7,6 @@
 
 #include "MeshObject/GenericPoint.hpp"
 
-void Vertex::initialize_(const std::shared_ptr<Storage>& storage, const Eigen::Vector3d& position, const Eigen::Vector3d& origin)
-{
-    // set expired
-    is_expired_ = false;
-
-    // check pointer validity
-    if (storage->is_expired()) throw std::runtime_error("Attempts to create vertex with invalid storage.");
-
-    // get id
-    id_ = storage->get_next_vertex_id();
-
-    // store
-    storage_ = storage;
-    position_ = position;
-    origin_ = origin;
-
-    // compute reverse search radius based on distance
-    double distance_to_radius_ratio = tan(4 * M_PI / 180);
-    double distance = (position - origin).norm();
-    double radius = distance * distance_to_radius_ratio;
-    set_reverse_radius_search_radius(radius);
-
-    // update boundary state
-    update_boundary_state();
-
-    // log
-    std::cout << "Vertex " << id_ << " created.\n";
-}
-
 void Vertex::initialize_(const std::shared_ptr<Storage>& storage, const Eigen::Vector3d& position, const Eigen::Vector3d& origin, const double& radius)
 {
     // set expired
@@ -62,6 +33,18 @@ void Vertex::initialize_(const std::shared_ptr<Storage>& storage, const Eigen::V
     std::cout << "Vertex " << id_ << " created.\n";
 }
 
+void Vertex::initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<GenericPoint>& generic_point)
+{
+    initialize_(storage, generic_point->get_position(), generic_point->get_origin(), generic_point->get_radius());
+}
+
+void Vertex::initialize_(const std::shared_ptr<Storage>& storage, const Eigen::Vector3d& position, const Eigen::Vector3d& origin)
+{
+    std::shared_ptr<GenericPoint> generic_point = storage->add_generic_point(position, origin);
+    initialize_(storage, generic_point);
+    storage->delete_generic_point(generic_point);
+}
+
 void Vertex::delete_()
 {
     // log
@@ -85,8 +68,16 @@ void Vertex::delete_()
         is_searchable_ = false;
     }
 
+    // compute radius
+    if (storage_->has_penetrating_point())
+    {
+        // compute radius from storage
+        double radius = (storage_->get_penetrating_point() - get_position()).norm();
+        if (radius < reverse_search_radius_) reverse_search_radius_ = radius;
+    }
+
     // add to storage as generic point
-    storage_->add_generic_point(get_position(), get_origin());
+    storage_->add_generic_point(shared_from_this());
 
     // log
     std::cout << "---------- vertex " << id_ << " destroyed" << std::endl;
@@ -243,6 +234,9 @@ void Vertex::disconnect(const std::shared_ptr<Face>& face)
     // disconnect
     bool erased = faces_.erase(face);
     if (erased) face->disconnect(shared_from_this());
+
+    // check self destruct
+    if (!deleting_ && faces_.empty()) storage_->delete_vertex(shared_from_this());
 }
 
 void Vertex::disconnect(const std::shared_ptr<Surface>& surface)

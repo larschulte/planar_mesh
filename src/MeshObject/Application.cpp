@@ -95,23 +95,23 @@ void Application<PointT>::try_merge_surfaces(std::unordered_set<std::shared_ptr<
 }
 
 template <typename PointT>
-void Application<PointT>::add_point_by_radius_search(const Eigen::Vector3d& thisPointVEC, const Eigen::Vector3d& thisPointOriginVEC)
+void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<GenericPoint>& generic_point)
 {
     if (!storage_->can_reverse_radius_search())
     {
         std::shared_ptr<Surface> new_surface = storage_->add_surface();
-        std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(thisPointOriginVEC, thisPointVEC);
+        std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(generic_point);
         new_surface->connect(new_vertex);
         return;
     }
 
     std::map<int, double> point_to_radius_map;
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> searched_boundary_vertices_set = storage_->reverse_radius_search(thisPointVEC);
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> searched_boundary_vertices_set = storage_->reverse_radius_search(generic_point);
 
     if (searched_boundary_vertices_set.size() == 0)
     {
         std::shared_ptr<Surface> new_surface = storage_->add_surface();
-        std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(thisPointOriginVEC, thisPointVEC);
+        std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(generic_point);
         new_surface->connect(new_vertex);
         return;
     }
@@ -165,7 +165,7 @@ void Application<PointT>::add_point_by_radius_search(const Eigen::Vector3d& this
     std::map<std::shared_ptr<Surface>, double> surface_distance_map;
     for (std::shared_ptr<Surface> surface : surfaces_with_plane)
     {
-        double distance = surface->compute_point_to_surface_distance(thisPointOriginVEC, thisPointVEC);
+        double distance = surface->compute_point_to_surface_distance(generic_point);
         surface_distance_map[surface] = std::fabs(distance);
     }
 
@@ -194,7 +194,7 @@ void Application<PointT>::add_point_by_radius_search(const Eigen::Vector3d& this
             {
                 if (vertex->get_surface() != closest_surface)
                 {
-                    double reduced_radius = (thisPointVEC - vertex->get_position()).norm();
+                    double reduced_radius = (generic_point->get_position() - vertex->get_position()).norm();
                     if (reduced_radius < vertex->get_radius())
                     {
                         vertex->set_reverse_radius_search_radius(reduced_radius);
@@ -203,7 +203,7 @@ void Application<PointT>::add_point_by_radius_search(const Eigen::Vector3d& this
             }
         }
 
-        std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(thisPointOriginVEC, thisPointVEC);
+        std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(generic_point);
         closest_surface->connect(new_vertex, searched_boundary_vertices_set);
         return;
     }
@@ -213,7 +213,7 @@ void Application<PointT>::add_point_by_radius_search(const Eigen::Vector3d& this
     for (std::shared_ptr<Surface> surface : surfaces_without_plane)
     {
         const Eigen::Vector3d& mean = surface->get_mean();
-        double distance = (thisPointVEC - mean).norm();
+        double distance = (generic_point->get_position() - mean).norm();
         if (distance < nearest_distance)
         {
             nearest_distance = distance;
@@ -222,13 +222,13 @@ void Application<PointT>::add_point_by_radius_search(const Eigen::Vector3d& this
     }
     if (!nearest_surface->is_expired())
     {
-        std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(thisPointOriginVEC, thisPointVEC);
+        std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(generic_point);
         nearest_surface->connect(new_vertex, searched_boundary_vertices_set);
         return;
     }
 
     std::shared_ptr<Surface> new_surface = storage_->add_surface();
-    std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(thisPointOriginVEC, thisPointVEC);
+    std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(generic_point);
     new_surface->connect(new_vertex);
 }
 
@@ -261,9 +261,9 @@ void Application<PointT>::load_point_cloud()
 }
 
 template <typename PointT>
-void Application<PointT>::process_point(Eigen::Vector3d thisPointOriginVEC, Eigen::Vector3d thisPointVEC)
+void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& generic_point)
 {
-    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> searched_faces = storage_->face_intersection_search(thisPointOriginVEC, thisPointVEC);
+    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> searched_faces = storage_->face_intersection_search(generic_point);
 
     std::map<std::shared_ptr<Surface>, std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>> searched_surface_to_searched_faces;
     for (const std::shared_ptr<Face>& face : searched_faces)
@@ -277,20 +277,22 @@ void Application<PointT>::process_point(Eigen::Vector3d thisPointOriginVEC, Eige
         const std::shared_ptr<Surface>& surface = pair.first;
         const std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& searched_faces = pair.second;
 
-        double distance = surface->compute_point_to_surface_distance(thisPointOriginVEC, thisPointVEC);
+        double distance = surface->compute_point_to_surface_distance(generic_point);
         bool points_before_surface = distance > distance_threshold;
         bool points_behind_surface = distance < -distance_threshold;
         bool points_within_surface = !points_before_surface && !points_behind_surface;
         
         if (points_behind_surface)
         {
+            storage_->set_penetrating_point(generic_point);
             for (const std::shared_ptr<Face>& face : searched_faces) storage_->delete_face(face);
+            storage_->clear_penetrating_point();
         }
         else if (points_within_surface)
         {
             if (!point_added)
             {
-                storage_->add_interior_point(*searched_faces.begin(), thisPointVEC, thisPointOriginVEC);
+                storage_->add_interior_point(*searched_faces.begin(), generic_point);
                 point_added = true;
             }
             else
@@ -303,7 +305,7 @@ void Application<PointT>::process_point(Eigen::Vector3d thisPointOriginVEC, Eige
             continue;
         }
     }
-    if (!point_added) add_point_by_radius_search(thisPointVEC, thisPointOriginVEC);
+    if (!point_added) add_point_by_radius_search(generic_point);
 
     if (ith_point == ith_size) 
     {   
@@ -319,7 +321,10 @@ void Application<PointT>::step()
     Eigen::Vector3d thisPointVEC = pointcloud->points[ith_point].getVector3fMap().cast<double>();
     Eigen::Vector3d thisPointOriginVEC = origin;
     ith_point++;
-    process_point(thisPointOriginVEC, thisPointVEC);
+
+    const std::shared_ptr<GenericPoint>& generic_point = storage_->add_generic_point(thisPointVEC, thisPointOriginVEC);
+    process_point(generic_point);
+    storage_->delete_generic_point(generic_point);
 }
 
 template <typename PointT>
@@ -328,8 +333,8 @@ void Application<PointT>::add_back_generic_points()
     std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash> copy_of_generic_points = storage_->get_generic_points();
     for (const std::shared_ptr<GenericPoint>& generic_point : copy_of_generic_points)
     {
-        process_point(generic_point->get_origin(), generic_point->get_position());
-        storage_->delete_genertic_point(generic_point);
+        process_point(generic_point);
+        storage_->delete_generic_point(generic_point);
     }
 }
 

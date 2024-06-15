@@ -10,11 +10,14 @@
 class Storage;
 class Face;
 class Surface;
+class GenericPoint;
 
 class InteriorPoint : public std::enable_shared_from_this<InteriorPoint>, public MeshObject 
 {
 protected:
     friend class Storage;
+    void initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<Face>& face, const Eigen::Vector3d& position, const Eigen::Vector3d& origin, const double& radius);
+    void initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<Face>& face, const std::shared_ptr<GenericPoint>& generic_point);
     void initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<Face>& face, const Eigen::Vector3d& position, const Eigen::Vector3d& origin);
     void delete_(); 
 
@@ -23,6 +26,7 @@ public:
     const Eigen::Vector3d& get_position() const;
     const Eigen::Vector3d& get_origin() const;
     const std::shared_ptr<Surface>& get_surface() const;
+    const double& get_radius() const;
     bool is_expired() const;
 
     void try_update_surface_projection();
@@ -46,6 +50,7 @@ private:
 
     Eigen::Vector3d position_;
     Eigen::Vector3d origin_;
+    double radius_;
 
     Eigen::Vector3d normal_used_;
     Eigen::Vector3d projected_position_;

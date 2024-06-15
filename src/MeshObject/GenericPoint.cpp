@@ -1,5 +1,7 @@
 #include "MeshObject/Storage.hpp"
 #include "MeshObject/GenericPoint.hpp"
+#include "MeshObject/Vertex.hpp"
+#include "MeshObject/InteriorPoint.hpp"
 
 void GenericPoint::initialize_(const std::shared_ptr<Storage>& storage, const Eigen::Vector3d& position, const Eigen::Vector3d& origin)
 {
@@ -15,12 +17,28 @@ void GenericPoint::initialize_(const std::shared_ptr<Storage>& storage, const Ei
     // get id
     id_ = storage_->get_next_generic_point_id();
 
+    // compute default radius
+    double radius = (position - origin).norm() * tan(4 * M_PI / 180);
+
     // store
     position_ = position;
     origin_ = origin;
+    radius_ = radius;
 
     // log
     std::cout << "GenericPoint " << id_ << " created.\n";
+}
+
+void GenericPoint::initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<Vertex>& vertex)
+{
+    initialize_(storage, vertex->get_position(), vertex->get_origin());
+    radius_ = vertex->get_radius();
+}
+
+void GenericPoint::initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<InteriorPoint>& interior_point)
+{
+    initialize_(storage, interior_point->get_position(), interior_point->get_origin());
+    radius_ = interior_point->get_radius();
 }
 
 void GenericPoint::delete_()
@@ -51,6 +69,11 @@ const Eigen::Vector3d& GenericPoint::get_position() const
 const Eigen::Vector3d& GenericPoint::get_origin() const
 {
     return origin_;
+}
+
+const double& GenericPoint::get_radius() const
+{
+    return radius_;
 }
 
 bool GenericPoint::is_expired() const

@@ -14,12 +14,15 @@ class GenericPoint : public std::enable_shared_from_this<GenericPoint>, public M
 protected:
     friend class Storage;
     void initialize_(const std::shared_ptr<Storage>& storage, const Eigen::Vector3d& position, const Eigen::Vector3d& origin);
+    void initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<Vertex>& vertex);
+    void initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<InteriorPoint>& interior_point);
     void delete_(); 
 
 public:
     const int& get_id() const;
     const Eigen::Vector3d& get_position() const;
     const Eigen::Vector3d& get_origin() const;
+    const double& get_radius() const;
     bool is_expired() const;
 
 private:
@@ -30,6 +33,7 @@ private:
     std::shared_ptr<Storage> storage_;
     Eigen::Vector3d position_;
     Eigen::Vector3d origin_;
+    double radius_;
 };
 
 bool operator<(const std::shared_ptr<Vertex>& lhs, const std::shared_ptr<Vertex>& rhs);
