@@ -53,32 +53,6 @@ void RRSTree::convert_leaf_to_branch(const std::shared_ptr<Node>& node)
     int mid = (start + end) / 2;
     int axis = node->box.get_longest_axis();
     double split_value = sort_boundary_vertex_list_in_axis(node->boundary_vertices, axis, start, mid, end);
-
-    // find the lower and upper bound with custom comparator
-    auto lower_bound = std::lower_bound(node->boundary_vertices.begin(), node->boundary_vertices.end(), split_value, 
-        [&](const std::shared_ptr<Vertex>& vertex, const double& value) 
-        {
-            return vertex->get_position()[axis] < value;
-        });
-    auto upper_bound = std::upper_bound(node->boundary_vertices.begin(), node->boundary_vertices.end(), split_value, 
-        [&](const double& value, const std::shared_ptr<Vertex>& vertex) 
-        {
-            return value < vertex->get_position()[axis];
-        });
-
-    if (lower_bound != node->boundary_vertices.begin())
-    {
-        mid = std::distance(node->boundary_vertices.begin(), lower_bound);
-    } 
-    else if (upper_bound != node->boundary_vertices.end())
-    {
-        mid = std::distance(node->boundary_vertices.begin(), upper_bound);
-    }
-    else
-    {
-        // all edges have the same center, can't split
-        throw std::invalid_argument("All edges have the same center, need larger threshold to split");
-    }
     
     node->split_axis = axis;
     node->split_value = split_value;
@@ -145,7 +119,7 @@ void RRSTree::node_increase_radius(const std::shared_ptr<Node>& node, const std:
     }
 }
 
-void RRSTree::node_delete_vertex(const std::shared_ptr<Node>& node, const std::shared_ptr<Vertex>& boundary_vertex)
+bool RRSTree::node_delete_vertex(const std::shared_ptr<Node>& node, const std::shared_ptr<Vertex>& boundary_vertex)
 {
     if (node->isLeaf())
     {
@@ -153,31 +127,28 @@ void RRSTree::node_delete_vertex(const std::shared_ptr<Node>& node, const std::s
         if (it != node->boundary_vertices.end())
         {
             node->boundary_vertices.erase(it, node->boundary_vertices.end());
+            return true;
         }
         else
         {
-            // Vertex not found, handle this case appropriately
-            auto list = compute_vertices_list();
-            if (std::find(list.begin(), list.end(), boundary_vertex) != list.end())
-            {
-                throw std::invalid_argument("Vertex found in the tree boundary vertices but not in node boundary vertices");
-            }
-            else
-            {
-                throw std::invalid_argument("Vertex not found in the tree boundary vertices");
-            }
+            return false;
         }
     }
     else
     {
         if (boundary_vertex->get_position()[node->split_axis] < node->split_value)
         {
-            node_delete_vertex(node->left, boundary_vertex);
+            return node_delete_vertex(node->left, boundary_vertex);
+        }
+        else if (boundary_vertex->get_position()[node->split_axis] > node->split_value)
+        {
+            return node_delete_vertex(node->right, boundary_vertex);
         }
         else
         {
-            node_delete_vertex(node->right, boundary_vertex);
+            return node_delete_vertex(node->left, boundary_vertex) || node_delete_vertex(node->right, boundary_vertex);
         }
+
     }
 }
 
@@ -296,7 +267,7 @@ void RRSTree::tree_delete_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
     tree_size--;
 
     // delete from BVH
-    node_delete_vertex(root, boundary_vertex);
+    if (!node_delete_vertex(root, boundary_vertex)) throw std::invalid_argument("Vertex not found in BVH.");
 }
 
 void RRSTree::tree_reverse_radius_search(const Eigen::Vector3d& point, std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& search_results)

@@ -53,7 +53,7 @@ private:
 
     void node_intersection_search(const std::shared_ptr<Node>& node, const Eigen::Vector3d& orig, const Eigen::Vector3d& dir, std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& faces_intersected) const;
     void node_add_face(const std::shared_ptr<Node>& node, const std::shared_ptr<Face>& face);
-    void node_delete_face(const std::shared_ptr<Node>& node, const std::shared_ptr<Face>& face);
+    bool node_delete_face(const std::shared_ptr<Node>& node, const std::shared_ptr<Face>& face);
     void node_print(const std::shared_ptr<Node>& node, int level) const;
     void node_flatten(const std::shared_ptr<TriangleBVH::Node>& node, std::vector<std::shared_ptr<Face>>& face_list) const;
 

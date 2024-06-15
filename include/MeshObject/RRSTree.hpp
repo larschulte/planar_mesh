@@ -50,7 +50,7 @@ private:
 
     void node_add_vertex(const std::shared_ptr<Node>& node, const std::shared_ptr<Vertex>& boundary_vertex);
     void node_increase_radius(const std::shared_ptr<Node>& node, const std::shared_ptr<Vertex>& boundary_vertex);
-    void node_delete_vertex(const std::shared_ptr<Node>& node, const std::shared_ptr<Vertex>& boundary_vertex);
+    bool node_delete_vertex(const std::shared_ptr<Node>& node, const std::shared_ptr<Vertex>& boundary_vertex);
     void node_reverse_radius_search(const std::shared_ptr<Node>& node, const Eigen::Vector3d& point, std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& search_results);
     void node_print(const std::shared_ptr<Node>& node, int level) const;
     void node_flattern(const std::shared_ptr<Node>& node, std::vector<std::shared_ptr<Vertex>>& flatten_list);

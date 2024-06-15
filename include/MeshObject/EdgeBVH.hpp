@@ -50,7 +50,7 @@ private:
     void convert_leaf_to_branch(const std::shared_ptr<Node>& node);
 
     void node_add_edge(const std::shared_ptr<Node>& node, const std::shared_ptr<Edge>& edge);
-    void node_delete_edge(const std::shared_ptr<Node>& node, const std::shared_ptr<Edge>& edge);
+    bool node_delete_edge(const std::shared_ptr<Node>& node, const std::shared_ptr<Edge>& edge);
     bool node_intersect_edge(const std::shared_ptr<Node>& node, const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2);
     void node_print(const std::shared_ptr<Node>& node, int level) const;    
     void node_flatten(const std::shared_ptr<Node>& node, std::vector<std::shared_ptr<Edge>>& flat_vector) const;

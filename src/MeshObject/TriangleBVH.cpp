@@ -124,36 +124,9 @@ void TriangleBVH::convert_leaf_to_branch(const std::shared_ptr<Node>& node)
     int mid = (start + end) / 2;
     int axis = node->box.get_longest_axis();
     double split_value = sort_face_list_in_axis(node->faces, axis, start, mid, end);
-    
+
     node->split_axis = axis;
     node->split_value = split_value;
-
-    // find the lower and upper bound with custom comparator
-    auto lower_bound = std::lower_bound(node->faces.begin(), node->faces.end(), split_value, 
-        [&](const std::shared_ptr<Face>& face, const double& value) 
-        {
-            return face->get_center()[axis] < value;
-        });
-    auto upper_bound = std::upper_bound(node->faces.begin(), node->faces.end(), split_value, 
-        [&](const double& value, const std::shared_ptr<Face>& face) 
-        {
-            return value < face->get_center()[axis];
-        });
-
-    if (lower_bound != node->faces.begin())
-    {
-        mid = std::distance(node->faces.begin(), lower_bound);
-    } 
-    else if (upper_bound != node->faces.end())
-    {
-        mid = std::distance(node->faces.begin(), upper_bound);
-    }
-    else
-    {
-        // all faces have the same center, can't split
-        throw std::invalid_argument("All faces have the same center, need larger threshold to split");
-    }
-
     node->left = build_node(node->faces, start, mid);
     node->right = build_node(node->faces, mid, end);
     node->faces.clear();
@@ -200,7 +173,7 @@ void TriangleBVH::node_add_face(const std::shared_ptr<Node>& node, const std::sh
     }
 }
 
-void TriangleBVH::node_delete_face(const std::shared_ptr<Node>& node, const std::shared_ptr<Face>& face)
+bool TriangleBVH::node_delete_face(const std::shared_ptr<Node>& node, const std::shared_ptr<Face>& face)
 {
     if (node->isLeaf())
     {
@@ -208,30 +181,26 @@ void TriangleBVH::node_delete_face(const std::shared_ptr<Node>& node, const std:
         if (it != node->faces.end())
         {
             node->faces.erase(it, node->faces.end());
+            return true;
         }
         else
         {
-            // Vertex not found, handle this case appropriately
-            auto list = get_face_list();
-            if (std::find(list.begin(), list.end(), face) != list.end())
-            {
-                throw std::invalid_argument("Face found in the tree list but not in node list");
-            }
-            else
-            {
-                throw std::invalid_argument("Face not found in tree list");
-            }
+            return false;
         }
     }
     else
     {
         if (face->get_center()[node->split_axis] < node->split_value)
         {
-            node_delete_face(node->left, face);
+            return node_delete_face(node->left, face);
+        }
+        else if (face->get_center()[node->split_axis] > node->split_value)
+        {
+            return node_delete_face(node->right, face);
         }
         else
         {
-            node_delete_face(node->right, face);
+            return node_delete_face(node->left, face) || node_delete_face(node->right, face);
         }
     }
 }
@@ -282,7 +251,7 @@ void TriangleBVH::tree_delete_face(std::shared_ptr<Face> face)
     face_size--;
     
     // delete from BVH
-    node_delete_face(root, face);
+    if (!node_delete_face(root, face)) throw std::runtime_error("Face not found in BVH.");
 }
 
 TriangleBVH::TriangleBVH()

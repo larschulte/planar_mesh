@@ -109,32 +109,6 @@ void EdgeBVH::convert_leaf_to_branch(const std::shared_ptr<Node>& node)
     int axis = node->box.get_longest_axis();
     double split_value = sort_edge_list_in_axis(node->edges, axis, start, mid, end);
     
-    // find the lower and upper bound with custom comparator
-    auto lower_bound = std::lower_bound(node->edges.begin(), node->edges.end(), split_value, 
-        [&](const std::shared_ptr<Edge>& edge, const double& value) 
-        {
-            return edge->get_center()[axis] < value;
-        });
-    auto upper_bound = std::upper_bound(node->edges.begin(), node->edges.end(), split_value, 
-        [&](const double& value, const std::shared_ptr<Edge>& edge) 
-        {
-            return value < edge->get_center()[axis];
-        });
-
-    if (lower_bound != node->edges.begin())
-    {
-        mid = std::distance(node->edges.begin(), lower_bound);
-    } 
-    else if (upper_bound != node->edges.end())
-    {
-        mid = std::distance(node->edges.begin(), upper_bound);
-    }
-    else
-    {
-        // all edges have the same center, can't split
-        throw std::invalid_argument("All edges have the same center, need larger threshold to split");
-    }
-
     node->split_axis = axis;
     node->split_value = split_value;
     node->left = build_node(node->edges, start, mid);
@@ -184,7 +158,7 @@ void EdgeBVH::node_add_edge(const std::shared_ptr<Node>& node, const std::shared
     }
 }
 
-void EdgeBVH::node_delete_edge(const std::shared_ptr<Node>& node, const std::shared_ptr<Edge>& edge)
+bool EdgeBVH::node_delete_edge(const std::shared_ptr<Node>& node, const std::shared_ptr<Edge>& edge)
 {
     if (node->isLeaf())
     {
@@ -192,30 +166,26 @@ void EdgeBVH::node_delete_edge(const std::shared_ptr<Node>& node, const std::sha
         if (it != node->edges.end())
         {
             node->edges.erase(it, node->edges.end());
+            return true;
         }
         else
         {
-            // Vertex not found, handle this case appropriately
-            auto list = get_edge_list();
-            if (std::find(list.begin(), list.end(), edge) != list.end())
-            {
-                throw std::invalid_argument("Edge found in the tree list but not in node list");
-            }
-            else
-            {
-                throw std::invalid_argument("Edge not found in tree list");
-            }
+            return false;
         }
     }
     else
     {
         if (edge->get_center()[node->split_axis] < node->split_value)
         {
-            node_delete_edge(node->left, edge);
+            return node_delete_edge(node->left, edge);
+        }
+        else if (edge->get_center()[node->split_axis] > node->split_value)
+        {
+            return node_delete_edge(node->right, edge);
         }
         else
         {
-            node_delete_edge(node->right, edge);
+            return node_delete_edge(node->left, edge) || node_delete_edge(node->right, edge);
         }
     }
 }
@@ -266,7 +236,7 @@ void EdgeBVH::tree_delete_edge(const std::shared_ptr<Edge>& edge)
     edge_size--;
     
     // delete from BVH
-    node_delete_edge(root, edge);
+    if (!node_delete_edge(root, edge)) throw std::runtime_error("Edge not found in BVH.");
 }
 
 EdgeBVH::EdgeBVH()
