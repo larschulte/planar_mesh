@@ -62,6 +62,14 @@ Eigen::Matrix3d Application<PointT>::merge_covariances_of_surfaces(std::shared_p
     return merge_covariance(cov1, cov2, mean1, mean2, size1, size2);
 }
 
+// compute eigen value of merged surfaces
+template <typename PointT>
+double Application<PointT>::compute_eigenvalue_of_merged_surfaces(std::shared_ptr<Surface> surface1, std::shared_ptr<Surface> surface2)
+{
+    Eigen::Matrix3d covariance_matrix = merge_covariances_of_surfaces(surface1, surface2);
+    return Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d>(covariance_matrix).eigenvalues()[0];
+}
+
 template <typename PointT>
 void Application<PointT>::try_merge_surfaces(std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash>& surfaces_to_merge)
 {
@@ -97,6 +105,7 @@ void Application<PointT>::try_merge_surfaces(std::unordered_set<std::shared_ptr<
 template <typename PointT>
 void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<GenericPoint>& generic_point)
 {
+    // when can not search
     if (!storage_->can_reverse_radius_search())
     {
         std::shared_ptr<Surface> new_surface = storage_->add_surface();
@@ -105,10 +114,12 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
         return;
     }
 
+    // get neighboring vertices
     std::map<int, double> point_to_radius_map;
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> searched_boundary_vertices_set = storage_->reverse_radius_search(generic_point);
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> neighboring_vertices = storage_->reverse_radius_search(generic_point);
 
-    if (searched_boundary_vertices_set.size() == 0)
+    // when no search results
+    if (neighboring_vertices.size() == 0)
     {
         std::shared_ptr<Surface> new_surface = storage_->add_surface();
         std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(generic_point);
@@ -116,120 +127,93 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
         return;
     }
 
+    // get neighboring surfaces
     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> neighboring_surfaces; 
-    for (std::shared_ptr<Vertex> vertex : searched_boundary_vertices_set)
+    for (std::shared_ptr<Vertex> vertex : neighboring_vertices)
     {
         neighboring_surfaces.insert(vertex->get_surface());
     }
 
-    try_merge_surfaces(neighboring_surfaces);
-
-    std::map<std::shared_ptr<Surface>, std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>> surface_to_searched_vertices_map;
-    for (std::shared_ptr<Vertex> vertex : searched_boundary_vertices_set)
-    {
-        surface_to_searched_vertices_map[vertex->get_surface()].insert(vertex);
-    }
-
-    for (const auto& pair : surface_to_searched_vertices_map)
-    {
-        std::shared_ptr<Surface> surface = pair.first;
-        const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& searched_boundary_vertices_set = pair.second;
-
-        if (surface->get_total_point_size() < fit_plane_threshold) continue;
-
-        for (std::shared_ptr<Vertex> this_vertex : searched_boundary_vertices_set)
-        {
-            double smallest_distance = std::numeric_limits<double>::max();
-            for (const auto& other_pair : surface_to_searched_vertices_map)
-            {
-                if (other_pair.first == surface) continue;
-                if (other_pair.first->get_total_point_size() < fit_plane_threshold) continue;
-                for (std::shared_ptr<Vertex> other_vertex : other_pair.second)
-                {
-                    double distance = (other_vertex->get_position() - this_vertex->get_position()).norm();
-                    if (distance < smallest_distance) smallest_distance = distance;
-                }
-            }
-            if (smallest_distance < this_vertex->get_radius()) this_vertex->set_reverse_radius_search_radius(smallest_distance);
-        }
-    }
-
+    // split into surfaces with and without plane
     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_with_plane;
     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_without_plane;
-    for (std::shared_ptr<Surface> surface : neighboring_surfaces)
-    {
-        if (surface->get_total_point_size() > fit_plane_threshold) surfaces_with_plane.insert(surface);
-        else surfaces_without_plane.insert(surface);
-    }
-    
-    std::map<std::shared_ptr<Surface>, double> surface_distance_map;
+    for (std::shared_ptr<Surface> surface : neighboring_surfaces) if (surface->get_total_point_size() >= fit_plane_threshold) surfaces_with_plane.insert(surface); else surfaces_without_plane.insert(surface);
+
+    // surfaces with plane -> select candidate surfaces that can be connected to
+    std::vector<std::pair<std::shared_ptr<Surface>, double>> candidate_surfaces;
     for (std::shared_ptr<Surface> surface : surfaces_with_plane)
     {
-        double distance = surface->compute_point_to_surface_distance(generic_point);
-        surface_distance_map[surface] = std::fabs(distance);
-    }
+        // skip if large distance
+        double distance = std::fabs(surface->compute_point_to_surface_distance(generic_point));
+        if (distance >= distance_threshold) continue;
 
-    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_within_threshold;
-    for (const auto& pair : surface_distance_map)
-    {
-        if (pair.second < distance_threshold) surfaces_within_threshold.insert(pair.first);
-    }
+        // skip if not in the same direction
+        Eigen::Vector3d normal = surface->get_normal();
+        Eigen::Vector3d direction = generic_point->get_origin() - generic_point->get_position();
+        if (normal.dot(direction) < 0) continue;
 
-    std::shared_ptr<Surface> closest_surface = std::make_shared<Surface>();
-    double closest_distance = std::numeric_limits<double>::max();
-    for (std::shared_ptr<Surface> surface : surfaces_within_threshold)
-    {
-        double distance = surface_distance_map.at(surface);
-        if (distance < closest_distance)
-        {
-            closest_distance = distance;
-            closest_surface = surface;
-        }
+        // store
+        candidate_surfaces.push_back(std::make_pair(surface, distance));
     }
-    if (!closest_surface->is_expired() && closest_distance < distance_threshold)
+    std::sort(candidate_surfaces.begin(), candidate_surfaces.end(), [](const auto& a, const auto& b) { return a.second < b.second; });
+
+    // surfaces without plane -> sort by size
+    std::vector<std::shared_ptr<Surface>> sorted_surfaces_without_plane;
+    for (std::shared_ptr<Surface> surface : surfaces_without_plane)
     {
-        for (std::shared_ptr<Vertex> vertex : searched_boundary_vertices_set)
+        sorted_surfaces_without_plane.push_back(surface);
+    }
+    std::sort(sorted_surfaces_without_plane.begin(), sorted_surfaces_without_plane.end(), [](const auto& a, const auto& b) { return a->get_total_point_size() > b->get_total_point_size(); });
+
+    // create new vertex
+    std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(generic_point);
+
+    // cases
+    if (candidate_surfaces.size() > 0) // connect to candidate surface
+    {
+        std::shared_ptr<Surface> current_surface = candidate_surfaces.front().first;
+        current_surface->connect(new_vertex, neighboring_vertices);
+
+        // try connect to other surfaces
+        for (auto it = candidate_surfaces.begin() + 1; it != candidate_surfaces.end(); it++)
         {
-            if (surfaces_with_plane.find(vertex->get_surface()) != surfaces_with_plane.end())
+            std::shared_ptr<Surface> candidate_surface = it->first;
+            
+            // if merge eigenvalue is small, merge
+            double eigenvalue = compute_eigenvalue_of_merged_surfaces(current_surface, candidate_surface);
+            if (eigenvalue < merged_eigenvalue_threshold)
             {
-                if (vertex->get_surface() != closest_surface)
-                {
-                    double reduced_radius = (generic_point->get_position() - vertex->get_position()).norm();
-                    if (reduced_radius < vertex->get_radius())
-                    {
-                        vertex->set_reverse_radius_search_radius(reduced_radius);
-                    }
-                }
+                current_surface = candidate_surface;
+                current_surface->connect(new_vertex, neighboring_vertices);
             }
         }
 
-        std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(generic_point);
-        closest_surface->connect(new_vertex, searched_boundary_vertices_set);
-        return;
+        // try split and take away searched vertices
+    }
+    else if (surfaces_without_plane.size() > 0) // connect to surface without plane
+    {
+        // connect to largest surface
+        std::shared_ptr<Surface> largest_surface = sorted_surfaces_without_plane.front();
+        largest_surface->connect(new_vertex, neighboring_vertices);
+    }
+    else // create new surface
+    {
+        std::shared_ptr<Surface> new_surface = storage_->add_surface();
+        new_surface->connect(new_vertex);
     }
 
-    std::shared_ptr<Surface> nearest_surface = std::make_shared<Surface>();
-    double nearest_distance = std::numeric_limits<double>::max();
-    for (std::shared_ptr<Surface> surface : surfaces_without_plane)
+    // for all neighboring vertices not in the same surface as new point, reduce the radius
+    for (std::shared_ptr<Vertex> vertex : neighboring_vertices)
     {
-        const Eigen::Vector3d& mean = surface->get_mean();
-        double distance = (generic_point->get_position() - mean).norm();
-        if (distance < nearest_distance)
+        if (vertex->get_surface() != new_vertex->get_surface())
         {
-            nearest_distance = distance;
-            nearest_surface = surface;
+            double distance_to_new_vertex = (vertex->get_position() - new_vertex->get_position()).norm();
+            if (distance_to_new_vertex < vertex->get_radius())
+            {
+                vertex->set_reverse_radius_search_radius(distance_to_new_vertex);
+            }
         }
     }
-    if (!nearest_surface->is_expired())
-    {
-        std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(generic_point);
-        nearest_surface->connect(new_vertex, searched_boundary_vertices_set);
-        return;
-    }
-
-    std::shared_ptr<Surface> new_surface = storage_->add_surface();
-    std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(generic_point);
-    new_surface->connect(new_vertex);
 }
 
 template <typename PointT>
