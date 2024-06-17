@@ -167,24 +167,40 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
 
     // create new vertex
     std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(generic_point);
+    bool connected = false;
 
     // cases
     if (candidate_surfaces.size() > 0) // connect to candidate surface
     {
-        std::shared_ptr<Surface> current_surface = candidate_surfaces.front().first;
-        current_surface->connect(new_vertex, neighboring_vertices);
+        std::shared_ptr<Surface> current_surface;
 
-        // try connect to other surfaces
-        for (auto it = candidate_surfaces.begin() + 1; it != candidate_surfaces.end(); it++)
+        for (auto it = candidate_surfaces.begin(); it != candidate_surfaces.end(); it++)
         {
-            std::shared_ptr<Surface> candidate_surface = it->first;
-            
-            // if merge eigenvalue is small, merge
-            double eigenvalue = compute_eigenvalue_of_merged_surfaces(current_surface, candidate_surface);
-            if (eigenvalue < merged_eigenvalue_threshold)
+            if (connected)
             {
-                current_surface = candidate_surface;
-                current_surface->connect(new_vertex, neighboring_vertices);
+                std::shared_ptr<Surface> candidate_surface = it->first;
+
+                // if merge eigenvalue is small, merge
+                double eigenvalue = compute_eigenvalue_of_merged_surfaces(current_surface, candidate_surface);
+                if (eigenvalue < merged_eigenvalue_threshold)
+                {
+                    current_surface->disconnect(new_vertex);
+                    bool connected_again = candidate_surface->connect_by_edges_and_faces(new_vertex, neighboring_vertices);   
+                    if (connected_again) 
+                    {
+                        current_surface = candidate_surface;
+                    }
+                    else
+                    {
+                        current_surface->connect(new_vertex);
+                    }
+                }
+            }
+
+            if (!connected)
+            {
+                current_surface = it->first;
+                connected = current_surface->connect_by_edges_and_faces(new_vertex, neighboring_vertices);
             }
         }
 
@@ -193,16 +209,20 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
     else if (surfaces_without_plane.size() > 0) // connect to surface without plane
     {
         // connect to largest surface
-        std::shared_ptr<Surface> largest_surface = sorted_surfaces_without_plane.front();
-        largest_surface->connect(new_vertex, neighboring_vertices);
+        for (std::shared_ptr<Surface> surface : sorted_surfaces_without_plane)
+        {
+            connected = surface->connect_by_edges_and_faces(new_vertex, neighboring_vertices);
+            if (connected) break;
+        }
     }
-    else // create new surface
+
+    if (!connected) // connect to new surface
     {
         std::shared_ptr<Surface> new_surface = storage_->add_surface();
         new_surface->connect(new_vertex);
     }
 
-    // for all neighboring vertices not in the same surface as new point, reduce the radius
+    // for all neighboring vertices not in the same surface as new point, either reduce the radius, or readd point
     for (std::shared_ptr<Vertex> vertex : neighboring_vertices)
     {
         if (vertex->get_surface() != new_vertex->get_surface())

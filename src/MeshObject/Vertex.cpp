@@ -107,9 +107,26 @@ void Vertex::try_update_surface_projection()
     }
 }
 
+void Vertex::try_update_surface_projection(const std::shared_ptr<Surface> surface)
+{
+    // update if surface changes
+    if (normal_used_ != surface->get_normal())
+    {
+        normal_used_ = surface->get_normal();
+        projected_position_ = surface->compute_point_to_surface_position(get_origin(), get_position());
+        projected_distance_ = surface->compute_point_to_surface_distance(get_origin(), get_position());
+    }
+}
+
 const Eigen::Vector3d& Vertex::get_projected_position()
 {
     try_update_surface_projection();
+    return projected_position_;
+}
+
+const Eigen::Vector3d& Vertex::get_projected_position(const std::shared_ptr<Surface> surface)
+{
+    try_update_surface_projection(surface);
     return projected_position_;
 }
 
@@ -117,11 +134,12 @@ const double& Vertex::get_projected_distance()
 {
     try_update_surface_projection();
     return projected_distance_;
+}
 
-    // if (std::fabs(distance) > 0.03)
-    // {
-    //     storage_->delete_vertex(shared_from_this());
-    // }    
+const double& Vertex::get_projected_distance(const std::shared_ptr<Surface> surface)
+{
+    try_update_surface_projection(surface);
+    return projected_distance_;
 }
 
 const Eigen::Vector3d& Vertex::get_origin() const 
@@ -133,6 +151,11 @@ const std::shared_ptr<Surface>& Vertex::get_surface() const
 {    
     // return surfaces_.empty() ? std::shared_ptr<Surface>() : *surfaces_.begin();
     return *surfaces_.begin();
+}
+
+bool Vertex::has_surface() const
+{
+    return !surfaces_.empty();
 }
 
 const std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& Vertex::get_edges() const 
@@ -159,9 +182,33 @@ Eigen::Vector2d Vertex::get_surface_coordinate()
     }
 }
 
+Eigen::Vector2d Vertex::get_surface_coordinate(const std::shared_ptr<Surface> surface)
+{
+    const Eigen::Matrix3d& eigenvectors = surface->get_eigenvectors();
+    if (eigenvectors_used_ == eigenvectors)
+    {
+        // use stored coordinate if eigenvectors are the same
+        return surface_coordinate_;
+    }
+    else
+    {
+        // compute new coordinate
+        Eigen::Matrix<double, 3, 2> projection_matrix = eigenvectors.rightCols<2>();
+        Eigen::Vector3d projected_position = get_projected_position(surface);
+        surface_coordinate_ = (projection_matrix.transpose() * projected_position).head<2>();
+        eigenvectors_used_ = eigenvectors;
+        return surface_coordinate_;
+    }
+}
+
 bool Vertex::is_expired() const
 {
     return is_expired_;
+}
+
+bool Vertex::is_boundary() const
+{
+    return is_boundary_;
 }
 
 void Vertex::connect(const std::shared_ptr<Edge>& edge)

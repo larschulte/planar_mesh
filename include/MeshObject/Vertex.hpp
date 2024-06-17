@@ -27,14 +27,20 @@ public:
     const Eigen::Vector3d& get_position() const;
     const Eigen::Vector3d& get_origin() const;
     const std::shared_ptr<Surface>& get_surface() const;
+    bool has_surface() const;
     const std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& get_edges() const;
 
     void try_update_surface_projection();
+    void try_update_surface_projection(const std::shared_ptr<Surface> surface);
     const Eigen::Vector3d& get_projected_position();
+    const Eigen::Vector3d& get_projected_position(const std::shared_ptr<Surface> surface);
     const double& get_projected_distance();
-
+    const double& get_projected_distance(const std::shared_ptr<Surface> surface);
     Eigen::Vector2d get_surface_coordinate();
+    Eigen::Vector2d get_surface_coordinate(const std::shared_ptr<Surface> surface);
+
     bool is_expired() const;
+    bool is_boundary() const;
 
     void connect(const std::shared_ptr<Edge>& edge);
     void connect(const std::shared_ptr<Face>& face);

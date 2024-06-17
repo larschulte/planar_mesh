@@ -198,22 +198,12 @@ void Surface::connect(const std::shared_ptr<Vertex>& vertex)
         vertex->connect(shared_from_this());
         add_point_to_surface_fitting(vertex->get_position(), vertex->get_origin());
     }
-
-    // will need to create edges and faces
-
 }
 
-void Surface::connect(const std::shared_ptr<Vertex>& vertex, const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& all_nearby_vertices)
+bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& all_nearby_vertices)
 {
-    // check input
-    if (vertex->is_expired()) throw std::runtime_error("Attempts to connect surface with invalid vertex.");
-
-    // connect
-    if (vertices_.insert(vertex).second)
-    {
-        vertex->connect(shared_from_this());
-        add_point_to_surface_fitting(vertex->get_position(), vertex->get_origin());
-    }
+    // initialize
+    bool connected = false;
 
     // get nearby vertices in the same surface
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> nearby_vertices;
@@ -226,7 +216,7 @@ void Surface::connect(const std::shared_ptr<Vertex>& vertex, const std::unordere
         if (nearby_vertex == vertex) continue;
 
         // skip if not in the same surface
-        if (nearby_vertex->get_surface() != shared_from_this()) continue;
+        if (nearby_vertex->has_surface() && nearby_vertex->get_surface() != shared_from_this()) continue;
 
         // add to nearby vertices
         nearby_vertices.insert(nearby_vertex);
@@ -243,6 +233,8 @@ void Surface::connect(const std::shared_ptr<Vertex>& vertex, const std::unordere
         std::shared_ptr<Edge> new_edge = storage_->add_edge(vertex, nearby_vertex);
         connect(new_edge);
         used_vertices.insert(nearby_vertex);
+
+        connected = true;
     }
 
     // create faces
@@ -278,6 +270,9 @@ void Surface::connect(const std::shared_ptr<Vertex>& vertex, const std::unordere
             connect(new_face);
         }
     }
+
+    // return
+    return connected;
 }
 
 void Surface::connect(const std::shared_ptr<Edge>& edge)
