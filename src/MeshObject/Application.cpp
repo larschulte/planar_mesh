@@ -353,6 +353,9 @@ void Application<PointT>::step()
     Eigen::Vector3d thisPointOriginVEC = origin;
     ith_point++;
 
+    // log
+    std::cout << "==================================================================== Processing point " << ith_point << " of cloud " << ith_cloud << std::endl;
+
     const std::shared_ptr<GenericPoint>& generic_point = storage_->add_generic_point(thisPointVEC, thisPointOriginVEC);
     process_point(generic_point);
     storage_->delete_generic_point(generic_point);
@@ -427,7 +430,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_interior_poi
         }
         if (show_error_color)
         {
-            double distance = interior_point->get_projected_distance() / 0.05;
+            double distance = std::fabs(interior_point->get_projected_distance() / 0.05);
             std::tuple<int, int, int> color = valueToJet(distance);
             point.r = std::get<0>(color);
             point.g = std::get<1>(color);
@@ -516,7 +519,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_vertex_point
         }
         if (show_error_color)
         {
-            double distance = vertex->get_projected_distance() / 0.05;
+            double distance = std::abs(vertex->get_projected_distance() / 0.05);
             std::tuple<int, int, int> color = valueToJet(distance);
             point.r = std::get<0>(color);
             point.g = std::get<1>(color);

@@ -148,7 +148,8 @@ const Eigen::Vector3d& Vertex::get_origin() const
 
 const std::shared_ptr<Surface>& Vertex::get_surface() const
 {    
-    // return surfaces_.empty() ? std::shared_ptr<Surface>() : *surfaces_.begin();
+    if (surfaces_.empty()) throw std::runtime_error("Vertex has no surface.");
+    if (surfaces_.size() > 1) throw std::runtime_error("Vertex has multiple surfaces.");
     return *surfaces_.begin();
 }
 
