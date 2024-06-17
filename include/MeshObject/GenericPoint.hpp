@@ -25,9 +25,13 @@ public:
     const double& get_radius() const;
     bool is_expired() const;
 
+    std::size_t get_num_deletes() const;
+    
 private:
     bool deleting_ = false;
     bool is_expired_ = true;
+
+    std::size_t num_deletes_;
 
     int id_;
     std::shared_ptr<Storage> storage_;

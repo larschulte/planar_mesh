@@ -23,6 +23,9 @@ void Vertex::initialize_(const std::shared_ptr<Storage>& storage, const Eigen::V
     position_ = position;
     origin_ = origin;
 
+    // num of deletes
+    num_deletes_ = 0;
+
     // set reverse search radius based on input parameter
     set_reverse_radius_search_radius(radius);
 
@@ -36,6 +39,7 @@ void Vertex::initialize_(const std::shared_ptr<Storage>& storage, const Eigen::V
 void Vertex::initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<GenericPoint>& generic_point)
 {
     initialize_(storage, generic_point->get_position(), generic_point->get_origin(), generic_point->get_radius());
+    num_deletes_ = generic_point->get_num_deletes();
 }
 
 void Vertex::initialize_(const std::shared_ptr<Storage>& storage, const Eigen::Vector3d& position, const Eigen::Vector3d& origin)
@@ -75,6 +79,9 @@ void Vertex::delete_()
         double radius = (storage_->get_penetrating_point() - get_position()).norm();
         if (radius < reverse_search_radius_) reverse_search_radius_ = radius;
     }
+
+    // update delete count
+    num_deletes_++;
 
     // add to storage as generic point
     storage_->add_generic_point(shared_from_this());
@@ -153,6 +160,11 @@ bool Vertex::has_surface() const
 const std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& Vertex::get_edges() const 
 { 
     return edges_; 
+}
+
+std::size_t Vertex::get_num_deletes() const
+{
+    return num_deletes_;
 }
 
 const Eigen::Vector2d& Vertex::get_surface_coordinate(const std::shared_ptr<Surface> surface)

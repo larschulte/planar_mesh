@@ -25,6 +25,8 @@ void GenericPoint::initialize_(const std::shared_ptr<Storage>& storage, const Ei
     origin_ = origin;
     radius_ = radius;
 
+    num_deletes_ = 0;
+
     // log
     std::cout << "GenericPoint " << id_ << " created.\n";
 }
@@ -33,12 +35,16 @@ void GenericPoint::initialize_(const std::shared_ptr<Storage>& storage, const st
 {
     initialize_(storage, vertex->get_position(), vertex->get_origin());
     radius_ = vertex->get_radius();
+
+    num_deletes_ = vertex->get_num_deletes();
 }
 
 void GenericPoint::initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<InteriorPoint>& interior_point)
 {
     initialize_(storage, interior_point->get_position(), interior_point->get_origin());
     radius_ = interior_point->get_radius();
+
+    num_deletes_ = interior_point->get_num_deletes();
 }
 
 void GenericPoint::delete_()
@@ -79,6 +85,11 @@ const double& GenericPoint::get_radius() const
 bool GenericPoint::is_expired() const
 {
     return is_expired_;
+}
+
+std::size_t GenericPoint::get_num_deletes() const
+{
+    return num_deletes_;
 }
 
 bool operator<(const std::shared_ptr<GenericPoint>& lhs, const std::shared_ptr<GenericPoint>& rhs)

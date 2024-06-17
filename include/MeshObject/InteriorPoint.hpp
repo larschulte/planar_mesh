@@ -29,6 +29,8 @@ public:
     const double& get_radius() const;
     bool is_expired() const;
 
+    std::size_t get_num_deletes() const;
+
     void try_update_surface_projection();
     const Eigen::Vector3d& get_projected_position();
     const double& get_projected_distance();
@@ -41,6 +43,8 @@ public:
 private:
     bool deleting_ = false;
     bool is_expired_ = true;
+
+    std::size_t num_deletes_;
 
     int id_;
     std::shared_ptr<Storage> storage_;

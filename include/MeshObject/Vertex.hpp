@@ -29,6 +29,7 @@ public:
     const std::shared_ptr<Surface>& get_surface() const;
     bool has_surface() const;
     const std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& get_edges() const;
+    std::size_t get_num_deletes() const;
 
     void try_update_surface_projection(const std::shared_ptr<Surface> surface);
     void try_update_surface_projection();
@@ -69,6 +70,8 @@ private:
     bool is_boundary_ = false;
     bool is_searchable_ = false;
     bool is_expired_ = true;
+
+    std::size_t num_deletes_;
 
     int id_;
     std::shared_ptr<Storage> storage_;

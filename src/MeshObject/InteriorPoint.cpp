@@ -23,6 +23,8 @@ void InteriorPoint::initialize_(const std::shared_ptr<Storage>& storage, const s
     origin_ = origin;
     radius_ = radius;
 
+    num_deletes_ = 0;
+
     // connect
     connect(face);
     connect(face->get_surface());
@@ -34,6 +36,7 @@ void InteriorPoint::initialize_(const std::shared_ptr<Storage>& storage, const s
 void InteriorPoint::initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<Face>& face, const std::shared_ptr<GenericPoint>& generic_point)
 {
     initialize_(storage, face, generic_point->get_position(), generic_point->get_origin(), generic_point->get_radius());
+    num_deletes_ = generic_point->get_num_deletes();
 }
 
 void InteriorPoint::initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<Face>& face, const Eigen::Vector3d& position, const Eigen::Vector3d& origin)
@@ -131,6 +134,11 @@ const double& InteriorPoint::get_projected_distance()
 bool InteriorPoint::is_expired() const
 {
     return is_expired_;
+}
+
+std::size_t InteriorPoint::get_num_deletes() const
+{
+    return num_deletes_;
 }
 
 void InteriorPoint::connect(const std::shared_ptr<Face>& face)
