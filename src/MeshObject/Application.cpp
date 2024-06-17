@@ -225,8 +225,26 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
     // for all neighboring vertices not in the same surface as new point, either reduce the radius, or readd point
     for (std::shared_ptr<Vertex> vertex : neighboring_vertices)
     {
-        if (vertex->get_surface() != new_vertex->get_surface())
+        // skip if expired
+        if (vertex->is_expired()) continue;
+
+        // skip if already in the same surface
+        if (vertex->get_surface() == new_vertex->get_surface()) continue;
+
+        // skip if new surface do not have plane
+        if (new_vertex->get_surface()->get_total_point_size() < fit_plane_threshold) continue;
+        
+        // compare vertex to plane distance
+        double original_distance = vertex->get_projected_distance();
+        double new_distance = vertex->get_projected_distance(new_vertex->get_surface());
+        if (new_distance < original_distance)
         {
+            // if new distance is smaller, readd point
+            storage_->delete_vertex(vertex);
+        }
+        else
+        {
+            // if new distance is larger, reduce radius
             double distance_to_new_vertex = (vertex->get_position() - new_vertex->get_position()).norm();
             if (distance_to_new_vertex < vertex->get_radius())
             {
