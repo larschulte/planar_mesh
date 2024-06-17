@@ -30,14 +30,14 @@ public:
     bool has_surface() const;
     const std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& get_edges() const;
 
-    void try_update_surface_projection();
     void try_update_surface_projection(const std::shared_ptr<Surface> surface);
-    const Eigen::Vector3d& get_projected_position();
+    void try_update_surface_projection();
     const Eigen::Vector3d& get_projected_position(const std::shared_ptr<Surface> surface);
-    const double& get_projected_distance();
+    const Eigen::Vector3d& get_projected_position();
     const double& get_projected_distance(const std::shared_ptr<Surface> surface);
-    Eigen::Vector2d get_surface_coordinate();
-    Eigen::Vector2d get_surface_coordinate(const std::shared_ptr<Surface> surface);
+    const double& get_projected_distance();
+    const Eigen::Vector2d& get_surface_coordinate(const std::shared_ptr<Surface> surface);
+    const Eigen::Vector2d& get_surface_coordinate();
 
     bool is_expired() const;
     bool is_boundary() const;
