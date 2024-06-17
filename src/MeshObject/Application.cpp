@@ -214,6 +214,15 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
             }
         }
     }
+
+    // try refine the candidate surface this point added to
+    if (candidate_surfaces.size() > 0) 
+    {
+        if (new_vertex->get_surface()->get_eigenvalues()[0] > merged_eigenvalue_threshold) 
+        {
+            new_vertex->get_surface()->refine_surface();
+        }
+    }
 }
 
 template <typename PointT>
