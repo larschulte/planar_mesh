@@ -503,12 +503,9 @@ void Surface::refine_surface()
         // get root vertex
         const auto& root_vertex = sorted_grouped_vertices[i].first;
 
-        // disconnect from current surface
-        disconnect(root_vertex);
-
         // connect to new surface
         std::shared_ptr<Surface> new_surface = storage_->add_surface();
-        new_surface->connect(root_vertex);
+        root_vertex->swap(shared_from_this(), new_surface);
     }
 }
 
@@ -521,6 +518,8 @@ bool operator<(const std::shared_ptr<Surface> &lhs, const std::shared_ptr<Surfac
 
 bool operator==(const std::shared_ptr<Surface>& lhs, const std::shared_ptr<Surface>& rhs)
 {
+    if (!lhs && !rhs) return true; // true if both are nullptr
+    if (!lhs || !rhs) return false; // false if either is nullptr
     // check pointer validity
     if (lhs->is_expired() || rhs->is_expired()) throw std::runtime_error("Comparing expired surfaces");
     return lhs->get_id() == rhs->get_id();

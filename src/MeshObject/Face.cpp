@@ -91,12 +91,13 @@ void Face::delete_()
     // make a copy of the set to avoid iterator invalidation
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertices = vertices_;
     std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges = edges_;
-    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces = surfaces_;
     std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> interior_points = interior_points_;
     for (const auto& vertex : vertices) disconnect(vertex);
     for (const auto& edge : edges) disconnect(edge);
-    for (const auto& surface : surfaces) disconnect(surface);
     for (const auto& interior_point : interior_points) disconnect(interior_point);
+
+    // disconnect surface
+    if (surface_ != nullptr) disconnect(surface_);
 
     // remove from search tree
     if (is_searchable_)
@@ -137,8 +138,8 @@ const std::shared_ptr<Vertex>& Face::get_vertex(int index) const
 
 const std::shared_ptr<Surface>& Face::get_surface() const
 {
-    if (surfaces_.empty()) throw std::runtime_error("Face has no surface.");
-    return *surfaces_.begin();
+    if (surface_ == nullptr) throw std::runtime_error("Face not connected to a surface.");
+    return surface_;
 }
 
 bool Face::is_expired() const
@@ -249,25 +250,18 @@ void Face::connect(const std::shared_ptr<Surface>& surface)
     // check input
     if (surface->is_expired()) throw std::runtime_error("Attempts to connect face with invalid surface.");
 
-    // connect
-    bool inserted = surfaces_.insert(surface).second;
-    if (inserted) surface->connect(shared_from_this());
+    // skip if already connected
+    if (surface_ == surface) return;
 
-    // cascade connect vertices and edges and interior points to surface
-    if (inserted)
+    // connect
+    if (surface_ == nullptr) 
     {
-        for (const std::shared_ptr<Vertex>& vertex : vertices_)
-        {
-            vertex->connect(surface);
-        }
-        for (const std::shared_ptr<Edge>& edge : edges_)
-        {
-            edge->connect(surface);
-        }
-        for (const std::shared_ptr<InteriorPoint>& interior_point : interior_points_)
-        {
-            interior_point->connect(surface);
-        }
+        surface_ = surface;
+        surface_->connect(shared_from_this());
+    }
+    else
+    {
+        throw std::runtime_error("face already connected to a different surface.");
     }
 }
 
@@ -312,25 +306,18 @@ void Face::disconnect(const std::shared_ptr<Surface>& surface)
     // check input
     if (surface->is_expired()) return;
 
-    // delete
-    bool erased = surfaces_.erase(surface);
-    if (erased) surface->disconnect(shared_from_this());
+    // skip if already disconnected
+    if (surface_ == nullptr) return;
 
-    // cascade disconnect vertices and edges and interior points from surface
-    if (erased)
+    // disconnect
+    if (surface_ == surface)
     {
-        for (const std::shared_ptr<Vertex>& vertex : vertices_)
-        {
-            vertex->disconnect(surface);
-        }
-        for (const std::shared_ptr<Edge>& edge : edges_)
-        {
-            edge->disconnect(surface);
-        }
-        for (const std::shared_ptr<InteriorPoint>& interior_point : interior_points_)
-        {
-            interior_point->disconnect(surface);
-        }
+        surface_->disconnect(shared_from_this());
+        surface_ = nullptr;
+    }
+    else
+    {
+        throw std::runtime_error("face not connected to the surface.");
     }
 }
 
@@ -347,6 +334,31 @@ void Face::disconnect(const std::shared_ptr<InteriorPoint>& interior_point)
     if (!deleting_) storage_->delete_face(shared_from_this());
 }
 
+// swap surface1 with surface2
+void Face::swap(const std::shared_ptr<Surface>& surface1, const std::shared_ptr<Surface>& surface2)
+{
+    // if contains surfacce1    
+    if (surface_ == surface1)
+    {
+        disconnect(surface1);
+        connect(surface2);
+
+        // cascade swap
+        for (const std::shared_ptr<Vertex>& vertex : vertices_)
+        {
+            vertex->swap(surface1, surface2);
+        }
+        for (const std::shared_ptr<Edge>& edge : edges_)
+        {
+            edge->swap(surface1, surface2);
+        }
+        for (const std::shared_ptr<InteriorPoint>& interior_point : interior_points_)
+        {
+            interior_point->swap(surface1, surface2);
+        }
+    }
+}
+
 bool operator<(const std::shared_ptr<Face>& lhs, const std::shared_ptr<Face>& rhs)
 {
     if (lhs->is_expired() || rhs->is_expired()) throw std::runtime_error("Comparing expired edges");
@@ -355,6 +367,8 @@ bool operator<(const std::shared_ptr<Face>& lhs, const std::shared_ptr<Face>& rh
 
 bool operator==(const std::shared_ptr<Face>& lhs, const std::shared_ptr<Face>& rhs)
 {
+    if (!lhs && !rhs) return true; // true if both are nullptr
+    if (!lhs || !rhs) return false; // false if either is nullptr
     if (lhs->is_expired() || rhs->is_expired()) throw std::runtime_error("Comparing expired edges");
     return lhs->get_id() == rhs->get_id();
 }

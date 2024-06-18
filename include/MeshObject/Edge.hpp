@@ -35,6 +35,8 @@ public:
     void disconnect(const std::shared_ptr<Face>& face);
     void disconnect(const std::shared_ptr<Surface>& surface);
 
+    void swap(const std::shared_ptr<Surface>& surface1, const std::shared_ptr<Surface>& surface2);
+
     bool has_vertex(const std::shared_ptr<Vertex>& vertex) const;
     bool is_boundary() const;
     void update_boundary_state();
@@ -48,6 +50,7 @@ private:
     bool deleting_ = false;
     bool is_boundary_ = false;
     bool is_expired_ = true;
+    bool is_searchable_ = false;
 
     Eigen::Vector3d center_;
     Eigen::Vector3d max_;
@@ -58,8 +61,8 @@ private:
 
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertices_;
     std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces_;
-    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_;
-    std::map<std::shared_ptr<Surface>, bool> is_searchable_in_surface_;
+    
+    std::shared_ptr<Surface> surface_ = nullptr;
 };
 
 bool operator<(const std::shared_ptr<Edge>& lhs, const std::shared_ptr<Edge>& rhs);

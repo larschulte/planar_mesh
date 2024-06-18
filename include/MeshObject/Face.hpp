@@ -40,6 +40,8 @@ public:
     void disconnect(const std::shared_ptr<Surface>& surface);
     void disconnect(const std::shared_ptr<InteriorPoint>& interior_point);
 
+    void swap(const std::shared_ptr<Surface>& surface1, const std::shared_ptr<Surface>& surface2);
+
 private:
     Eigen::Vector3d center_;
 
@@ -52,8 +54,9 @@ private:
 
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertices_;
     std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges_;
-    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_;
     std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> interior_points_;
+
+    std::shared_ptr<Surface> surface_ = nullptr;
 };
 
 bool operator<(const std::shared_ptr<Face>& lhs, const std::shared_ptr<Face>& rhs);

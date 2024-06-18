@@ -233,19 +233,6 @@ void Vertex::connect(const std::shared_ptr<Surface>& surface)
     // connect
     bool inserted = surfaces_.insert(surface).second;
     if (inserted) surface->connect(shared_from_this());
-
-    // cascade connect edges and faces to surface
-    if (inserted) 
-    {
-        for (const std::shared_ptr<Edge>& edge : edges_)
-        {
-            edge->connect(surface);
-        }
-        for (const std::shared_ptr<Face>& face : faces_)
-        {
-            face->connect(surface);
-        }
-    }
 }
 
 void Vertex::disconnect(const std::shared_ptr<Edge>& edge) 
@@ -285,17 +272,27 @@ void Vertex::disconnect(const std::shared_ptr<Surface>& surface)
     // disconnect
     bool erased = surfaces_.erase(surface);
     if (erased) surface->disconnect(shared_from_this());
+}
 
-    // cascade disconnect edges and faces from surface
-    if (erased)
+// swap surface1 with surface2
+void Vertex::swap(const std::shared_ptr<Surface>& surface1, const std::shared_ptr<Surface>& surface2)
+{
+    // if contains surfacce1
+    bool contains_surface1 = surfaces_.find(surface1) != surfaces_.end();
+    
+    if (contains_surface1)
     {
+        disconnect(surface1);
+        connect(surface2);
+
+        // cascade swap
         for (const std::shared_ptr<Edge>& edge : edges_)
         {
-            edge->disconnect(surface);
+            edge->swap(surface1, surface2);
         }
         for (const std::shared_ptr<Face>& face : faces_)
         {
-            face->disconnect(surface);
+            face->swap(surface1, surface2);
         }
     }
 }
@@ -388,6 +385,8 @@ bool operator<=(const std::shared_ptr<Vertex>& lhs, const std::shared_ptr<Vertex
 
 bool operator==(const std::shared_ptr<Vertex>& lhs, const std::shared_ptr<Vertex>& rhs)
 {
+    if (!lhs && !rhs) return true; // true if both are nullptr
+    if (!lhs || !rhs) return false; // false if either is nullptr
     if (lhs->is_expired() || rhs->is_expired()) throw std::runtime_error("Comparing expired edges");
     return lhs->get_id() == rhs->get_id();
 }

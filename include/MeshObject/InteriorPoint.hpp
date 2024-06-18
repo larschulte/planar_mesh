@@ -40,6 +40,8 @@ public:
     void disconnect(const std::shared_ptr<Face>& face);
     void disconnect(const std::shared_ptr<Surface>& surface);
 
+    void swap(const std::shared_ptr<Surface>& surface1, const std::shared_ptr<Surface>& surface2);
+
 private:
     bool deleting_ = false;
     bool is_expired_ = true;
@@ -50,7 +52,8 @@ private:
     std::shared_ptr<Storage> storage_;
 
     std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces_;
-    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_;
+    
+    std::shared_ptr<Surface> surface_ = nullptr;
 
     Eigen::Vector3d position_;
     Eigen::Vector3d origin_;

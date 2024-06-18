@@ -50,6 +50,8 @@ public:
     void disconnect(const std::shared_ptr<Face>& face);
     void disconnect(const std::shared_ptr<Surface>& surface);
 
+    void swap(const std::shared_ptr<Surface>& surface1, const std::shared_ptr<Surface>& surface2);
+
     void update_boundary_state();
 
 public: // for reverse radius search
