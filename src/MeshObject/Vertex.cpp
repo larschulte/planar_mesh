@@ -6,6 +6,8 @@
 #include <iostream>
 
 #include "MeshObject/GenericPoint.hpp"
+#include <set>
+#include "utilities/covariance_math.hpp"
 
 void Vertex::initialize_(const std::shared_ptr<Storage>& storage, const Eigen::Vector3d& position, const Eigen::Vector3d& origin, const double& radius)
 {
@@ -149,7 +151,7 @@ const Eigen::Vector3d& Vertex::get_origin() const
 const std::shared_ptr<Surface>& Vertex::get_surface() const
 {    
     if (surfaces_.empty()) throw std::runtime_error("Vertex has no surface.");
-    if (surfaces_.size() > 1) throw std::runtime_error("Vertex has multiple surfaces.");
+    // if (surfaces_.size() > 1) throw std::runtime_error("Vertex has multiple surfaces.");
     return *surfaces_.begin();
 }
 
@@ -171,6 +173,61 @@ const std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& Vertex::get_edg
 std::size_t Vertex::get_num_deletes() const
 {
     return num_deletes_;
+}
+
+void Vertex::try_merge_surfaces()
+{
+    // check if there is only one surface
+    if (surfaces_.size() == 1) return;
+
+    // merge surfaces
+    while (true)
+    {
+        bool merge_again = false;
+
+        // generate pairs of surfaces
+        std::set<std::pair<std::shared_ptr<Surface>, std::shared_ptr<Surface>>> surface_pairs;
+        for (std::shared_ptr<Surface> surface1 : surfaces_) 
+        {
+            for (std::shared_ptr<Surface> surface2 : surfaces_) 
+            {
+                if (surface1 >= surface2) continue;
+                surface_pairs.insert(std::make_pair(surface1, surface2));
+            }
+        }
+
+        // merge surfaces
+        for (const auto& pairs : surface_pairs) 
+        {
+            // skip if combined surface have large eigenvalue
+            const std::shared_ptr<Surface>& surface1 = pairs.first;
+            const std::shared_ptr<Surface>& surface2 = pairs.second;
+            const Eigen::Matrix3d& cov1 = surface1->get_covariance();
+            const Eigen::Matrix3d& cov2 = surface2->get_covariance();
+            const Eigen::Vector3d& mean1 = surface1->get_mean();
+            const Eigen::Vector3d& mean2 = surface2->get_mean();
+            int size1 = surface1->get_total_point_size();
+            int size2 = surface2->get_total_point_size();
+            Eigen::Matrix3d covariance_matrix = merge_covariance(cov1, cov2, mean1, mean2, size1, size2);
+            double eigenvalue = Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d>(covariance_matrix).eigenvalues()[0];
+            if (eigenvalue > 15e-5) continue;
+
+            // debug output
+            std::cout << "Surface " << surface1->get_id() << " have points: " << surface1->get_total_point_size() << std::endl;
+            std::cout << "Surface " << surface2->get_id() << " have points: " << surface2->get_total_point_size() << std::endl;
+
+            // merge by changing surface1 into surface2
+            swap(surface1, surface2);
+            std::cout << "Surface " << surface1->get_id() << " have points: " << surface1->get_total_point_size() << std::endl;
+            std::cout << "Surface " << surface2->get_id() << " have points: " << surface2->get_total_point_size() << std::endl;
+
+            // reset
+            merge_again = true;
+            break;
+        }
+
+        if (!merge_again) break;
+    }
 }
 
 const Eigen::Vector2d& Vertex::get_surface_coordinate(const std::shared_ptr<Surface> surface)

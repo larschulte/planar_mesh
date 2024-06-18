@@ -25,7 +25,7 @@ public: // to user
     const std::shared_ptr<Vertex>& add_vertex(const Eigen::Vector3d& origin, const Eigen::Vector3d& position, const double& radius);
     const std::shared_ptr<Vertex>& add_vertex(const std::shared_ptr<GenericPoint>& generic_point);
     const std::shared_ptr<Edge>& add_edge(const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2);
-    const std::shared_ptr<Face>& add_face(const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2, const std::shared_ptr<Vertex>& vertex3);
+    const std::shared_ptr<Face>& add_face(const std::shared_ptr<Surface>& surface, const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2, const std::shared_ptr<Vertex>& vertex3);
     const std::shared_ptr<Surface>& add_surface();
     const std::shared_ptr<GenericPoint>& add_generic_point(const Eigen::Vector3d& position, const Eigen::Vector3d& origin);
     const std::shared_ptr<GenericPoint>& add_generic_point(const std::shared_ptr<Vertex>& vertex);

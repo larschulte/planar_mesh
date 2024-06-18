@@ -7,7 +7,7 @@
 
 #include "MeshObject/InteriorPoint.hpp"
 
-void Face::initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<Vertex>& vertex0, const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2)
+void Face::initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<Surface> surface, const std::shared_ptr<Vertex>& vertex0, const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2)
 {
     // set expired
     is_expired_ = false;
@@ -36,6 +36,7 @@ void Face::initialize_(const std::shared_ptr<Storage>& storage, const std::share
     std::shared_ptr<Edge> edge2;
     for (const std::shared_ptr<Edge>& edge : vertex0->get_edges())
     {
+        if (edge->get_surface() != surface) continue;
         if (edge->has_vertex(vertex1))
         {
             edge0 = edge;
@@ -44,6 +45,7 @@ void Face::initialize_(const std::shared_ptr<Storage>& storage, const std::share
     }
     for (const std::shared_ptr<Edge>& edge : vertex1->get_edges())
     {
+        if (edge->get_surface() != surface) continue;
         if (edge->has_vertex(vertex2))
         {
             edge1 = edge;
@@ -52,6 +54,7 @@ void Face::initialize_(const std::shared_ptr<Storage>& storage, const std::share
     }
     for (const std::shared_ptr<Edge>& edge : vertex2->get_edges())
     {
+        if (edge->get_surface() != surface) continue;
         if (edge->has_vertex(vertex0))
         {
             edge2 = edge;
@@ -61,6 +64,9 @@ void Face::initialize_(const std::shared_ptr<Storage>& storage, const std::share
     connect(edge0);
     connect(edge1);
     connect(edge2);
+
+    // connect surface
+    connect(surface);
 
     // compute center
     const Eigen::Vector3d& pos0 = vertex0->get_position();

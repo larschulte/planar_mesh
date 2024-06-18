@@ -32,6 +32,8 @@ public:
     const std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& get_edges() const;
     std::size_t get_num_deletes() const;
 
+    void try_merge_surfaces();
+
     void try_update_surface_projection(const std::shared_ptr<Surface> surface);
     void try_update_surface_projection();
     const Eigen::Vector3d& get_projected_position(const std::shared_ptr<Surface> surface);

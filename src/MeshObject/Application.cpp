@@ -105,24 +105,39 @@ void Application<PointT>::try_merge_surfaces(std::unordered_set<std::shared_ptr<
 template <typename PointT>
 void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<GenericPoint>& generic_point)
 {
+    // the reverse radius search provides a set of vertices that think the new point should be in
+    // the new point to surface fit is then performed -> represented by point to surface projective distance, point uncertainty and plane uncertainty
+    // by adding a point to a surface, we are essentially expanding the surface's boundary
+
+    // each vertex can have multiple surfaces, but each edge and face and interiror point can only have one surface
+
+    // when a surface have very few points, the surface have high self uncertainty, and the point is likely to be added to the surface with few points
+    // if the new point can be added into multiple surfaces, but not all surfaces, added to the surfaces, reduce the search radius of the neighboring vertices from different surfaces
+    // if the new point can be added into one surface, add it to that surface, reduce the search radius of the neighboring vertices from different surfaces
+    // if the new point can not be added into any surface, create a new surface and add it to that surface, reduce the search radius of the neighboring vertices from different surfaces
+
+    // what about surface merging
+    // after adding the new point to surfaces, if the new point have multiple surfaces, try merge them
+
+    // create new vertex
+    std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(generic_point);
+
     // when can not search
     if (!storage_->can_reverse_radius_search())
     {
         std::shared_ptr<Surface> new_surface = storage_->add_surface();
-        std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(generic_point);
         new_surface->connect(new_vertex);
         return;
     }
 
     // get neighboring vertices
     std::map<int, double> point_to_radius_map;
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> neighboring_vertices = storage_->reverse_radius_search(generic_point);
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> neighboring_vertices = storage_->reverse_radius_search(new_vertex);
 
     // when no search results
     if (neighboring_vertices.size() == 0)
     {
         std::shared_ptr<Surface> new_surface = storage_->add_surface();
-        std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(generic_point);
         new_surface->connect(new_vertex);
         return;
     }
@@ -131,136 +146,87 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> neighboring_surfaces; 
     for (std::shared_ptr<Vertex> vertex : neighboring_vertices)
     {
-        neighboring_surfaces.insert(vertex->get_surface());
+        neighboring_surfaces.insert(vertex->get_surfaces().begin(), vertex->get_surfaces().end());
     }
 
-    // split into surfaces with and without plane
-    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_with_plane;
-    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_without_plane;
-    for (std::shared_ptr<Surface> surface : neighboring_surfaces) if (surface->get_total_point_size() >= fit_plane_threshold) surfaces_with_plane.insert(surface); else surfaces_without_plane.insert(surface);
-
-    // surfaces with plane -> select candidate surfaces that can be connected to
-    std::vector<std::pair<std::shared_ptr<Surface>, double>> candidate_surfaces;
-    for (std::shared_ptr<Surface> surface : surfaces_with_plane)
+    // split into surfaces to add to and surfaces to not add to
+    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_to_add_to;
+    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_to_not_add_to;
+    for (std::shared_ptr<Surface> surface : neighboring_surfaces) 
     {
+        // add if surface is small in size
+        if (surface->get_total_point_size() < fit_plane_threshold) 
+        {
+            surfaces_to_add_to.insert(surface);
+            continue;
+        }
+        
+        // now left with surfaces with large size
+
         // skip if large distance
-        double distance = std::fabs(surface->compute_point_to_surface_distance(generic_point));
-        if (distance >= distance_threshold) continue;
+        double distance = std::fabs(surface->compute_point_to_surface_distance(new_vertex));
+        if (distance >= distance_threshold) 
+        {
+            surfaces_to_not_add_to.insert(surface);
+            continue;
+        }
 
         // skip if not in the same direction
         Eigen::Vector3d normal = surface->get_normal();
-        Eigen::Vector3d direction = generic_point->get_origin() - generic_point->get_position();
-        if (normal.dot(direction) < 0) continue;
-
-        // store
-        candidate_surfaces.push_back(std::make_pair(surface, distance));
-    }
-    std::sort(candidate_surfaces.begin(), candidate_surfaces.end(), [](const auto& a, const auto& b) { return a.second < b.second; });
-
-    // surfaces without plane -> sort by size
-    std::vector<std::shared_ptr<Surface>> sorted_surfaces_without_plane;
-    for (std::shared_ptr<Surface> surface : surfaces_without_plane)
-    {
-        sorted_surfaces_without_plane.push_back(surface);
-    }
-    std::sort(sorted_surfaces_without_plane.begin(), sorted_surfaces_without_plane.end(), [](const auto& a, const auto& b) { return a->get_total_point_size() > b->get_total_point_size(); });
-
-    // create new vertex
-    std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(generic_point);
-    bool connected = false;
-
-    // cases
-    if (candidate_surfaces.size() > 0) // connect to candidate surface
-    {
-        std::shared_ptr<Surface> current_surface;
-
-        for (auto it = candidate_surfaces.begin(); it != candidate_surfaces.end(); it++)
+        Eigen::Vector3d direction = new_vertex->get_origin() - new_vertex->get_position();
+        if (normal.dot(direction) < 0) 
         {
-            if (connected)
-            {
-                std::shared_ptr<Surface> candidate_surface = it->first;
-
-                // if merge eigenvalue is small, merge
-                double eigenvalue = compute_eigenvalue_of_merged_surfaces(current_surface, candidate_surface);
-                if (eigenvalue < merged_eigenvalue_threshold)
-                {
-                    current_surface->disconnect(new_vertex);
-                    bool connected_again = candidate_surface->connect_by_edges_and_faces(new_vertex, neighboring_vertices);   
-                    if (connected_again) 
-                    {
-                        current_surface = candidate_surface;
-                    }
-                    else
-                    {
-                        current_surface->connect(new_vertex);
-                    }
-                }
-            }
-
-            if (!connected)
-            {
-                current_surface = it->first;
-                connected = current_surface->connect_by_edges_and_faces(new_vertex, neighboring_vertices);
-            }
+            surfaces_to_not_add_to.insert(surface);
+            continue;
         }
 
-        // try split and take away searched vertices
+        // now left with surfaces with large size, small distance, and in the same direction
+        surfaces_to_add_to.insert(surface);
+        continue;
     }
-    else if (surfaces_without_plane.size() > 0) // connect to surface without plane
+
+    // for surfaces not to add to
+    for (std::shared_ptr<Surface> surface : surfaces_to_not_add_to)
     {
-        // connect to largest surface
-        for (std::shared_ptr<Surface> surface : sorted_surfaces_without_plane)
+        // find neighboring vertices from the surface
+        for (std::shared_ptr<Vertex> vertex : neighboring_vertices)
         {
-            connected = surface->connect_by_edges_and_faces(new_vertex, neighboring_vertices);
-            if (connected) break;
+            // skip if vertex is not in the surface
+            if (vertex->get_surfaces().find(surface) == vertex->get_surfaces().end()) continue;
+
+            // reduce the search radius
+            vertex->reduce_reverse_radius_search_radius((vertex->get_position() - new_vertex->get_position()).norm());
         }
     }
 
-    if (!connected) // connect to new surface
+    // for surfaces to add to
+    for (std::shared_ptr<Surface> surface : surfaces_to_add_to)
+    {
+        // add the new point to the surface
+        surface->connect_by_edges_and_faces(new_vertex, neighboring_vertices);
+    }
+
+    // if new_vertex is in multiple surfaces, try merge them
+    if (new_vertex->get_surfaces().size() > 1)
+    {
+        new_vertex->try_merge_surfaces();
+    }
+
+    // if new_vertex is not in any surface, create a new surface and add it to that surface
+    if (new_vertex->get_surfaces().size() == 0)
     {
         std::shared_ptr<Surface> new_surface = storage_->add_surface();
         new_surface->connect(new_vertex);
     }
 
-    // for all neighboring vertices not in the same surface as new point, either reduce the radius, or readd point
-    for (std::shared_ptr<Vertex> vertex : neighboring_vertices)
-    {
-        // skip if expired
-        if (vertex->is_expired()) continue;
-
-        // skip if already in the same surface
-        if (vertex->get_surface() == new_vertex->get_surface()) continue;
-
-        // skip if new surface do not have plane
-        if (new_vertex->get_surface()->get_total_point_size() < fit_plane_threshold) continue;
-        
-        // compare vertex to plane distance
-        double original_distance = vertex->get_projected_distance();
-        double new_distance = vertex->get_projected_distance(new_vertex->get_surface());
-        if (new_distance < original_distance)
-        {
-            // if new distance is smaller, readd point
-            storage_->delete_vertex(vertex);
-        }
-        else
-        {
-            // if new distance is larger, reduce radius
-            double distance_to_new_vertex = (vertex->get_position() - new_vertex->get_position()).norm();
-            if (distance_to_new_vertex < vertex->get_radius())
-            {
-                vertex->set_reverse_radius_search_radius(distance_to_new_vertex);
-            }
-        }
-    }
-
-    // try refine the candidate surface this point added to
-    if (candidate_surfaces.size() > 0) 
-    {
-        if (new_vertex->get_surface()->get_eigenvalues()[0] > merged_eigenvalue_threshold) 
-        {
-            new_vertex->get_surface()->refine_surface();
-        }
-    }
+    // // try refine the candidate surface this point added to
+    // if (candidate_surfaces.size() > 0) 
+    // {
+    //     if (new_vertex->get_surface()->get_eigenvalues()[0] > merged_eigenvalue_threshold) 
+    //     {
+    //         new_vertex->get_surface()->refine_surface();
+    //     }
+    // }
 }
 
 template <typename PointT>
@@ -294,8 +260,21 @@ void Application<PointT>::load_point_cloud()
 template <typename PointT>
 void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& generic_point)
 {
+    // the face search provides a set of faces that are pointed by the new point
+
+    // if the new face is penetrated by the new point, the penetrated face should be deleted
+    // if the new face is behind the new point, nothing should be done
+    // if the new face can contain the new point, add the new point to the face
+
+    // if the new point can be added into multiple faces, if these faces are from the same surface
+    // if the new point can be added into multiple faces, if these faces are from different surface
+
+    // by adding a point to a surface, we are essentially refining the surface's plane estimate
+
+    // searched faces
     std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> searched_faces = storage_->face_intersection_search(generic_point);
 
+    // searched surfaces
     std::map<std::shared_ptr<Surface>, std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>> searched_surface_to_searched_faces;
     for (const std::shared_ptr<Face>& face : searched_faces)
     {

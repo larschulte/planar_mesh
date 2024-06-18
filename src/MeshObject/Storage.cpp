@@ -59,11 +59,11 @@ const std::shared_ptr<Edge>& Storage::add_edge(const std::shared_ptr<Vertex>& ve
     return *edges_.insert(edge).first;
 }
 
-const std::shared_ptr<Face>& Storage::add_face(const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2, const std::shared_ptr<Vertex>& vertex3) 
+const std::shared_ptr<Face>& Storage::add_face(const std::shared_ptr<Surface>& surface, const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2, const std::shared_ptr<Vertex>& vertex3) 
 {
     // create
     std::shared_ptr<Face> face = std::make_shared<Face>();
-    face->initialize_(shared_from_this(), vertex1, vertex2, vertex3);
+    face->initialize_(shared_from_this(), surface, vertex1, vertex2, vertex3);
 
     // store
     return *faces_.insert(face).first;

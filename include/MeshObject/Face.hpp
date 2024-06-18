@@ -17,7 +17,7 @@ class Face : public std::enable_shared_from_this<Face>, public MeshObject
 {
 protected:
     friend class Storage;
-    void initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<Vertex>& vertex0, const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2);
+    void initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<Surface> surface, const std::shared_ptr<Vertex>& vertex0, const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2);
     void delete_();
 
 public:

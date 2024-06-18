@@ -215,8 +215,8 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
         // skip if same vertex
         if (nearby_vertex == vertex) continue;
 
-        // skip if not in the same surface
-        if (nearby_vertex->has_surface() && nearby_vertex->get_surface() != shared_from_this()) continue;
+        // skip if does not belong to the same surface
+        if (nearby_vertex->get_surfaces().find(shared_from_this()) == nearby_vertex->get_surfaces().end()) continue;
 
         // add to nearby vertices
         nearby_vertices.insert(nearby_vertex);
@@ -232,6 +232,7 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
         // create edge
         std::shared_ptr<Edge> new_edge = storage_->add_edge(vertex, nearby_vertex);
         connect(new_edge);
+        connect(vertex);
         used_vertices.insert(nearby_vertex);
 
         connected = true;
@@ -250,6 +251,7 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
             std::shared_ptr<Edge> existing_edge;
             for (const std::shared_ptr<Edge>& edge : nearby_vertex0->get_edges())
             {
+                if (edge->get_surface() != shared_from_this()) continue;
                 if (edge->has_vertex(nearby_vertex1))
                 {
                     edge_exist = true;
@@ -266,8 +268,7 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
             // // todo
 
             // create face
-            std::shared_ptr<Face> new_face = storage_->add_face(vertex, nearby_vertex0, nearby_vertex1);
-            connect(new_face);
+            std::shared_ptr<Face> new_face = storage_->add_face(shared_from_this(), vertex, nearby_vertex0, nearby_vertex1);
         }
     }
 
