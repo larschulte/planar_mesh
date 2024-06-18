@@ -43,6 +43,7 @@ public: // to user
     bool can_reverse_radius_search();
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> reverse_radius_search(const Eigen::Vector3d& point);
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> reverse_radius_search(const std::shared_ptr<GenericPoint>& generic_point);
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> reverse_radius_search(const std::shared_ptr<Vertex>& vertex);
     std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> face_intersection_search(const Eigen::Vector3d& origin, const Eigen::Vector3d& point);
     std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> face_intersection_search(const std::shared_ptr<GenericPoint>& generic_point);
 

@@ -27,6 +27,7 @@ public:
     const Eigen::Vector3d& get_position() const;
     const Eigen::Vector3d& get_origin() const;
     const std::shared_ptr<Surface>& get_surface() const;
+    const std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash>& get_surfaces() const;
     bool has_surface() const;
     const std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& get_edges() const;
     std::size_t get_num_deletes() const;
@@ -56,6 +57,7 @@ public:
 
 public: // for reverse radius search
     void set_reverse_radius_search_radius(double radius);
+    void reduce_reverse_radius_search_radius(double radius);
     Eigen::Vector3d get_min() const;
     Eigen::Vector3d get_max() const;
     double get_radius() const;

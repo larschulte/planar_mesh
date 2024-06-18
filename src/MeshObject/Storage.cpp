@@ -252,9 +252,12 @@ std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> Storage::reverse_rad
 
 std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> Storage::reverse_radius_search(const std::shared_ptr<GenericPoint>& generic_point) 
 {
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> result;
-    rrs_tree_.tree_reverse_radius_search(generic_point->get_position(), result);
-    return result;
+    return reverse_radius_search(generic_point->get_position());
+}
+
+std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> Storage::reverse_radius_search(const std::shared_ptr<Vertex>& vertex)
+{
+    return reverse_radius_search(vertex->get_position());
 }
 
 // face intersection search

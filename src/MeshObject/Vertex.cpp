@@ -153,6 +153,11 @@ const std::shared_ptr<Surface>& Vertex::get_surface() const
     return *surfaces_.begin();
 }
 
+const std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash>& Vertex::get_surfaces() const 
+{ 
+    return surfaces_; 
+}
+
 bool Vertex::has_surface() const
 {
     return !surfaces_.empty();
@@ -339,6 +344,11 @@ void Vertex::set_reverse_radius_search_radius(double radius)
     max_ = position_ + Eigen::Vector3d(radius, radius, radius);
 
     // should update search tree if expand radius
+}
+
+void Vertex::reduce_reverse_radius_search_radius(double radius)
+{
+    if (radius < reverse_search_radius_) set_reverse_radius_search_radius(radius);
 }
 
 Eigen::Vector3d Vertex::get_min() const
