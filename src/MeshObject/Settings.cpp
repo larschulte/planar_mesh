@@ -40,7 +40,7 @@ Settings::Settings()
     show_triangle = true;
     show_edge = true;
     show_projected_point = false;
-    show_error_color = false;
+    color_mode = 0;
     show_wireframe = true;
     show_sphere = false;
     number_of_spheres_to_display = 60;

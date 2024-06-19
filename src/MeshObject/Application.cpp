@@ -381,13 +381,13 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_generic_poin
 }
 
 template <typename PointT>
-pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_interior_point_pointcloud(bool show_projected_point, bool show_error_color)
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_interior_point_pointcloud(const Settings& settings)
 {
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
     for (const std::shared_ptr<InteriorPoint>& interior_point : storage_->get_interior_points())
     {
         pcl::PointXYZRGB point;
-        if (show_projected_point)
+        if (settings.show_projected_point)
         {
             point.x = interior_point->get_projected_position()[0];
             point.y = interior_point->get_projected_position()[1];
@@ -399,7 +399,14 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_interior_poi
             point.y = interior_point->get_position()[1];
             point.z = interior_point->get_position()[2];
         }
-        if (show_error_color)
+        if (settings.color_mode == 0)
+        {
+            const std::tuple<int, int, int>& color = interior_point->get_surface()->get_color();
+            point.r = std::get<0>(color);
+            point.g = std::get<1>(color);
+            point.b = std::get<2>(color);
+        }
+        else if (settings.color_mode == 1)
         {
             double distance = std::fabs(interior_point->get_projected_distance() / 0.05);
             std::tuple<int, int, int> color = valueToJet(distance);
@@ -407,9 +414,10 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_interior_poi
             point.g = std::get<1>(color);
             point.b = std::get<2>(color);
         }
-        else
+        else if (settings.color_mode == 2)
         {
-            const std::tuple<int, int, int>& color = interior_point->get_surface()->get_color();
+            double distance = 1/5.0;
+            std::tuple<int, int, int> color = valueToJet(distance);
             point.r = std::get<0>(color);
             point.g = std::get<1>(color);
             point.b = std::get<2>(color);
@@ -469,14 +477,14 @@ void Application<PointT>::refine_surfaces()
 }
 
 template <typename PointT>
-pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_vertex_point_pointcloud(bool show_projected_point, bool show_error_color)
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_vertex_point_pointcloud(const Settings& setting)
 {
     vertex_to_cloud_indices_map.clear();
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
     for (const std::shared_ptr<Vertex>& vertex : storage_->get_vertices())
     {
         pcl::PointXYZRGB point;
-        if (show_projected_point)
+        if (setting.show_projected_point)
         {
             point.x = vertex->get_projected_position()[0];
             point.y = vertex->get_projected_position()[1];
@@ -488,7 +496,14 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_vertex_point
             point.y = vertex->get_position()[1];
             point.z = vertex->get_position()[2];
         }
-        if (show_error_color)
+        if (setting.color_mode == 0)
+        {
+            const std::tuple<int, int, int>& color = vertex->get_surface()->get_color();
+            point.r = std::get<0>(color);
+            point.g = std::get<1>(color);
+            point.b = std::get<2>(color);
+        }
+        else if (setting.color_mode == 1)
         {
             double distance = std::abs(vertex->get_projected_distance() / 0.05);
             std::tuple<int, int, int> color = valueToJet(distance);
@@ -496,9 +511,10 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_vertex_point
             point.g = std::get<1>(color);
             point.b = std::get<2>(color);
         }
-        else
+        else if (setting.color_mode == 2)
         {
-            const std::tuple<int, int, int>& color = vertex->get_surface()->get_color();
+            double distance = vertex->get_surfaces().size() / 5.0;
+            std::tuple<int, int, int> color = valueToJet(distance);
             point.r = std::get<0>(color);
             point.g = std::get<1>(color);
             point.b = std::get<2>(color);

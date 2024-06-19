@@ -27,7 +27,7 @@ struct Settings
     bool show_triangle;
     bool show_edge;
     bool show_projected_point;
-    bool show_error_color;
+    int color_mode;
     bool show_wireframe;
     bool show_sphere;
     int number_of_spheres_to_display;  

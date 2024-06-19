@@ -42,8 +42,8 @@ public:
     void restart();
 
     // getter
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr compute_vertex_point_pointcloud(bool show_projected_point, bool show_error_color);
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr compute_interior_point_pointcloud(bool show_projected_point, bool show_error_color);
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr compute_vertex_point_pointcloud(const Settings& settings);
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr compute_interior_point_pointcloud(const Settings& settings);
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr compute_generic_point_pointcloud();
     std::map<std::shared_ptr<Vertex>, int> get_vertex_to_cloud_indices_map();
     const std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& get_faces();

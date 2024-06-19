@@ -23,7 +23,7 @@ InteractiveViewer<PointT>::InteractiveViewer(Application<PointT>& app)
 template <typename PointT>
 void InteractiveViewer<PointT>::update_display()
 {
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr vertex_pointcloud = app_.compute_vertex_point_pointcloud(settings_.show_projected_point, settings_.show_error_color);
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr vertex_pointcloud = app_.compute_vertex_point_pointcloud(settings_);
     std::map<std::shared_ptr<Vertex>, int> vertex_to_cloud_indices_map = app_.get_vertex_to_cloud_indices_map();
     std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces = app_.get_faces();
     std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> boundary_edges = app_.get_boundary_edges();
@@ -40,7 +40,7 @@ void InteractiveViewer<PointT>::update_display()
     viewer_->removeShape("interior_points");
     if (settings_.show_interior_points)
     {
-        pcl::PointCloud<pcl::PointXYZRGB>::Ptr interior_point_cloud = app_.compute_interior_point_pointcloud(settings_.show_projected_point, settings_.show_error_color);
+        pcl::PointCloud<pcl::PointXYZRGB>::Ptr interior_point_cloud = app_.compute_interior_point_pointcloud(settings_);
         viewer_->addPointCloud<pcl::PointXYZRGB>(interior_point_cloud, "interior_points");
         viewer_->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 6, "interior_points");
     }
@@ -192,7 +192,8 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
     }
     if (event.getKeySym() == "z" && event.keyDown())
     {
-        settings_.show_error_color = !settings_.show_error_color;
+        // change int color mode between 1 and 3
+        settings_.color_mode = (settings_.color_mode + 1) % 3;
         update_display();
     }
     if (event.getKeySym() == "v" && event.keyDown())
