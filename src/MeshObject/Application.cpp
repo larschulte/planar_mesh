@@ -20,33 +20,11 @@ template class Application<VilensPointT>;
 template <typename PointT>
 Application<PointT>::Application() 
 {
-    // Initialization code
-    std::map<std::string, std::pair<std::string, std::string>> dataset_map;
-    dataset_map["room"] = std::make_pair(
-        "/home/jiahao/datasets/bag2pcd_output/mission2_reverse/slam_clouds/",
-        "/home/jiahao/datasets/bag2pcd_output/mission2_reverse/slam_poses/slam_poss_graph.slam"
-    );
-    dataset_map["osney"] = std::make_pair(
-        "/home/jiahao/datasets/osney power station/2024-03-26_13-47-27_rec004_osney_power_station/slam_clouds/",
-        "/home/jiahao/datasets/osney power station/2024-03-26_13-47-27_rec004_osney_power_station/slam_pose_graph.slam"
-    );
-    dataset_map["blenheim"] = std::make_pair(
-        "/home/jiahao/datasets/2024-03-14-09-09-02-lenord-walk-for-lintong/individual_clouds/",
-        "/home/jiahao/datasets/2024-03-14-09-09-02-lenord-walk-for-lintong/slam_pose_graph.g2o"
-    );
-
-    distance_threshold = 0.05;
-    fit_plane_threshold = 10;
-    merged_eigenvalue_threshold = 15e-5;
-    dataset = "room";
-    ith_cloud = 50;
-    ith_point = 0;
-    shuffle_pointcloud = false;
-    pointcloud_fraction = 1;
-    distance_to_radius_ratio = tan(4 * M_PI / 180);
+    ith_cloud = settings_.start_cloud;
+    ith_point = settings_.start_point;
 
     storage_ = std::make_shared<Storage>();
-    data_loader.load_dataset(dataset_map.at(dataset).first, dataset_map.at(dataset).second);
+    data_loader.load_dataset(settings_.cloud_path, settings_.pose_path);
     load_point_cloud();
 }
 
@@ -90,7 +68,7 @@ void Application<PointT>::try_merge_surfaces(std::unordered_set<std::shared_ptr<
         {
             Eigen::Matrix3d covariance_matrix = merge_covariances_of_surfaces(pairs.first, pairs.second);
             double eigenvalue = Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d>(covariance_matrix).eigenvalues()[0];
-            if (eigenvalue > merged_eigenvalue_threshold) continue;
+            if (eigenvalue > settings_.merged_eigenvalue_threshold) continue;
 
             surfaces_to_merge.erase(pairs.second);
             pairs.first->merge_surface(pairs.second);
@@ -159,7 +137,7 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
     for (std::shared_ptr<Surface> surface : neighboring_surfaces) 
     {
         // add if surface is small in size
-        if (surface->get_total_point_size() < fit_plane_threshold) 
+        if (surface->get_total_point_size() < settings_.fit_plane_threshold) 
         {
             surfaces_to_add_to.insert(surface);
             continue;
@@ -169,7 +147,7 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
 
         // skip if large distance
         double distance = std::fabs(surface->compute_point_to_surface_distance(new_vertex));
-        if (distance >= distance_threshold) 
+        if (distance >= settings_.distance_threshold) 
         {
             surfaces_to_not_add_to.insert(surface);
             continue;
@@ -236,7 +214,7 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
     // // try refine the candidate surface this point added to
     // if (candidate_surfaces.size() > 0) 
     // {
-    //     if (new_vertex->get_surface()->get_eigenvalues()[0] > merged_eigenvalue_threshold) 
+    //     if (new_vertex->get_surface()->get_eigenvalues()[0] > settings_.merged_eigenvalue_threshold) 
     //     {
     //         new_vertex->get_surface()->refine_surface();
     //     }
@@ -261,11 +239,11 @@ void Application<PointT>::load_point_cloud()
     Eigen::Affine3d pose = data_loader.get_pose(ith_cloud);
     pointcloud = transform_cloud_to_global<PointT>(pointcloud_local, pose);
     origin = pose.translation();
-    ith_size = pointcloud->size() * pointcloud_fraction;
+    ith_size = pointcloud->size() * settings_.pointcloud_fraction;
 
     std::cout << "loaded pointcloud " << ith_cloud << " with " << pointcloud->size() << " points" << std::endl;
 
-    if (shuffle_pointcloud) 
+    if (settings_.shuffle_pointcloud) 
     {
         std::random_shuffle(pointcloud->points.begin(), pointcloud->points.end());
     }
@@ -302,8 +280,8 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
         const std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& searched_faces = pair.second;
 
         double distance = surface->compute_point_to_surface_distance(generic_point);
-        bool points_before_surface = distance > distance_threshold;
-        bool points_behind_surface = distance < -distance_threshold;
+        bool points_before_surface = distance > settings_.distance_threshold;
+        bool points_behind_surface = distance < -settings_.distance_threshold;
         bool points_within_surface = !points_before_surface && !points_behind_surface;
         
         if (points_behind_surface)

@@ -3,6 +3,8 @@
 #include "MeshObject/Vertex.hpp"
 #include "MeshObject/InteriorPoint.hpp"
 
+Settings GenericPoint::settings_;
+
 void GenericPoint::initialize_(const std::shared_ptr<Storage>& storage, const Eigen::Vector3d& position, const Eigen::Vector3d& origin)
 {
     // set expired
@@ -17,13 +19,17 @@ void GenericPoint::initialize_(const std::shared_ptr<Storage>& storage, const Ei
     // get id
     id_ = storage_->get_next_generic_point_id();
 
-    // compute default radius
-    double radius = (position - origin).norm() * tan(4 * M_PI / 180);
-
     // store
     position_ = position;
     origin_ = origin;
-    radius_ = radius;
+    if (GenericPoint::settings_.use_radius_value)
+    {
+        radius_ = GenericPoint::settings_.radius_value;
+    }
+    else
+    {
+        radius_ = (position - origin).norm() * GenericPoint::settings_.radius_ratio;  
+    }
 
     num_deletes_ = 0;
 

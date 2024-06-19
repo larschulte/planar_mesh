@@ -5,7 +5,7 @@
 #include <unordered_set>
 
 #include "MeshObject/MeshObject.hpp"
-
+#include "MeshObject/Settings.hpp"
 // Forward declarations
 class Storage;
 
@@ -28,6 +28,8 @@ public:
     std::size_t get_num_deletes() const;
     
 private:
+    static Settings settings_;
+
     bool deleting_ = false;
     bool is_expired_ = true;
 

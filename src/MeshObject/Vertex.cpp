@@ -9,6 +9,8 @@
 #include <set>
 #include "utilities/covariance_math.hpp"
 
+Settings Vertex::settings_;
+
 void Vertex::initialize_(const std::shared_ptr<Storage>& storage, const Eigen::Vector3d& position, const Eigen::Vector3d& origin, const double& radius)
 {
     // set expired
@@ -212,7 +214,7 @@ void Vertex::try_merge_surfaces()
             int size2 = surface2->get_total_point_size();
             Eigen::Matrix3d covariance_matrix = merge_covariance(cov1, cov2, mean1, mean2, size1, size2);
             double eigenvalue = Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d>(covariance_matrix).eigenvalues()[0];
-            if (eigenvalue > 15e-5) continue;
+            if (eigenvalue > Vertex::settings_.merged_eigenvalue_threshold) continue;
 
             // merge by changing surface1 into surface2
             std::cout << ">> Merging surface " << surface1->get_id() << " with " << surface1->get_total_point_size() << " points into surface " << surface2->get_id() << " with " << surface2->get_total_point_size() << " points." << std::endl;

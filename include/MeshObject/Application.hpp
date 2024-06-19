@@ -8,6 +8,7 @@
 #include "utilities/DataLoader.hpp"
 #include <unordered_set>
 #include "MeshObject/MeshObject.hpp"
+#include "MeshObject/Settings.hpp"
 
 class Vertex;
 class Edge;
@@ -67,12 +68,7 @@ private:
     Eigen::Vector3d origin;
 
     // settings
-    double distance_threshold;
-    std::size_t fit_plane_threshold;
-    double merged_eigenvalue_threshold;
-    bool shuffle_pointcloud;
-    double pointcloud_fraction;
-    double distance_to_radius_ratio;
+    Settings settings_;
 
     // viewer related
     std::map<std::shared_ptr<Vertex>, int> vertex_to_cloud_indices_map;

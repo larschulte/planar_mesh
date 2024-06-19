@@ -17,21 +17,20 @@ InteractiveViewer<PointT>::InteractiveViewer(Application<PointT>& app)
     viewer_->initCameraParameters();
     viewer_->addCoordinateSystem(1);
     viewer_->registerKeyboardCallback(&InteractiveViewer::keyboard_callback, *this, nullptr);
-    number_of_spheres_to_display = 60;
     viewer_->spin();
 }
 
 template <typename PointT>
 void InteractiveViewer<PointT>::update_display()
 {
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr vertex_pointcloud = app_.compute_vertex_point_pointcloud(show_projected_point, show_error_color);
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr vertex_pointcloud = app_.compute_vertex_point_pointcloud(settings_.show_projected_point, settings_.show_error_color);
     std::map<std::shared_ptr<Vertex>, int> vertex_to_cloud_indices_map = app_.get_vertex_to_cloud_indices_map();
     std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces = app_.get_faces();
     std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> boundary_edges = app_.get_boundary_edges();
 
     // pointcloud
     viewer_->removeShape("point_cloud");
-    if (show_pointcloud)
+    if (settings_.show_pointcloud)
     {
         viewer_->addPointCloud<pcl::PointXYZRGB>(vertex_pointcloud, "point_cloud");
         viewer_->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 6, "point_cloud");
@@ -39,16 +38,16 @@ void InteractiveViewer<PointT>::update_display()
 
     // interior points
     viewer_->removeShape("interior_points");
-    if (show_interior_points)
+    if (settings_.show_interior_points)
     {
-        pcl::PointCloud<pcl::PointXYZRGB>::Ptr interior_point_cloud = app_.compute_interior_point_pointcloud(show_projected_point, show_error_color);
+        pcl::PointCloud<pcl::PointXYZRGB>::Ptr interior_point_cloud = app_.compute_interior_point_pointcloud(settings_.show_projected_point, settings_.show_error_color);
         viewer_->addPointCloud<pcl::PointXYZRGB>(interior_point_cloud, "interior_points");
         viewer_->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 6, "interior_points");
     }
 
     // generic points
     viewer_->removeShape("generic_points");
-    if (show_generic_points)
+    if (settings_.show_generic_points)
     {
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr generic_point_cloud = app_.compute_generic_point_pointcloud();
         viewer_->addPointCloud<pcl::PointXYZRGB>(generic_point_cloud, "generic_points");
@@ -57,7 +56,7 @@ void InteractiveViewer<PointT>::update_display()
 
     // triangle
     viewer_->removeShape("triangle_mesh");
-    if (show_triangle)
+    if (settings_.show_triangle)
     {
         pcl::PolygonMesh triangle_mesh;
         pcl::toPCLPointCloud2(*vertex_pointcloud, triangle_mesh.cloud);
@@ -74,7 +73,7 @@ void InteractiveViewer<PointT>::update_display()
 
     // boundary edge
     viewer_->removeShape("boundary_edges");        
-    if (show_edge)
+    if (settings_.show_edge)
     {
         pcl::PolygonMesh boundary_mesh;
         pcl::toPCLPointCloud2(*vertex_pointcloud, boundary_mesh.cloud);
@@ -93,11 +92,11 @@ void InteractiveViewer<PointT>::update_display()
     // spheres
     for (const std::string& sphere_name : sphere_name_list) viewer_->removeShape(sphere_name);
     sphere_name_list.clear();
-    if (show_sphere)
+    if (settings_.show_sphere)
     {
         std::vector<std::shared_ptr<Vertex>> boundary_vertices = app_.get_rrs_vertices();
         std::sort(boundary_vertices.begin(), boundary_vertices.end());
-        for (int i = 0; i < std::min(number_of_spheres_to_display, (int)boundary_vertices.size()); i++)
+        for (int i = 0; i < std::min(settings_.number_of_spheres_to_display, (int)boundary_vertices.size()); i++)
         {
             std::shared_ptr<Vertex> boundary_vertex = boundary_vertices[boundary_vertices.size() - 1 - i];
             std::string sphere_name = "boundary_point_" + std::to_string(boundary_vertex->get_id());
@@ -108,7 +107,7 @@ void InteractiveViewer<PointT>::update_display()
     }
 
     // wireframe
-    if (show_wireframe)
+    if (settings_.show_wireframe)
     {
         viewer_->setRepresentationToWireframeForAllActors();
     }
@@ -173,32 +172,32 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
     }
     if (event.getKeySym() == "comma" && event.keyDown())
     {
-        show_pointcloud = !show_pointcloud;
+        settings_.show_pointcloud = !settings_.show_pointcloud;
         update_display();
     }
     if (event.getKeySym() == "period" && event.keyDown())
     {
-        show_edge = !show_edge;
+        settings_.show_edge = !settings_.show_edge;
         update_display();
     }
     if (event.getKeySym() == "slash" && event.keyDown())
     {
-        show_triangle = !show_triangle;
+        settings_.show_triangle = !settings_.show_triangle;
         update_display();
     }
     if (event.getKeySym() == "a" && event.keyDown())
     {
-        show_projected_point = !show_projected_point;
+        settings_.show_projected_point = !settings_.show_projected_point;
         update_display();
     }
     if (event.getKeySym() == "z" && event.keyDown())
     {
-        show_error_color = !show_error_color;
+        settings_.show_error_color = !settings_.show_error_color;
         update_display();
     }
     if (event.getKeySym() == "v" && event.keyDown())
     {
-        show_wireframe = !show_wireframe;
+        settings_.show_wireframe = !settings_.show_wireframe;
         update_display();
     }
     if (event.getKeySym() == "KP_Next" && event.keyDown())
@@ -233,7 +232,7 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
     }
     if (event.getKeySym() == "m" && event.keyDown())
     {
-        show_sphere = !show_sphere;
+        settings_.show_sphere = !settings_.show_sphere;
         update_display();
     }
     if (event.getKeySym() == "b" && event.keyDown())
@@ -249,13 +248,13 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
     if (event.getKeySym() == "k" && event.keyDown())
     {
         // toggle generic points
-        show_generic_points = !show_generic_points;
+        settings_.show_generic_points = !settings_.show_generic_points;
         update_display();
     }
     if (event.getKeySym() == "l" && event.keyDown())
     {
         // toggle generic points
-        show_interior_points = !show_interior_points;
+        settings_.show_interior_points = !settings_.show_interior_points;
         update_display();
     }
     if (event.getKeySym() == "r" && event.keyDown())

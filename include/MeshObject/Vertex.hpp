@@ -5,6 +5,7 @@
 #include <unordered_set>
 
 #include "MeshObject/MeshObject.hpp"
+#include "MeshObject/Settings.hpp"
 
 // Forward declarations
 class Edge;
@@ -72,6 +73,8 @@ private: // for reverse radius search
     Eigen::Vector3d max_;
 
 private:
+    static Settings settings_;
+
     bool deleting_ = false;
     bool is_boundary_ = false;
     bool is_searchable_ = false;
