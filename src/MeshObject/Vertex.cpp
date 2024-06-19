@@ -180,6 +180,8 @@ void Vertex::try_merge_surfaces()
     // check if there is only one surface
     if (surfaces_.size() == 1) return;
 
+    bool merge_happened = false;
+
     // merge surfaces
     while (true)
     {
@@ -212,14 +214,12 @@ void Vertex::try_merge_surfaces()
             double eigenvalue = Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d>(covariance_matrix).eigenvalues()[0];
             if (eigenvalue > 15e-5) continue;
 
-            // debug output
-            std::cout << "Surface " << surface1->get_id() << " have points: " << surface1->get_total_point_size() << std::endl;
-            std::cout << "Surface " << surface2->get_id() << " have points: " << surface2->get_total_point_size() << std::endl;
-
             // merge by changing surface1 into surface2
+            std::cout << ">> Merging surface " << surface1->get_id() << " with " << surface1->get_total_point_size() << " points into surface " << surface2->get_id() << " with " << surface2->get_total_point_size() << " points." << std::endl;
             swap(surface1, surface2);
-            std::cout << "Surface " << surface1->get_id() << " have points: " << surface1->get_total_point_size() << std::endl;
-            std::cout << "Surface " << surface2->get_id() << " have points: " << surface2->get_total_point_size() << std::endl;
+            merge_happened = true;
+            std::cout << ">> resultant surface " << surface1->get_id() << " has " << surface1->get_total_point_size() << " points." << std::endl;
+            std::cout << ">> resultant surface " << surface2->get_id() << " has " << surface2->get_total_point_size() << " points." << std::endl;
 
             // reset
             merge_again = true;
@@ -227,6 +227,15 @@ void Vertex::try_merge_surfaces()
         }
 
         if (!merge_again) break;
+    }
+
+    if (merge_happened) 
+    {
+        std::cout << ">> Merging surfaces done." << std::endl;
+    }
+    else
+    {
+        std::cout << ">> No merging happened." << std::endl;
     }
 }
 
