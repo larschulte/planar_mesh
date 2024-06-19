@@ -25,7 +25,7 @@ Settings::Settings()
     start_cloud = 50;
     start_point = 0;
     distance_threshold = 0.05;
-    fit_plane_threshold = 10;
+    fit_plane_threshold = 3;
     merged_eigenvalue_threshold = 15e-5;
     shuffle_pointcloud = false;
     use_radius_value = false;
