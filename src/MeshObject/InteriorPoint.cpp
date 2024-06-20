@@ -67,10 +67,15 @@ void InteriorPoint::delete_()
         // compute radius from storage
         double radius = (storage_->get_penetrating_point() - get_position()).norm();
         if (radius < radius_) radius_ = radius;
-    }
 
-    // add to storage as generic point
-    storage_->add_generic_point(shared_from_this());
+        // add to storage as penetrated point
+        storage_->add_penetrated_point(shared_from_this());
+    }
+    else
+    {
+        // add to storage as generic point
+        storage_->add_generic_point(shared_from_this());
+    }
 
     // log
     std::cout << "---------- InteriorPoint " << id_ << " destroyed" << std::endl;

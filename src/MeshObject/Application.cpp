@@ -349,6 +349,14 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
             storage_->set_penetrating_point(generic_point);
             for (const std::shared_ptr<Face>& face : searched_faces) storage_->delete_face(face);
             storage_->clear_penetrating_point();
+
+            // add back penetrated points
+            std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash> copy_of_penetrated_points = storage_->get_penetrated_points();
+            for (const std::shared_ptr<GenericPoint>& penetrated_point : copy_of_penetrated_points)
+            {
+                add_point_by_radius_search(penetrated_point);
+                storage_->delete_penetrated_point(penetrated_point);
+            }
         }
         else if (points_within_surface)
         {
@@ -387,9 +395,9 @@ void Application<PointT>::step()
     // log
     std::cout << "==================================================================== Processing point " << ith_point << " of cloud " << ith_cloud << std::endl;
 
-    const std::shared_ptr<GenericPoint>& generic_point = storage_->add_generic_point(thisPointVEC, thisPointOriginVEC);
+    std::shared_ptr<GenericPoint> generic_point = std::make_shared<GenericPoint>();
+    generic_point->initialize_(storage_, thisPointVEC, thisPointOriginVEC);
     process_point(generic_point);
-    storage_->delete_generic_point(generic_point);
 }
 
 template <typename PointT>

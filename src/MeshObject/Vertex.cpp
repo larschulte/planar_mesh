@@ -75,6 +75,9 @@ void Vertex::delete_()
         storage_->remove_searchable_vertex(shared_from_this());
         is_searchable_ = false;
     }
+    
+    // update delete count
+    num_deletes_++;
 
     // compute radius
     if (storage_->has_penetrating_point())
@@ -82,13 +85,15 @@ void Vertex::delete_()
         // compute radius from storage
         double radius = (storage_->get_penetrating_point() - get_position()).norm();
         if (radius < reverse_search_radius_) reverse_search_radius_ = radius;
+
+        // add to storage as penetrated point
+        storage_->add_penetrated_point(shared_from_this());
     }
-
-    // update delete count
-    num_deletes_++;
-
-    // add to storage as generic point
-    storage_->add_generic_point(shared_from_this());
+    else
+    {
+        // add to storage as generic point
+        storage_->add_generic_point(shared_from_this());
+    }
 
     // log
     std::cout << "---------- vertex " << id_ << " destroyed" << std::endl;
