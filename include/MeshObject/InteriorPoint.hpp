@@ -31,8 +31,11 @@ public:
 
     std::size_t get_num_deletes() const;
 
+    void try_update_surface_projection(const std::shared_ptr<Surface> surface);
     void try_update_surface_projection();
+    const Eigen::Vector3d& get_projected_position(const std::shared_ptr<Surface> surface);
     const Eigen::Vector3d& get_projected_position();
+    const double& get_projected_distance(const std::shared_ptr<Surface> surface);
     const double& get_projected_distance();
 
     void connect(const std::shared_ptr<Face>& face);

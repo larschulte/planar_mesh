@@ -83,67 +83,56 @@ void Application<PointT>::try_merge_surfaces(std::unordered_set<std::shared_ptr<
 template <typename PointT>
 void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<GenericPoint>& generic_point)
 {
-    // the reverse radius search provides a set of vertices that think the new point should be in
-    // the new point to surface fit is then performed -> represented by point to surface projective distance, point uncertainty and plane uncertainty
-    // by adding a point to a surface, we are essentially expanding the surface's boundary
+    /*
 
-    // each vertex can have multiple surfaces, but each edge and face and interiror point can only have one surface
+    contribution
+    - without
+        - voxelation
+        - outlier
+        - denoising
+        - radius
+        - neighborhood information
+    - generalize 
 
-    // when a surface have very few points, the surface have high self uncertainty, and the point is likely to be added to the surface with few points
-    // if the new point can be added into multiple surfaces, but not all surfaces, added to the surfaces, reduce the search radius of the neighboring vertices from different surfaces
-    // if the new point can be added into one surface, add it to that surface, reduce the search radius of the neighboring vertices from different surfaces
-    // if the new point can not be added into any surface, create a new surface and add it to that surface, reduce the search radius of the neighboring vertices from different surfaces
+    background:
+        - the reverse radius search provides a set of vertices that think the new point should be in
+        - the new point to surface fit is then performed -> represented by point to surface projective distance, point uncertainty and plane uncertainty
+        - by adding a point to a surface, we are essentially expanding the surface's boundary
 
-    // what about surface merging
-    // after adding the new point to surfaces, if the new point have multiple surfaces, try merge them
+    settings:
+        - each vertex can have multiple surfaces, but each edge and face and interiror point can only have one surface
 
-    // the main challenge is to decide if a new point should be added to a surface
-    // a surface have points with uncertainty
-    // we can compute point to surface plane projective distance
-    // the  distance computation requires plane normal
-    // plane normal is hard to get if the surface have few points
-    // plane normal from covariance is not accurate due to noise
+    steps:
+        - for surface with low confidence, add new point to surface
+        - for surface with high confidence and match, add new point to surface (if edge intersects, reduce radius of the other edge vertex)
+        - for surface with high confidence and mismatch, reduce the search radius of the neighboring vertices from the surface
 
-    // given a set of points, compute covariance, from covaraince get plane normal. 
-    // project the points onto the plane
-    // compute covariance from projected points
+    merge neighboring surface
+        - after adding the new point to surfaces, if the new point have multiple surfaces, try merge them
+
+    average projected distance
+        - for surface with only three points, the average projective distance is zero
+
+    the surface the new point connected to may be duplicate
+
+    what does duplicate means
+        - if a vertex/edge/face/point is connected to more than one surface, it is duplicated
+
+    measurement points from planear structure don't have duplicate
+        - since edge and vertex of real surface have zero area, they can not be measured
+
+    for curved surface, duplicate may exist
 
 
-    // projective nature
-    // reverse radius search
-    // radius to represent curvature estiamate
+    a diff method between surfaces
+
+    new surface are created when a new point found no existing surface to add to
 
 
-    // confidence in plane normal esitamte
+    remove duplicate surface
+        - if a low confidence surface is also penetrated
 
-        // given the points, use PCA/optimization to get plane orientation
-        // compute each points projective distance to the plane
-        // comptue average of the distance
-        // if the distance is high, the plane orientaion is overfit to the noise in the points
-        // the plane fit is degenerate
-
-        // this is driven from the nature of the point sampling process
-        // a sample is obtained by projecting a light from a origin which lands on the real plane, noise is then added to the landed point which forms the sampled point
-        // if the plane estiamte is correct, the reprojected point should land on the position of the plane that is closest to the real sampled point
-        // if the plane estimate is incorrect, the reprojected point may land on the position of the plane that is too far from the real sampled point, which can't be explained by sample noise
-
-    // for low confidence surface
-        // add point to surface
-    // for high confidence surface
-        // compute point to surface fit
-        // if high fit, add point to surface
-        // if low fit, change radius of neighboring points
-
-    // if multiple surfaces around a point
-        // 
-
-    // need a method to removce the duplicate spanning surface
-    // if a low confidence surface is also penetrated,
-
-    // split plane algorithm            
-        // instead of removing points that have large projective distance
-        // remove the points that have large derivative of projective distance -> remove the changing edge
-
+    */
 
     // create new vertex
     std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(generic_point);
@@ -185,8 +174,11 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_that_mismatch;
     for (std::shared_ptr<Surface> surface : neighboring_surfaces) 
     {
+        // log
+        std::cout << ">> processing surface " << surface->get_id() << " with average projective distance " << surface->get_average_projective_distance() << " and size: " << surface->get_total_point_size() << std::endl;
+
         // collect surfaces with low confidence
-        if (surface->get_total_point_size() < settings_.fit_plane_threshold) 
+        if (surface->get_total_point_size() < settings_.fit_plane_threshold || surface->get_average_projective_distance() > settings_.average_projective_distance_threshold)
         {
             surfaces_with_low_confidence.insert(surface);
             continue;
@@ -219,21 +211,21 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
     // for surfaces with low confidence
     for (std::shared_ptr<Surface> surface : surfaces_with_low_confidence)
     {
-        std::cout << ">> adding to low confidence surface " << surface->get_id() << std::endl;
+        std::cout << ">> low confidence surface " << surface->get_id() << std::endl;
         surface->connect_by_edges_and_faces(new_vertex, neighboring_vertices);
     }
 
     // for surfaces that match
     for (std::shared_ptr<Surface> surface : surfaces_that_match)
     {
-        std::cout << ">> adding to surface " << surface->get_id() << std::endl;
+        std::cout << ">> matched surface " << surface->get_id() << std::endl;
         surface->connect_by_edges_and_faces(new_vertex, neighboring_vertices);
     }
 
     // for surfaces that mismatch
     for (std::shared_ptr<Surface> surface : surfaces_that_mismatch)
     {
-        std::cout << ">> not adding to surface " << surface->get_id() << std::endl;
+        std::cout << ">> mismatched surface " << surface->get_id() << std::endl;
 
         // find neighboring vertices from the surface
         for (std::shared_ptr<Vertex> vertex : neighboring_vertices)

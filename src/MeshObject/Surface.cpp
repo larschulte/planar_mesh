@@ -182,6 +182,20 @@ const std::tuple<int, int, int>& Surface::get_color() const
     return color_;
 }
 
+double Surface::get_average_projective_distance()
+{
+    double sum = 0;
+    for (const auto& vertex : vertices_)
+    {
+        sum += std::fabs(vertex->get_projected_distance(shared_from_this()));
+    }
+    for (const auto& interior_point : interior_points_)
+    {
+        sum += std::fabs(interior_point->get_projected_distance(shared_from_this()));
+    }
+    return sum / get_total_point_size();
+}
+
 bool Surface::is_expired() const
 {
     return is_expired_;

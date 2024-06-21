@@ -110,32 +110,42 @@ const double& InteriorPoint::get_radius() const
     return radius_;
 }
 
-void InteriorPoint::try_update_surface_projection()
+void InteriorPoint::try_update_surface_projection(const std::shared_ptr<Surface> surface)
 {
     // update if surface changes
-    if (normal_used_ != get_surface()->get_normal())
+    if (normal_used_ != surface->get_normal())
     {
-        normal_used_ = get_surface()->get_normal();
-        projected_position_ = get_surface()->compute_point_to_surface_position(get_origin(), get_position());
-        projected_distance_ = get_surface()->compute_point_to_surface_distance(get_origin(), get_position());
+        normal_used_ = surface->get_normal();
+        projected_position_ = surface->compute_point_to_surface_position(get_origin(), get_position());
+        projected_distance_ = surface->compute_point_to_surface_distance(get_origin(), get_position());
     }
+}
+
+void InteriorPoint::try_update_surface_projection()
+{
+    try_update_surface_projection(get_surface());
+}
+
+const Eigen::Vector3d& InteriorPoint::get_projected_position(const std::shared_ptr<Surface> surface)
+{
+    try_update_surface_projection(surface);
+    return projected_position_;
 }
 
 const Eigen::Vector3d& InteriorPoint::get_projected_position()
 {
-    try_update_surface_projection();
-    return projected_position_;
+    return get_projected_position(get_surface());
+}
+
+const double& InteriorPoint::get_projected_distance(const std::shared_ptr<Surface> surface)
+{
+    try_update_surface_projection(surface);
+    return projected_distance_;
 }
 
 const double& InteriorPoint::get_projected_distance()
 {
-    try_update_surface_projection();
-    return projected_distance_;
-
-    // if (std::fabs(distance) > 0.03)
-    // {
-    //     storage_->delete_vertex(shared_from_this());
-    // }    
+    return get_projected_distance(get_surface());
 }
 
 bool InteriorPoint::is_expired() const
