@@ -158,8 +158,21 @@ const Eigen::Vector3d& Vertex::get_origin() const
 const std::shared_ptr<Surface>& Vertex::get_surface() const
 {    
     if (surfaces_.empty()) throw std::runtime_error("Vertex has no surface.");
-    // if (surfaces_.size() > 1) throw std::runtime_error("Vertex has multiple surfaces.");
-    return *surfaces_.begin();
+
+    // Select the surface with the lowest average projective distance, return as reference
+    double min_distance = std::numeric_limits<double>::max();
+    const std::shared_ptr<Surface>* selected_surface = nullptr;
+    for (const std::shared_ptr<Surface>& surface : surfaces_) 
+    {
+        double distance = surface->get_average_projective_distance();
+        if (distance < min_distance) 
+        {
+            min_distance = distance;
+            selected_surface = &surface;
+        }
+    }
+
+    return *selected_surface;
 }
 
 const std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash>& Vertex::get_surfaces() const 

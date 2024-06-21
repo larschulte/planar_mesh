@@ -182,18 +182,31 @@ const std::tuple<int, int, int>& Surface::get_color() const
     return color_;
 }
 
-double Surface::get_average_projective_distance()
+const double& Surface::get_average_projective_distance()
 {
-    double sum = 0;
-    for (const auto& vertex : vertices_)
+    // update if point count changes
+    if (get_total_point_size() != previous_total_point_size_) 
     {
-        sum += std::fabs(vertex->get_projected_distance(shared_from_this()));
+        // compute
+        double sum = 0;
+        for (const auto& vertex : vertices_)
+        {
+            sum += std::fabs(vertex->get_projected_distance(shared_from_this()));
+        }
+        for (const auto& interior_point : interior_points_)
+        {
+            sum += std::fabs(interior_point->get_projected_distance(shared_from_this()));
+        }
+
+        double average_projective_distance = sum / get_total_point_size();
+
+        // update
+        previous_total_point_size_ = get_total_point_size();
+        stored_average_projective_distance_ = average_projective_distance;
     }
-    for (const auto& interior_point : interior_points_)
-    {
-        sum += std::fabs(interior_point->get_projected_distance(shared_from_this()));
-    }
-    return sum / get_total_point_size();
+
+    // return stored value
+    return stored_average_projective_distance_;
 }
 
 bool Surface::is_expired() const

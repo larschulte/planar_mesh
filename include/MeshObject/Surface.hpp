@@ -39,7 +39,7 @@ public:
     const Eigen::Vector3d& get_normal() const;
     std::size_t get_total_point_size() const;
     const std::tuple<int, int, int>& get_color() const;
-    double get_average_projective_distance();
+    const double& get_average_projective_distance();
     bool is_expired() const;
 
     void connect(const std::shared_ptr<Vertex>& vertex);
@@ -80,6 +80,10 @@ private:
     Eigen::Matrix3d eigenvectors_;
     Eigen::Vector3d eigenvalues_;
     Eigen::Vector3d normal_;
+
+    double stored_average_projective_distance_;
+    std::size_t previous_total_point_size_;
+
 
     std::tuple<int, int, int> color_;
 };
