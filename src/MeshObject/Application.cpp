@@ -179,87 +179,59 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
     }
     std::cout << ">> grouped into " << neighboring_surfaces.size() << " neighboring surfaces" << std::endl;
 
-    // split into - surfaces without plane / surfaces to add to / surfaces to not add to
-    std::vector<std::pair<std::shared_ptr<Surface>, std::size_t>> surfaces_without_plane;
-    std::vector<std::pair<std::shared_ptr<Surface>, double>> surfaces_to_add_to;
-    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_to_not_add_to;
+    // split into - surfaces with low confidence, surfaces with high confidence (surface that match, surface that don't match)
+    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_with_low_confidence;
+    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_that_match;
+    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_that_mismatch;
     for (std::shared_ptr<Surface> surface : neighboring_surfaces) 
     {
-        // surface without plane if small in size
+        // collect surfaces with low confidence
         if (surface->get_total_point_size() < settings_.fit_plane_threshold) 
         {
-            surfaces_without_plane.push_back(std::make_pair(surface, surface->get_total_point_size()));
+            surfaces_with_low_confidence.insert(surface);
             continue;
         }
         
-        // now left with surfaces with large size
+        // remaining surfaces with high confidence
 
-        // not add if large distance
+        // mismatch if large distance
         double distance = std::fabs(surface->compute_point_to_surface_distance(new_vertex));
         if (distance >= settings_.distance_threshold) 
         {
-            surfaces_to_not_add_to.insert(surface);
+            surfaces_that_mismatch.insert(surface);
             continue;
         }
 
-        // not add if not in the same direction
+        // mismatch if observed from behind
         Eigen::Vector3d normal = surface->get_normal();
         Eigen::Vector3d direction = new_vertex->get_origin() - new_vertex->get_position();
         if (normal.dot(direction) < 0) 
         {
-            surfaces_to_not_add_to.insert(surface);
+            surfaces_that_mismatch.insert(surface);
             continue;
         }
 
-        // add if surfaces with large size, small distance, and in the same direction
-        surfaces_to_add_to.push_back(std::make_pair(surface, distance));
+        // remaining surfaces that match
+        surfaces_that_match.insert(surface);
         continue;
     }
 
-    // sort surfaces to add to by distance
-    std::sort(surfaces_to_add_to.begin(), surfaces_to_add_to.end(), [](const std::pair<std::shared_ptr<Surface>, double>& a, const std::pair<std::shared_ptr<Surface>, double>& b) {
-        return a.second < b.second;
-    });
-
-    // sort surfaces without plane by size
-    std::sort(surfaces_without_plane.begin(), surfaces_without_plane.end(), [](const std::pair<std::shared_ptr<Surface>, std::size_t>& a, const std::pair<std::shared_ptr<Surface>, std::size_t>& b) {
-        return a.second > b.second;
-    });
-
-    // for surfaces to add to
-    std::shared_ptr<Surface> current_surface;
-    bool connected_to_one_surface = false;
-    for (const std::pair<std::shared_ptr<Surface>, double>& pair : surfaces_to_add_to)
+    // for surfaces with low confidence
+    for (std::shared_ptr<Surface> surface : surfaces_with_low_confidence)
     {
-        std::shared_ptr<Surface> candidate_surface = pair.first;
-
-        if (!connected_to_one_surface)
-        {
-            // skip if can't make connected to candidate surface
-            if (!candidate_surface->connect_by_edges_and_faces(new_vertex, neighboring_vertices)) continue;
-
-            // else connect to the candidate surface
-            std::cout << ">> adding to surface " << candidate_surface->get_id() << std::endl;
-            current_surface = candidate_surface;
-            connected_to_one_surface = true;
-        }
-        else
-        {
-            // skip if new candidate surface don't match the current surface
-            if (compute_eigenvalue_of_merged_surfaces(current_surface, candidate_surface) > settings_.merged_eigenvalue_threshold) continue;
-            
-            // skip if can't make connected to candidate surface
-            if (!candidate_surface->connect_by_edges_and_faces(new_vertex, neighboring_vertices)) continue;
-
-            // else connect to the candidate surface and merge
-            std::cout << ">> adding to surface " << candidate_surface->get_id() << std::endl;
-            new_vertex->swap(current_surface, candidate_surface);
-            current_surface = candidate_surface;            
-        }
+        std::cout << ">> adding to low confidence surface " << surface->get_id() << std::endl;
+        surface->connect_by_edges_and_faces(new_vertex, neighboring_vertices);
     }
 
-    // for surfaces not to add to
-    for (std::shared_ptr<Surface> surface : surfaces_to_not_add_to)
+    // for surfaces that match
+    for (std::shared_ptr<Surface> surface : surfaces_that_match)
+    {
+        std::cout << ">> adding to surface " << surface->get_id() << std::endl;
+        surface->connect_by_edges_and_faces(new_vertex, neighboring_vertices);
+    }
+
+    // for surfaces that mismatch
+    for (std::shared_ptr<Surface> surface : surfaces_that_mismatch)
     {
         std::cout << ">> not adding to surface " << surface->get_id() << std::endl;
 
@@ -269,63 +241,30 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
             // skip if vertex is not in the surface
             if (vertex->get_surfaces().find(surface) == vertex->get_surfaces().end()) continue;
 
-            // reduce the search radius
-            vertex->reduce_reverse_radius_search_radius((vertex->get_position() - new_vertex->get_position()).norm());
-
+            // distance
+            double distance = (vertex->get_position() - new_vertex->get_position()).norm();
+            
+            // reduce the search radius of the searched vertex
             std::cout << ">>   reducing search radius of vertex " << vertex->get_id() << std::endl;
+            vertex->reduce_reverse_radius_search_radius(distance);
+            
+            // reduce the search radius of the new vertex
+            std::cout << ">>   reducing search radius of new vertex " << new_vertex->get_id() << std::endl;
+            new_vertex->reduce_reverse_radius_search_radius(distance);
         }
     }
 
-    // if new_vertex is not in any surface
+    // if new_vertex is in multiple surfaces, try merge them
+    if (new_vertex->get_surfaces().size() > 1)
+    {
+        new_vertex->try_merge_surfaces();
+    }
+
+    // if new_vertex is not in any surface, create a new surface and add it to that surface
     if (new_vertex->get_surfaces().size() == 0)
     {
-        // if we have surfaces without plane
-        if (surfaces_without_plane.size() > 0)
-        {
-            std::cout << ">> new vertex not in any surface, adding to largest surface without plane" << std::endl;
-
-            std::shared_ptr<Surface> largest_surface_without_plane = surfaces_without_plane[0].first;
-            largest_surface_without_plane->connect(new_vertex);
-        }
-        // if we don't have surface without plane
-        else
-        {
-            std::cout << ">> new vertex not in any surface, adding new surface" << std::endl;
-
-            std::shared_ptr<Surface> new_surface = storage_->add_surface();
-            new_surface->connect(new_vertex);
-        }
-    }
-
-    // // for any vertices in surfaces without plane, if they fit into the new surface, delete them
-    // for (const std::pair<std::shared_ptr<Surface>, std::size_t>& pair : surfaces_without_plane)
-    // {
-    //     std::shared_ptr<Surface> surface = pair.first;
-
-    //     // skip if the surface is the current surface
-    //     if (surface == new_vertex->get_surface()) continue;
-
-    //     // skip if the current surface do not have enough points
-    //     if (new_vertex->get_surface()->get_total_point_size() < settings_.fit_plane_threshold) continue;
-
-    //     for (std::shared_ptr<Vertex> vertex : neighboring_vertices)
-    //     {
-    //         if (vertex->get_surfaces().find(surface) == vertex->get_surfaces().end()) continue;
-            
-    //         // compute distance
-    //         double distance = std::fabs(surface->compute_point_to_surface_distance(vertex));
-    //         if (distance < settings_.distance_threshold)
-    //         {
-    //             std::cout << ">> deleting vertex " << vertex->get_id() << " from surface " << surface->get_id() << std::endl;
-    //             storage_->delete_vertex(vertex);
-    //         }
-    //     }
-    // }
-
-    // try refine the surface this point is added to
-    if (new_vertex->get_surface()->get_eigenvalues()[0] > settings_.merged_eigenvalue_threshold) 
-    {
-        new_vertex->get_surface()->refine_surface();
+        std::shared_ptr<Surface> new_surface = storage_->add_surface();
+        new_surface->connect(new_vertex);
     }
 }
 
