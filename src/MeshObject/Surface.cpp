@@ -226,16 +226,24 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> used_vertices;
     for (const auto& nearby_vertex : nearby_vertices)
     {
-        // skip if edge is intersected
-        if (edge_bvh_.tree_intersect_edge(vertex, nearby_vertex)) continue;
+        // if edge intersects
+        if (edge_bvh_.tree_intersect_edge(vertex, nearby_vertex)) 
+        {
+            // that means the nearby_vertex have too large of search radius
+            // so we should reduce it
+            double distance = (vertex->get_position() - nearby_vertex->get_position()).norm();
+            nearby_vertex->reduce_reverse_radius_search_radius(distance);
+        }
+        else // if edge does not intersect
+        {
+            // create edge
+            std::shared_ptr<Edge> new_edge = storage_->add_edge(vertex, nearby_vertex);
+            connect(new_edge);
+            connect(vertex);
+            used_vertices.insert(nearby_vertex);
 
-        // create edge
-        std::shared_ptr<Edge> new_edge = storage_->add_edge(vertex, nearby_vertex);
-        connect(new_edge);
-        connect(vertex);
-        used_vertices.insert(nearby_vertex);
-
-        connected = true;
+            connected = true;
+        }        
     }
 
     // create faces
