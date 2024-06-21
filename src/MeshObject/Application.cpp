@@ -252,8 +252,20 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
         new_vertex->try_merge_surfaces();
     }
 
-    // if new_vertex is not in any surface, create a new surface and add it to that surface
-    if (new_vertex->get_surfaces().size() == 0)
+    // check if new vertex is in high confidence surface
+    bool new_vertex_in_high_confidence_surface = false;
+    for (std::shared_ptr<Surface> surface : surfaces_that_match)
+    {
+        // if new vertex is in one of the high confidence surface, break
+        if (new_vertex->get_surfaces().find(surface) != new_vertex->get_surfaces().end())
+        {
+            new_vertex_in_high_confidence_surface = true;
+            break;
+        }
+    }
+
+    // if not, start a new seed
+    if (!new_vertex_in_high_confidence_surface)
     {
         std::shared_ptr<Surface> new_surface = storage_->add_surface();
         new_surface->connect(new_vertex);
