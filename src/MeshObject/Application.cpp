@@ -97,6 +97,54 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
     // what about surface merging
     // after adding the new point to surfaces, if the new point have multiple surfaces, try merge them
 
+    // the main challenge is to decide if a new point should be added to a surface
+    // a surface have points with uncertainty
+    // we can compute point to surface plane projective distance
+    // the  distance computation requires plane normal
+    // plane normal is hard to get if the surface have few points
+    // plane normal from covariance is not accurate due to noise
+
+    // given a set of points, compute covariance, from covaraince get plane normal. 
+    // project the points onto the plane
+    // compute covariance from projected points
+
+
+    // projective nature
+    // reverse radius search
+    // radius to represent curvature estiamate
+
+
+    // confidence in plane normal esitamte
+
+        // given the points, use PCA/optimization to get plane orientation
+        // compute each points projective distance to the plane
+        // comptue average of the distance
+        // if the distance is high, the plane orientaion is overfit to the noise in the points
+        // the plane fit is degenerate
+
+        // this is driven from the nature of the point sampling process
+        // a sample is obtained by projecting a light from a origin which lands on the real plane, noise is then added to the landed point which forms the sampled point
+        // if the plane estiamte is correct, the reprojected point should land on the position of the plane that is closest to the real sampled point
+        // if the plane estimate is incorrect, the reprojected point may land on the position of the plane that is too far from the real sampled point, which can't be explained by sample noise
+
+    // for low confidence surface
+        // add point to surface
+    // for high confidence surface
+        // compute point to surface fit
+        // if high fit, add point to surface
+        // if low fit, change radius of neighboring points
+
+    // if multiple surfaces around a point
+        // 
+
+    // need a method to removce the duplicate spanning surface
+    // if a low confidence surface is also penetrated,
+
+    // split plane algorithm            
+        // instead of removing points that have large projective distance
+        // remove the points that have large derivative of projective distance -> remove the changing edge
+
+
     // create new vertex
     std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(generic_point);
 
