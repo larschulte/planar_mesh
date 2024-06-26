@@ -29,6 +29,7 @@ struct Settings
     bool show_edge;
     bool show_projected_point;
     int color_mode;
+    double surface_denominator;
     bool show_wireframe;
     bool show_sphere;
     int number_of_spheres_to_display;  
