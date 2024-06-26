@@ -13,6 +13,7 @@ struct Settings
     std::size_t start_point;
     double distance_threshold;
     std::size_t fit_plane_threshold;
+    std::size_t remove_low_confidence_threshold;
     double average_projective_distance_threshold;
     double merged_eigenvalue_threshold;
     bool shuffle_pointcloud;

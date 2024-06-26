@@ -26,6 +26,7 @@ Settings::Settings()
     start_point = 0;
     distance_threshold = 0.05;
     fit_plane_threshold = 3;
+    remove_low_confidence_threshold = 10;
     average_projective_distance_threshold = 0.1;
     merged_eigenvalue_threshold = 15e-5;
     shuffle_pointcloud = false;

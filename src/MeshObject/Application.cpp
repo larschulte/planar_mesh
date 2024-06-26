@@ -270,6 +270,18 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
         std::shared_ptr<Surface> new_surface = storage_->add_surface();
         new_surface->connect(new_vertex);
     }
+
+    // if low confidence surface is still low confidence and have more than n points, remove it
+    for (const std::shared_ptr<Surface>& surface : surfaces_with_low_confidence)
+    {
+        bool still_low_confidence = surface->get_average_projective_distance() > settings_.average_projective_distance_threshold;
+        bool more_than_n_points = surface->get_total_point_size() > settings_.remove_low_confidence_threshold;
+        if (still_low_confidence && more_than_n_points)
+        {
+            std::cout << ">> removing low confidence surface " << surface->get_id() << std::endl;
+            storage_->delete_surface(surface);
+        }
+    }
 }
 
 template <typename PointT>
