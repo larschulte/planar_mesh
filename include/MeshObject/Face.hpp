@@ -25,8 +25,9 @@ public:
     const Eigen::Vector3d& get_center() const;
     const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& get_vertices() const;
     const std::shared_ptr<Vertex>& get_vertex(int index) const;
-    const std::shared_ptr<Surface>& get_surface() const;
+    const std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash>& get_surfaces() const;
     bool is_expired() const;
+    bool has_vertex(const std::shared_ptr<Vertex>& vertex) const;
 
     bool intersects_point(const Eigen::Vector3d& origin, const Eigen::Vector3d& direction);
     Eigen::Vector3d compute_intersection_point(const Eigen::Vector3d& origin, const Eigen::Vector3d& direction);
@@ -55,8 +56,7 @@ private:
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertices_;
     std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges_;
     std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> interior_points_;
-
-    std::shared_ptr<Surface> surface_ = nullptr;
+    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_;
 };
 
 bool operator<(const std::shared_ptr<Face>& lhs, const std::shared_ptr<Face>& rhs);

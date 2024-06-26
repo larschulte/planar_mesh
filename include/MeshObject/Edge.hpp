@@ -22,7 +22,8 @@ protected:
 public:
     const int& get_id() const;
     const std::shared_ptr<Vertex>& get_vertex(int index) const;
-    const std::shared_ptr<Surface>& get_surface() const;
+    const std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash>& get_surfaces() const;
+    const std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& get_faces() const;
     const Eigen::Vector3d& get_center() const;
     const Eigen::Vector3d& get_max() const;
     const Eigen::Vector3d& get_min() const;
@@ -44,13 +45,13 @@ public:
     void update_searchable_state(const std::shared_ptr<Surface>& surface);
     void remove_searchable_state(const std::shared_ptr<Surface>& surface);
 
-    bool intersects_edge(const std::shared_ptr<Vertex>& vertex0, const std::shared_ptr<Vertex>& vertex1);
+    bool intersects_edge(const std::shared_ptr<Surface>& surface, const std::shared_ptr<Vertex>& vertex0, const std::shared_ptr<Vertex>& vertex1);
 
 private:
     bool deleting_ = false;
     bool is_boundary_ = false;
     bool is_expired_ = true;
-    bool is_searchable_ = false;
+    std::map<std::shared_ptr<Surface>, bool> is_searchable_map_;
 
     Eigen::Vector3d center_;
     Eigen::Vector3d max_;
@@ -61,8 +62,7 @@ private:
 
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertices_;
     std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces_;
-    
-    std::shared_ptr<Surface> surface_ = nullptr;
+    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_;
 };
 
 bool operator<(const std::shared_ptr<Edge>& lhs, const std::shared_ptr<Edge>& rhs);

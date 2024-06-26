@@ -27,7 +27,6 @@ void InteriorPoint::initialize_(const std::shared_ptr<Storage>& storage, const s
 
     // connect
     connect(face);
-    connect(face->get_surface());
 
     // log
     std::cout << "InteriorPoint " << id_ << " created.\n";
@@ -56,10 +55,9 @@ void InteriorPoint::delete_()
 
     // disconnect
     std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces = faces_;
+    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces = surfaces_;
     for (const auto& face : faces) disconnect(face);
-    
-    // disconnect surface
-    if (surface_ != nullptr) disconnect(surface_);
+    for (const auto& surface : surfaces) disconnect(surface);
 
     // compute radius
     if (storage_->has_penetrating_point())
@@ -101,8 +99,28 @@ const Eigen::Vector3d& InteriorPoint::get_origin() const
 
 const std::shared_ptr<Surface>& InteriorPoint::get_surface() const
 {    
-    if (surface_ == nullptr) throw std::runtime_error("InteriorPoint not connected to a surface.");
-    return surface_;
+    if (surfaces_.empty()) throw std::runtime_error("Interior point has no surface.");
+
+    // Select the surface with the lowest average projective distance, return as reference
+    double min_distance = std::numeric_limits<double>::max();
+    const std::shared_ptr<Surface>* selected_surface = nullptr;
+    for (const std::shared_ptr<Surface>& surface : surfaces_) 
+    {
+        double distance = surface->get_average_projective_distance();
+        if (distance < min_distance) 
+        {
+            min_distance = distance;
+            selected_surface = &surface;
+        }
+    }
+
+    return *selected_surface;
+}
+
+
+const std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash>& InteriorPoint::get_surfaces() const
+{
+    return surfaces_;
 }
 
 const double& InteriorPoint::get_radius() const
@@ -173,19 +191,9 @@ void InteriorPoint::connect(const std::shared_ptr<Surface>& surface)
     // check input
     if (surface->is_expired()) throw std::runtime_error("Attempts to connect interior point with invalid surface.");
 
-    // skip if already connected
-    if (surface_ == surface) return;
-
     // connect
-    if (surface_ == nullptr) 
-    {
-        surface_ = surface;
-        surface_->connect(shared_from_this());
-    }
-    else
-    {
-        throw std::runtime_error("interior point already connected to a different surface.");
-    }
+    bool inserted = surfaces_.insert(surface).second;
+    if (inserted) surface->connect(shared_from_this());    
 }
 
 void InteriorPoint::disconnect(const std::shared_ptr<Face>& face)
@@ -206,29 +214,19 @@ void InteriorPoint::disconnect(const std::shared_ptr<Surface>& surface)
     // check input
     if (surface->is_expired()) return;
 
-    // skip if already disconnected
-    if (surface_ == nullptr) return;
-
     // disconnect
-    if (surface_ == surface)
-    {
-        surface_->disconnect(shared_from_this());
-        surface_ = nullptr;
-    }
-    else
-    {
-        throw std::runtime_error("interior point not connected to the surface.");
-    }
+    bool erased = surfaces_.erase(surface);
+    if (erased) surface->disconnect(shared_from_this());
 }
 
 // swap surface1 with surface2
 void InteriorPoint::swap(const std::shared_ptr<Surface>& surface1, const std::shared_ptr<Surface>& surface2)
 {
     // if contains surfacce1
-    if (surface_ == surface1)
+    if (surfaces_.find(surface1) != surfaces_.end())
     {
-        disconnect(surface1);
         connect(surface2);
+        disconnect(surface1);
 
         // cascade swap
         for (const std::shared_ptr<Face>& face : faces_)

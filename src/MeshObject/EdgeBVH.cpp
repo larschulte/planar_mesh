@@ -89,7 +89,7 @@ bool EdgeBVH::node_intersect_edge(const std::shared_ptr<Node>& node, const std::
     {
         for (const std::shared_ptr<Edge>& edge : node->edges)
         {
-            if (edge->intersects_edge(vertex0, vertex1)) return true;
+            if (edge->intersects_edge(surface_, vertex0, vertex1)) return true;
         }
     }
     else
@@ -245,6 +245,11 @@ EdgeBVH::EdgeBVH()
       edge_size(0)
 {
     rebuild();
+}
+
+void EdgeBVH::set_surface(const std::shared_ptr<Surface>& surface)
+{
+    surface_ = surface;
 }
 
 void EdgeBVH::rebuild()

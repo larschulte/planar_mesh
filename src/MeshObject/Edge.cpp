@@ -59,11 +59,10 @@ void Edge::delete_()
     // make copy of vertices_ and faces_ to avoid iterator invalidation
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertices = vertices_;
     std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces = faces_;
+    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces = surfaces_;
     for (const auto& vertex : vertices) disconnect(vertex);
     for (const auto& face : faces) disconnect(face);
-    
-    // disconnect surface
-    if (surface_ != nullptr) disconnect(surface_);
+    for (const auto& surface : surfaces) disconnect(surface);
 
     // log
     std::cout << "---------- edge " << id_ << " destroyed" << std::endl;
@@ -103,22 +102,11 @@ void Edge::connect(const std::shared_ptr<Surface>& surface)
     // check input
     if (surface->is_expired()) throw std::runtime_error("Attempts to connect edge with invalid surface.");
 
-    // skip if already connected
-    if (surface_ == surface) return;
-
     // connect
-    if (surface_ == nullptr) 
-    {
-        surface_ = surface;
-        surface_->connect(shared_from_this());
-
-        // initialize searchable state
-        update_searchable_state(surface);
-    }
-    else
-    {
-        throw std::runtime_error("Edge already connected to a different surface.");
-    }
+    bool inserted = surfaces_.insert(surface).second;
+    if (inserted) surface->connect(shared_from_this());
+    if (inserted) is_searchable_map_[surface] = false;
+    if (inserted) update_searchable_state(surface);
 }
 
 void Edge::disconnect(const std::shared_ptr<Vertex>& vertex)
@@ -158,31 +146,20 @@ void Edge::disconnect(const std::shared_ptr<Surface>& surface)
     // check input
     if (surface->is_expired()) return;
 
-    // skip if already disconnected
-    if (surface_ == nullptr) return;
-
     // disconnect
-    if (surface_ == surface)
-    {
-        surface_->disconnect(shared_from_this());
-        surface_ = nullptr;
-
-        // remove searchable state
-        remove_searchable_state(surface);
-    }
-    else
-    {
-        throw std::runtime_error("Edge not connected to the surface.");
-    }
+    bool erased = surfaces_.erase(surface);
+    if (erased) surface->disconnect(shared_from_this());
+    if (erased) remove_searchable_state(surface);
+    if (erased) is_searchable_map_.erase(surface);
 }
 
 // swap surface1 with surface2
 void Edge::swap(const std::shared_ptr<Surface>& surface1, const std::shared_ptr<Surface>& surface2)
 {
-    if (surface_ == surface1)
+    if (surfaces_.find(surface1) != surfaces_.end())
     {
-        disconnect(surface1);
         connect(surface2);
+        disconnect(surface1);
 
         // cascade swap
         for (const std::shared_ptr<Vertex>& vertex : vertices_)
@@ -207,12 +184,6 @@ const std::shared_ptr<Vertex>& Edge::get_vertex(int index) const
     if (index < 0 || index > 1) throw std::runtime_error("Invalid vertex index.");
     if (vertices_.size() != 2) throw std::runtime_error("Edge does not have 2 vertices.");
     return *std::next(vertices_.begin(), index);
-}
-
-const std::shared_ptr<Surface>& Edge::get_surface() const
-{
-    if (surface_ == nullptr) throw std::runtime_error("Edge not connected to a surface.");
-    return surface_;
 }
 
 bool Edge::is_expired() const
@@ -263,33 +234,46 @@ void Edge::update_boundary_state()
 
 void Edge::update_searchable_state()
 {
-    if (surface_ != nullptr) update_searchable_state(surface_);
+    for (const std::shared_ptr<Surface>& surface : surfaces_)
+    {
+        update_searchable_state(surface);
+    }
 }
 
 void Edge::update_searchable_state(const std::shared_ptr<Surface>& surface)
 {
     // upon changes of boundary state
     // add
-    if (is_boundary_ && !is_searchable_)
+    if (is_boundary_ && !is_searchable_map_.at(surface))
     {
         surface->add_searchable_edge(shared_from_this());
-        is_searchable_ = true;
+        is_searchable_map_.at(surface) = true;
     }
     // remove
-    if (!is_boundary_ && is_searchable_)
+    if (!is_boundary_ && is_searchable_map_.at(surface))
     {   
         surface->remove_searchable_edge(shared_from_this());
-        is_searchable_ = false;
+        is_searchable_map_.at(surface) = false;
     }
 }
 
 void Edge::remove_searchable_state(const std::shared_ptr<Surface>& surface)
 {
-    if (is_searchable_)
+    if (is_searchable_map_.at(surface))
     {
         surface->remove_searchable_edge(shared_from_this());
-        is_searchable_ = false;
+        is_searchable_map_.at(surface) = false;
     }
+}
+
+const std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash>& Edge::get_surfaces() const
+{
+    return surfaces_;
+}
+
+const std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& Edge::get_faces() const
+{
+    return faces_;
 }
 
 const Eigen::Vector3d& Edge::get_center() const
@@ -307,16 +291,16 @@ const Eigen::Vector3d& Edge::get_min() const
     return min_;
 }
 
-bool Edge::intersects_edge(const std::shared_ptr<Vertex>& vertex0, const std::shared_ptr<Vertex>& vertex1)
+bool Edge::intersects_edge(const std::shared_ptr<Surface>& surface, const std::shared_ptr<Vertex>& vertex0, const std::shared_ptr<Vertex>& vertex1)
 {
     // skip if vertices are connected
     if (has_vertex(vertex0) || has_vertex(vertex1)) return false;
 
     // get surface coordinates
-    Eigen::Vector2d p1 = vertex0->get_surface_coordinate(get_surface());
-    Eigen::Vector2d p2 = vertex1->get_surface_coordinate(get_surface());
-    Eigen::Vector2d q1 = get_vertex(0)->get_surface_coordinate(get_surface());
-    Eigen::Vector2d q2 = get_vertex(1)->get_surface_coordinate(get_surface());
+    Eigen::Vector2d p1 = vertex0->get_surface_coordinate(surface);
+    Eigen::Vector2d p2 = vertex1->get_surface_coordinate(surface);
+    Eigen::Vector2d q1 = get_vertex(0)->get_surface_coordinate(surface);
+    Eigen::Vector2d q2 = get_vertex(1)->get_surface_coordinate(surface);
     
     // check if edge intersects
     return segments_intersect(p1, p2, q1, q2);

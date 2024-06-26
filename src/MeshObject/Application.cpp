@@ -168,7 +168,7 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
     }
     std::cout << ">> grouped into " << neighboring_surfaces.size() << " neighboring surfaces" << std::endl;
 
-    // split into - surfaces with low confidence, surfaces with high confidence (surface that match, surface that don't match)
+    // split into - surfaces with low confidence, surfaces with high confidence, which are then split into surface that match, surface that don't match
     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_with_low_confidence;
     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_that_match;
     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_that_mismatch;
@@ -208,7 +208,7 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
         continue;
     }
 
-    // for surfaces with low confidence
+    // for surfaces with low confidence, put current point as candidate vertex
     for (std::shared_ptr<Surface> surface : surfaces_with_low_confidence)
     {
         std::cout << ">> low confidence surface " << surface->get_id() << std::endl;
@@ -321,7 +321,10 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
     std::map<std::shared_ptr<Surface>, std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>> searched_surface_to_searched_faces;
     for (const std::shared_ptr<Face>& face : searched_faces)
     {
-        searched_surface_to_searched_faces[face->get_surface()].insert(face);
+        for (const std::shared_ptr<Surface>& surface : face->get_surfaces())
+        {
+            searched_surface_to_searched_faces[surface].insert(face);    
+        }
     }
 
     bool point_added = false;
@@ -339,6 +342,7 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
         {
             storage_->set_penetrating_point(generic_point);
             for (const std::shared_ptr<Face>& face : searched_faces) storage_->delete_face(face);
+            // for (const std::shared_ptr<Face>& face : searched_faces) surface->disconnect(face);
             storage_->clear_penetrating_point();
 
             // add back penetrated points
@@ -353,7 +357,8 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
         {
             if (!point_added)
             {
-                storage_->add_interior_point(*searched_faces.begin(), generic_point);
+                const std::shared_ptr<InteriorPoint>& interior_point = storage_->add_interior_point(*searched_faces.begin(), generic_point);
+                surface->connect(interior_point);
                 point_added = true;
             }
             else

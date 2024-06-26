@@ -34,6 +34,9 @@ void Surface::initialize_(const std::shared_ptr<Storage>& storage)
 
     // initialize surface color
     set_random_color();
+
+    // initialize edge_bvh
+    edge_bvh_.set_surface(shared_from_this());
     
     // log
     std::cout << "Surface " << id_ << " created.\n";
@@ -253,6 +256,29 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> used_vertices;
     for (const auto& nearby_vertex : nearby_vertices)
     {
+        // if edge already exists
+        bool edge_exist = false;
+        std::shared_ptr<Edge> existing_edge;
+        for (const std::shared_ptr<Edge>& edge : vertex->get_edges())
+        {
+            if (edge->get_surfaces().find(shared_from_this()) == edge->get_surfaces().end()) continue;
+            if (edge->has_vertex(nearby_vertex))
+            {
+                edge_exist = true;
+                existing_edge = edge;
+                break;
+            }
+        }
+        if (edge_exist)
+        {   
+            connect(existing_edge);
+            connect(vertex);
+            used_vertices.insert(nearby_vertex);
+
+            connected = true;
+        }
+
+        // if no edge already exists, try to check if new edge can be created
         // if edge intersects
         if (edge_bvh_.tree_intersect_edge(vertex, nearby_vertex)) 
         {
@@ -281,12 +307,12 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
             // skip if repeated
             if (nearby_vertex1 <= nearby_vertex0) continue;
 
-            // skip if edge does not exist
+            // skip if edge does not exist between the two vertices
             bool edge_exist = false;
             std::shared_ptr<Edge> existing_edge;
             for (const std::shared_ptr<Edge>& edge : nearby_vertex0->get_edges())
             {
-                if (edge->get_surface() != shared_from_this()) continue;
+                if (edge->get_surfaces().find(shared_from_this()) == edge->get_surfaces().end()) continue;
                 if (edge->has_vertex(nearby_vertex1))
                 {
                     edge_exist = true;
@@ -302,7 +328,26 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
             // skip if face have intersections
             // // todo
 
-            // create face
+            // check if face already exists
+            bool face_exist = false;
+            std::shared_ptr<Face> existing_face;
+            for (const std::shared_ptr<Face>& face : existing_edge->get_faces())
+            {
+                if (face->get_surfaces().find(shared_from_this()) == face->get_surfaces().end()) continue;
+                if (face->has_vertex(vertex))
+                {
+                    face_exist = true;
+                    existing_face = face;
+                    break;
+                }
+            }
+            if (face_exist)
+            {
+                connect(existing_face);
+                continue;
+            }
+
+            // if face already exists, create face
             std::shared_ptr<Face> new_face = storage_->add_face(shared_from_this(), vertex, nearby_vertex0, nearby_vertex1);
         }
     }

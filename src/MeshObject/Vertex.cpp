@@ -373,8 +373,8 @@ void Vertex::swap(const std::shared_ptr<Surface>& surface1, const std::shared_pt
     
     if (contains_surface1)
     {
-        disconnect(surface1);
         connect(surface2);
+        disconnect(surface1);
 
         // cascade swap
         for (const std::shared_ptr<Edge>& edge : edges_)
