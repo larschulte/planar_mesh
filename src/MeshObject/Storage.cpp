@@ -109,21 +109,21 @@ const std::shared_ptr<GenericPoint>& Storage::add_generic_point(const std::share
     return *genertic_points_.insert(genertic_point).first;
 }
 
-const std::shared_ptr<InteriorPoint>& Storage::add_interior_point(const std::shared_ptr<Face>& face, const Eigen::Vector3d& position, const Eigen::Vector3d& origin) 
+const std::shared_ptr<InteriorPoint>& Storage::add_interior_point(const Eigen::Vector3d& position, const Eigen::Vector3d& origin) 
 {
     // create
     std::shared_ptr<InteriorPoint> interior_point = std::make_shared<InteriorPoint>();
-    interior_point->initialize_(shared_from_this(), face, position, origin);
+    interior_point->initialize_(shared_from_this(), position, origin);
 
     // store
     return *interior_points_.insert(interior_point).first;
 }
 
-const std::shared_ptr<InteriorPoint>& Storage::add_interior_point(const std::shared_ptr<Face>& face, const std::shared_ptr<GenericPoint>& generic_point) 
+const std::shared_ptr<InteriorPoint>& Storage::add_interior_point(const std::shared_ptr<GenericPoint>& generic_point) 
 {
     // create
     std::shared_ptr<InteriorPoint> interior_point = std::make_shared<InteriorPoint>();
-    interior_point->initialize_(shared_from_this(), face, generic_point);
+    interior_point->initialize_(shared_from_this(), generic_point);
 
     // store
     return *interior_points_.insert(interior_point).first;

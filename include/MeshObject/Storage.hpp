@@ -30,8 +30,8 @@ public: // to user
     const std::shared_ptr<GenericPoint>& add_generic_point(const Eigen::Vector3d& position, const Eigen::Vector3d& origin);
     const std::shared_ptr<GenericPoint>& add_generic_point(const std::shared_ptr<Vertex>& vertex);
     const std::shared_ptr<GenericPoint>& add_generic_point(const std::shared_ptr<InteriorPoint>& interior_point);
-    const std::shared_ptr<InteriorPoint>& add_interior_point(const std::shared_ptr<Face>& face, const Eigen::Vector3d& position, const Eigen::Vector3d& origin);
-    const std::shared_ptr<InteriorPoint>& add_interior_point(const std::shared_ptr<Face>& face, const std::shared_ptr<GenericPoint>& generic_point);
+    const std::shared_ptr<InteriorPoint>& add_interior_point(const Eigen::Vector3d& position, const Eigen::Vector3d& origin);
+    const std::shared_ptr<InteriorPoint>& add_interior_point(const std::shared_ptr<GenericPoint>& generic_point);
     const std::shared_ptr<GenericPoint>& add_penetrated_point(const std::shared_ptr<Vertex>& vertex);
     const std::shared_ptr<GenericPoint>& add_penetrated_point(const std::shared_ptr<InteriorPoint>& interior_point);
 

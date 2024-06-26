@@ -4,7 +4,7 @@
 #include "MeshObject/Surface.hpp"
 #include "MeshObject/GenericPoint.hpp"
 
-void InteriorPoint::initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<Face>& face, const Eigen::Vector3d& position, const Eigen::Vector3d& origin, const double& radius)
+void InteriorPoint::initialize_(const std::shared_ptr<Storage>& storage, const Eigen::Vector3d& position, const Eigen::Vector3d& origin, const double& radius)
 {
     // set expired
     is_expired_ = false;
@@ -25,24 +25,21 @@ void InteriorPoint::initialize_(const std::shared_ptr<Storage>& storage, const s
 
     num_deletes_ = 0;
 
-    // connect
-    connect(face);
-
     // log
     std::cout << "InteriorPoint " << id_ << " created.\n";
 }
 
-void InteriorPoint::initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<Face>& face, const std::shared_ptr<GenericPoint>& generic_point)
-{
-    initialize_(storage, face, generic_point->get_position(), generic_point->get_origin(), generic_point->get_radius());
-    num_deletes_ = generic_point->get_num_deletes();
-}
-
-void InteriorPoint::initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<Face>& face, const Eigen::Vector3d& position, const Eigen::Vector3d& origin)
+void InteriorPoint::initialize_(const std::shared_ptr<Storage>& storage, const Eigen::Vector3d& position, const Eigen::Vector3d& origin)
 {
     std::shared_ptr<GenericPoint> generic_point = storage->add_generic_point(position, origin);
-    initialize_(storage, face, generic_point);
+    initialize_(storage, generic_point);
     storage->delete_generic_point(generic_point);
+}
+
+void InteriorPoint::initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<GenericPoint>& generic_point)
+{
+    initialize_(storage, generic_point->get_position(), generic_point->get_origin(), generic_point->get_radius());
+    num_deletes_ = generic_point->get_num_deletes();
 }
 
 void InteriorPoint::delete_()

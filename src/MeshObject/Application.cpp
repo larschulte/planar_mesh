@@ -264,6 +264,23 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
         }
     }
 
+    // // get all edges the new vertex is connected to
+    // std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> all_connected_vertices;
+    // for (std::shared_ptr<Edge> edge : new_vertex->get_edges())
+    // {
+    //     all_connected_vertices.insert(edge->get_vertex(0));
+    //     all_connected_vertices.insert(edge->get_vertex(1));
+    // }
+    // // get smallest radius
+    // double smallest_radius = std::numeric_limits<double>::max();
+    // for (std::shared_ptr<Vertex> vertex : all_connected_vertices)
+    // {
+    //     double radius = vertex->get_radius();
+    //     if (radius < smallest_radius) smallest_radius = radius;
+    // }
+    // // set the smallest radius to new vertex
+    // new_vertex->reduce_reverse_radius_search_radius(smallest_radius);
+
     // if not, start a new seed
     if (!new_vertex_in_high_confidence_surface)
     {
@@ -339,11 +356,14 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
         }
     }
 
-    bool point_added = false;
+    // try add as interior point
+    std::shared_ptr<InteriorPoint> temp_interior_point;
+    bool added_as_interior_point = false;
+    
     for (const auto& pair : searched_surface_to_searched_faces)
     {
         const std::shared_ptr<Surface>& surface = pair.first;
-        const std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& searched_faces = pair.second;
+        const std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& mapped_searched_faces = pair.second;
 
         double distance = surface->compute_point_to_surface_distance(generic_point);
         bool points_before_surface = distance > settings_.distance_threshold;
@@ -353,7 +373,7 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
         if (points_behind_surface)
         {
             storage_->set_penetrating_point(generic_point);
-            for (const std::shared_ptr<Face>& face : searched_faces) surface->disconnect(face);
+            for (const std::shared_ptr<Face>& face : mapped_searched_faces) surface->disconnect(face);
             storage_->clear_penetrating_point();
 
             // add back penetrated points
@@ -366,15 +386,22 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
         }
         else if (points_within_surface)
         {
-            if (!point_added)
+            // create if not already created
+            if (!added_as_interior_point) 
             {
-                const std::shared_ptr<InteriorPoint>& interior_point = storage_->add_interior_point(*searched_faces.begin(), generic_point);
-                surface->connect(interior_point);
-                point_added = true;
+                temp_interior_point = storage_->add_interior_point(generic_point);
+                added_as_interior_point = true;
             }
-            else
+
+            // add interior points to mulitple faces and surfaces
+
+            // connect to surface
+            temp_interior_point->connect(surface);
+
+            // connect to face
+            for (const std::shared_ptr<Face>& face : mapped_searched_faces)
             {
-                std::cout << "point within multiple surface" << std::endl;
+                temp_interior_point->connect(face);
             }
         }
         else if (points_before_surface)
@@ -382,8 +409,15 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
             continue;
         }
     }
-    if (!point_added) add_point_by_radius_search(generic_point);
 
+    // if can't be added as interior point, add as vertex
+    if (!added_as_interior_point) 
+    {
+        // add point as vertex
+        add_point_by_radius_search(generic_point);
+    }
+
+    // increment count
     if (ith_point == ith_size) 
     {   
         ith_cloud += 1;
