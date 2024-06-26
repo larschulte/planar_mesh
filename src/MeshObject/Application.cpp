@@ -341,8 +341,7 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
         if (points_behind_surface)
         {
             storage_->set_penetrating_point(generic_point);
-            for (const std::shared_ptr<Face>& face : searched_faces) storage_->delete_face(face);
-            // for (const std::shared_ptr<Face>& face : searched_faces) surface->disconnect(face);
+            for (const std::shared_ptr<Face>& face : searched_faces) surface->disconnect(face);
             storage_->clear_penetrating_point();
 
             // add back penetrated points
@@ -480,7 +479,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_interior_poi
         }
         else if (settings.color_mode == 2)
         {
-            double distance = 1/5.0;
+            double distance = 1/settings.surface_denominator;
             std::tuple<int, int, int> color = valueToJet(distance);
             point.r = std::get<0>(color);
             point.g = std::get<1>(color);
@@ -577,7 +576,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_vertex_point
         }
         else if (setting.color_mode == 2)
         {
-            double distance = vertex->get_surfaces().size() / 5.0;
+            double distance = vertex->get_surfaces().size() / setting.surface_denominator;
             std::tuple<int, int, int> color = valueToJet(distance);
             point.r = std::get<0>(color);
             point.g = std::get<1>(color);
