@@ -151,6 +151,9 @@ void Edge::disconnect(const std::shared_ptr<Surface>& surface)
     if (erased) surface->disconnect(shared_from_this());
     if (erased) remove_searchable_state(surface);
     if (erased) is_searchable_map_.erase(surface);
+
+    // check self destruct
+    if (!deleting_ && surfaces_.empty()) storage_->delete_edge(shared_from_this());
 }
 
 // swap surface1 with surface2
