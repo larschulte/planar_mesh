@@ -3,6 +3,7 @@
 #include "MeshObject/Edge.hpp"
 #include "MeshObject/Face.hpp"
 #include "MeshObject/Surface.hpp"
+#include "MeshObject/InteriorPoint.hpp"
 #include <iostream>
 
 #include "MeshObject/GenericPoint.hpp"
@@ -230,9 +231,44 @@ void Vertex::try_merge_surfaces()
             const Eigen::Vector3d& mean2 = surface2->get_mean();
             int size1 = surface1->get_total_point_size();
             int size2 = surface2->get_total_point_size();
+            const Eigen::Vector3d& combined_mean = merge_mean(mean1, mean2, size1, size2);
             Eigen::Matrix3d covariance_matrix = merge_covariance(cov1, cov2, mean1, mean2, size1, size2);
-            double eigenvalue = Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d>(covariance_matrix).eigenvalues()[0];
-            if (eigenvalue > Vertex::settings_.merged_eigenvalue_threshold) continue;
+            Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> solver(covariance_matrix);
+            
+            // double eigenvalue = solver.eigenvalues()[0];
+            // if (eigenvalue > Vertex::settings_.merged_eigenvalue_threshold) continue;
+
+            // get normal vector from solver
+            Eigen::Vector3d normal = solver.eigenvectors().col(0);
+
+            // compute sum of projective distance
+            double sum_projective_distance = 0;
+            for (const std::shared_ptr<Vertex>& vertex : surface1->get_vertices())
+            {
+                sum_projective_distance += std::fabs((vertex->get_position() - combined_mean).dot(normal));
+            }
+            for (const std::shared_ptr<Vertex>& vertex : surface2->get_vertices())
+            {
+                sum_projective_distance += std::fabs((vertex->get_position() - combined_mean).dot(normal));
+            }
+            for (const std::shared_ptr<InteriorPoint>& interior_point : surface1->get_interior_points())
+            {
+                sum_projective_distance += std::fabs((interior_point->get_position() - combined_mean).dot(normal));
+            }
+            for (const std::shared_ptr<InteriorPoint>& interior_point : surface2->get_interior_points())
+            {
+                sum_projective_distance += std::fabs((interior_point->get_position() - combined_mean).dot(normal));
+            }
+
+            // compute previous sum of projective distance
+            double previous_sum_projective_distance = 0;
+            previous_sum_projective_distance += surface1->get_average_projective_distance() * surface1->get_total_point_size();
+            previous_sum_projective_distance += surface2->get_average_projective_distance() * surface2->get_total_point_size();
+
+            // merge if sum of projective distance is less than threshold or less than previous sum of projective distance
+            bool merge = sum_projective_distance < Vertex::settings_.average_projective_distance_threshold || sum_projective_distance < previous_sum_projective_distance;
+            if (!merge) continue;
+
 
             // merge by changing surface1 into surface2
             std::cout << ">> Merging surface " << surface1->get_id() << " with " << surface1->get_total_point_size() << " points into surface " << surface2->get_id() << " with " << surface2->get_total_point_size() << " points." << std::endl;

@@ -150,6 +150,16 @@ void Surface::merge_surface(const std::shared_ptr<Surface>& surface)
     storage_->delete_surface(surface);
 }
 
+const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& Surface::get_vertices() const
+{
+    return vertices_;
+}
+
+const std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash>& Surface::get_interior_points() const
+{
+    return interior_points_;
+}
+
 const Eigen::Vector3d& Surface::get_mean() const
 {
     return mean_;

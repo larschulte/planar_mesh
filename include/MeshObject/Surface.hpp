@@ -32,6 +32,8 @@ public:
     void merge_surface(const std::shared_ptr<Surface>& surface);
 
     const int& get_id() const;
+    const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& get_vertices() const;
+    const std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash>& get_interior_points() const;
     const Eigen::Vector3d& get_mean() const;
     const Eigen::Matrix3d& get_covariance() const;
     const Eigen::Matrix3d& get_eigenvectors() const;
