@@ -186,9 +186,10 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
         
         // remaining surfaces with high confidence
 
-        // mismatch if large distance
-        double distance = std::fabs(surface->compute_point_to_surface_distance(new_vertex));
-        if (distance >= settings_.distance_threshold) 
+        // mismatch if distance is too far from the mean
+        double distance = std::fabs(surface->compute_point_projective_distance(new_vertex));
+        const std::vector<double>& stats = surface->get_projective_distance_stats();
+        if ((distance - compute_mean(stats)) > 3*compute_std(stats))
         {
             surfaces_that_mismatch.insert(surface);
             continue;
@@ -365,9 +366,10 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
         const std::shared_ptr<Surface>& surface = pair.first;
         const std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& mapped_searched_faces = pair.second;
 
+        const std::vector<double>& stats = surface->get_projective_distance_stats();
         double distance = surface->compute_point_projective_distance(generic_point);
-        bool points_before_surface = distance > settings_.distance_threshold;
-        bool points_behind_surface = distance < -settings_.distance_threshold;
+        bool points_before_surface = (distance - compute_mean(stats)) > 3*compute_std(stats);
+        bool points_behind_surface = (distance - compute_mean(stats)) < -3*compute_std(stats);
         bool points_within_surface = !points_before_surface && !points_behind_surface;
         
         if (points_behind_surface)
