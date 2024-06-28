@@ -195,31 +195,73 @@ const std::tuple<int, int, int>& Surface::get_color() const
     return color_;
 }
 
-const double& Surface::get_average_projective_distance()
+const std::vector<double>& Surface::get_point_to_plane_distance_stats()
 {
     // update if point count changes
-    if (get_total_point_size() != previous_total_point_size_) 
+    if (get_total_point_size() != previous_total_point_size_for_point_to_plane_) 
     {
-        // compute
-        double sum = 0;
+        // clear
+        stored_point_to_plane_distance_stats_.clear();
+
+        // add
         for (const auto& vertex : vertices_)
         {
-            sum += std::fabs(vertex->get_projected_distance(shared_from_this()));
+            double point2plane_distance = (vertex->get_position() - get_mean()).dot(get_normal());
+            stored_point_to_plane_distance_stats_.push_back(point2plane_distance);
         }
         for (const auto& interior_point : interior_points_)
         {
-            sum += std::fabs(interior_point->get_projected_distance(shared_from_this()));
+            double point2plane_distance = (interior_point->get_position() - get_mean()).dot(get_normal());
+            stored_point_to_plane_distance_stats_.push_back(point2plane_distance);
         }
 
-        double average_projective_distance = sum / get_total_point_size();
-
         // update
-        previous_total_point_size_ = get_total_point_size();
-        stored_average_projective_distance_ = average_projective_distance;
+        previous_total_point_size_for_point_to_plane_ = get_total_point_size();        
     }
 
     // return stored value
-    return stored_average_projective_distance_;
+    return stored_point_to_plane_distance_stats_;
+}
+
+const std::vector<double>& Surface::get_projective_distance_stats()
+{
+    // update if point count changes
+    if (get_total_point_size() != previous_total_point_size_for_projective_) 
+    {
+        // clear
+        stored_projective_distance_stats_.clear();
+
+        // add
+        for (const auto& vertex : vertices_)
+        {
+            double projective_distance = vertex->get_projected_distance(shared_from_this());
+            stored_projective_distance_stats_.push_back(projective_distance);
+        }
+        for (const auto& interior_point : interior_points_)
+        {
+            double projective_distance = interior_point->get_projected_distance(shared_from_this());
+            stored_projective_distance_stats_.push_back(projective_distance);
+        }
+
+        // update
+        previous_total_point_size_for_projective_ = get_total_point_size();        
+    }
+
+    // return stored value
+    return stored_projective_distance_stats_;
+}
+
+double Surface::get_average_projective_distance()
+{
+    // compute
+    double sum = 0;
+    for (const double& distance : get_projective_distance_stats()) 
+    {
+        sum += std::fabs(distance);
+    }
+
+    // return
+    return sum / get_total_point_size();
 }
 
 bool Surface::is_expired() const
