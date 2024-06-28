@@ -119,8 +119,8 @@ void Vertex::try_update_surface_projection(const std::shared_ptr<Surface> surfac
     if (normal_used_ != surface->get_normal())
     {
         normal_used_ = surface->get_normal();
-        projected_position_ = surface->compute_point_to_surface_position(get_origin(), get_position());
-        projected_distance_ = surface->compute_point_to_surface_distance(get_origin(), get_position());
+        projected_position_ = surface->compute_point_projective_position(get_origin(), get_position());
+        projected_distance_ = surface->compute_point_projective_distance(get_origin(), get_position());
     }
 }
 

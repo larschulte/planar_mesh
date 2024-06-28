@@ -72,7 +72,7 @@ const int& Surface::get_id() const
     return id_;
 }
 
-double Surface::compute_point_to_surface_distance(const Eigen::Vector3d& origin, const Eigen::Vector3d& position) const
+double Surface::compute_point_projective_distance(const Eigen::Vector3d& origin, const Eigen::Vector3d& position) const
 {
     // if perpendicular, return NaN
     Eigen::Vector3d rayDirection = (position - origin).normalized();
@@ -82,17 +82,17 @@ double Surface::compute_point_to_surface_distance(const Eigen::Vector3d& origin,
     return distance;
 }
 
-double Surface::compute_point_to_surface_distance(const std::shared_ptr<GenericPoint>& generic_point) const
+double Surface::compute_point_projective_distance(const std::shared_ptr<GenericPoint>& generic_point) const
 {
-    return compute_point_to_surface_distance(generic_point->get_origin(), generic_point->get_position());
+    return compute_point_projective_distance(generic_point->get_origin(), generic_point->get_position());
 }
 
-double Surface::compute_point_to_surface_distance(const std::shared_ptr<Vertex>& vertex) const
+double Surface::compute_point_projective_distance(const std::shared_ptr<Vertex>& vertex) const
 {
-    return compute_point_to_surface_distance(vertex->get_origin(), vertex->get_position());
+    return compute_point_projective_distance(vertex->get_origin(), vertex->get_position());
 }
 
-double Surface::compute_point_to_surface_distance_with_improved_covariance(const Eigen::Vector3d& origin, const Eigen::Vector3d& position) const
+double Surface::compute_point_projective_distance_with_improved_covariance(const Eigen::Vector3d& origin, const Eigen::Vector3d& position) const
 {
     // set
     int size1 = get_total_point_size()-1;
@@ -123,7 +123,7 @@ double Surface::compute_point_to_surface_distance_with_improved_covariance(const
     return distance;
 }
 
-Eigen::Vector3d Surface::compute_point_to_surface_position(const Eigen::Vector3d& origin, const Eigen::Vector3d& point) const
+Eigen::Vector3d Surface::compute_point_projective_position(const Eigen::Vector3d& origin, const Eigen::Vector3d& point) const
 {
     // compute
     Eigen::Vector3d rayDirection = (point - origin).normalized();

@@ -365,7 +365,7 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
         const std::shared_ptr<Surface>& surface = pair.first;
         const std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& mapped_searched_faces = pair.second;
 
-        double distance = surface->compute_point_to_surface_distance(generic_point);
+        double distance = surface->compute_point_projective_distance(generic_point);
         bool points_before_surface = distance > settings_.distance_threshold;
         bool points_behind_surface = distance < -settings_.distance_threshold;
         bool points_within_surface = !points_before_surface && !points_behind_surface;

@@ -59,7 +59,7 @@ int main()
     surface->connect(vertex6);
     std::cout << "after vertex 6, normal = [" << surface->get_normal().transpose() << "]" << std::endl;
     
-    double distance = surface->compute_point_to_surface_distance_with_improved_covariance(Eigen::Vector3d(0, 0, -10), Eigen::Vector3d(0, 0, 0));
+    double distance = surface->compute_point_projective_distance_with_improved_covariance(Eigen::Vector3d(0, 0, -10), Eigen::Vector3d(0, 0, 0));
     std::cout << "distance = " << distance << std::endl;
 
     return 0;

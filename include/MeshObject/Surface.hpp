@@ -23,11 +23,11 @@ protected:
     void delete_();
 
 public:
-    double compute_point_to_surface_distance(const Eigen::Vector3d& origin, const Eigen::Vector3d& point) const;
-    double compute_point_to_surface_distance(const std::shared_ptr<GenericPoint>& generic_point) const;
-    double compute_point_to_surface_distance(const std::shared_ptr<Vertex>& vertex) const;
-    double compute_point_to_surface_distance_with_improved_covariance(const Eigen::Vector3d& origin, const Eigen::Vector3d& point) const;
-    Eigen::Vector3d compute_point_to_surface_position(const Eigen::Vector3d& origin, const Eigen::Vector3d& point) const;
+    double compute_point_projective_distance(const Eigen::Vector3d& origin, const Eigen::Vector3d& point) const;
+    double compute_point_projective_distance(const std::shared_ptr<GenericPoint>& generic_point) const;
+    double compute_point_projective_distance(const std::shared_ptr<Vertex>& vertex) const;
+    double compute_point_projective_distance_with_improved_covariance(const Eigen::Vector3d& origin, const Eigen::Vector3d& point) const;
+    Eigen::Vector3d compute_point_projective_position(const Eigen::Vector3d& origin, const Eigen::Vector3d& point) const;
     
     void merge_surface(const std::shared_ptr<Surface>& surface);
 
