@@ -47,6 +47,7 @@ set(MeshObject_SOURCE
   src/MeshObject/Settings.cpp
   src/utilities/DataLoader.cpp
   src/utilities/covariance_math.cpp
+  src/MeshObject/Simulation.cpp
 )
 
 # add executable
@@ -124,6 +125,12 @@ PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
   
+add_executable(test_Simulation src/test/test_Simulation.cpp ${MeshObject_SOURCE})
+target_link_libraries (test_Simulation ${PCL_LIBRARIES})
+target_include_directories(test_Simulation
+PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
 
 # add executable
 add_executable(optimization src/utilities/optimization.cpp)
