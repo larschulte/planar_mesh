@@ -7,6 +7,8 @@ struct Settings
     Settings();
 
     // application settings
+    bool use_sim_data;
+    int sim_object;
     std::string cloud_path;
     std::string pose_path;
     int start_cloud;

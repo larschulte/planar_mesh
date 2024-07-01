@@ -14,6 +14,7 @@
 #include <algorithm>
 #include <unordered_set>
 #include "MeshObject/MeshObject.hpp"
+#include "MeshObject/Simulation.hpp"
 
 template class Application<VilensPointT>;
 
@@ -428,10 +429,17 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
         // add point as vertex
         add_point_by_radius_search(generic_point);
     }
+}
 
-    // increment count
-    if (ith_point == ith_size) 
-    {   
+template <typename PointT>
+void Application<PointT>::get_lidar_data(Eigen::Vector3d& origin, Eigen::Vector3d& position)
+{
+    origin = this->origin;
+    position = pointcloud->points[ith_point].getVector3fMap().cast<double>();
+    ith_point++;
+
+    if (ith_point == ith_size)
+    {
         ith_cloud += 1;
         ith_point = 0;
         load_point_cloud();
@@ -439,11 +447,26 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
 }
 
 template <typename PointT>
+void Application<PointT>::get_sim_data(Eigen::Vector3d& origin, Eigen::Vector3d& position)
+{
+    Simulation sim;
+    sim.set_object(settings_.sim_object);
+    sim.get_data_pair(origin, position);
+}
+
+template <typename PointT>
 void Application<PointT>::step()
 {        
-    Eigen::Vector3d thisPointVEC = pointcloud->points[ith_point].getVector3fMap().cast<double>();
-    Eigen::Vector3d thisPointOriginVEC = origin;
-    ith_point++;
+    Eigen::Vector3d thisPointVEC;
+    Eigen::Vector3d thisPointOriginVEC;
+    if (settings_.use_sim_data)
+    {
+        get_sim_data(thisPointOriginVEC, thisPointVEC);
+    }
+    else
+    {
+        get_lidar_data(thisPointOriginVEC, thisPointVEC);
+    }
 
     // log
     std::cout << "==================================================================== Processing point " << ith_point << " of cloud " << ith_cloud << std::endl;

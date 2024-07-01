@@ -23,9 +23,12 @@ Settings::Settings()
         "/home/jiahao/datasets/christ church spires/2024-03-18-09-43-37/slam_pose_graph.g2o"
     );
     
-    std::string dataset = "christchurch";
+    std::string dataset = "room";
     cloud_path = dataset_map[dataset].first;
     pose_path = dataset_map[dataset].second;
+
+    use_sim_data = true;
+    sim_object = 0;
     
     start_cloud = 50;
     start_point = 0;

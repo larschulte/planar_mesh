@@ -37,6 +37,8 @@ public:
     void refine_surfaces();
     void change_color();
     void add_back_generic_points();
+    void get_lidar_data(Eigen::Vector3d& origin, Eigen::Vector3d& position);
+    void get_sim_data(Eigen::Vector3d& origin, Eigen::Vector3d& position);
     void step();
     void loop();
     void restart();
