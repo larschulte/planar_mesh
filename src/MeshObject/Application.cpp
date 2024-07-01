@@ -132,6 +132,11 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
     remove duplicate surface
         - if a low confidence surface is also penetrated
 
+    
+    computing projective distance std when the surface is accurate, would in fact give the std of lidar range sensor
+        - perhaps use a metric to determine if the distribution of std is gaussian like, which can be used check if the surface is single modal
+        - graph the distribution of projective distance! perhaps we can see multiple peaks, which can be used to classify the surface
+
     */
 
     // create new vertex
@@ -174,11 +179,17 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_that_mismatch;
     for (std::shared_ptr<Surface> surface : neighboring_surfaces) 
     {
+        // get surface projective distance stats
+        const std::vector<double>& stats = surface->get_projective_distance_stats();
+        double mean = compute_mean(stats);
+        double std = compute_std(stats);
         // log
-        std::cout << ">> processing surface " << surface->get_id() << " with average projective distance " << surface->get_average_projective_distance() << " and size: " << surface->get_total_point_size() << std::endl;
+        std::cout << ">> processing surface " << surface->get_id() << " with "<< surface->get_total_point_size() << " points, mean = " << mean << ", std = " << std << std::endl;
 
         // collect surfaces with low confidence
-        if (surface->get_total_point_size() < settings_.fit_plane_threshold || surface->get_average_projective_distance() > settings_.average_projective_distance_threshold)
+        bool small_size = surface->get_total_point_size() < settings_.fit_plane_threshold;
+        bool large_std = std > settings_.projective_std_threshold;
+        if (small_size || large_std)
         {
             surfaces_with_low_confidence.insert(surface);
             continue;
@@ -188,8 +199,7 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
 
         // mismatch if distance is too far from the mean
         double distance = std::fabs(surface->compute_point_projective_distance(new_vertex));
-        const std::vector<double>& stats = surface->get_projective_distance_stats();
-        if ((distance - compute_mean(stats)) > 3*compute_std(stats))
+        if ((distance - mean) > 3*std)
         {
             surfaces_that_mismatch.insert(surface);
             continue;
@@ -292,7 +302,7 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
     // if low confidence surface is still low confidence and have more than n points, remove it
     for (const std::shared_ptr<Surface>& surface : surfaces_with_low_confidence)
     {
-        bool still_low_confidence = surface->get_average_projective_distance() > settings_.average_projective_distance_threshold;
+        bool still_low_confidence = surface->get_average_projective_distance() > settings_.projective_std_threshold;
         bool more_than_n_points = surface->get_total_point_size() > settings_.remove_low_confidence_threshold;
         if (still_low_confidence && more_than_n_points)
         {

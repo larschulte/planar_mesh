@@ -160,15 +160,17 @@ const std::shared_ptr<Surface>& Vertex::get_surface() const
 {    
     if (surfaces_.empty()) throw std::runtime_error("Vertex has no surface.");
 
-    // Select the surface with the lowest average projective distance, return as reference
-    double min_distance = std::numeric_limits<double>::max();
+    // Select the surface with the lowest projective std, return as reference
+    double min_std = std::numeric_limits<double>::max();
     const std::shared_ptr<Surface>* selected_surface = nullptr;
     for (const std::shared_ptr<Surface>& surface : surfaces_) 
     {
-        double distance = surface->get_average_projective_distance();
-        if (distance < min_distance) 
+        // get stats
+        const std::vector<double>& stats = surface->get_projective_distance_stats();
+        double std = compute_std(stats);
+        if (std < min_std) 
         {
-            min_distance = distance;
+            min_std = std;
             selected_surface = &surface;
         }
     }

@@ -32,7 +32,7 @@ Settings::Settings()
     distance_threshold = 0.05;
     fit_plane_threshold = 10;
     remove_low_confidence_threshold = 20;
-    average_projective_distance_threshold = 0.1;
+    projective_std_threshold = 0.1;
     merged_eigenvalue_threshold = 15e-5;
     shuffle_pointcloud = false;
     use_radius_value = false;
