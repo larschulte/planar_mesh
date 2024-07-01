@@ -18,7 +18,12 @@ Settings::Settings()
         "/home/jiahao/datasets/2024-03-14-09-09-02-lenord-walk-for-lintong/individual_clouds/",
         "/home/jiahao/datasets/2024-03-14-09-09-02-lenord-walk-for-lintong/slam_pose_graph.g2o"
     );
-    std::string dataset = "room";
+    dataset_map["christchurch"] = std::make_pair(
+        "/home/jiahao/datasets/christ church spires/2024-03-18-09-43-37/individual_clouds/",
+        "/home/jiahao/datasets/christ church spires/2024-03-18-09-43-37/slam_pose_graph.g2o"
+    );
+    
+    std::string dataset = "christchurch";
     cloud_path = dataset_map[dataset].first;
     pose_path = dataset_map[dataset].second;
     
