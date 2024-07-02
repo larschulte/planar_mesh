@@ -368,6 +368,9 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
         }
     }
 
+    // log
+    std::cout << ">> found " << searched_faces.size() << " searched faces grouped into " << searched_surface_to_searched_faces.size() << " searched surfaces" << std::endl;
+
     // try add as interior point
     std::shared_ptr<InteriorPoint> temp_interior_point;
     bool added_as_interior_point = false;
@@ -386,13 +389,22 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
         if (points_behind_surface)
         {
             storage_->set_penetrating_point(generic_point);
-            for (const std::shared_ptr<Face>& face : mapped_searched_faces) surface->disconnect(face);
+            for (const std::shared_ptr<Face>& face : mapped_searched_faces) 
+            {
+                // log
+                std::cout << ">> disconnect penetrated face " << face->get_id() << " from surface " << surface->get_id() << std::endl;
+
+                surface->disconnect(face);
+            }
             storage_->clear_penetrating_point();
 
             // add back penetrated points
             std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash> copy_of_penetrated_points = storage_->get_penetrated_points();
             for (const std::shared_ptr<GenericPoint>& penetrated_point : copy_of_penetrated_points)
             {
+                // log
+                std::cout << ">> adding back penetrated point as vertex" << std::endl;
+
                 add_point_by_radius_search(penetrated_point);
                 storage_->delete_penetrated_point(penetrated_point);
             }
@@ -414,6 +426,9 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
             // connect to face
             for (const std::shared_ptr<Face>& face : mapped_searched_faces)
             {
+                // log
+                std::cout << ">> adding interior point to face " << face->get_id() << std::endl;
+
                 temp_interior_point->connect(face);
             }
         }
@@ -426,6 +441,9 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
     // if can't be added as interior point, add as vertex
     if (!added_as_interior_point) 
     {
+        // log
+        std::cout << ">> adding point as vertex" << std::endl;
+
         // add point as vertex
         add_point_by_radius_search(generic_point);
     }
