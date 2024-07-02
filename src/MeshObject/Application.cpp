@@ -140,21 +140,19 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
 
     */
 
-    // create new vertex
-    std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(generic_point);
-
     // when can not search
     if (!storage_->can_reverse_radius_search())
     {
         std::cout << ">> no points to search, adding new surface" << std::endl;
         std::shared_ptr<Surface> new_surface = storage_->add_surface();
+        std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(generic_point);
         new_surface->connect(new_vertex);
         return;
     }
 
     // get neighboring vertices
     std::map<int, double> point_to_radius_map;
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> neighboring_vertices = storage_->reverse_radius_search(new_vertex);
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> neighboring_vertices = storage_->reverse_radius_search(generic_point);
     std::cout << ">> found " << neighboring_vertices.size() << " neighboring vertices" << std::endl;
 
     // when no search results
@@ -162,9 +160,13 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
     {
         std::cout << ">> no search results, adding new surface" << std::endl;
         std::shared_ptr<Surface> new_surface = storage_->add_surface();
+        std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(generic_point);
         new_surface->connect(new_vertex);
         return;
     }
+
+    // add new vertex
+    std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(generic_point);
 
     // get neighboring surfaces
     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> neighboring_surfaces; 
