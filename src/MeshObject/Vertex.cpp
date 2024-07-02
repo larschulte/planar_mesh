@@ -354,8 +354,8 @@ void Vertex::disconnect(const std::shared_ptr<Edge>& edge)
     // update boundary state
     update_boundary_state();
 
-    // check self destruct
-    if (!deleting_ && edges_.empty()) storage_->delete_vertex(shared_from_this());
+    // // check self destruct
+    // if (!deleting_ && edges_.empty()) storage_->delete_vertex(shared_from_this());
 }
 
 void Vertex::disconnect(const std::shared_ptr<Face>& face)
@@ -367,8 +367,8 @@ void Vertex::disconnect(const std::shared_ptr<Face>& face)
     bool erased = faces_.erase(face);
     if (erased) face->disconnect(shared_from_this());
 
-    // check self destruct
-    if (!deleting_ && faces_.empty()) storage_->delete_vertex(shared_from_this());
+    // // check self destruct
+    // if (!deleting_ && faces_.empty()) storage_->delete_vertex(shared_from_this());
 }
 
 void Vertex::disconnect(const std::shared_ptr<Surface>& surface)

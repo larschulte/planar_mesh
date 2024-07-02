@@ -135,11 +135,11 @@ void Edge::disconnect(const std::shared_ptr<Face>& face)
     // update boundary state
     update_boundary_state();
 
-    // check self destruct
-    if (faces_.empty())
-    {
-        if (!deleting_) storage_->delete_edge(shared_from_this());
-    }
+    // // check self destruct
+    // if (faces_.empty())
+    // {
+    //     if (!deleting_) storage_->delete_edge(shared_from_this());
+    // }
 }
 
 void Edge::disconnect(const std::shared_ptr<Surface>& surface)
