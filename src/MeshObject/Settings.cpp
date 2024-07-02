@@ -38,7 +38,7 @@ Settings::Settings()
     projective_std_threshold = 0.1;
     merged_eigenvalue_threshold = 15e-5;
     shuffle_pointcloud = false;
-    use_radius_value = false;
+    use_radius_value = true;
     pointcloud_fraction = 1;
     radius_value = 2;
     radius_ratio = tan(4 * M_PI / 180);

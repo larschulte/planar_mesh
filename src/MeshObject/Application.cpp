@@ -172,7 +172,14 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> neighboring_surfaces; 
     for (std::shared_ptr<Vertex> vertex : neighboring_vertices)
     {
-        neighboring_surfaces.insert(vertex->get_surfaces().begin(), vertex->get_surfaces().end());
+        // only add to neighboring surface if the vertex is boundary in that surface
+        for (std::shared_ptr<Surface> surface : vertex->get_surfaces())
+        {
+            if (vertex->is_boundary(surface))
+            {
+                neighboring_surfaces.insert(surface);
+            }
+        }
     }
     std::cout << ">> grouped into " << neighboring_surfaces.size() << " neighboring surfaces" << std::endl;
 

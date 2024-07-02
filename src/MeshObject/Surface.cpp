@@ -381,7 +381,7 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
             if (!edge_exist) continue;
 
             // skip if edge is not boundary
-            if (!existing_edge->is_boundary()) continue;
+            if (!existing_edge->is_boundary(shared_from_this())) continue;
 
             // skip if face have intersections
             // // todo

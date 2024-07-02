@@ -106,7 +106,8 @@ void Edge::connect(const std::shared_ptr<Surface>& surface)
     bool inserted = surfaces_.insert(surface).second;
     if (inserted) surface->connect(shared_from_this());
     if (inserted) is_searchable_map_[surface] = false;
-    if (inserted) update_searchable_state(surface);
+    if (inserted) is_boundary_map_[surface] = false;
+    if (inserted) update_boundary_state(surface);
 }
 
 void Edge::disconnect(const std::shared_ptr<Vertex>& vertex)
@@ -150,6 +151,7 @@ void Edge::disconnect(const std::shared_ptr<Surface>& surface)
     bool erased = surfaces_.erase(surface);
     if (erased) surface->disconnect(shared_from_this());
     if (erased) remove_searchable_state(surface);
+    if (erased) is_boundary_map_.erase(surface);
     if (erased) is_searchable_map_.erase(surface);
 
     // check self destruct
@@ -200,38 +202,64 @@ bool Edge::has_vertex(const std::shared_ptr<Vertex>& vertex) const
     return get_vertex(0) == vertex || get_vertex(1) == vertex;
 }
 
-bool Edge::is_boundary() const
+bool Edge::is_boundary(const std::shared_ptr<Surface>& surface) const
 {
-    return is_boundary_;
+    return is_boundary_map_.at(surface);
 }
 
-void Edge::update_boundary_state()
+bool Edge::is_boundary() const
+{
+    for (const auto& pair : is_boundary_map_)
+    {
+        if (pair.second) return true;
+    }
+    return false;
+}
+
+void Edge::update_boundary_state(const std::shared_ptr<Surface>& surface)
 {
     if (deleting_) return;
 
     // update boundary state
-    bool previous_boundary_state = is_boundary_;
-    if (faces_.size() <= 1) 
+    bool previous_boundary_state = is_boundary_map_.at(surface);
+    // count number of faces in this surface
+    int num_faces_in_this_surface = 0;
+    for (const std::shared_ptr<Face>& face : faces_)
     {
-        is_boundary_ = true;
+        if (face->get_surfaces().find(surface) != face->get_surfaces().end())
+        {
+            num_faces_in_this_surface++;
+        }
+    }
+    if (num_faces_in_this_surface <= 1) 
+    {
+        is_boundary_map_.at(surface) = true;
     }
     else 
     {
-        is_boundary_ = false;
+        is_boundary_map_.at(surface) = false;
     }
-    bool changed_boundary_state = previous_boundary_state != is_boundary_;
+    bool changed_boundary_state = previous_boundary_state != is_boundary_map_.at(surface);
 
     // if changed state
     if (changed_boundary_state) 
     {
         // update connected surfaces
-        update_searchable_state();
+        update_searchable_state(surface);
 
         // update connected vertices
         for (const std::shared_ptr<Vertex>& vertex : vertices_)
         {
-            vertex->update_boundary_state();
+            vertex->update_boundary_state(surface);
         }
+    }
+}
+
+void Edge::update_boundary_state()
+{
+    for (const std::shared_ptr<Surface>& surface : surfaces_)
+    {
+        update_boundary_state(surface);
     }
 }
 
@@ -247,13 +275,13 @@ void Edge::update_searchable_state(const std::shared_ptr<Surface>& surface)
 {
     // upon changes of boundary state
     // add
-    if (is_boundary_ && !is_searchable_map_.at(surface))
+    if (is_boundary_map_.at(surface) && !is_searchable_map_.at(surface))
     {
         surface->add_searchable_edge(shared_from_this());
         is_searchable_map_.at(surface) = true;
     }
     // remove
-    if (!is_boundary_ && is_searchable_map_.at(surface))
+    if (!is_boundary_map_.at(surface) && is_searchable_map_.at(surface))
     {   
         surface->remove_searchable_edge(shared_from_this());
         is_searchable_map_.at(surface) = false;

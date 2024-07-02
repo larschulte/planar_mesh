@@ -6,6 +6,7 @@
 
 #include "MeshObject/MeshObject.hpp"
 #include "MeshObject/Settings.hpp"
+#include <map>
 
 // Forward declarations
 class Edge;
@@ -45,6 +46,7 @@ public:
     const Eigen::Vector2d& get_surface_coordinate();
 
     bool is_expired() const;
+    bool is_boundary(const std::shared_ptr<Surface>& surface) const;
     bool is_boundary() const;
 
     void connect(const std::shared_ptr<Edge>& edge);
@@ -56,7 +58,9 @@ public:
 
     void swap(const std::shared_ptr<Surface>& surface1, const std::shared_ptr<Surface>& surface2);
 
+    void update_boundary_state(const std::shared_ptr<Surface>& surface);
     void update_boundary_state();
+    void update_searchable_state();
 
 public: // for reverse radius search
     void set_reverse_radius_search_radius(double radius);
@@ -76,7 +80,7 @@ private:
     static Settings settings_;
 
     bool deleting_ = false;
-    bool is_boundary_ = false;
+    std::map<std::shared_ptr<Surface>, bool> is_boundary_map_;
     bool is_searchable_ = false;
     bool is_expired_ = true;
 
