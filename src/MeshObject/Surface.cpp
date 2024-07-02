@@ -313,9 +313,11 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
         std::shared_ptr<Edge> existing_edge;
         for (const std::shared_ptr<Edge>& edge : vertex->get_edges())
         {
-            if (edge->get_surfaces().find(shared_from_this()) == edge->get_surfaces().end()) continue;
             if (edge->has_vertex(nearby_vertex))
             {
+                // log
+                std::cout << "Edge already exists between " << vertex->get_id() << " and " << nearby_vertex->get_id() << std::endl;
+
                 edge_exist = true;
                 existing_edge = edge;
                 break;
@@ -328,12 +330,16 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
             used_vertices.insert(nearby_vertex);
 
             connected = true;
+            break;
         }
 
         // if no edge already exists, try to check if new edge can be created
         // if edge intersects
         if (edge_bvh_.tree_intersect_edge(vertex, nearby_vertex)) 
-        {
+        {   
+            // log
+            std::cout << "Try to create edge between " << vertex->get_id() << " and " << nearby_vertex->get_id() << "but is intersected." << std::endl;
+
             // that means the nearby_vertex have too large of search radius
             // so we should reduce it
             double distance = (vertex->get_position() - nearby_vertex->get_position()).norm();
