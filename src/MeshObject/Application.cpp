@@ -267,11 +267,11 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
         }
     }
 
-    // if new_vertex is in multiple surfaces, try merge them
-    if (new_vertex->get_surfaces().size() > 1)
-    {
-        new_vertex->try_merge_surfaces();
-    }
+    // // if new_vertex is in multiple surfaces, try merge them
+    // if (new_vertex->get_surfaces().size() > 1)
+    // {
+    //     new_vertex->try_merge_surfaces();
+    // }
 
     // check if new vertex is in high confidence surface
     bool new_vertex_in_high_confidence_surface = false;

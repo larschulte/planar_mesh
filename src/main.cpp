@@ -4,7 +4,7 @@
 using InputPointT = VilensPointT;
 int main()
 {
-    std::srand(42); // Fixed seed
+    std::srand(30); // Fixed seed
     // test by print
     std::cout << std::rand() << std::endl;
 
