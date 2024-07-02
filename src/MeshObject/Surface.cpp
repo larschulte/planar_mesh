@@ -391,9 +391,11 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
             std::shared_ptr<Face> existing_face;
             for (const std::shared_ptr<Face>& face : existing_edge->get_faces())
             {
-                if (face->get_surfaces().find(shared_from_this()) == face->get_surfaces().end()) continue;
                 if (face->has_vertex(vertex))
                 {
+                    // log
+                    std::cout << "Face already exists between " << vertex->get_id() << " and " << nearby_vertex0->get_id() << " and " << nearby_vertex1->get_id() << std::endl;
+                    
                     face_exist = true;
                     existing_face = face;
                     break;
@@ -405,7 +407,7 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
                 continue;
             }
 
-            // if face already exists, create face
+            // if face not already exists, create face
             std::shared_ptr<Face> new_face = storage_->add_face(shared_from_this(), vertex, nearby_vertex0, nearby_vertex1);
         }
     }
