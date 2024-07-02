@@ -420,6 +420,10 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
         }
         else if (points_within_surface)
         {
+            // log
+            std::cout << "========================== within surface " << surface->get_id() << std::endl;
+            std::cout << "distance = " << distance << ", mean = " << compute_mean(stats) << ", std = " << compute_std(stats) << std::endl;
+
             // create if not already created
             if (!added_as_interior_point) 
             {
