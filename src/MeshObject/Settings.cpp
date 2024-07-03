@@ -51,6 +51,7 @@ Settings::Settings()
     show_edge = true;
     show_projected_point = false;
     show_confirmed_only = false;
+    show_keycode = false;
     color_mode = 0;
     surface_denominator = 10.0;
     show_wireframe = true;

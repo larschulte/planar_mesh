@@ -126,9 +126,14 @@ void InteractiveViewer<PointT>::update_display()
 template <typename PointT>
 void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::KeyboardEvent &event, void*) 
 {
-    // print key event
-    std::cout << "keySym: " << event.getKeySym() << " | keyCode: " << event.getKeyCode() << std::endl;
-
+    if (settings_.show_keycode)
+    {
+        std::cout << "keySym: " << event.getKeySym() << " | keyCode: " << event.getKeyCode() << std::endl;
+    }
+    if (event.getKeySym() == "Num_Lock" && event.keyDown())
+    {
+        settings_.show_keycode = !settings_.show_keycode;
+    }
     if (event.getKeySym() == "space" && event.keyDown())
     {
         app_.loop();
