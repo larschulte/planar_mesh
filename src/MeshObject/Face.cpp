@@ -29,6 +29,9 @@ void Face::initialize_(const std::shared_ptr<Storage>& storage, const std::share
     connect(vertex0);
     connect(vertex1);
     connect(vertex2);
+
+    // connect surface
+    connect(surface);
     
     // get edges
     std::shared_ptr<Edge> edge0;
@@ -64,9 +67,6 @@ void Face::initialize_(const std::shared_ptr<Storage>& storage, const std::share
     connect(edge0);
     connect(edge1);
     connect(edge2);
-
-    // connect surface
-    connect(surface);
 
     // compute center
     const Eigen::Vector3d& pos0 = vertex0->get_position();
