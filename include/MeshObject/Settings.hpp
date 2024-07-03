@@ -23,6 +23,7 @@ struct Settings
     double pointcloud_fraction;
     double radius_value;
     double radius_ratio; // distance to radius ratio
+    double range_noise_std;
 
     // interactive viewer settings
     bool show_generic_points;

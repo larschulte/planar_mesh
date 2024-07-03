@@ -417,7 +417,7 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
 
         const std::vector<double>& stats = surface->get_projective_distance_stats();
         double distance = surface->compute_point_projective_distance(generic_point);
-        bool points_behind_surface = (distance - compute_mean(stats)) < -3*compute_std(stats);
+        bool points_behind_surface = (distance - compute_mean(stats)) < - 3*compute_std(stats) - 3*settings_.range_noise_std;
         
         if (points_behind_surface)
         {
@@ -469,8 +469,8 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
 
         const std::vector<double>& stats = surface->get_projective_distance_stats();
         double distance = surface->compute_point_projective_distance(generic_point);
-        bool points_before_surface = (distance - compute_mean(stats)) > 3*compute_std(stats);
-        bool points_behind_surface = (distance - compute_mean(stats)) < -3*compute_std(stats);
+        bool points_before_surface = (distance - compute_mean(stats)) > 3*compute_std(stats) + 3*settings_.range_noise_std;
+        bool points_behind_surface = (distance - compute_mean(stats)) < - 3*compute_std(stats) - 3*settings_.range_noise_std;
         bool points_within_surface = !points_before_surface && !points_behind_surface;
         
         if (points_within_surface)

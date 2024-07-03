@@ -42,6 +42,7 @@ Settings::Settings()
     pointcloud_fraction = 1;
     radius_value = 2;
     radius_ratio = tan(4 * M_PI / 180);
+    range_noise_std = 0.001;
     
     // interactive viewer settings
     show_generic_points = true;
