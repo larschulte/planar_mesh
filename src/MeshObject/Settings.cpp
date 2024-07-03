@@ -50,6 +50,7 @@ Settings::Settings()
     show_triangle = true;
     show_edge = true;
     show_projected_point = false;
+    show_confirmed_only = false;
     color_mode = 0;
     surface_denominator = 10.0;
     show_wireframe = true;

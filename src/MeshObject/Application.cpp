@@ -611,6 +611,9 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_interior_poi
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
     for (const std::shared_ptr<InteriorPoint>& interior_point : storage_->get_interior_points())
     {
+        // skip if not confirmed
+        if (settings.show_confirmed_only && !interior_point->is_confirmed()) continue;
+        
         pcl::PointXYZRGB point;
         if (settings.show_projected_point)
         {
@@ -708,6 +711,9 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_vertex_point
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
     for (const std::shared_ptr<Vertex>& vertex : storage_->get_vertices())
     {
+        // skip if not confirmed
+        if (setting.show_confirmed_only && !vertex->is_confirmed()) continue;
+
         pcl::PointXYZRGB point;
         if (setting.show_projected_point)
         {

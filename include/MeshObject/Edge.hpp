@@ -39,6 +39,9 @@ public:
     void disconnect(const std::shared_ptr<Surface>& surface);
     void disconnect(const std::shared_ptr<Edge>& sibling_edge);
 
+    void update_confirmed_status();
+    bool is_confirmed() const;
+
     void swap(const std::shared_ptr<Surface>& surface1, const std::shared_ptr<Surface>& surface2);
 
     bool has_vertex(const std::shared_ptr<Vertex>& vertex) const;
@@ -57,6 +60,9 @@ private:
     bool is_expired_ = true;
     std::map<std::shared_ptr<Surface>, bool> is_boundary_map_;
     std::map<std::shared_ptr<Surface>, bool> is_searchable_map_;
+
+    std::size_t num_confirmed_faces = 0;
+    bool is_confirmed_ = false;
 
     Eigen::Vector3d center_;
     Eigen::Vector3d max_;

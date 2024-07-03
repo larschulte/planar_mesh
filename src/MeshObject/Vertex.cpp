@@ -338,6 +338,9 @@ void Vertex::connect(const std::shared_ptr<Face>& face)
     // connect
     bool inserted = faces_.insert(face).second;
     if (inserted) face->connect(shared_from_this());
+
+    // update confirmed status
+    if (inserted) update_confirmed_status();
 }
 
 void Vertex::connect(const std::shared_ptr<Surface>& surface)
@@ -394,6 +397,9 @@ void Vertex::disconnect(const std::shared_ptr<Face>& face)
     bool erased = faces_.erase(face);
     if (erased) face->disconnect(shared_from_this());
 
+    // update confirmed status
+    if (erased) update_confirmed_status();
+    
     // // check self destruct
     // if (!deleting_ && faces_.empty()) storage_->delete_vertex(shared_from_this());
 }
@@ -427,6 +433,25 @@ void Vertex::disconnect(const std::shared_ptr<Vertex>& sibling_vertex)
             sibling_vertex_->disconnect(sibling_vertex);
         }
     }
+}
+
+void Vertex::update_confirmed_status()
+{
+    // update number of confirmed faces
+    num_confirmed_faces = 0;
+    for (const std::shared_ptr<Face>& face : faces_)
+    {
+        if (face->is_confirmed()) num_confirmed_faces++;
+    }
+
+    // update confirmed status
+    if (num_confirmed_faces >= 1) is_confirmed_ = true;
+    else is_confirmed_ = false;
+}
+
+bool Vertex::is_confirmed() const
+{
+    return is_confirmed_;
 }
 
 // swap surface1 with surface2

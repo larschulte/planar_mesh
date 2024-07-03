@@ -24,11 +24,12 @@ template <typename PointT>
 void InteractiveViewer<PointT>::update_display()
 {
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr vertex_pointcloud = app_.compute_vertex_point_pointcloud(settings_);
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr interior_point_cloud = app_.compute_interior_point_pointcloud(settings_);
     std::map<std::shared_ptr<Vertex>, int> vertex_to_cloud_indices_map = app_.get_vertex_to_cloud_indices_map();
     std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces = app_.get_faces();
     std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> boundary_edges = app_.get_boundary_edges();
 
-    // pointcloud
+    // vertex points
     viewer_->removeShape("point_cloud");
     if (settings_.show_pointcloud)
     {
@@ -40,7 +41,6 @@ void InteractiveViewer<PointT>::update_display()
     viewer_->removeShape("interior_points");
     if (settings_.show_interior_points)
     {
-        pcl::PointCloud<pcl::PointXYZRGB>::Ptr interior_point_cloud = app_.compute_interior_point_pointcloud(settings_);
         viewer_->addPointCloud<pcl::PointXYZRGB>(interior_point_cloud, "interior_points");
         viewer_->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 6, "interior_points");
     }
@@ -62,6 +62,9 @@ void InteractiveViewer<PointT>::update_display()
         pcl::toPCLPointCloud2(*vertex_pointcloud, triangle_mesh.cloud);
         for (const std::shared_ptr<Face>& face : faces)
         {
+            // skip if not confirmed
+            if (settings_.show_confirmed_only && !face->is_confirmed()) continue;
+
             pcl::Vertices triangle;
             triangle.vertices.push_back(vertex_to_cloud_indices_map.at(face->get_vertex(0)));
             triangle.vertices.push_back(vertex_to_cloud_indices_map.at(face->get_vertex(1)));
@@ -79,6 +82,9 @@ void InteractiveViewer<PointT>::update_display()
         pcl::toPCLPointCloud2(*vertex_pointcloud, boundary_mesh.cloud);
         for (const std::shared_ptr<Edge>& edge : boundary_edges)
         {
+            // skip if not confirmed
+            if (settings_.show_confirmed_only && !edge->is_confirmed()) continue;
+            
             pcl::Vertices boundary_edge;
             boundary_edge.vertices.push_back(vertex_to_cloud_indices_map.at(edge->get_vertex(0)));
             boundary_edge.vertices.push_back(vertex_to_cloud_indices_map.at(edge->get_vertex(1)));
@@ -227,8 +233,8 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
     }
     if (event.getKeySym() == "z" && event.keyDown())
     {
-        // change int color mode between 1 and 3
-        settings_.color_mode = (settings_.color_mode + 1) % 3;
+        // show confirmed only
+        settings_.show_confirmed_only = !settings_.show_confirmed_only;
         update_display();
     }
     if (event.getKeySym() == "v" && event.keyDown())

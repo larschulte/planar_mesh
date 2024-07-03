@@ -96,7 +96,10 @@ void Edge::connect(const std::shared_ptr<Face>& face)
     if (inserted) face->connect(shared_from_this());
 
     // update boundary state
-    update_boundary_state();
+    if (inserted) update_boundary_state();
+
+    // update confirmed status
+    if (inserted) update_confirmed_status();
 }
 
 void Edge::connect(const std::shared_ptr<Surface>& surface)
@@ -152,7 +155,10 @@ void Edge::disconnect(const std::shared_ptr<Face>& face)
     if (erased) face->disconnect(shared_from_this());
 
     // update boundary state
-    update_boundary_state();
+    if (erased) update_boundary_state();
+
+    // update confirmed status
+    if (erased) update_confirmed_status();
 
     // // check self destruct
     // if (faces_.empty())
@@ -192,6 +198,25 @@ void Edge::disconnect(const std::shared_ptr<Edge>& sibling_edge)
             sibling_edge_->disconnect(sibling_edge);
         }
     }
+}
+
+void Edge::update_confirmed_status()
+{
+    // update number of confirmed faces
+    num_confirmed_faces = 0;
+    for (const std::shared_ptr<Face>& face : faces_)
+    {
+        if (face->is_confirmed()) num_confirmed_faces++;
+    }
+
+    // update confirmed status
+    if (num_confirmed_faces >= 1) is_confirmed_ = true;
+    else is_confirmed_ = false;
+}
+
+bool Edge::is_confirmed() const
+{
+    return is_confirmed_;
 }
 
 // swap surface1 with surface2

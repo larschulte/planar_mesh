@@ -31,6 +31,7 @@ struct Settings
     bool show_triangle;
     bool show_edge;
     bool show_projected_point;
+    bool show_confirmed_only;
     int color_mode;
     double surface_denominator;
     bool show_wireframe;
