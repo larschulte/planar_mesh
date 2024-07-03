@@ -122,6 +122,9 @@ const std::shared_ptr<Surface>& InteriorPoint::get_surface() const
 
 const std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash>& InteriorPoint::get_surfaces() const
 {
+    // if more than one surface, throw error
+    if (surfaces_.size() > 1) throw std::runtime_error("Interior point connected to more than one surface.");
+
     return surfaces_;
 }
 

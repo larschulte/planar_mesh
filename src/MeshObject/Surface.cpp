@@ -308,32 +308,6 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> used_vertices;
     for (const auto& nearby_vertex : nearby_vertices)
     {
-        // if edge already exists
-        bool edge_exist = false;
-        std::shared_ptr<Edge> existing_edge;
-        for (const std::shared_ptr<Edge>& edge : vertex->get_edges())
-        {
-            if (edge->has_vertex(nearby_vertex))
-            {
-                // log
-                std::cout << "Edge already exists between " << vertex->get_id() << " and " << nearby_vertex->get_id() << std::endl;
-
-                edge_exist = true;
-                existing_edge = edge;
-                break;
-            }
-        }
-        if (edge_exist)
-        {   
-            connect(existing_edge);
-            connect(vertex);
-            used_vertices.insert(nearby_vertex);
-
-            connected = true;
-            break;
-        }
-
-        // if no edge already exists, try to check if new edge can be created
         // if edge intersects
         if (edge_bvh_.tree_intersect_edge(vertex, nearby_vertex)) 
         {   
@@ -354,7 +328,19 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
             used_vertices.insert(nearby_vertex);
 
             connected = true;
-        }        
+
+            // check if the new edge have any sibling edges
+            for (const auto& sibling_vertex : vertex->get_sibling_vertices())
+            {
+                for (const auto& edge : sibling_vertex->get_edges())
+                {
+                    if (edge->has_vertex(nearby_vertex))
+                    {
+                        new_edge->connect(edge);
+                    }
+                }
+            }
+        }
     }
 
     // create faces
@@ -386,29 +372,41 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
             // skip if face have intersections
             // // todo
 
-            // check if face already exists
-            bool face_exist = false;
-            std::shared_ptr<Face> existing_face;
-            for (const std::shared_ptr<Face>& face : existing_edge->get_faces())
-            {
-                if (face->has_vertex(vertex))
-                {
-                    // log
-                    std::cout << "Face already exists between " << vertex->get_id() << " and " << nearby_vertex0->get_id() << " and " << nearby_vertex1->get_id() << std::endl;
+            // // check if face already exists
+            // bool face_exist = false;
+            // std::shared_ptr<Face> existing_face;
+            // for (const std::shared_ptr<Face>& face : existing_edge->get_faces())
+            // {
+            //     if (face->has_vertex(vertex))
+            //     {
+            //         // log
+            //         std::cout << "Face already exists between " << vertex->get_id() << " and " << nearby_vertex0->get_id() << " and " << nearby_vertex1->get_id() << std::endl;
                     
-                    face_exist = true;
-                    existing_face = face;
-                    break;
-                }
-            }
-            if (face_exist)
-            {
-                connect(existing_face);
-                continue;
-            }
+            //         face_exist = true;
+            //         existing_face = face;
+            //         break;
+            //     }
+            // }
+            // if (face_exist)
+            // {
+            //     connect(existing_face);
+            //     continue;
+            // }
 
             // if face not already exists, create face
             std::shared_ptr<Face> new_face = storage_->add_face(shared_from_this(), vertex, nearby_vertex0, nearby_vertex1);
+
+            // connnect new face to its sibling faces
+            for (const auto& sibling_edge : existing_edge->get_sibling_edges())
+            {
+                for (const auto& sibling_face : sibling_edge->get_faces())
+                {
+                    if (sibling_face->has_vertex(vertex))
+                    {
+                        new_face->connect(sibling_face);
+                    }
+                }
+            }
         }
     }
 

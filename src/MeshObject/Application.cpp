@@ -166,7 +166,7 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
     }
 
     // add new vertex
-    std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(generic_point);
+    std::vector<std::shared_ptr<Vertex>> sibling_vertices;
 
     // get neighboring surfaces
     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> neighboring_surfaces; 
@@ -208,7 +208,7 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
         // remaining surfaces with high confidence
 
         // mismatch if distance is too far from the mean
-        double distance = std::fabs(surface->compute_point_projective_distance(new_vertex));
+        double distance = std::fabs(surface->compute_point_projective_distance(generic_point));
         if ((distance - mean) > 3*std)
         {
             surfaces_that_mismatch.insert(surface);
@@ -217,7 +217,7 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
 
         // mismatch if observed from behind
         Eigen::Vector3d normal = surface->get_normal();
-        Eigen::Vector3d direction = new_vertex->get_origin() - new_vertex->get_position();
+        Eigen::Vector3d direction = generic_point->get_origin() - generic_point->get_position();
         if (normal.dot(direction) < 0) 
         {
             surfaces_that_mismatch.insert(surface);
@@ -233,14 +233,36 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
     for (std::shared_ptr<Surface> surface : surfaces_with_low_confidence)
     {
         std::cout << ">> low confidence surface " << surface->get_id() << std::endl;
-        surface->connect_by_edges_and_faces(new_vertex, neighboring_vertices);
+        
+        std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(generic_point);
+        bool connected = surface->connect_by_edges_and_faces(new_vertex, neighboring_vertices);
+        if (connected)
+        {
+            sibling_vertices.push_back(new_vertex);
+            sibling_vertices[0]->connect(new_vertex);
+        }
+        else
+        {
+            storage_->delete_vertex(new_vertex);
+        }
     }
 
     // for surfaces that match
     for (std::shared_ptr<Surface> surface : surfaces_that_match)
     {
         std::cout << ">> matched surface " << surface->get_id() << std::endl;
-        surface->connect_by_edges_and_faces(new_vertex, neighboring_vertices);
+        
+        std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(generic_point);
+        bool connected = surface->connect_by_edges_and_faces(new_vertex, neighboring_vertices);
+        if (connected)
+        {
+            sibling_vertices.push_back(new_vertex);
+            sibling_vertices[0]->connect(new_vertex);
+        }
+        else
+        {
+            storage_->delete_vertex(new_vertex);
+        }
     }
 
     // for surfaces that mismatch
@@ -255,15 +277,15 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
             if (vertex->get_surfaces().find(surface) == vertex->get_surfaces().end()) continue;
 
             // distance
-            double distance = (vertex->get_position() - new_vertex->get_position()).norm();
+            double distance = (vertex->get_position() - generic_point->get_position()).norm();
             
             // reduce the search radius of the searched vertex
             std::cout << ">>   reducing search radius of vertex " << vertex->get_id() << std::endl;
             vertex->reduce_reverse_radius_search_radius(distance);
             
-            // reduce the search radius of the new vertex
-            std::cout << ">>   reducing search radius of new vertex " << new_vertex->get_id() << std::endl;
-            new_vertex->reduce_reverse_radius_search_radius(distance);
+            // // reduce the search radius of the new vertex
+            // std::cout << ">>   reducing search radius of new vertex " << new_vertex->get_id() << std::endl;
+            // new_vertex->reduce_reverse_radius_search_radius(distance);
         }
     }
 
@@ -278,11 +300,15 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
     for (std::shared_ptr<Surface> surface : surfaces_that_match)
     {
         // if new vertex is in one of the high confidence surface, break
-        if (new_vertex->get_surfaces().find(surface) != new_vertex->get_surfaces().end())
+        for (std::shared_ptr<Vertex> vertex : sibling_vertices)
         {
-            new_vertex_in_high_confidence_surface = true;
-            break;
+            if (vertex->get_surfaces().find(surface) != vertex->get_surfaces().end())
+            {
+                new_vertex_in_high_confidence_surface = true;
+                break;
+            }
         }
+        if (new_vertex_in_high_confidence_surface) break;
     }
 
     // // get all edges the new vertex is connected to
@@ -306,20 +332,23 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
     if (!new_vertex_in_high_confidence_surface)
     {
         std::shared_ptr<Surface> new_surface = storage_->add_surface();
+        std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(generic_point);
         new_surface->connect(new_vertex);
+        sibling_vertices.push_back(new_vertex);
+        sibling_vertices[0]->connect(new_vertex);
     }
 
-    // if low confidence surface is still low confidence and have more than n points, remove it
-    for (const std::shared_ptr<Surface>& surface : surfaces_with_low_confidence)
-    {
-        bool still_low_confidence = surface->get_average_projective_distance() > settings_.projective_std_threshold;
-        bool more_than_n_points = surface->get_total_point_size() > settings_.remove_low_confidence_threshold;
-        if (still_low_confidence && more_than_n_points)
-        {
-            std::cout << ">> removing low confidence surface " << surface->get_id() << std::endl;
-            storage_->delete_surface(surface);
-        }
-    }
+    // // if low confidence surface is still low confidence and have more than n points, remove it
+    // for (const std::shared_ptr<Surface>& surface : surfaces_with_low_confidence)
+    // {
+    //     bool still_low_confidence = surface->get_average_projective_distance() > settings_.projective_std_threshold;
+    //     bool more_than_n_points = surface->get_total_point_size() > settings_.remove_low_confidence_threshold;
+    //     if (still_low_confidence && more_than_n_points)
+    //     {
+    //         std::cout << ">> removing low confidence surface " << surface->get_id() << std::endl;
+    //         storage_->delete_surface(surface);
+    //     }
+    // }
 }
 
 template <typename PointT>
@@ -420,9 +449,7 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
     // process points within surface
 
     // try add as interior point
-    std::shared_ptr<InteriorPoint> temp_interior_point;
-    bool added_as_interior_point = false;
-    
+    std::vector<std::shared_ptr<InteriorPoint>> sibling_interior_points;
     for (const auto& pair : searched_surface_to_searched_faces)
     {
         const std::shared_ptr<Surface>& surface = pair.first;
@@ -452,14 +479,10 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
             std::cout << "========================== within surface " << surface->get_id() << std::endl;
             std::cout << "distance = " << distance << ", mean = " << compute_mean(stats) << ", std = " << compute_std(stats) << std::endl;
 
-            // create if not already created
-            if (!added_as_interior_point) 
-            {
-                temp_interior_point = storage_->add_interior_point(generic_point);
-                added_as_interior_point = true;
-            }
-
-            // add interior points to mulitple faces and surfaces
+            // add as interior point
+            std::shared_ptr<InteriorPoint> temp_interior_point = storage_->add_interior_point(generic_point);
+            sibling_interior_points.push_back(temp_interior_point);
+            sibling_interior_points[0]->connect(temp_interior_point);
 
             // connect to surface
             temp_interior_point->connect(surface);
@@ -479,7 +502,7 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
     }
 
     // if can't be added as interior point, add as vertex
-    if (!added_as_interior_point) 
+    if (sibling_interior_points.size() == 0) 
     {
         // log
         std::cout << ">> adding point as vertex" << std::endl;
