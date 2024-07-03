@@ -28,7 +28,7 @@ Settings::Settings()
     pose_path = dataset_map[dataset].second;
 
     use_sim_data = true;
-    sim_object = 0;
+    sim_object = 1;
     
     start_cloud = 50;
     start_point = 0;
