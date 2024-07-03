@@ -312,7 +312,7 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
         if (edge_bvh_.tree_intersect_edge(vertex, nearby_vertex)) 
         {   
             // log
-            std::cout << "Try to create edge between " << vertex->get_id() << " and " << nearby_vertex->get_id() << "but is intersected." << std::endl;
+            std::cout << "Try to create edge between " << vertex->get_id() << " and " << nearby_vertex->get_id() << " but is intersected." << std::endl;
 
             // // that means the nearby_vertex have too large of search radius
             // // so we should reduce it
