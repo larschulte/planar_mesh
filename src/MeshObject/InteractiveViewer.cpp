@@ -120,26 +120,61 @@ void InteractiveViewer<PointT>::update_display()
 template <typename PointT>
 void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::KeyboardEvent &event, void*) 
 {
+    // print key event
+    std::cout << "keySym: " << event.getKeySym() << " | keyCode: " << event.getKeyCode() << std::endl;
+
     if (event.getKeySym() == "space" && event.keyDown())
     {
         app_.loop();
         update_display();
     }
+    // kp number 0
     if (event.getKeySym() == "KP_Insert" && event.keyDown())
     {
-        for (int i = 0; i < 100; i++) app_.step();
+        settings_.color_mode = 0;
         update_display();
     }
-    if (event.getKeySym() == "KP_Delete" && event.keyDown())
+    // kp number 1
+    if (event.getKeySym() == "KP_End" && event.keyDown())
     {
-        for (int i = 0; i < 1000; i++) app_.step();
+        settings_.color_mode = 1;
         update_display();
     }
-    if (event.getKeySym() == "KP_Enter" && event.keyDown())
+    // kp number 2
+    if (event.getKeySym() == "KP_Down" && event.keyDown())
     {
-        app_.loop();
+        settings_.color_mode = 2;
         update_display();
     }
+    // kp number 3
+    if (event.getKeySym() == "KP_Next" && event.keyDown())
+    {
+    }
+    // kp number 4
+    if (event.getKeySym() == "KP_Left" && event.keyDown())
+    {
+    }
+    // kp number 5
+    if (event.getKeySym() == "KP_Begin" && event.keyDown())
+    {
+    }
+    // kp number 6
+    if (event.getKeySym() == "KP_Right" && event.keyDown())
+    {
+    }
+    // kp number 7
+    if (event.getKeySym() == "KP_Home" && event.keyDown())
+    { 
+    }
+    // kp numebr 8
+    if (event.getKeySym() == "KP_Up" && event.keyDown())
+    {
+    }
+    // kp numebr 9
+    if (event.getKeySym() == "KP_Prior" && event.keyDown())
+    {
+    }
+    
     if (event.getKeySym() == "1" && event.keyDown())
     {
         app_.step();
@@ -200,36 +235,6 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
     {
         settings_.show_wireframe = !settings_.show_wireframe;
         update_display();
-    }
-    if (event.getKeySym() == "KP_Next" && event.keyDown())
-    {
-        app_.ith_cloud += 1;
-        app_.load_point_cloud();
-    }
-    if (event.getKeySym() == "KP_End" && event.keyDown())
-    {
-        app_.ith_cloud -= 1;
-        app_.load_point_cloud();
-    }
-    if (event.getKeySym() == "KP_Right" && event.keyDown())
-    {
-        app_.ith_cloud += 10;
-        app_.load_point_cloud();
-    }
-    if (event.getKeySym() == "KP_Left" && event.keyDown())
-    {
-        app_.ith_cloud -= 10;
-        app_.load_point_cloud();
-    }
-    if (event.getKeySym() == "KP_Prior" && event.keyDown())
-    {
-        app_.ith_cloud += 100;
-        app_.load_point_cloud();
-    }
-    if (event.getKeySym() == "KP_Home" && event.keyDown())
-    {
-        app_.ith_cloud -= 100;
-        app_.load_point_cloud();
     }
     if (event.getKeySym() == "m" && event.keyDown())
     {
