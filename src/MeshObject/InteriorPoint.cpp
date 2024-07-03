@@ -263,13 +263,6 @@ void InteriorPoint::disconnect(const std::shared_ptr<InteriorPoint>& sibling_int
     // disconnect
     bool erased = sibling_interior_points_.erase(sibling_interior_point);
     if (erased) sibling_interior_point->disconnect(shared_from_this());
-    if (erased)
-    {
-        for (const std::shared_ptr<InteriorPoint>& sibling_interior_point_ : sibling_interior_points_)
-        {
-            sibling_interior_point_->disconnect(sibling_interior_point);
-        }
-    }
 }
 
 void InteriorPoint::update_confirmed_status()

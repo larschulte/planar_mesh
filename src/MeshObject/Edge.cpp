@@ -191,13 +191,6 @@ void Edge::disconnect(const std::shared_ptr<Edge>& sibling_edge)
     // disconnect
     bool erased = sibling_edges_.erase(sibling_edge);
     if (erased) sibling_edge->disconnect(shared_from_this());
-    if (erased)
-    {
-        for (const std::shared_ptr<Edge>& sibling_edge_ : sibling_edges_)
-        {
-            sibling_edge_->disconnect(sibling_edge);
-        }
-    }
 }
 
 void Edge::update_confirmed_status()

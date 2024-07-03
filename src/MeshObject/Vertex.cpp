@@ -426,13 +426,6 @@ void Vertex::disconnect(const std::shared_ptr<Vertex>& sibling_vertex)
     // disconnect
     bool erased = sibling_vertices_.erase(sibling_vertex);
     if (erased) sibling_vertex->disconnect(shared_from_this());
-    if (erased)
-    {
-        for (const std::shared_ptr<Vertex>& sibling_vertex_ : sibling_vertices_)
-        {
-            sibling_vertex_->disconnect(sibling_vertex);
-        }
-    }
 }
 
 void Vertex::update_confirmed_status()

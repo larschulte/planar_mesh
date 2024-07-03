@@ -363,13 +363,6 @@ void Face::disconnect(const std::shared_ptr<Face>& sibling_face)
     // delete
     bool erased = sibling_faces_.erase(sibling_face);
     if (erased) sibling_face->disconnect(shared_from_this());
-    if (erased)
-    {
-        for (const std::shared_ptr<Face>& sibling_face_ : sibling_faces_)
-        {
-            sibling_face_->disconnect(sibling_face);
-        }
-    }
 }
 
 void Face::update_confirmed_status()
