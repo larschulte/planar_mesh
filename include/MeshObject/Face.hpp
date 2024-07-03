@@ -26,6 +26,7 @@ public:
     const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& get_vertices() const;
     const std::shared_ptr<Vertex>& get_vertex(int index) const;
     const std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash>& get_surfaces() const;
+    const std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& get_sibling_faces() const;
     bool is_expired() const;
     bool has_vertex(const std::shared_ptr<Vertex>& vertex) const;
 
@@ -36,10 +37,12 @@ public:
     void connect(const std::shared_ptr<Edge>& edge);
     void connect(const std::shared_ptr<Surface>& surface);
     void connect(const std::shared_ptr<InteriorPoint>& interior_point);
+    void connect(const std::shared_ptr<Face>& sibling_face);
     void disconnect(const std::shared_ptr<Vertex>& vertex);
     void disconnect(const std::shared_ptr<Edge>& edge);
     void disconnect(const std::shared_ptr<Surface>& surface);
     void disconnect(const std::shared_ptr<InteriorPoint>& interior_point);
+    void disconnect(const std::shared_ptr<Face>& sibling_face);
 
     void swap(const std::shared_ptr<Surface>& surface1, const std::shared_ptr<Surface>& surface2);
 
@@ -57,6 +60,8 @@ private:
     std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges_;
     std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> interior_points_;
     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_;
+
+    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> sibling_faces_;
 };
 
 bool operator<(const std::shared_ptr<Face>& lhs, const std::shared_ptr<Face>& rhs);

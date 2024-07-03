@@ -32,6 +32,7 @@ public:
     const std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash>& get_surfaces() const;
     bool has_surface() const;
     const std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& get_edges() const;
+    const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& get_sibling_vertices() const;
     std::size_t get_num_deletes() const;
 
     void try_merge_surfaces();
@@ -52,9 +53,11 @@ public:
     void connect(const std::shared_ptr<Edge>& edge);
     void connect(const std::shared_ptr<Face>& face);
     void connect(const std::shared_ptr<Surface>& surface);
+    void connect(const std::shared_ptr<Vertex>& sibling_vertex);
     void disconnect(const std::shared_ptr<Edge>& edge);
     void disconnect(const std::shared_ptr<Face>& face);
     void disconnect(const std::shared_ptr<Surface>& surface);
+    void disconnect(const std::shared_ptr<Vertex>& sibling_vertex);
 
     void swap(const std::shared_ptr<Surface>& surface1, const std::shared_ptr<Surface>& surface2);
 
@@ -92,6 +95,8 @@ private:
     std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges_;
     std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces_;
     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_;
+
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> sibling_vertices_;
 
     Eigen::Matrix3d eigenvectors_used_;
     Eigen::Vector2d surface_coordinate_;

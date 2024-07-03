@@ -24,6 +24,7 @@ public:
     const std::shared_ptr<Vertex>& get_vertex(int index) const;
     const std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash>& get_surfaces() const;
     const std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& get_faces() const;
+    const std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& get_sibling_edges() const;
     const Eigen::Vector3d& get_center() const;
     const Eigen::Vector3d& get_max() const;
     const Eigen::Vector3d& get_min() const;
@@ -32,9 +33,11 @@ public:
     void connect(const std::shared_ptr<Vertex>& vertex);
     void connect(const std::shared_ptr<Face>& face);
     void connect(const std::shared_ptr<Surface>& surface);
+    void connect(const std::shared_ptr<Edge>& sibling_edge);
     void disconnect(const std::shared_ptr<Vertex>& vertex);
     void disconnect(const std::shared_ptr<Face>& face);
     void disconnect(const std::shared_ptr<Surface>& surface);
+    void disconnect(const std::shared_ptr<Edge>& sibling_edge);
 
     void swap(const std::shared_ptr<Surface>& surface1, const std::shared_ptr<Surface>& surface2);
 
@@ -65,6 +68,8 @@ private:
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertices_;
     std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces_;
     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_;
+    
+    std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> sibling_edges_;
 };
 
 bool operator<(const std::shared_ptr<Edge>& lhs, const std::shared_ptr<Edge>& rhs);

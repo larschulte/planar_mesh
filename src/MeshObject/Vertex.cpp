@@ -66,9 +66,11 @@ void Vertex::delete_()
     std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges = edges_;
     std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces = faces_;
     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces = surfaces_;
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> sibling_vertices = sibling_vertices_;
     for (const auto& edge : edges) disconnect(edge);
     for (const auto& face : faces) disconnect(face);
     for (const auto& surface : surfaces) disconnect(surface);
+    for (const auto& sibling_vertex : sibling_vertices) disconnect(sibling_vertex);
 
     // remove from search tree
     if (is_searchable_)
@@ -191,6 +193,11 @@ bool Vertex::has_surface() const
 const std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& Vertex::get_edges() const 
 { 
     return edges_; 
+}
+
+const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& Vertex::get_sibling_vertices() const 
+{ 
+    return sibling_vertices_; 
 }
 
 std::size_t Vertex::get_num_deletes() const
@@ -342,6 +349,23 @@ void Vertex::connect(const std::shared_ptr<Surface>& surface)
     if (inserted) update_boundary_state(surface);
 }
 
+void Vertex::connect(const std::shared_ptr<Vertex>& sibling_vertex)
+{
+    // check input
+    if (sibling_vertex->is_expired()) throw std::runtime_error("Attempts to connect vertex with invalid sibling vertex.");
+
+    // connect
+    bool inserted = sibling_vertices_.insert(sibling_vertex).second;
+    if (inserted) sibling_vertex->connect(shared_from_this());
+    if (inserted)
+    {
+        for (const std::shared_ptr<Vertex>& sibling_vertex_ : sibling_vertices_)
+        {
+            sibling_vertex_->connect(sibling_vertex);
+        }
+    }
+}
+
 void Vertex::disconnect(const std::shared_ptr<Edge>& edge) 
 {
     // check input
@@ -383,6 +407,23 @@ void Vertex::disconnect(const std::shared_ptr<Surface>& surface)
 
     // check self destruct
     if (!deleting_ && surfaces_.empty()) storage_->delete_vertex(shared_from_this());
+}
+
+void Vertex::disconnect(const std::shared_ptr<Vertex>& sibling_vertex)
+{
+    // check input
+    if (sibling_vertex->is_expired()) return;
+
+    // disconnect
+    bool erased = sibling_vertices_.erase(sibling_vertex);
+    if (erased) sibling_vertex->disconnect(shared_from_this());
+    if (erased)
+    {
+        for (const std::shared_ptr<Vertex>& sibling_vertex_ : sibling_vertices_)
+        {
+            sibling_vertex_->disconnect(sibling_vertex);
+        }
+    }
 }
 
 // swap surface1 with surface2

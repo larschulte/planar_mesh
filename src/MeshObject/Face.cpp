@@ -99,10 +99,12 @@ void Face::delete_()
     std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges = edges_;
     std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> interior_points = interior_points_;
     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces = surfaces_;
+    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> sibling_faces = sibling_faces_;
     for (const auto& vertex : vertices) disconnect(vertex);
     for (const auto& edge : edges) disconnect(edge);
     for (const auto& interior_point : interior_points) disconnect(interior_point);
     for (const auto& surface : surfaces) disconnect(surface);
+    for (const auto& sibling_face : sibling_faces) disconnect(sibling_face);
 
     // remove from search tree
     if (is_searchable_)
@@ -144,6 +146,11 @@ const std::shared_ptr<Vertex>& Face::get_vertex(int index) const
 const std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash>& Face::get_surfaces() const
 {
     return surfaces_;
+}
+
+const std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& Face::get_sibling_faces() const
+{
+    return sibling_faces_;
 }
 
 bool Face::is_expired() const
@@ -274,6 +281,23 @@ void Face::connect(const std::shared_ptr<InteriorPoint>& interior_point)
     if (inserted) interior_point->connect(shared_from_this());
 }
 
+void Face::connect(const std::shared_ptr<Face>& sibling_face)
+{
+    // check input
+    if (sibling_face->is_expired()) throw std::runtime_error("Attempts to connect face with invalid sibling face.");
+
+    // connect
+    bool inserted = sibling_faces_.insert(sibling_face).second;
+    if (inserted) sibling_face->connect(shared_from_this());
+    if (inserted)
+    {
+        for (const std::shared_ptr<Face>& sibling_face_ : sibling_faces_)
+        {
+            sibling_face_->connect(sibling_face);
+        }
+    }
+}
+
 void Face::disconnect(const std::shared_ptr<Vertex>& vertex)
 {
     // check input
@@ -324,6 +348,23 @@ void Face::disconnect(const std::shared_ptr<InteriorPoint>& interior_point)
 
     // self destruct
     if (!deleting_) storage_->delete_face(shared_from_this());
+}
+
+void Face::disconnect(const std::shared_ptr<Face>& sibling_face)
+{
+    // check input
+    if (sibling_face->is_expired()) return;
+
+    // delete
+    bool erased = sibling_faces_.erase(sibling_face);
+    if (erased) sibling_face->disconnect(shared_from_this());
+    if (erased)
+    {
+        for (const std::shared_ptr<Face>& sibling_face_ : sibling_faces_)
+        {
+            sibling_face_->disconnect(sibling_face);
+        }
+    }
 }
 
 // swap surface1 with surface2

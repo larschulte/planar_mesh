@@ -60,9 +60,11 @@ void Edge::delete_()
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertices = vertices_;
     std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces = faces_;
     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces = surfaces_;
+    std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> sibling_edges = sibling_edges_;
     for (const auto& vertex : vertices) disconnect(vertex);
     for (const auto& face : faces) disconnect(face);
     for (const auto& surface : surfaces) disconnect(surface);
+    for (const auto& sibling_edge : sibling_edges) disconnect(sibling_edge);
 
     // log
     std::cout << "---------- edge " << id_ << " destroyed" << std::endl;
@@ -108,6 +110,23 @@ void Edge::connect(const std::shared_ptr<Surface>& surface)
     if (inserted) is_searchable_map_[surface] = false;
     if (inserted) is_boundary_map_[surface] = false;
     if (inserted) update_boundary_state(surface);
+}
+
+void Edge::connect(const std::shared_ptr<Edge>& sibling_edge)
+{
+    // check input
+    if (sibling_edge->is_expired()) throw std::runtime_error("Attempts to connect edge with invalid sibling edge.");
+
+    // connect
+    bool inserted = sibling_edges_.insert(sibling_edge).second;
+    if (inserted) sibling_edge->connect(shared_from_this());
+    if (inserted)
+    {
+        for (const std::shared_ptr<Edge>& sibling_edge_ : sibling_edges_)
+        {
+            sibling_edge_->connect(sibling_edge);
+        }
+    }
 }
 
 void Edge::disconnect(const std::shared_ptr<Vertex>& vertex)
@@ -156,6 +175,23 @@ void Edge::disconnect(const std::shared_ptr<Surface>& surface)
 
     // check self destruct
     if (!deleting_ && surfaces_.empty()) storage_->delete_edge(shared_from_this());
+}
+
+void Edge::disconnect(const std::shared_ptr<Edge>& sibling_edge)
+{
+    // check input
+    if (sibling_edge->is_expired()) return;
+
+    // disconnect
+    bool erased = sibling_edges_.erase(sibling_edge);
+    if (erased) sibling_edge->disconnect(shared_from_this());
+    if (erased)
+    {
+        for (const std::shared_ptr<Edge>& sibling_edge_ : sibling_edges_)
+        {
+            sibling_edge_->disconnect(sibling_edge);
+        }
+    }
 }
 
 // swap surface1 with surface2
@@ -305,6 +341,11 @@ const std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash>& Edge::get_su
 const std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& Edge::get_faces() const
 {
     return faces_;
+}
+
+const std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& Edge::get_sibling_edges() const
+{
+    return sibling_edges_;
 }
 
 const Eigen::Vector3d& Edge::get_center() const

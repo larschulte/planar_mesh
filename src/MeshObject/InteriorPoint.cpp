@@ -54,8 +54,10 @@ void InteriorPoint::delete_()
     // disconnect
     std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces = faces_;
     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces = surfaces_;
+    std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> sibling_interior_points = sibling_interior_points_;
     for (const auto& face : faces) disconnect(face);
     for (const auto& surface : surfaces) disconnect(surface);
+    for (const auto& sibling_interior_point : sibling_interior_points) disconnect(sibling_interior_point);
 
     // compute radius
     if (storage_->has_penetrating_point())
@@ -121,6 +123,11 @@ const std::shared_ptr<Surface>& InteriorPoint::get_surface() const
 const std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash>& InteriorPoint::get_surfaces() const
 {
     return surfaces_;
+}
+
+const std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash>& InteriorPoint::get_sibling_interior_points() const
+{
+    return sibling_interior_points_;
 }
 
 const double& InteriorPoint::get_radius() const
@@ -196,6 +203,23 @@ void InteriorPoint::connect(const std::shared_ptr<Surface>& surface)
     if (inserted) surface->connect(shared_from_this());    
 }
 
+void InteriorPoint::connect(const std::shared_ptr<InteriorPoint>& sibling_interior_point)
+{
+    // check input
+    if (sibling_interior_point->is_expired()) throw std::runtime_error("Attempts to connect interior point with invalid sibling interior point.");
+
+    // connect
+    bool inserted = sibling_interior_points_.insert(sibling_interior_point).second;
+    if (inserted) sibling_interior_point->connect(shared_from_this());
+    if (inserted)
+    {
+        for (const std::shared_ptr<InteriorPoint>& sibling_interior_point_ : sibling_interior_points_)
+        {
+            sibling_interior_point_->connect(sibling_interior_point);
+        }
+    }
+}
+
 void InteriorPoint::disconnect(const std::shared_ptr<Face>& face)
 {
     // check input
@@ -220,6 +244,23 @@ void InteriorPoint::disconnect(const std::shared_ptr<Surface>& surface)
 
     // self destruct
     if (!deleting_ && surfaces_.empty()) storage_->delete_interior_point(shared_from_this());
+}
+
+void InteriorPoint::disconnect(const std::shared_ptr<InteriorPoint>& sibling_interior_point)
+{
+    // check input
+    if (sibling_interior_point->is_expired()) return;
+
+    // disconnect
+    bool erased = sibling_interior_points_.erase(sibling_interior_point);
+    if (erased) sibling_interior_point->disconnect(shared_from_this());
+    if (erased)
+    {
+        for (const std::shared_ptr<InteriorPoint>& sibling_interior_point_ : sibling_interior_points_)
+        {
+            sibling_interior_point_->disconnect(sibling_interior_point);
+        }
+    }
 }
 
 // swap surface1 with surface2
