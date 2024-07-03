@@ -380,10 +380,7 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
     // log
     std::cout << ">> found " << searched_faces.size() << " searched faces grouped into " << searched_surface_to_searched_faces.size() << " searched surfaces" << std::endl;
 
-    // try add as interior point
-    std::shared_ptr<InteriorPoint> temp_interior_point;
-    bool added_as_interior_point = false;
-    
+    // process point behind surface
     for (const auto& pair : searched_surface_to_searched_faces)
     {
         const std::shared_ptr<Surface>& surface = pair.first;
@@ -391,9 +388,7 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
 
         const std::vector<double>& stats = surface->get_projective_distance_stats();
         double distance = surface->compute_point_projective_distance(generic_point);
-        bool points_before_surface = (distance - compute_mean(stats)) > 3*compute_std(stats);
         bool points_behind_surface = (distance - compute_mean(stats)) < -3*compute_std(stats);
-        bool points_within_surface = !points_before_surface && !points_behind_surface;
         
         if (points_behind_surface)
         {
@@ -407,18 +402,51 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
             }
             storage_->clear_penetrating_point();
 
-            // add back penetrated points
-            std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash> copy_of_penetrated_points = storage_->get_penetrated_points();
-            for (const std::shared_ptr<GenericPoint>& penetrated_point : copy_of_penetrated_points)
-            {
-                // log
-                std::cout << ">> adding back penetrated point as vertex" << std::endl;
+            // // add back penetrated points
+            // std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash> copy_of_penetrated_points = storage_->get_penetrated_points();
+            // for (const std::shared_ptr<GenericPoint>& penetrated_point : copy_of_penetrated_points)
+            // {
+            //     // log
+            //     std::cout << ">> adding back penetrated point as vertex" << std::endl;
 
-                add_point_by_radius_search(penetrated_point);
-                storage_->delete_penetrated_point(penetrated_point);
+            //     add_point_by_radius_search(penetrated_point);
+            //     storage_->delete_penetrated_point(penetrated_point);
+            // }
+        }
+    }
+
+    // faces may become expired
+
+    // process points within surface
+
+    // try add as interior point
+    std::shared_ptr<InteriorPoint> temp_interior_point;
+    bool added_as_interior_point = false;
+    
+    for (const auto& pair : searched_surface_to_searched_faces)
+    {
+        const std::shared_ptr<Surface>& surface = pair.first;
+        const std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& mapped_searched_faces = pair.second;
+
+        // skip if faces are all expired
+        bool all_faces_expired = true;
+        for (const std::shared_ptr<Face>& face : mapped_searched_faces)
+        {
+            if (!face->is_expired())
+            {
+                all_faces_expired = false;
+                break;
             }
         }
-        else if (points_within_surface)
+        if (all_faces_expired) continue;
+
+        const std::vector<double>& stats = surface->get_projective_distance_stats();
+        double distance = surface->compute_point_projective_distance(generic_point);
+        bool points_before_surface = (distance - compute_mean(stats)) > 3*compute_std(stats);
+        bool points_behind_surface = (distance - compute_mean(stats)) < -3*compute_std(stats);
+        bool points_within_surface = !points_before_surface && !points_behind_surface;
+        
+        if (points_within_surface)
         {
             // log
             std::cout << "========================== within surface " << surface->get_id() << std::endl;
@@ -439,15 +467,14 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
             // connect to face
             for (const std::shared_ptr<Face>& face : mapped_searched_faces)
             {
+                // skip if the face is expired
+                if (face->is_expired()) continue;
+
                 // log
                 std::cout << ">> adding interior point to face " << face->get_id() << std::endl;
 
                 temp_interior_point->connect(face);
             }
-        }
-        else if (points_before_surface)
-        {
-            continue;
         }
     }
 
