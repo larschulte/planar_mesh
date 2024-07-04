@@ -34,6 +34,7 @@ struct Settings
     bool show_projected_point;
     bool show_confirmed_only;
     bool show_keycode;
+    bool show_singular_edge;
     int color_mode;
     double surface_denominator;
     bool show_wireframe;

@@ -84,6 +84,9 @@ void InteractiveViewer<PointT>::update_display()
         {
             // skip if not confirmed
             if (settings_.show_confirmed_only && !edge->is_confirmed()) continue;
+
+            // skip if singular
+            if (!settings_.show_singular_edge && edge->is_singular()) continue;
             
             pcl::Vertices boundary_edge;
             boundary_edge.vertices.push_back(vertex_to_cloud_indices_map.at(edge->get_vertex(0)));
@@ -160,6 +163,9 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
     // kp number 3
     if (event.getKeySym() == "KP_Next" && event.keyDown())
     {
+        // singular edge
+        settings_.show_singular_edge = !settings_.show_singular_edge;
+        update_display();
     }
     // kp number 4
     if (event.getKeySym() == "KP_Left" && event.keyDown())

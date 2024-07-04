@@ -28,7 +28,7 @@ Settings::Settings()
     pose_path = dataset_map[dataset].second;
 
     use_sim_data = true;
-    sim_object = 1;
+    sim_object = 0;
     
     start_cloud = 50;
     start_point = 0;
@@ -53,6 +53,7 @@ Settings::Settings()
     show_projected_point = false;
     show_confirmed_only = false;
     show_keycode = false;
+    show_singular_edge = false;
     color_mode = 0;
     surface_denominator = 10.0;
     show_wireframe = true;
