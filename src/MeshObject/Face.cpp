@@ -290,6 +290,9 @@ void Face::connect(const std::shared_ptr<Face>& sibling_face)
     // check input
     if (sibling_face->is_expired()) throw std::runtime_error("Attempts to connect face with invalid sibling face.");
 
+    // skip if try to connect to itself
+    if (sibling_face == shared_from_this()) return;
+
     // connect
     bool inserted = sibling_faces_.insert(sibling_face).second;
     if (inserted) sibling_face->connect(shared_from_this());

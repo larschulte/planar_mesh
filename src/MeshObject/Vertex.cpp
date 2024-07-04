@@ -360,6 +360,9 @@ void Vertex::connect(const std::shared_ptr<Vertex>& sibling_vertex)
     // check input
     if (sibling_vertex->is_expired()) throw std::runtime_error("Attempts to connect vertex with invalid sibling vertex.");
 
+    // skip if try to connect to itself
+    if (sibling_vertex == shared_from_this()) return;
+
     // connect
     bool inserted = sibling_vertices_.insert(sibling_vertex).second;
     if (inserted) sibling_vertex->connect(shared_from_this());

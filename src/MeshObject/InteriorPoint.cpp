@@ -214,6 +214,9 @@ void InteriorPoint::connect(const std::shared_ptr<InteriorPoint>& sibling_interi
     // check input
     if (sibling_interior_point->is_expired()) throw std::runtime_error("Attempts to connect interior point with invalid sibling interior point.");
 
+    // skip if try to connect to itself
+    if (sibling_interior_point == shared_from_this()) return;
+
     // connect
     bool inserted = sibling_interior_points_.insert(sibling_interior_point).second;
     if (inserted) sibling_interior_point->connect(shared_from_this());

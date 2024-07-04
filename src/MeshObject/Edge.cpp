@@ -121,6 +121,9 @@ void Edge::connect(const std::shared_ptr<Edge>& sibling_edge)
     // check input
     if (sibling_edge->is_expired()) throw std::runtime_error("Attempts to connect edge with invalid sibling edge.");
 
+    // skip if try to connect to itself
+    if (sibling_edge == shared_from_this()) return;
+
     // connect
     bool inserted = sibling_edges_.insert(sibling_edge).second;
     if (inserted) sibling_edge->connect(shared_from_this());
