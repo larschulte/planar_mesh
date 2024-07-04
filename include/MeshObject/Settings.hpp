@@ -38,6 +38,7 @@ struct Settings
     int color_mode;
     double surface_denominator;
     double siblings_denominator;
+    double radius_denominator;
     bool show_wireframe;
     bool show_sphere;
     int number_of_spheres_to_display;  

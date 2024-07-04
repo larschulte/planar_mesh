@@ -178,12 +178,11 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
     // kp number 3
     if (event.getKeySym() == "KP_Next" && event.keyDown())
     {
-        // singular edge
-        settings_.show_singular_edge = !settings_.show_singular_edge;
+        settings_.color_mode = 3;
         update_display();
 
         // log
-        std::cout << "show_singular_edge: " << settings_.show_singular_edge << std::endl;
+        std::cout << "color_mode: " << settings_.color_mode << std::endl;
     }
     // kp number 4
     if (event.getKeySym() == "KP_Left" && event.keyDown())
@@ -208,6 +207,12 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
     // kp numebr 9
     if (event.getKeySym() == "KP_Prior" && event.keyDown())
     {
+        // singular edge
+        settings_.show_singular_edge = !settings_.show_singular_edge;
+        update_display();
+
+        // log
+        std::cout << "show_singular_edge: " << settings_.show_singular_edge << std::endl;
     }
     
     if (event.getKeySym() == "1" && event.keyDown())
