@@ -644,7 +644,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_interior_poi
         }
         else if (settings.color_mode == 2)
         {
-            double distance = 1/settings.surface_denominator;
+            double distance = interior_point->get_sibling_interior_points().size() / settings.siblings_denominator;
             std::tuple<int, int, int> color = valueToJet(distance);
             point.r = std::get<0>(color);
             point.g = std::get<1>(color);
@@ -744,7 +744,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_vertex_point
         }
         else if (setting.color_mode == 2)
         {
-            double distance = vertex->get_surfaces().size() / setting.surface_denominator;
+            double distance = vertex->get_sibling_vertices().size() / setting.siblings_denominator;
             std::tuple<int, int, int> color = valueToJet(distance);
             point.r = std::get<0>(color);
             point.g = std::get<1>(color);

@@ -37,6 +37,7 @@ struct Settings
     bool show_singular_edge;
     int color_mode;
     double surface_denominator;
+    double siblings_denominator;
     bool show_wireframe;
     bool show_sphere;
     int number_of_spheres_to_display;  
