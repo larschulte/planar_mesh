@@ -47,6 +47,8 @@ public:
     bool has_vertex(const std::shared_ptr<Vertex>& vertex) const;
     bool is_boundary(const std::shared_ptr<Surface>& surface) const;
     bool is_boundary() const;
+    bool is_singular(const std::shared_ptr<Surface>& surface) const;
+    bool is_singular() const;
     void update_boundary_state(const std::shared_ptr<Surface>& surface);
     void update_boundary_state();
     void update_searchable_state(const std::shared_ptr<Surface>& surface);
@@ -59,6 +61,7 @@ private:
     bool deleting_ = false;
     bool is_expired_ = true;
     std::map<std::shared_ptr<Surface>, bool> is_boundary_map_;
+    std::map<std::shared_ptr<Surface>, bool> is_singular_map_;
     std::map<std::shared_ptr<Surface>, bool> is_searchable_map_;
 
     std::size_t num_confirmed_faces = 0;

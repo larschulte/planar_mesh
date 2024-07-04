@@ -112,6 +112,7 @@ void Edge::connect(const std::shared_ptr<Surface>& surface)
     if (inserted) surface->connect(shared_from_this());
     if (inserted) is_searchable_map_[surface] = false;
     if (inserted) is_boundary_map_[surface] = false;
+    if (inserted) is_singular_map_[surface] = true;
     if (inserted) update_boundary_state(surface);
 }
 
@@ -177,6 +178,7 @@ void Edge::disconnect(const std::shared_ptr<Surface>& surface)
     if (erased) surface->disconnect(shared_from_this());
     if (erased) remove_searchable_state(surface);
     if (erased) is_boundary_map_.erase(surface);
+    if (erased) is_singular_map_.erase(surface);
     if (erased) is_searchable_map_.erase(surface);
 
     // check self destruct
@@ -270,6 +272,21 @@ bool Edge::is_boundary() const
     return false;
 }
 
+bool Edge::is_singular(const std::shared_ptr<Surface>& surface) const
+{
+    return is_singular_map_.at(surface);
+}
+
+bool Edge::is_singular() const
+{
+    // singular if all singular
+    for (const auto& pair : is_singular_map_)
+    {
+        if (!pair.second) return false;
+    }
+    return true;
+}
+
 void Edge::update_boundary_state(const std::shared_ptr<Surface>& surface)
 {
     if (deleting_) return;
@@ -292,6 +309,14 @@ void Edge::update_boundary_state(const std::shared_ptr<Surface>& surface)
     else 
     {
         is_boundary_map_.at(surface) = false;
+    }
+    if (num_faces_in_this_surface == 0) 
+    {
+        is_singular_map_.at(surface) = true;
+    }
+    else 
+    {
+        is_singular_map_.at(surface) = false;
     }
     bool changed_boundary_state = previous_boundary_state != is_boundary_map_.at(surface);
 
