@@ -136,29 +136,44 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
     if (event.getKeySym() == "Num_Lock" && event.keyDown())
     {
         settings_.show_keycode = !settings_.show_keycode;
+        
+        // log
+        std::cout << "show_keycode: " << settings_.show_keycode << std::endl;
     }
     if (event.getKeySym() == "space" && event.keyDown())
     {
         app_.loop();
         update_display();
+
+        // log
+        std::cout << "loop" << std::endl;
     }
     // kp number 0
     if (event.getKeySym() == "KP_Insert" && event.keyDown())
     {
         settings_.color_mode = 0;
         update_display();
+
+        // log
+        std::cout << "color_mode: " << settings_.color_mode << std::endl;
     }
     // kp number 1
     if (event.getKeySym() == "KP_End" && event.keyDown())
     {
         settings_.color_mode = 1;
         update_display();
+
+        // log
+        std::cout << "color_mode: " << settings_.color_mode << std::endl;
     }
     // kp number 2
     if (event.getKeySym() == "KP_Down" && event.keyDown())
     {
         settings_.color_mode = 2;
         update_display();
+
+        // log
+        std::cout << "color_mode: " << settings_.color_mode << std::endl;
     }
     // kp number 3
     if (event.getKeySym() == "KP_Next" && event.keyDown())
@@ -166,6 +181,9 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
         // singular edge
         settings_.show_singular_edge = !settings_.show_singular_edge;
         update_display();
+
+        // log
+        std::cout << "show_singular_edge: " << settings_.show_singular_edge << std::endl;
     }
     // kp number 4
     if (event.getKeySym() == "KP_Left" && event.keyDown())
@@ -196,94 +214,148 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
     {
         app_.step();
         update_display();
+
+        // log
+        std::cout << "step" << std::endl;
     }
     if (event.getKeySym() == "2" && event.keyDown())
     {
         for (int i = 0; i < 10; i++) app_.step();
         update_display();
+
+        // log
+        std::cout << "step 10" << std::endl;
     }
     if (event.getKeySym() == "3" && event.keyDown())
     {
         for (int i = 0; i < 100; i++) app_.step();
         update_display();
+
+        // log
+        std::cout << "step 100" << std::endl;
     }
     if (event.getKeySym() == "4" && event.keyDown())
     {
         for (int i = 0; i < 1000; i++) app_.step();
         update_display();
+
+        // log
+        std::cout << "step 1000" << std::endl;
     }
     if (event.getKeySym() == "0" && event.keyDown())
     {
         app_.loop();
         update_display();
+
+        // log
+        std::cout << "loop" << std::endl;
     }
     if (event.getKeySym() == "Tab" && event.keyDown())
     {
         app_.change_color();
         update_display();
+
+        // log
+        std::cout << "changed color" << std::endl;
     }
     if (event.getKeySym() == "comma" && event.keyDown())
     {
         settings_.show_pointcloud = !settings_.show_pointcloud;
         update_display();
+
+        // log
+        std::cout << "show_verticies: " << settings_.show_pointcloud << std::endl;
     }
     if (event.getKeySym() == "period" && event.keyDown())
     {
         settings_.show_edge = !settings_.show_edge;
         update_display();
+
+        // log
+        std::cout << "show_edges: " << settings_.show_edge << std::endl;
     }
     if (event.getKeySym() == "slash" && event.keyDown())
     {
         settings_.show_triangle = !settings_.show_triangle;
         update_display();
+
+        // log
+        std::cout << "show_faces: " << settings_.show_triangle << std::endl;
     }
     if (event.getKeySym() == "a" && event.keyDown())
     {
         settings_.show_projected_point = !settings_.show_projected_point;
         update_display();
+
+        // log
+        std::cout << "show_projected_point: " << settings_.show_projected_point << std::endl;
     }
     if (event.getKeySym() == "z" && event.keyDown())
     {
         // show confirmed only
         settings_.show_confirmed_only = !settings_.show_confirmed_only;
         update_display();
+
+        // log
+        std::cout << "show_confirmed_only: " << settings_.show_confirmed_only << std::endl;
     }
     if (event.getKeySym() == "v" && event.keyDown())
     {
         settings_.show_wireframe = !settings_.show_wireframe;
         update_display();
+
+        // log
+        std::cout << "show_wireframe: " << settings_.show_wireframe << std::endl;
     }
     if (event.getKeySym() == "m" && event.keyDown())
     {
         settings_.show_sphere = !settings_.show_sphere;
         update_display();
+
+        // log
+        std::cout << "show_sphere: " << settings_.show_sphere << std::endl;
     }
     if (event.getKeySym() == "b" && event.keyDown())
     {
         app_.refine_surfaces();
         update_display();
+
+        // log
+        std::cout << "refined surfaces" << std::endl;
     }
     if (event.getKeySym() == "n" && event.keyDown())
     {
         app_.add_back_generic_points();
         update_display();
+
+        // log
+        std::cout << "added back generic points" << std::endl;
     }
     if (event.getKeySym() == "k" && event.keyDown())
     {
         // toggle generic points
         settings_.show_generic_points = !settings_.show_generic_points;
         update_display();
+
+        // log
+        std::cout << "show_generic_points: " << settings_.show_generic_points << std::endl;
     }
     if (event.getKeySym() == "l" && event.keyDown())
     {
         // toggle generic points
         settings_.show_interior_points = !settings_.show_interior_points;
         update_display();
+
+        // log
+        std::cout << "show_interior_points: " << settings_.show_interior_points << std::endl;
     }
     if (event.getKeySym() == "r" && event.keyDown())
     {
         // restart
         app_.restart();
         update_display();
+
+        // log
+        std::cout << "restarted" << std::endl;
     }
 }
