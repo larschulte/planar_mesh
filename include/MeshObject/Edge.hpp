@@ -51,6 +51,8 @@ public:
     bool is_singular() const;
     void update_boundary_state(const std::shared_ptr<Surface>& surface);
     void update_boundary_state();
+    void update_singular_state(const std::shared_ptr<Surface>& surface);
+    void update_singular_state();
     void update_searchable_state(const std::shared_ptr<Surface>& surface);
     void update_searchable_state();
     void remove_searchable_state(const std::shared_ptr<Surface>& surface);

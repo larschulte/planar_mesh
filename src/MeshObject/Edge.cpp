@@ -100,6 +100,7 @@ void Edge::connect(const std::shared_ptr<Face>& face)
 
     // update confirmed status
     if (inserted) update_confirmed_status();
+    if (inserted) update_singular_state();
 }
 
 void Edge::connect(const std::shared_ptr<Surface>& surface)
@@ -163,6 +164,7 @@ void Edge::disconnect(const std::shared_ptr<Face>& face)
 
     // update confirmed status
     if (erased) update_confirmed_status();
+    if (erased) update_singular_state();
 
     // // check self destruct
     // if (faces_.empty())
@@ -313,14 +315,6 @@ void Edge::update_boundary_state(const std::shared_ptr<Surface>& surface)
     {
         is_boundary_map_.at(surface) = false;
     }
-    if (num_faces_in_this_surface == 0) 
-    {
-        is_singular_map_.at(surface) = true;
-    }
-    else 
-    {
-        is_singular_map_.at(surface) = false;
-    }
     bool changed_boundary_state = previous_boundary_state != is_boundary_map_.at(surface);
 
     // if changed state
@@ -342,6 +336,28 @@ void Edge::update_boundary_state()
     for (const std::shared_ptr<Surface>& surface : surfaces_)
     {
         update_boundary_state(surface);
+    }
+}
+
+void Edge::update_singular_state(const std::shared_ptr<Surface>& surface)
+{
+    // count number of faces in this surface
+    int num_faces_in_this_surface = 0;
+    for (const std::shared_ptr<Face>& face : faces_)
+    {
+        if (face->get_surfaces().find(surface) != face->get_surfaces().end()) num_faces_in_this_surface++;
+    }
+
+    // update singular state
+    if (num_faces_in_this_surface == 0) is_singular_map_.at(surface) = true;
+    else is_singular_map_.at(surface) = false; 
+}
+
+void Edge::update_singular_state()
+{
+    for (const std::shared_ptr<Surface>& surface : surfaces_)
+    {
+        update_singular_state(surface);
     }
 }
 
