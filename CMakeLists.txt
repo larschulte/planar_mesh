@@ -47,6 +47,7 @@ set(MeshObject_SOURCE
   src/MeshObject/Settings.cpp
   src/utilities/DataLoader.cpp
   src/utilities/covariance_math.cpp
+  src/utilities/utilities.cpp
   src/MeshObject/Simulation.cpp
 )
 
