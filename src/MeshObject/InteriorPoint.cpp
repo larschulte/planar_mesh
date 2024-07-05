@@ -219,6 +219,7 @@ void InteriorPoint::connect(const std::shared_ptr<InteriorPoint>& sibling_interi
 
     // connect
     bool inserted = sibling_interior_points_.insert(sibling_interior_point).second;
+    if (inserted) std::cout << "Connected interior point " << id_ << " with interiror point " << sibling_interior_point->get_id() << " as sibling."<< std::endl;
     if (inserted) sibling_interior_point->connect(shared_from_this());
     if (inserted)
     {

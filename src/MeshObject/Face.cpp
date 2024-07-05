@@ -294,6 +294,7 @@ void Face::connect(const std::shared_ptr<Face>& sibling_face)
 
     // connect
     bool inserted = sibling_faces_.insert(sibling_face).second;
+    if (inserted) std::cout << "Connected face " << id_ << " with face " << sibling_face->get_id() << " as sibling."<< std::endl;
     if (inserted) sibling_face->connect(shared_from_this());
     if (inserted)
     {

@@ -127,6 +127,7 @@ void Edge::connect(const std::shared_ptr<Edge>& sibling_edge)
 
     // connect
     bool inserted = sibling_edges_.insert(sibling_edge).second;
+    if (inserted) std::cout << "Connected edge " << id_ << " with edge " << sibling_edge->get_id() << " as sibling."<< std::endl;
     if (inserted) sibling_edge->connect(shared_from_this());
     if (inserted)
     {
