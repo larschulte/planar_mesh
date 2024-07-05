@@ -54,26 +54,31 @@ void InteriorPoint::delete_()
     // disconnect
     std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces = faces_;
     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces = surfaces_;
-    std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> sibling_interior_points = sibling_interior_points_;
     for (const auto& face : faces) disconnect(face);
     for (const auto& surface : surfaces) disconnect(surface);
+
+    // only create penetrated point / generic point if sibling is empty
+    if (sibling_interior_points_.empty())
+    {
+        if (storage_->has_penetrating_point())
+        {
+            // compute radius from storage
+            double radius = (storage_->get_penetrating_point() - get_position()).norm();
+            if (radius < radius_) radius_ = radius;
+
+            // add to storage as penetrated point
+            storage_->add_penetrated_point(shared_from_this());
+        }
+        else
+        {
+            // add to storage as generic point
+            storage_->add_generic_point(shared_from_this());
+        }
+    }
+    
+    // disconnect from sibling interior points
+    std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> sibling_interior_points = sibling_interior_points_;
     for (const auto& sibling_interior_point : sibling_interior_points) disconnect(sibling_interior_point);
-
-    // compute radius
-    if (storage_->has_penetrating_point())
-    {
-        // compute radius from storage
-        double radius = (storage_->get_penetrating_point() - get_position()).norm();
-        if (radius < radius_) radius_ = radius;
-
-        // add to storage as penetrated point
-        storage_->add_penetrated_point(shared_from_this());
-    }
-    else
-    {
-        // add to storage as generic point
-        storage_->add_generic_point(shared_from_this());
-    }
 
     // log
     std::cout << "---------- InteriorPoint " << id_ << " destroyed" << std::endl;

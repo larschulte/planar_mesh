@@ -66,11 +66,9 @@ void Vertex::delete_()
     std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges = edges_;
     std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces = faces_;
     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces = surfaces_;
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> sibling_vertices = sibling_vertices_;
     for (const auto& edge : edges) disconnect(edge);
     for (const auto& face : faces) disconnect(face);
     for (const auto& surface : surfaces) disconnect(surface);
-    for (const auto& sibling_vertex : sibling_vertices) disconnect(sibling_vertex);
 
     // remove from search tree
     if (is_searchable_)
@@ -82,21 +80,28 @@ void Vertex::delete_()
     // update delete count
     num_deletes_++;
 
-    // compute radius
-    if (storage_->has_penetrating_point())
+    // only create penetrated point / generic point if sibling is empty
+    if (sibling_vertices_.empty())
     {
-        // compute radius from storage
-        double radius = (storage_->get_penetrating_point() - get_position()).norm();
-        if (radius < reverse_search_radius_) reverse_search_radius_ = radius;
+        if (storage_->has_penetrating_point())
+        {
+            // compute radius from storage
+            double radius = (storage_->get_penetrating_point() - get_position()).norm();
+            if (radius < reverse_search_radius_) reverse_search_radius_ = radius;
 
-        // add to storage as penetrated point
-        storage_->add_penetrated_point(shared_from_this());
+            // add to storage as penetrated point
+            storage_->add_penetrated_point(shared_from_this());
+        }
+        else
+        {
+            // add to storage as generic point
+            storage_->add_generic_point(shared_from_this());
+        }
     }
-    else
-    {
-        // add to storage as generic point
-        storage_->add_generic_point(shared_from_this());
-    }
+
+    // disconnect from sibling vertices
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> sibling_vertices = sibling_vertices_;
+    for (const auto& sibling_vertex : sibling_vertices) disconnect(sibling_vertex);
 
     // log
     std::cout << "---------- vertex " << id_ << " destroyed" << std::endl;
