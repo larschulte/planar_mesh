@@ -198,7 +198,7 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
 
         // collect surfaces with low confidence
         bool small_size = surface->get_total_point_size() < settings_.fit_plane_threshold;
-        bool large_std = std > settings_.projective_std_threshold;
+        bool large_std = std > settings_.range_noise_std;
         if (small_size || large_std)
         {
             surfaces_with_low_confidence.insert(surface);
@@ -721,6 +721,9 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_vertex_point
     {
         // skip if not confirmed
         if (setting.show_confirmed_only && !vertex->is_confirmed()) continue;
+
+        // skip if singular
+        if (!setting.show_singular_vertex && vertex->is_singular()) continue;
 
         pcl::PointXYZRGB point;
         if (setting.show_projected_point)

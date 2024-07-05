@@ -54,6 +54,7 @@ Settings::Settings()
     show_confirmed_only = false;
     show_keycode = false;
     show_singular_edge = false;
+    show_singular_vertex = false;
     color_mode = 0;
     surface_denominator = 10.0;
     siblings_denominator = 5.0;

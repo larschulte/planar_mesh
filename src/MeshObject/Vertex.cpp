@@ -341,6 +341,7 @@ void Vertex::connect(const std::shared_ptr<Face>& face)
 
     // update confirmed status
     if (inserted) update_confirmed_status();
+    if (inserted) update_singular_state();
 }
 
 void Vertex::connect(const std::shared_ptr<Surface>& surface)
@@ -353,6 +354,7 @@ void Vertex::connect(const std::shared_ptr<Surface>& surface)
     if (inserted) surface->connect(shared_from_this());
     if (inserted) is_boundary_map_[surface] = false;
     if (inserted) update_boundary_state(surface);
+    if (inserted) is_singular_map_[surface] = true;
 }
 
 void Vertex::connect(const std::shared_ptr<Vertex>& sibling_vertex)
@@ -402,7 +404,8 @@ void Vertex::disconnect(const std::shared_ptr<Face>& face)
 
     // update confirmed status
     if (erased) update_confirmed_status();
-    
+    if (erased) update_singular_state();
+
     // // check self destruct
     // if (!deleting_ && faces_.empty()) storage_->delete_vertex(shared_from_this());
 }
@@ -416,6 +419,7 @@ void Vertex::disconnect(const std::shared_ptr<Surface>& surface)
     bool erased = surfaces_.erase(surface);
     if (erased) surface->disconnect(shared_from_this());
     if (erased) is_boundary_map_.erase(surface);
+    if (erased) is_singular_map_.erase(surface);
 
     // check self destruct
     if (!deleting_ && surfaces_.empty()) storage_->delete_vertex(shared_from_this());
@@ -445,9 +449,46 @@ void Vertex::update_confirmed_status()
     else is_confirmed_ = false;
 }
 
+void Vertex::update_singular_state(const std::shared_ptr<Surface>& surface)
+{
+    // count number of faces in this surface
+    int num_faces_in_surface = 0;
+    for (const std::shared_ptr<Face>& face : faces_)
+    {
+        if (face->get_surfaces().find(surface) != face->get_surfaces().end()) num_faces_in_surface++;
+    }
+
+    // update singular state
+    if (num_faces_in_surface == 0) is_singular_map_.at(surface) = true;
+    else is_singular_map_.at(surface) = false;
+}
+
+void Vertex::update_singular_state()
+{
+    for (const std::shared_ptr<Surface>& surface : surfaces_)
+    {
+        update_singular_state(surface);
+    }
+}
+
 bool Vertex::is_confirmed() const
 {
     return is_confirmed_;
+}
+
+bool Vertex::is_singular(const std::shared_ptr<Surface>& surface) const
+{
+    return is_singular_map_.at(surface);
+}
+
+bool Vertex::is_singular() const
+{
+    // singular if all singular
+    for (const auto& pair : is_singular_map_)
+    {
+        if (!pair.second) return false;
+    }
+    return true;
 }
 
 // swap surface1 with surface2

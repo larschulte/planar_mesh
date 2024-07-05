@@ -24,15 +24,14 @@ void Face::initialize_(const std::shared_ptr<Storage>& storage, const std::share
     // get id
     id_ = storage_->get_next_face_id();
 
+    // connect surface
+    connect(surface);
 
     // connect
     connect(vertex0);
     connect(vertex1);
     connect(vertex2);
 
-    // connect surface
-    connect(surface);
-    
     // get edges
     std::shared_ptr<Edge> edge0;
     std::shared_ptr<Edge> edge1;

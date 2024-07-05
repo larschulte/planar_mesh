@@ -209,10 +209,12 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
     {
         // singular edge
         settings_.show_singular_edge = !settings_.show_singular_edge;
+        settings_.show_singular_vertex = !settings_.show_singular_vertex;
         update_display();
 
         // log
         std::cout << "show_singular_edge: " << settings_.show_singular_edge << std::endl;
+        std::cout << "show_singular_vertex: " << settings_.show_singular_vertex << std::endl;
     }
     
     if (event.getKeySym() == "1" && event.keyDown())

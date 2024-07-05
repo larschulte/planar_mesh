@@ -35,6 +35,7 @@ struct Settings
     bool show_confirmed_only;
     bool show_keycode;
     bool show_singular_edge;
+    bool show_singular_vertex;
     int color_mode;
     double surface_denominator;
     double siblings_denominator;

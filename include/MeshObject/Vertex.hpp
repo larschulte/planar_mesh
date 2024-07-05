@@ -60,7 +60,11 @@ public:
     void disconnect(const std::shared_ptr<Vertex>& sibling_vertex);
 
     void update_confirmed_status();
+    void update_singular_state(const std::shared_ptr<Surface>& surface);
+    void update_singular_state();
     bool is_confirmed() const;
+    bool is_singular(const std::shared_ptr<Surface>& surface) const;
+    bool is_singular() const;
     
     void swap(const std::shared_ptr<Surface>& surface1, const std::shared_ptr<Surface>& surface2);
 
@@ -89,6 +93,7 @@ private:
     std::map<std::shared_ptr<Surface>, bool> is_boundary_map_;
     bool is_searchable_ = false;
     bool is_expired_ = true;
+    std::map<std::shared_ptr<Surface>, bool> is_singular_map_;
 
     std::size_t num_deletes_;
 
