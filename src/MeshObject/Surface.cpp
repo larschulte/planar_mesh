@@ -9,6 +9,7 @@
 #include "utilities/covariance_math.hpp"
 #include "MeshObject/UnionFind.hpp"
 #include "MeshObject/GenericPoint.hpp"
+#include "utilities/utilities.hpp"
 
 void Surface::initialize_(const std::shared_ptr<Storage>& storage)
 {
@@ -369,8 +370,25 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
             // skip if edge is not boundary
             if (!existing_edge->is_boundary(shared_from_this())) continue;
 
-            // skip if face have intersections
-            // // todo
+            // skip if face contains nearby vertices
+            // get surface coordinate of the vertices
+            Eigen::Vector2d surface_coordinate0 = vertex->get_surface_coordinate(shared_from_this());
+            Eigen::Vector2d surface_coordinate1 = nearby_vertex0->get_surface_coordinate(shared_from_this());
+            Eigen::Vector2d surface_coordinate2 = nearby_vertex1->get_surface_coordinate(shared_from_this());
+            // check if the triangle formed by the vertices contains any other nearby_vertices
+            bool triangle_contains_nearby_vertices = false;
+            for (const std::shared_ptr<Vertex>& nearby_vertex : nearby_vertices)
+            {
+                if (nearby_vertex == nearby_vertex0 || nearby_vertex == nearby_vertex1) continue;
+                Eigen::Vector2d surface_coordinate = nearby_vertex->get_surface_coordinate(shared_from_this());
+                if (is_point_in_triangle(surface_coordinate0, surface_coordinate1, surface_coordinate2, surface_coordinate))
+                {
+                    triangle_contains_nearby_vertices = true;
+                    break;
+                }
+            }
+            if (triangle_contains_nearby_vertices) continue;
+
 
             // // check if face already exists
             // bool face_exist = false;
