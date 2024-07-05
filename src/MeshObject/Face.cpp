@@ -423,7 +423,7 @@ void Face::swap(const std::shared_ptr<Surface>& surface1, const std::shared_ptr<
 
 bool operator<(const std::shared_ptr<Face>& lhs, const std::shared_ptr<Face>& rhs)
 {
-    if (lhs->is_expired() || rhs->is_expired()) throw std::runtime_error("Comparing expired edges");
+    if (lhs->is_expired() || rhs->is_expired()) throw std::runtime_error("Comparing expired faces");
     return lhs->get_id() < rhs->get_id();
 }
 
@@ -431,6 +431,6 @@ bool operator==(const std::shared_ptr<Face>& lhs, const std::shared_ptr<Face>& r
 {
     if (!lhs && !rhs) return true; // true if both are nullptr
     if (!lhs || !rhs) return false; // false if either is nullptr
-    if (lhs->is_expired() || rhs->is_expired()) throw std::runtime_error("Comparing expired edges");
+    if (lhs->is_expired() || rhs->is_expired()) throw std::runtime_error("Comparing expired faces");
     return lhs->get_id() == rhs->get_id();
 }
