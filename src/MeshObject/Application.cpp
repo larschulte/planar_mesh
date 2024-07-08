@@ -183,6 +183,46 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
     }
     std::cout << ">> grouped into " << neighboring_surfaces.size() << " neighboring surfaces" << std::endl;
 
+    // delete abnormal surfaces
+    for (const std::shared_ptr<Surface>& surface : neighboring_surfaces)
+    {
+        // skip low confidence surface
+        if (surface->get_total_point_size() < settings_.fit_plane_threshold) continue;
+
+        // skip normal surface
+        if (compute_std(surface->get_projective_distance_stats()) < 1.5*settings_.range_noise_std) continue;
+        
+        // delete
+        std::cout << ">> removing abnormal surface during radius search" << surface->get_id() << std::endl; // log
+        storage_->delete_surface(surface);
+    }
+
+    // recompute neighboring vertices
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> neighboring_vertices_copy = neighboring_vertices;
+    neighboring_vertices.clear();
+    for (std::shared_ptr<Vertex> vertex : neighboring_vertices_copy)
+    {
+        // skip if the vertex is expired
+        if (vertex->is_expired()) continue;
+
+        neighboring_vertices.insert(vertex);
+    }
+    
+    // recompute neighboring surfaces
+    neighboring_surfaces.clear();
+    for (std::shared_ptr<Vertex> vertex : neighboring_vertices)
+    {
+        // only add to neighboring surface if the vertex is boundary in that surface
+        for (std::shared_ptr<Surface> surface : vertex->get_surfaces())
+        {
+            if (vertex->is_boundary(surface))
+            {
+                neighboring_surfaces.insert(surface);
+            }
+        }
+    }
+    std::cout << ">> grouped into " << neighboring_surfaces.size() << " neighboring surfaces" << std::endl;
+
     // split into - surfaces with low confidence, surfaces with high confidence, which are then split into surface that match, surface that don't match
     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_with_low_confidence;
     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_that_match;
@@ -398,6 +438,43 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
 
     // searched surfaces
     std::map<std::shared_ptr<Surface>, std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>> searched_surface_to_searched_faces;
+    for (const std::shared_ptr<Face>& face : searched_faces)
+    {
+        for (const std::shared_ptr<Surface>& surface : face->get_surfaces())
+        {
+            searched_surface_to_searched_faces[surface].insert(face);    
+        }
+    }
+
+    // delete abnormal surfaces
+    for (const auto& pair : searched_surface_to_searched_faces)
+    {
+        const std::shared_ptr<Surface>& surface = pair.first;
+
+        // skip low confidence surface
+        if (surface->get_total_point_size() < settings_.fit_plane_threshold) continue;
+
+        // skip normal surface
+        if (compute_std(surface->get_projective_distance_stats()) < 1.5*settings_.range_noise_std) continue;
+        
+        // delete
+        std::cout << ">> removing abnormal surface during intersection search" << surface->get_id() << std::endl; // log
+        storage_->delete_surface(surface);
+    }
+
+    // recompute searched faces
+    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> searched_faces_copy = searched_faces;
+    searched_faces.clear();
+    for (const std::shared_ptr<Face>& face : searched_faces_copy)
+    {
+        // skip if the face is expired
+        if (face->is_expired()) continue;
+
+        searched_faces.insert(face);
+    }
+
+    // recompute searched surfaces to searched faces map
+    searched_surface_to_searched_faces.clear();
     for (const std::shared_ptr<Face>& face : searched_faces)
     {
         for (const std::shared_ptr<Surface>& surface : face->get_surfaces())
