@@ -20,6 +20,14 @@ void Simulation::get_data_pair(Eigen::Vector3d& origin, Eigen::Vector3d& positio
     {
         return get_plane_data_pair(origin, position);
     }
+    if (id_ == 2)
+    {
+        return get_gap_data_pair(origin, position);
+    }
+    else
+    {
+        std::cout << "Error: invalid object id" << std::endl;
+    }
 }
 
 void Simulation::get_cube_data_pair(Eigen::Vector3d& out_origin, Eigen::Vector3d& out_position)
@@ -76,6 +84,40 @@ void Simulation::get_plane_data_pair(Eigen::Vector3d& out_origin, Eigen::Vector3
     // set position
     // random generate an integer between 0 and 2
     Eigen::Vector3d position = Eigen::Vector3d(u, v, 0);
+
+    // return
+    out_origin = origin;
+    out_position = position;
+
+    // log
+    std::cout << "origin: " << origin.transpose() << ", position: " << position.transpose() << std::endl;
+}
+
+void Simulation::get_gap_data_pair(Eigen::Vector3d& out_origin, Eigen::Vector3d& out_position)
+{
+    // settings on the cube
+    double size = 2.0;
+    Eigen::Vector3d origin = Eigen::Vector3d(1, 1, 1);
+
+    // compute position
+    // xy, yz, xz
+    
+    // random double between 0 and size
+    double u = (double)rand() / RAND_MAX * size;
+    double v = (double)rand() / RAND_MAX * size;
+
+    double z;
+    if (u < 0.6 || u > 1.4)
+    {
+        z = 0.0;
+    }
+    else
+    {
+        z = -0.1;
+    }
+
+    // set position
+    Eigen::Vector3d position = Eigen::Vector3d(u, v, z);
 
     // return
     out_origin = origin;

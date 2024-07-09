@@ -9,6 +9,7 @@ public:
     void get_data_pair(Eigen::Vector3d& origin, Eigen::Vector3d& position);
     void get_cube_data_pair(Eigen::Vector3d& origin, Eigen::Vector3d& position);
     void get_plane_data_pair(Eigen::Vector3d& origin, Eigen::Vector3d& position);
+    void get_gap_data_pair(Eigen::Vector3d& origin, Eigen::Vector3d& position);
 
 private:
     int id_;
