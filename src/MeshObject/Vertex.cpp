@@ -360,6 +360,7 @@ void Vertex::connect(const std::shared_ptr<Surface>& surface)
     if (inserted) is_boundary_map_[surface] = false;
     if (inserted) update_boundary_state(surface);
     if (inserted) is_singular_map_[surface] = true;
+    if (inserted) is_matched_surface_map_[surface] = false;
 }
 
 void Vertex::connect(const std::shared_ptr<Vertex>& sibling_vertex)
@@ -426,6 +427,7 @@ void Vertex::disconnect(const std::shared_ptr<Surface>& surface)
     if (erased) surface->disconnect(shared_from_this());
     if (erased) is_boundary_map_.erase(surface);
     if (erased) is_singular_map_.erase(surface);
+    if (erased) is_matched_surface_map_.erase(surface);
 
     // check self destruct
     if (!deleting_ && surfaces_.empty()) storage_->delete_vertex(shared_from_this());
@@ -439,6 +441,16 @@ void Vertex::disconnect(const std::shared_ptr<Vertex>& sibling_vertex)
     // disconnect
     bool erased = sibling_vertices_.erase(sibling_vertex);
     if (erased) sibling_vertex->disconnect(shared_from_this());
+}
+
+void Vertex::add_matched_surface(const std::shared_ptr<Surface>& surface)
+{
+    is_matched_surface_map_.at(surface) = true;
+}
+
+bool Vertex::is_matched_surface(const std::shared_ptr<Surface>& surface) const
+{
+    return is_matched_surface_map_.at(surface);
 }
 
 void Vertex::update_confirmed_status()
