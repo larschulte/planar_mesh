@@ -373,7 +373,7 @@ void Vertex::connect(const std::shared_ptr<Vertex>& sibling_vertex)
 
     // connect
     bool inserted = sibling_vertices_.insert(sibling_vertex).second;
-    if (inserted) std::cout << "Connected vertex " << id_ << " with vertex " << sibling_vertex->get_id() << " as sibling."<< std::endl;
+    // if (inserted) std::cout << "Connected vertex " << id_ << " with vertex " << sibling_vertex->get_id() << " as sibling."<< std::endl;
     if (inserted) sibling_vertex->connect(shared_from_this());
     if (inserted)
     {

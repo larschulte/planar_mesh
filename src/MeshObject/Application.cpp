@@ -140,6 +140,53 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
 
     */
 
+   // 1. when we review a point, we should treat it as a new point, then decide which surface to keep / remove
+    // this is to ensure indepdenence of point adding order - if a reviewed point is disconnected from some surface, a new duplicate point 
+    // at the same location should not connect to the disconnected surfaces
+
+    // 2. confidence flag
+    // indicate whether the normal of a surface is reliable
+    
+    // 3. we add a point to the largest confidence surface
+    // (largest number of addtioanl points that agree with the surface)
+
+    // 4. if no confidence surface, we add it to all non confidence surface nearby 
+    // (this is the same as grouping a set of nearby points and try to fit a plane to them)
+
+    // 5. if a point is not added to a confidence surface, it will start a new seed
+
+    // 4 and 5 combined gives us a slightly more comprehensive method of grouping a set of nearby points
+    // (the best should be N choose K the set of nearby points)
+
+    // 6. abnormal test
+    // the projective distance of a sampled point to the sampled surface should follow the distribution of lidar sensor noise (fact)
+    // thus if the projective distance of a set of points to a surface have a distribution unlike the lidar sensor noise, unlike means
+        // gaussian but shifted origin
+        // gaussian but shifted origin and changed std
+        // changed std
+        // non gaussian
+    // that means the point to plane projective distance variable is due to more than just sensor noise, possible source includes
+        // shifted surface position
+        // shifted surface position and changed surface normal
+        // changed surface normal
+        // surface is not planar
+    // (non confidence surface should not attend the abnormal test)
+
+    // multi surface idea
+        // when at large n point threhsold threshold, it would be difficult for n points to be on the same surface, 
+        // which is the only way the proposed surface won't be treated as abnormal
+
+        // the proposed adding new point to multiple surface does not work in this case, 
+        // because each point only start a new seed from that point on
+        // which mean the next n consecutive points added to that point need to be on the same surface
+        // for the final surface to be treated as normal
+
+        // the adding to multiple surface idea is only possible if we solve the combination N choose P problem 
+
+    // only update surface close to new observation, such that the update time will be consistant
+    // otherwise the update time will be proportional to number of surface added
+    
+
     // when can not search
     if (!storage_->can_reverse_radius_search())
     {
