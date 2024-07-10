@@ -27,6 +27,7 @@ void Vertex::initialize_(const std::shared_ptr<Storage>& storage, const Eigen::V
     storage_ = storage;
     position_ = position;
     origin_ = origin;
+    direction_ = (position_ - origin_).normalized();
 
     // num of deletes
     num_deletes_ = 0;
@@ -161,6 +162,11 @@ const double& Vertex::get_projected_distance()
 const Eigen::Vector3d& Vertex::get_origin() const 
 { 
     return origin_; 
+}
+
+const Eigen::Vector3d& Vertex::get_direction() const 
+{ 
+    return direction_; 
 }
 
 const std::shared_ptr<Surface>& Vertex::get_surface() const

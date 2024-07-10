@@ -28,6 +28,7 @@ public:
     const int& get_id() const;
     const Eigen::Vector3d& get_position() const;
     const Eigen::Vector3d& get_origin() const;
+    const Eigen::Vector3d& get_direction() const;
     const std::shared_ptr<Surface>& get_surface() const;
     const std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash>& get_surfaces() const;
     bool has_surface() const;
@@ -123,6 +124,7 @@ private:
 
     Eigen::Vector3d position_;
     Eigen::Vector3d origin_;
+    Eigen::Vector3d direction_;
 };
 
 bool operator<(const std::shared_ptr<Vertex>& lhs, const std::shared_ptr<Vertex>& rhs);

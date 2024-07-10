@@ -24,6 +24,7 @@ public:
     const int& get_id() const;
     const Eigen::Vector3d& get_position() const;
     const Eigen::Vector3d& get_origin() const;
+    const Eigen::Vector3d& get_direction() const;
     const double& get_radius() const;
     bool is_expired() const;
 
@@ -41,6 +42,7 @@ private:
     std::shared_ptr<Storage> storage_;
     Eigen::Vector3d position_;
     Eigen::Vector3d origin_;
+    Eigen::Vector3d direction_;
     double radius_;
 };
 

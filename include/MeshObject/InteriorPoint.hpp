@@ -25,6 +25,7 @@ public:
     const int& get_id() const;
     const Eigen::Vector3d& get_position() const;
     const Eigen::Vector3d& get_origin() const;
+    const Eigen::Vector3d& get_direction() const;
     const std::shared_ptr<Surface>& get_surface() const;
     const std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash>& get_surfaces() const;
     const std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash>& get_sibling_interior_points() const;
@@ -71,6 +72,7 @@ private:
 
     Eigen::Vector3d position_;
     Eigen::Vector3d origin_;
+    Eigen::Vector3d direction_;
     double radius_;
 
     Eigen::Vector3d normal_used_;

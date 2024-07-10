@@ -22,6 +22,7 @@ void InteriorPoint::initialize_(const std::shared_ptr<Storage>& storage, const E
     // store
     position_ = position;
     origin_ = origin;
+    direction_ = (position_ - origin_).normalized();
     radius_ = radius;
 
     num_deletes_ = 0;
@@ -100,6 +101,11 @@ const Eigen::Vector3d& InteriorPoint::get_position() const
 const Eigen::Vector3d& InteriorPoint::get_origin() const
 {
     return origin_;
+}
+
+const Eigen::Vector3d& InteriorPoint::get_direction() const
+{
+    return direction_;
 }
 
 const std::shared_ptr<Surface>& InteriorPoint::get_surface() const
