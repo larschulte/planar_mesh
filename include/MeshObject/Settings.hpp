@@ -9,6 +9,7 @@ struct Settings
     // application settings
     bool use_sim_data;
     int sim_object;
+    double noise_std;
     std::string cloud_path;
     std::string pose_path;
     int start_cloud;

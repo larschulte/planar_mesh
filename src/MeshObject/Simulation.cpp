@@ -1,5 +1,6 @@
 #include "MeshObject/Simulation.hpp"
 #include <iostream> 
+#include <random>
 
 Simulation::Simulation()
 {
@@ -10,24 +11,45 @@ void Simulation::set_object(int id)
     id_ = id;
 }
 
+void Simulation::set_noise(double noise_std)
+{
+    noise_std_ = noise_std;
+}
+
 void Simulation::get_data_pair(Eigen::Vector3d& origin, Eigen::Vector3d& position)
 {
     if (id_ == 0)
     {
-        return get_cube_data_pair(origin, position);
+        get_cube_data_pair(origin, position);
     }
     if (id_ == 1)
     {
-        return get_plane_data_pair(origin, position);
+        get_plane_data_pair(origin, position);
     }
     if (id_ == 2)
     {
-        return get_gap_data_pair(origin, position);
+        get_gap_data_pair(origin, position);
     }
     else
     {
         std::cout << "Error: invalid object id" << std::endl;
     }
+
+    // add noise
+
+    // gaussian noise with mean and variance
+    double mean = 0.0; // mean of the Gaussian distribution
+    double std = noise_std_; // variance of the Gaussian distribution
+
+    // generate random noise value from Gaussian distribution
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::normal_distribution<double> distribution(mean, std);
+    double noise_value = distribution(gen);
+
+    // convert to noise vector and add to position
+    Eigen::Vector3d noise_vector = (position - origin).normalized() * noise_value;
+    position += noise_vector;
 }
 
 void Simulation::get_cube_data_pair(Eigen::Vector3d& out_origin, Eigen::Vector3d& out_position)

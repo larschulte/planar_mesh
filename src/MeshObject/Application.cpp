@@ -736,6 +736,7 @@ void Application<PointT>::get_sim_data(Eigen::Vector3d& origin, Eigen::Vector3d&
 {
     Simulation sim;
     sim.set_object(settings_.sim_object);
+    sim.set_noise(settings_.noise_std);
     sim.get_data_pair(origin, position);
 }
 
