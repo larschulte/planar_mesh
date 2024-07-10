@@ -371,12 +371,8 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_that_mismatch;
     for (std::shared_ptr<Surface> surface : neighboring_surfaces) 
     {
-        // get surface projective distance stats
-        const std::vector<double>& stats = surface->get_projective_distance_stats();
-        double mean = compute_mean(stats);
-        double std = compute_std(stats);
         // log
-        std::cout << ">> processing surface " << surface->get_id() << " with "<< surface->get_total_point_size() << " points, mean = " << mean << ", std = " << std << std::endl;
+        std::cout << ">> processing surface " << surface->get_id() << " with "<< surface->get_total_point_size() << " points" << std::endl;
 
         // collect surfaces with low confidence
         if (surface->get_total_point_size() < settings_.fit_plane_threshold)
@@ -387,18 +383,21 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
         
         // remaining surfaces with high confidence
 
-        // mismatch if distance is too far from the mean
-        double distance = std::fabs(surface->compute_point_projective_distance(generic_point));
-        if ((distance - mean) > 3*std)
+        // mismatch if projective distance is too far from the mean
+        // get surface projective distance stats
+        double projective_distance = surface->compute_point_projective_distance(generic_point);
+        double surface_position_std = surface->compute_surface_position_std_in_normal_direction();
+        double surface_projective_std = surface_position_std / std::fabs(surface->get_normal().dot(generic_point->get_direction()));
+        std::cout <<  "surface position std = " << surface_position_std << std::endl;
+
+        if (std::fabs(projective_distance) > 3 * (settings_.range_noise_std + surface_projective_std))
         {
             surfaces_that_mismatch.insert(surface);
             continue;
         }
 
         // mismatch if observed from behind
-        Eigen::Vector3d normal = surface->get_normal();
-        Eigen::Vector3d direction = generic_point->get_origin() - generic_point->get_position();
-        if (normal.dot(direction) < 0) 
+        if (surface->get_normal().dot(generic_point->get_direction()) > 0) 
         {
             surfaces_that_mismatch.insert(surface);
             continue;
@@ -620,10 +619,10 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
         const std::shared_ptr<Surface>& surface = pair.first;
         const std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& mapped_searched_faces = pair.second;
 
-        const std::vector<double>& stats = surface->get_projective_distance_stats();
-        double distance = surface->compute_point_projective_distance(generic_point);
-        bool points_behind_surface = (distance - compute_mean(stats)) < - 3*compute_std(stats) - 3*settings_.range_noise_std;
-        
+        double projective_distance = surface->compute_point_projective_distance(generic_point);
+        double surface_position_std = surface->compute_surface_position_std_in_normal_direction();
+        double surface_projective_std = surface_position_std / std::fabs(surface->get_normal().dot(generic_point->get_direction()));
+        bool points_behind_surface = projective_distance < - 3 * (settings_.range_noise_std + surface_projective_std);
         if (points_behind_surface)
         {
             storage_->set_penetrating_point(generic_point);
@@ -672,17 +671,17 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
         }
         if (all_faces_expired) continue;
 
-        const std::vector<double>& stats = surface->get_projective_distance_stats();
-        double distance = surface->compute_point_projective_distance(generic_point);
-        bool points_before_surface = (distance - compute_mean(stats)) > 3*compute_std(stats) + 3*settings_.range_noise_std;
-        bool points_behind_surface = (distance - compute_mean(stats)) < - 3*compute_std(stats) - 3*settings_.range_noise_std;
-        bool points_within_surface = !points_before_surface && !points_behind_surface;
+        double projective_distance = surface->compute_point_projective_distance(generic_point);
+        double surface_position_std = surface->compute_surface_position_std_in_normal_direction();
+        double surface_projective_std = surface_position_std / std::fabs(surface->get_normal().dot(generic_point->get_direction()));
+        
+        bool points_within_surface = std::fabs(projective_distance) < 3 * (settings_.range_noise_std + surface_projective_std);
         
         if (points_within_surface)
         {
             // log
             std::cout << "========================== within surface " << surface->get_id() << std::endl;
-            std::cout << "distance = " << distance << ", mean = " << compute_mean(stats) << ", std = " << compute_std(stats) << std::endl;
+            std::cout << "projective distance = " << projective_distance << ", surface position std = " << surface_position_std << std::endl;
 
             // add as interior point
             std::shared_ptr<InteriorPoint> temp_interior_point = storage_->add_interior_point(generic_point);

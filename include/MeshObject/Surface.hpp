@@ -7,6 +7,7 @@
 #include "MeshObject/EdgeBVH.hpp"
 
 #include "MeshObject/MeshObject.hpp"
+#include "MeshObject/Settings.hpp"
 
 // forward declarations
 class Vertex;
@@ -58,12 +59,16 @@ public:
 
     bool connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& all_nearby_vertices);
 
+    double compute_surface_position_std_in_normal_direction();
+
     void refine_surface();
 
     void add_searchable_edge(const std::shared_ptr<Edge>& edge);
     void remove_searchable_edge(const std::shared_ptr<Edge>& edge);
     
 private:
+    static Settings settings_;
+
     bool deleting_ = false;
     bool is_expired_ = true;
 
