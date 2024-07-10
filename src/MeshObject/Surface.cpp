@@ -454,8 +454,18 @@ double Surface::compute_surface_position_std_in_normal_direction()
         // compute normal distance and std
         double normal_distance = projective_to_normal_ratio * distance;
         double normal_std = projective_to_normal_ratio * std;
+        // std::cout << "normal_distance: " << normal_distance << ", normal std: " << normal_std << std::endl;
 
         // update bayesian mean and std
+
+        // for the first point
+        if (bayesian_std == 0)
+        {
+            bayesian_mean = normal_distance;
+            bayesian_std = normal_std;
+            continue;
+        }
+        // for the rest of the points
         bayesian_mean = (bayesian_mean * bayesian_std * bayesian_std + normal_distance * normal_std * normal_std) / (bayesian_std * bayesian_std + normal_std * normal_std);
         bayesian_std = std::sqrt((bayesian_std * bayesian_std * normal_std * normal_std) / (bayesian_std * bayesian_std + normal_std * normal_std));
     }
@@ -473,8 +483,18 @@ double Surface::compute_surface_position_std_in_normal_direction()
         // compute normal distance and std
         double normal_distance = projective_to_normal_ratio * distance;
         double normal_std = projective_to_normal_ratio * std;
+        // std::cout << "normal_distance: " << normal_distance << ", normal std: " << normal_std << std::endl;
 
         // update bayesian mean and std
+        
+        // for the first point
+        if (bayesian_std == 0)
+        {
+            bayesian_mean = normal_distance;
+            bayesian_std = normal_std;
+            continue;
+        }
+        // for the rest of the points
         bayesian_mean = (bayesian_mean * bayesian_std * bayesian_std + normal_distance * normal_std * normal_std) / (bayesian_std * bayesian_std + normal_std * normal_std);
         bayesian_std = std::sqrt((bayesian_std * bayesian_std * normal_std * normal_std) / (bayesian_std * bayesian_std + normal_std * normal_std));
     }
