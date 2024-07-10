@@ -124,9 +124,9 @@ const Eigen::Vector3d& Vertex::get_position() const
 void Vertex::try_update_surface_projection(const std::shared_ptr<Surface> surface)
 {
     // update if surface changes
-    if (normal_used_ != surface->get_normal())
+    if (mean_used_ != surface->get_mean())
     {
-        normal_used_ = surface->get_normal();
+        mean_used_ = surface->get_mean();
         projected_position_ = surface->compute_point_projective_position(get_origin(), get_position());
         projected_distance_ = surface->compute_point_projective_distance(get_origin(), get_position());
     }

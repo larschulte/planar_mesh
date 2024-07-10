@@ -117,7 +117,7 @@ private:
 
     Eigen::Matrix3d eigenvectors_used_;
     Eigen::Vector2d surface_coordinate_;
-    Eigen::Vector3d normal_used_;
+    Eigen::Vector3d mean_used_;
     Eigen::Vector3d projected_position_;
     double projected_distance_;
     
