@@ -137,6 +137,40 @@ Eigen::Vector3d Surface::compute_point_projective_position(const Eigen::Vector3d
     return intersection;
 }
 
+RelativePosition Surface::check_relative_position(const Eigen::Vector3d& origin, const Eigen::Vector3d& point, const Eigen::Vector3d& direction)
+{
+    // compute
+    double projective_distance = compute_point_projective_distance(origin, point);
+
+    double surface_position_std = compute_surface_position_std_in_normal_direction();
+    double surface_projective_std = surface_position_std / std::fabs(normal_.dot(direction));
+
+    bool points_in_front_of_surface = projective_distance > 3 * (settings_.range_noise_std + surface_projective_std);
+    bool points_behind_surface = projective_distance < - 3 * (settings_.range_noise_std + surface_projective_std);
+    bool points_within_surface = !points_in_front_of_surface && !points_behind_surface;
+
+    // return
+    if (points_in_front_of_surface) return RelativePosition::IN_FRONT;
+    else if (points_behind_surface) return RelativePosition::BEHIND;
+    else if (points_within_surface) return RelativePosition::WITHIN;
+    else throw std::runtime_error("Invalid relative position.");
+}
+
+RelativePosition Surface::check_relative_position(const std::shared_ptr<GenericPoint>& generic_point)
+{
+    return check_relative_position(generic_point->get_origin(), generic_point->get_position(), generic_point->get_direction());
+}
+
+RelativePosition Surface::check_relative_position(const std::shared_ptr<Vertex>& vertex)
+{
+    return check_relative_position(vertex->get_origin(), vertex->get_position(), vertex->get_direction());
+}
+
+RelativePosition Surface::check_relative_position(const std::shared_ptr<InteriorPoint>& interior_point)
+{
+    return check_relative_position(interior_point->get_origin(), interior_point->get_position(), interior_point->get_direction());
+}
+
 void Surface::merge_surface(const std::shared_ptr<Surface>& surface)
 {
     // check input
