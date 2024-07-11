@@ -222,83 +222,19 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
         // remain in matched surfaces
 
     // review point
-    for (std::shared_ptr<Vertex> vertex : neighboring_vertices)
+    // make a copy of the neighboring vertices as we will be modifying it
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> neighboring_vertices_copy = neighboring_vertices;
+    for (const std::shared_ptr<Vertex>& vertex : neighboring_vertices_copy)
     {
-        // initialize
-        std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> connected_surfaces_with_low_confidence;
-        std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> connected_surfaces_that_match;
-        std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> connected_surfaces_that_mismatch;
+        // some sibling vertex may be expired during previous review 
+        if (vertex->is_expired()) continue;
 
-        // check type for each surface
-        for (std::shared_ptr<Surface> surface : vertex->get_surfaces())
-        {
-            // skip if still low confidence
-            if (surface->get_total_point_size() < settings_.fit_plane_threshold)
-            {
-                connected_surfaces_with_low_confidence.insert(surface);
-                continue;
-            }
-
-            // left with high confidence surface
-
-            // skip if already matched
-            if (vertex->is_matched_surface(surface)) 
-            {
-                connected_surfaces_that_match.insert(surface);
-                continue;
-            }
-
-            // left with high confidence surface that is not matched (i.e. low confidence surface that just turned high confidence)
-
-            // mismatch if distance is too far from the mean
-            if (surface->check_relative_position(vertex) != RelativePosition::WITHIN)
-            {
-                connected_surfaces_that_mismatch.insert(surface);
-                continue;
-            }
-
-            // mismatch if observed from behind
-            Eigen::Vector3d normal = surface->get_normal();
-            Eigen::Vector3d direction = vertex->get_origin() - vertex->get_position();
-            if (normal.dot(direction) < 0) 
-            {
-                connected_surfaces_that_mismatch.insert(surface);
-                continue;
-            }
-
-            // left with matched surface
-            connected_surfaces_that_match.insert(surface);
-            vertex->add_matched_surface(surface);
-        }
-
-        // for connected surface that mismatch
-        for (std::shared_ptr<Surface> surface : connected_surfaces_that_mismatch)
-        {
-            vertex->disconnect(surface);
-
-            // potentially update the search radius of the connected radius as well as the interior points of connected faces
-        }
-
-        // for connected surface that match
-        {
-            // remain in matched surfaces
-        }
-
-        // if already connected to matched surfaces
-        if (connected_surfaces_that_match.size() > 0)
-        {
-            // for connected low confidence surfaces 
-            for (std::shared_ptr<Surface> surface : connected_surfaces_with_low_confidence)
-            {
-                vertex->disconnect(surface);
-            }
-        }
+        vertex->review_surfaces();
     }
 
     // recompute neighboring vertices
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> neighboring_vertices_copy2 = neighboring_vertices;
     neighboring_vertices.clear();
-    for (std::shared_ptr<Vertex> vertex : neighboring_vertices_copy2)
+    for (std::shared_ptr<Vertex> vertex : neighboring_vertices_copy)
     {
         // skip if the vertex is expired
         if (vertex->is_expired()) continue;
@@ -339,7 +275,6 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
     }
 
     // recompute neighboring vertices
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> neighboring_vertices_copy = neighboring_vertices;
     neighboring_vertices.clear();
     for (std::shared_ptr<Vertex> vertex : neighboring_vertices_copy)
     {

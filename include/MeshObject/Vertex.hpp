@@ -62,6 +62,9 @@ public:
 
     void add_matched_surface(const std::shared_ptr<Surface>& surface);
     bool is_matched_surface(const std::shared_ptr<Surface>& surface) const;
+    
+    void review_surfaces();
+    bool has_matched_surface();
 
     void update_confirmed_status();
     void update_singular_state(const std::shared_ptr<Surface>& surface);
@@ -94,6 +97,7 @@ private:
     static Settings settings_;
 
     bool deleting_ = false;
+    bool under_review_ = false;
     std::map<std::shared_ptr<Surface>, bool> is_boundary_map_;
     bool is_searchable_ = false;
     bool is_expired_ = true;

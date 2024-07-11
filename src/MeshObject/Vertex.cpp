@@ -459,6 +459,108 @@ bool Vertex::is_matched_surface(const std::shared_ptr<Surface>& surface) const
     return is_matched_surface_map_.at(surface);
 }
 
+void Vertex::review_surfaces()
+{
+    // skip if already under review
+    if (under_review_) return;
+
+    // update flag
+    under_review_ = true;
+
+    // get surface
+    std::shared_ptr<Surface> surface = get_surface();
+
+    // skip if matched surface
+    if (is_matched_surface(surface)) 
+    {
+        under_review_ = false;
+        return;
+    }
+
+    // left with not matched surface
+
+    // if high confidence
+    if (surface->get_total_point_size() > settings_.fit_plane_threshold)
+    {
+        // mismatch if observed from behind
+        Eigen::Vector3d normal = surface->get_normal();
+        Eigen::Vector3d direction = get_direction();
+        if (normal.dot(direction) > 0) 
+        {
+            // surface is not matched
+            disconnect(surface);
+            under_review_ = false;
+            return;
+        }
+
+        // mismatch if not within
+        if (surface->check_relative_position(shared_from_this()) != RelativePosition::WITHIN)
+        {
+            // surface is not matched
+            disconnect(surface);
+            under_review_ = false;
+            return;
+        }
+
+        // left with surface that is matched
+        add_matched_surface(surface);
+        under_review_ = false;
+        return;
+    }
+    // if low confidence
+    else
+    {
+        // make a copy of the sibling vertices as within the loop the sibling vertices may change
+        std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> sibling_vertices_copy = sibling_vertices_;
+
+        // ask siblings to review themselves
+        for (const std::shared_ptr<Vertex>& sibling : sibling_vertices_copy)
+        {
+            // some sibling vertex may be expired during previous review 
+            if (sibling->is_expired()) continue;
+
+            sibling->review_surfaces();
+        }
+
+        // after review, the sibling may no longer exists
+
+        // check if siblings have matched surface   
+        bool siblings_have_matched_surface = false;
+        for (const std::shared_ptr<Vertex>& sibling : sibling_vertices_copy)
+        {
+            // skip if sibling is expired
+            if (sibling->is_expired()) continue;
+
+            if (sibling->has_matched_surface())
+            {
+                siblings_have_matched_surface = true;
+                break;
+            }
+        }
+
+        // delete itself if siblings have matched surface
+        if (siblings_have_matched_surface)
+        {
+            disconnect(surface);
+            under_review_ = false;
+            return;
+        }
+
+        // else do nothing
+        under_review_ = false;
+        return;
+    }
+}
+
+bool Vertex::has_matched_surface()
+{
+    for (const auto& pair : is_matched_surface_map_)
+    {
+        if (pair.second) return true;
+    }
+    return false;
+}
+
 void Vertex::update_confirmed_status()
 {
     // update number of confirmed faces
