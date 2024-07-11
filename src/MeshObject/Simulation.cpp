@@ -20,11 +20,11 @@ void Simulation::get_data_pair(Eigen::Vector3d& origin, Eigen::Vector3d& positio
 {
     if (id_ == 0)
     {
-        get_cube_data_pair(origin, position);
+        get_plane_data_pair(origin, position);
     }
     if (id_ == 1)
     {
-        get_plane_data_pair(origin, position);
+        get_cube_data_pair(origin, position);   
     }
     if (id_ == 2)
     {
