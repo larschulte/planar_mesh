@@ -36,7 +36,7 @@ public:
     const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& get_sibling_vertices() const;
     std::size_t get_num_deletes() const;
 
-    void try_merge_surfaces();
+    // void try_merge_surfaces();
 
     void try_update_surface_projection(const std::shared_ptr<Surface> surface);
     void try_update_surface_projection();

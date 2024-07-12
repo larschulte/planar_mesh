@@ -14,11 +14,7 @@ struct Settings
     std::string pose_path;
     int start_cloud;
     std::size_t start_point;
-    double distance_threshold;
     std::size_t fit_plane_threshold;
-    std::size_t remove_low_confidence_threshold;
-    double projective_std_threshold;
-    double merged_eigenvalue_threshold;
     bool shuffle_pointcloud;
     bool use_radius_value;
     double pointcloud_fraction;

@@ -219,71 +219,71 @@ std::size_t Vertex::get_num_deletes() const
     return num_deletes_;
 }
 
-void Vertex::try_merge_surfaces()
-{
-    // check if there is only one surface
-    if (surfaces_.size() == 1) return;
+// void Vertex::try_merge_surfaces()
+// {
+    // // check if there is only one surface
+    // if (surfaces_.size() == 1) return;
 
-    bool merge_happened = false;
+    // bool merge_happened = false;
 
-    // merge surfaces
-    while (true)
-    {
-        bool merge_again = false;
+    // // merge surfaces
+    // while (true)
+    // {
+    //     bool merge_again = false;
 
-        // generate pairs of surfaces
-        std::set<std::pair<std::shared_ptr<Surface>, std::shared_ptr<Surface>>> surface_pairs;
-        for (std::shared_ptr<Surface> surface1 : surfaces_) 
-        {
-            for (std::shared_ptr<Surface> surface2 : surfaces_) 
-            {
-                if (surface1 >= surface2) continue;
-                surface_pairs.insert(std::make_pair(surface1, surface2));
-            }
-        }
+    //     // generate pairs of surfaces
+    //     std::set<std::pair<std::shared_ptr<Surface>, std::shared_ptr<Surface>>> surface_pairs;
+    //     for (std::shared_ptr<Surface> surface1 : surfaces_) 
+    //     {
+    //         for (std::shared_ptr<Surface> surface2 : surfaces_) 
+    //         {
+    //             if (surface1 >= surface2) continue;
+    //             surface_pairs.insert(std::make_pair(surface1, surface2));
+    //         }
+    //     }
 
-        // merge surfaces
-        for (const auto& pairs : surface_pairs) 
-        {
-            // skip if combined surface have large eigenvalue
-            const std::shared_ptr<Surface>& surface1 = pairs.first;
-            const std::shared_ptr<Surface>& surface2 = pairs.second;
-            const Eigen::Matrix3d& cov1 = surface1->get_covariance();
-            const Eigen::Matrix3d& cov2 = surface2->get_covariance();
-            const Eigen::Vector3d& mean1 = surface1->get_mean();
-            const Eigen::Vector3d& mean2 = surface2->get_mean();
-            int size1 = surface1->get_total_point_size();
-            int size2 = surface2->get_total_point_size();
-            Eigen::Matrix3d covariance_matrix = merge_covariance(cov1, cov2, mean1, mean2, size1, size2);
-            Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> solver(covariance_matrix);
+    //     // merge surfaces
+    //     for (const auto& pairs : surface_pairs) 
+    //     {
+    //         // skip if combined surface have large eigenvalue
+    //         const std::shared_ptr<Surface>& surface1 = pairs.first;
+    //         const std::shared_ptr<Surface>& surface2 = pairs.second;
+    //         const Eigen::Matrix3d& cov1 = surface1->get_covariance();
+    //         const Eigen::Matrix3d& cov2 = surface2->get_covariance();
+    //         const Eigen::Vector3d& mean1 = surface1->get_mean();
+    //         const Eigen::Vector3d& mean2 = surface2->get_mean();
+    //         int size1 = surface1->get_total_point_size();
+    //         int size2 = surface2->get_total_point_size();
+    //         Eigen::Matrix3d covariance_matrix = merge_covariance(cov1, cov2, mean1, mean2, size1, size2);
+    //         Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> solver(covariance_matrix);
             
-            double eigenvalue = solver.eigenvalues()[0];
-            if (eigenvalue > Vertex::settings_.merged_eigenvalue_threshold) continue;
+    //         double eigenvalue = solver.eigenvalues()[0];
+    //         if (eigenvalue > Vertex::settings_.merged_eigenvalue_threshold) continue;
 
-            // merge by changing surface1 into surface2
-            std::cout << ">> Merging surface " << surface1->get_id() << " with " << surface1->get_total_point_size() << " points into surface " << surface2->get_id() << " with " << surface2->get_total_point_size() << " points." << std::endl;
-            swap(surface1, surface2);
-            merge_happened = true;
-            std::cout << ">> resultant surface " << surface1->get_id() << " has " << surface1->get_total_point_size() << " points." << std::endl;
-            std::cout << ">> resultant surface " << surface2->get_id() << " has " << surface2->get_total_point_size() << " points." << std::endl;
+    //         // merge by changing surface1 into surface2
+    //         std::cout << ">> Merging surface " << surface1->get_id() << " with " << surface1->get_total_point_size() << " points into surface " << surface2->get_id() << " with " << surface2->get_total_point_size() << " points." << std::endl;
+    //         swap(surface1, surface2);
+    //         merge_happened = true;
+    //         std::cout << ">> resultant surface " << surface1->get_id() << " has " << surface1->get_total_point_size() << " points." << std::endl;
+    //         std::cout << ">> resultant surface " << surface2->get_id() << " has " << surface2->get_total_point_size() << " points." << std::endl;
 
-            // reset
-            merge_again = true;
-            break;
-        }
+    //         // reset
+    //         merge_again = true;
+    //         break;
+    //     }
 
-        if (!merge_again) break;
-    }
+    //     if (!merge_again) break;
+    // }
 
-    if (merge_happened) 
-    {
-        std::cout << ">> Merging surfaces done." << std::endl;
-    }
-    else
-    {
-        std::cout << ">> No merging happened." << std::endl;
-    }
-}
+    // if (merge_happened) 
+    // {
+    //     std::cout << ">> Merging surfaces done." << std::endl;
+    // }
+    // else
+    // {
+    //     std::cout << ">> No merging happened." << std::endl;
+    // }
+// }
 
 const Eigen::Vector2d& Vertex::get_surface_coordinate(const std::shared_ptr<Surface> surface)
 {

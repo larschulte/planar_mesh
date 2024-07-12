@@ -49,37 +49,37 @@ double Application<PointT>::compute_eigenvalue_of_merged_surfaces(std::shared_pt
     return Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d>(covariance_matrix).eigenvalues()[0];
 }
 
-template <typename PointT>
-void Application<PointT>::try_merge_surfaces(std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash>& surfaces_to_merge)
-{
-    while (true) 
-    {
-        std::set<std::pair<std::shared_ptr<Surface>, std::shared_ptr<Surface>>> surface_pairs;
-        for (std::shared_ptr<Surface> surface1 : surfaces_to_merge) 
-        {
-            for (std::shared_ptr<Surface> surface2 : surfaces_to_merge) 
-            {
-                if (surface1 >= surface2) continue;
-                surface_pairs.insert(std::make_pair(surface1, surface2));
-            }
-        }
+// template <typename PointT>
+// void Application<PointT>::try_merge_surfaces(std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash>& surfaces_to_merge)
+// {
+    // while (true) 
+    // {
+    //     std::set<std::pair<std::shared_ptr<Surface>, std::shared_ptr<Surface>>> surface_pairs;
+    //     for (std::shared_ptr<Surface> surface1 : surfaces_to_merge) 
+    //     {
+    //         for (std::shared_ptr<Surface> surface2 : surfaces_to_merge) 
+    //         {
+    //             if (surface1 >= surface2) continue;
+    //             surface_pairs.insert(std::make_pair(surface1, surface2));
+    //         }
+    //     }
         
-        bool again = false;
-        for (const auto& pairs : surface_pairs) 
-        {
-            Eigen::Matrix3d covariance_matrix = merge_covariances_of_surfaces(pairs.first, pairs.second);
-            double eigenvalue = Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d>(covariance_matrix).eigenvalues()[0];
-            if (eigenvalue > settings_.merged_eigenvalue_threshold) continue;
+    //     bool again = false;
+    //     for (const auto& pairs : surface_pairs) 
+    //     {
+    //         Eigen::Matrix3d covariance_matrix = merge_covariances_of_surfaces(pairs.first, pairs.second);
+    //         double eigenvalue = Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d>(covariance_matrix).eigenvalues()[0];
+    //         if (eigenvalue > settings_.merged_eigenvalue_threshold) continue;
 
-            surfaces_to_merge.erase(pairs.second);
-            pairs.first->merge_surface(pairs.second);
+    //         surfaces_to_merge.erase(pairs.second);
+    //         pairs.first->merge_surface(pairs.second);
 
-            again = true;
-            break;
-        }
-        if (!again) break;
-    }
-}
+    //         again = true;
+    //         break;
+    //     }
+    //     if (!again) break;
+    // }
+// }
 
 template <typename PointT>
 void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<GenericPoint>& generic_point)
