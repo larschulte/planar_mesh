@@ -337,18 +337,33 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
     }
 
     // for surfaces that match
+    
+    // sort the surfaces with smallest positional uncertainty first
+    std::vector<std::shared_ptr<Surface>> sorted_surfaces_that_match;
     for (std::shared_ptr<Surface> surface : surfaces_that_match)
     {
-        std::cout << ">> matched surface " << surface->get_id() << std::endl;
-        
+        sorted_surfaces_that_match.push_back(surface);
+    }
+    std::sort(sorted_surfaces_that_match.begin(), sorted_surfaces_that_match.end(), 
+        [](const std::shared_ptr<Surface>& a, const std::shared_ptr<Surface>& b) -> bool
+        {
+            return a->compute_surface_position_std_in_normal_direction() < b->compute_surface_position_std_in_normal_direction();
+        });
+
+    // add to the first surface
+    for (std::shared_ptr<Surface> surface : sorted_surfaces_that_match)
+    {
         std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(generic_point);
         bool connected = surface->connect_by_edges_and_faces(new_vertex, neighboring_vertices);
         if (connected)
         {
+            std::cout << ">> matched surface " << surface->get_id() << std::endl;
             sibling_vertices.push_back(new_vertex);
             sibling_vertices[0]->connect(new_vertex);
 
             new_vertex->add_matched_surface(surface);
+
+            break;
         }
         else
         {

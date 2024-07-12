@@ -461,92 +461,72 @@ bool Vertex::is_matched_surface(const std::shared_ptr<Surface>& surface) const
 
 void Vertex::review_surfaces()
 {
+    // review have the following cases
+    // - high confidence and not match -> delete
+    // - high confidence and match -> need sibling info
+    // - low confidence -> need sibling info
+
+    // what about sibling interior points??
+    
     // skip if already under review
     if (under_review_) return;
-
-    // update flag
     under_review_ = true;
 
-    // get surface
+    // delete if surface is high confidence and mismatched
     std::shared_ptr<Surface> surface = get_surface();
-
-    // skip if matched surface
-    if (is_matched_surface(surface)) 
-    {
-        under_review_ = false;
-        return;
-    }
-
-    // left with not matched surface
-
-    // if high confidence
-    if (surface->get_total_point_size() > settings_.fit_plane_threshold)
+    bool high_confidence = surface->get_total_point_size() > settings_.fit_plane_threshold;
+    if (high_confidence)
     {
         // mismatch if observed from behind
         Eigen::Vector3d normal = surface->get_normal();
         Eigen::Vector3d direction = get_direction();
-        if (normal.dot(direction) > 0) 
+        bool observed_from_behind = normal.dot(direction) > 0;
+        // mismatch if not within surface
+       bool not_within_surface = surface->check_relative_position(shared_from_this()) != RelativePosition::WITHIN;
+        
+        // delete if surface is high confidence and mismatched
+        bool mismatch = observed_from_behind || not_within_surface;
+        if (mismatch)
         {
-            // surface is not matched
             disconnect(surface);
             under_review_ = false;
             return;
         }
-
-        // mismatch if not within
-        if (surface->check_relative_position(shared_from_this()) != RelativePosition::WITHIN)
-        {
-            // surface is not matched
-            disconnect(surface);
-            under_review_ = false;
-            return;
-        }
-
-        // left with surface that is matched
-        add_matched_surface(surface);
-        under_review_ = false;
-        return;
     }
-    // if low confidence
-    else
+
+    // ask siblings to review themselves
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> sibling_vertices_copy = sibling_vertices_;
+    for (const std::shared_ptr<Vertex>& sibling : sibling_vertices_copy)
     {
-        // make a copy of the sibling vertices as within the loop the sibling vertices may change
-        std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> sibling_vertices_copy = sibling_vertices_;
+        // skip if expired
+        if (sibling->is_expired()) continue; // some sibling vertex may be expired during previous review 
 
-        // ask siblings to review themselves
-        for (const std::shared_ptr<Vertex>& sibling : sibling_vertices_copy)
-        {
-            // some sibling vertex may be expired during previous review 
-            if (sibling->is_expired()) continue;
+        // review
+        sibling->review_surfaces();
+    }
 
-            sibling->review_surfaces();
-        }
+    // record sibling surface positional uncertainty
+    std::vector<double> sibling_surface_uncertainty_list;
+    for (const std::shared_ptr<Vertex>& sibling : sibling_vertices_copy)
+    {
+        // skip if expired
+        if (sibling->is_expired()) continue;
 
-        // after review, the sibling may no longer exists
+        // skip if low confidence
+        if (sibling->get_surface()->get_total_point_size() < settings_.fit_plane_threshold) continue;
 
-        // check if siblings have matched surface   
-        bool siblings_have_matched_surface = false;
-        for (const std::shared_ptr<Vertex>& sibling : sibling_vertices_copy)
-        {
-            // skip if sibling is expired
-            if (sibling->is_expired()) continue;
+        // record
+        sibling_surface_uncertainty_list.push_back(sibling->get_surface()->compute_surface_position_std_in_normal_direction());
+    }
 
-            if (sibling->has_matched_surface())
-            {
-                siblings_have_matched_surface = true;
-                break;
-            }
-        }
-
-        // delete itself if siblings have matched surface
-        if (siblings_have_matched_surface)
-        {
-            disconnect(surface);
-            under_review_ = false;
-            return;
-        }
-
-        // else do nothing
+    // record current surface positional uncertainty
+    double current_surface_positional_uncertainty = high_confidence ? surface->compute_surface_position_std_in_normal_direction() : std::numeric_limits<double>::max();
+    
+    // if any sibling have surface with lower positional uncertainty, delete this vertex
+    if (std::any_of(sibling_surface_uncertainty_list.begin(), sibling_surface_uncertainty_list.end(),
+            [&](double sibling_surface_uncertainty){ return sibling_surface_uncertainty < current_surface_positional_uncertainty; }))
+    {
+        disconnect(surface);
         under_review_ = false;
         return;
     }
