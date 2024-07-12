@@ -712,9 +712,6 @@ void Surface::set_random_color()
 
 void Surface::refine_surface()
 {
-    // refine settings
-    double distance_threshold = 0.05;
-
     // collect vertices to delete
     std::vector<std::shared_ptr<Vertex>> vertices_to_delete;
     for (const auto& vertex : vertices_)
@@ -722,11 +719,8 @@ void Surface::refine_surface()
         // check input
         if (vertex->is_expired()) throw std::runtime_error("Surface contains expired vertex.");
 
-        // compute distance
-        double distance = vertex->get_projected_distance();
-        
-        // if distance is larger than threshold, remove point from surface fitting
-        if (std::fabs(distance) > distance_threshold) vertices_to_delete.push_back(vertex);
+        // if vertex is not within the surface, add to remove list
+        if (check_relative_position(vertex) != RelativePosition::WITHIN) vertices_to_delete.push_back(vertex);
     }
 
     // collect interior points to delete
@@ -736,11 +730,8 @@ void Surface::refine_surface()
         // check input
         if (interior_point->is_expired()) throw std::runtime_error("Surface contains expired interior point.");
 
-        // compute distance
-        double distance = interior_point->get_projected_distance();
-        
-        // if distance is larger than threshold, remove point from surface fitting
-        if (std::fabs(distance) > distance_threshold) interior_points_to_delete.push_back(interior_point);
+        // if interior point is not within the surface, add to remove list
+        if (check_relative_position(interior_point) != RelativePosition::WITHIN) interior_points_to_delete.push_back(interior_point);
     }
 
     // delete points
