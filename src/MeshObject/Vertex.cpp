@@ -504,6 +504,34 @@ void Vertex::review_surfaces()
         bool mismatch = observed_from_behind || not_within_surface;
         if (mismatch)
         {
+            // find connected vertices
+            std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> connected_vertices = compute_connected_vertices();
+
+            // find connected interior points
+            std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> connected_interior_points = compute_connected_interior_points();
+
+            // reduce the search radius of the connected vertices
+            for (std::shared_ptr<Vertex> vertex : connected_vertices)
+            {
+                // distance
+                double distance = (vertex->get_position() - get_position()).norm();
+                
+                // reduce the search radius of the searched vertex
+                std::cout << ">>   reducing search radius of vertex " << vertex->get_id() << std::endl;
+                vertex->reduce_reverse_radius_search_radius(distance);
+            }
+
+            // reduce the search radius of the connected interior points
+            for (std::shared_ptr<InteriorPoint> interior_point : connected_interior_points)
+            {
+                // distance
+                double distance = (interior_point->get_position() - get_position()).norm();
+                
+                // reduce the search radius of the searched interior point
+                std::cout << ">>   reducing search radius of interior point " << interior_point->get_id() << std::endl;
+                interior_point->reduce_reverse_radius_search_radius(distance);
+            }
+
             disconnect(surface);
             under_review_ = false;
             return;
