@@ -14,6 +14,7 @@ class Face;
 class Storage;
 class Surface;
 class GenericPoint;
+class InteriorPoint;
 
 class Vertex : public std::enable_shared_from_this<Vertex>, public MeshObject
 {
@@ -46,6 +47,9 @@ public:
     const double& get_projected_distance();
     const Eigen::Vector2d& get_surface_coordinate(const std::shared_ptr<Surface> surface);
     const Eigen::Vector2d& get_surface_coordinate();
+
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> compute_connected_vertices();
+    std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> compute_connected_interior_points();
 
     bool is_expired() const;
     bool is_boundary(const std::shared_ptr<Surface>& surface) const;

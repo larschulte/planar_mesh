@@ -295,6 +295,36 @@ const Eigen::Vector2d& Vertex::get_surface_coordinate()
     return get_surface_coordinate(get_surface());
 }
 
+std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> Vertex::compute_connected_vertices()
+{
+    // iterate through all edges and get connected vertices
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> connected_vertices;
+    for (const std::shared_ptr<Edge>& edge : edges_)
+    {
+        connected_vertices.insert(edge->get_vertex(0));
+        connected_vertices.insert(edge->get_vertex(1));
+    }
+
+    // remove itself
+    connected_vertices.erase(shared_from_this());
+
+    // return
+    return connected_vertices;
+}
+
+std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> Vertex::compute_connected_interior_points()
+{
+    // iterate through all faces and get connected interior points
+    std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> connected_interior_points;
+    for (const std::shared_ptr<Face>& face : faces_)
+    {
+        connected_interior_points.insert(face->get_interior_points().begin(), face->get_interior_points().end());
+    }
+
+    // return
+    return connected_interior_points;
+}
+
 bool Vertex::is_expired() const
 {
     return is_expired_;

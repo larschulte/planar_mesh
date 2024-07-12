@@ -376,23 +376,41 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
     {
         std::cout << ">> mismatched surface " << surface->get_id() << std::endl;
 
-        // find neighboring vertices from the surface
-        for (std::shared_ptr<Vertex> vertex : neighboring_vertices)
+        // connect to the surface with edge and faces, then identify connected vertices and reduce their search radius
+        std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(generic_point);
+        bool connected = surface->connect_by_edges_and_faces(new_vertex, neighboring_vertices);
+        if (connected)
         {
-            // skip if vertex is not in the surface
-            if (vertex->get_surfaces().find(surface) == vertex->get_surfaces().end()) continue;
+            // find connected vertices
+            std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> connected_vertices = new_vertex->compute_connected_vertices();
 
-            // distance
-            double distance = (vertex->get_position() - generic_point->get_position()).norm();
-            
-            // reduce the search radius of the searched vertex
-            std::cout << ">>   reducing search radius of vertex " << vertex->get_id() << std::endl;
-            vertex->reduce_reverse_radius_search_radius(distance);
-            
-            // // reduce the search radius of the new vertex
-            // std::cout << ">>   reducing search radius of new vertex " << new_vertex->get_id() << std::endl;
-            // new_vertex->reduce_reverse_radius_search_radius(distance);
+            // find connected interior points
+            std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> connected_interior_points = new_vertex->compute_connected_interior_points();
+
+            // reduce the search radius of the connected vertices
+            for (std::shared_ptr<Vertex> vertex : connected_vertices)
+            {
+                // distance
+                double distance = (vertex->get_position() - generic_point->get_position()).norm();
+                
+                // reduce the search radius of the searched vertex
+                std::cout << ">>   reducing search radius of vertex " << vertex->get_id() << std::endl;
+                vertex->reduce_reverse_radius_search_radius(distance);
+            }
+
+            // reduce the search radius of the connected interior points
+            for (std::shared_ptr<InteriorPoint> interior_point : connected_interior_points)
+            {
+                // distance
+                double distance = (interior_point->get_position() - generic_point->get_position()).norm();
+                
+                // reduce the search radius of the searched interior point
+                std::cout << ">>   reducing search radius of interior point " << interior_point->get_id() << std::endl;
+                interior_point->reduce_reverse_radius_search_radius(distance);
+            }
         }
+
+        storage_->delete_vertex(new_vertex);
     }
 
     // if new vertex not in matched surface

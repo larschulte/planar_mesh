@@ -24,6 +24,7 @@ public:
     const int& get_id() const;
     const Eigen::Vector3d& get_center() const;
     const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& get_vertices() const;
+    const std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash>& get_interior_points() const;
     const std::shared_ptr<Vertex>& get_vertex(int index) const;
     const std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash>& get_surfaces() const;
     const std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& get_sibling_faces() const;

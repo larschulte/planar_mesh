@@ -134,6 +134,11 @@ const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& Face::get_ver
     return vertices_;
 }
 
+const std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash>& Face::get_interior_points() const
+{
+    return interior_points_;
+}
+
 const std::shared_ptr<Vertex>& Face::get_vertex(int index) const
 {
     if (index < 0 || index > 2) throw std::runtime_error("Invalid index for vertex.");

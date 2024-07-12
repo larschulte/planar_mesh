@@ -266,6 +266,16 @@ void InteriorPoint::disconnect(const std::shared_ptr<InteriorPoint>& sibling_int
     if (erased) sibling_interior_point->disconnect(shared_from_this());
 }
 
+void InteriorPoint::reduce_reverse_radius_search_radius(double radius)
+{
+    if (radius < radius_) set_reverse_radius_search_radius(radius);
+}
+
+void InteriorPoint::set_reverse_radius_search_radius(double radius)
+{
+    radius_ = radius;
+}
+
 void InteriorPoint::update_confirmed_status()
 {
     // update number of confirmed faces
