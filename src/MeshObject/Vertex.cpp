@@ -173,29 +173,15 @@ const std::shared_ptr<Surface>& Vertex::get_surface() const
 {    
     if (surfaces_.empty()) throw std::runtime_error("Vertex has no surface.");
 
-    // Select the surface with the lowest projective std, return as reference
-    double min_std = std::numeric_limits<double>::max();
-    const std::shared_ptr<Surface>* selected_surface = nullptr;
-    for (const std::shared_ptr<Surface>& surface : surfaces_) 
-    {
-        // get stats
-        const std::vector<double>& stats = surface->get_projective_distance_stats();
-        double std = compute_std(stats);
-        if (std < min_std) 
-        {
-            min_std = std;
-            selected_surface = &surface;
-        }
-    }
+    // if more than one surface, throw error
+    if (surfaces_.size() > 1) throw std::runtime_error("Interior point connected to more than one surface.");
 
-    return *selected_surface;
+    // return the first surface
+    return *surfaces_.begin();
 }
 
 const std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash>& Vertex::get_surfaces() const 
 { 
-    // if more than one surface, throw error
-    if (surfaces_.size() > 1) throw std::runtime_error("Vertex connected to more than one surface.");
-
     return surfaces_; 
 }
 

@@ -398,9 +398,6 @@ void Edge::remove_searchable_state(const std::shared_ptr<Surface>& surface)
 
 const std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash>& Edge::get_surfaces() const
 {
-    // if more than one surface, throw error
-    if (surfaces_.size() > 1) throw std::runtime_error("Edge connected to more than one surface.");
-
     return surfaces_;
 }
 

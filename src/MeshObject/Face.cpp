@@ -144,9 +144,6 @@ const std::shared_ptr<Vertex>& Face::get_vertex(int index) const
 
 const std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash>& Face::get_surfaces() const
 {
-    // if more than one surface, throw error
-    if (surfaces_.size() > 1) throw std::runtime_error("Face connected to more than one surface.");
-
     return surfaces_;
 }
 
