@@ -27,7 +27,7 @@ Settings::Settings()
     cloud_path = dataset_map[dataset].first;
     pose_path = dataset_map[dataset].second;
 
-    use_sim_data = true;
+    use_sim_data = false;
     sim_object = 0;
     noise_std = 0.01;
     
@@ -35,7 +35,7 @@ Settings::Settings()
     start_point = 0;
     fit_plane_threshold = 3;
     shuffle_pointcloud = false;
-    use_radius_value = true;
+    use_radius_value = false;
     pointcloud_fraction = 1;
     radius_value = 2;
     radius_ratio = tan(4 * M_PI / 180);
