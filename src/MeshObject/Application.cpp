@@ -337,32 +337,9 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
     }
 
     // for surfaces that match
-    
-    // sort the surfaces with smallest positional uncertainty first
-    std::vector<std::shared_ptr<Surface>> sorted_surfaces_that_match;
+
+    // connect the surface with the new vertex, then do a review
     for (std::shared_ptr<Surface> surface : surfaces_that_match)
-    {
-        sorted_surfaces_that_match.push_back(surface);
-    }
-    std::sort(sorted_surfaces_that_match.begin(), sorted_surfaces_that_match.end(), 
-        [&](const std::shared_ptr<Surface>& a, const std::shared_ptr<Surface>& b) -> bool
-        {
-            // sort with new point added
-            // create new vertex 
-            std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(generic_point);
-            a->connect(new_vertex);
-            b->connect(new_vertex);
-            bool value = a->compute_surface_position_std_in_normal_direction() < b->compute_surface_position_std_in_normal_direction();
-
-            storage_->disallow_creation_of_generic_point();
-            storage_->delete_vertex(new_vertex);
-            storage_->allow_creation_of_generic_point();
-
-            return value;
-        });
-
-    // add to the first surface
-    for (std::shared_ptr<Surface> surface : sorted_surfaces_that_match)
     {
         std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(generic_point);
         bool connected = surface->connect_by_edges_and_faces(new_vertex, neighboring_vertices);
@@ -373,13 +350,28 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
             sibling_vertices[0]->connect(new_vertex);
 
             new_vertex->add_matched_surface(surface);
-
-            break;
         }
         else
         {
             storage_->delete_vertex(new_vertex);
         }
+    }
+
+    // review the new vertex
+    if (sibling_vertices.size() > 0)
+    {
+        sibling_vertices[0]->review_surfaces();
+    }
+
+    // recompute sibling vertices
+    std::vector<std::shared_ptr<Vertex>> sibling_vertices_copy = sibling_vertices;
+    sibling_vertices.clear();
+    for (std::shared_ptr<Vertex> vertex : sibling_vertices_copy)
+    {
+        // skip if the vertex is expired
+        if (vertex->is_expired()) continue;
+
+        sibling_vertices.push_back(vertex);
     }
 
     // if new vertex not in matched surface
