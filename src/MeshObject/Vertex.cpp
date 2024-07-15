@@ -205,6 +205,11 @@ std::size_t Vertex::get_num_deletes() const
     return num_deletes_;
 }
 
+double Vertex::get_current_surface_uncertainty() const
+{
+    return current_surface_uncertainty_;
+}
+
 // void Vertex::try_merge_surfaces()
 // {
     // // check if there is only one surface
@@ -539,6 +544,10 @@ void Vertex::review_surfaces()
         }
     }
 
+    // if reached here, means either low confidence or high confidence but matched, record the surface uncertainty measure
+    current_surface_uncertainty_ = (surface->get_total_point_size() < settings_.fit_plane_threshold) ? std::numeric_limits<double>::max() : surface->compute_surface_position_std_in_normal_direction();
+
+
     // ask siblings to review themselves
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> sibling_vertices_copy = sibling_vertices_;
     for (const std::shared_ptr<Vertex>& sibling : sibling_vertices_copy)
@@ -557,19 +566,13 @@ void Vertex::review_surfaces()
         // skip if expired
         if (sibling->is_expired()) continue;
 
-        // skip if low confidence
-        if (sibling->get_surface()->get_total_point_size() < settings_.fit_plane_threshold) continue;
-
         // record
-        sibling_surface_uncertainty_list.push_back(sibling->get_surface()->compute_surface_position_std_in_normal_direction());
+        sibling_surface_uncertainty_list.push_back(sibling->get_current_surface_uncertainty());
     }
 
-    // record current surface positional uncertainty
-    double current_surface_positional_uncertainty = (surface->get_total_point_size() < settings_.fit_plane_threshold) ? std::numeric_limits<double>::max() : surface->compute_surface_position_std_in_normal_direction();
-    
     // if any sibling have surface with lower positional uncertainty, delete this vertex
     if (std::any_of(sibling_surface_uncertainty_list.begin(), sibling_surface_uncertainty_list.end(),
-            [&](double sibling_surface_uncertainty){ return sibling_surface_uncertainty < current_surface_positional_uncertainty; }))
+            [&](double sibling_surface_uncertainty){ return sibling_surface_uncertainty < current_surface_uncertainty_; }))
     {
         storage_->delete_vertex(shared_from_this());
         under_review_ = false;

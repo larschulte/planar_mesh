@@ -36,6 +36,7 @@ public:
     const std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& get_edges() const;
     const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& get_sibling_vertices() const;
     std::size_t get_num_deletes() const;
+    double get_current_surface_uncertainty() const;
 
     // void try_merge_surfaces();
 
@@ -106,6 +107,7 @@ private:
     bool is_searchable_ = false;
     bool is_expired_ = true;
     std::map<std::shared_ptr<Surface>, bool> is_singular_map_;
+    double current_surface_uncertainty_;
 
     std::size_t num_deletes_;
 
