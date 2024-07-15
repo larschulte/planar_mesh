@@ -107,6 +107,7 @@ private:
     bool is_searchable_ = false;
     bool is_expired_ = true;
     std::map<std::shared_ptr<Surface>, bool> is_singular_map_;
+    bool can_self_destruct_ = true;
     double current_surface_uncertainty_;
 
     std::size_t num_deletes_;

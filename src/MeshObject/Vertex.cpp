@@ -458,7 +458,7 @@ void Vertex::disconnect(const std::shared_ptr<Surface>& surface)
     if (erased) is_matched_surface_map_.erase(surface);
 
     // check self destruct
-    if (!deleting_ && surfaces_.empty()) storage_->delete_vertex(shared_from_this());
+    if (!deleting_ && surfaces_.empty() && can_self_destruct_) storage_->delete_vertex(shared_from_this());
 }
 
 void Vertex::disconnect(const std::shared_ptr<Vertex>& sibling_vertex)
