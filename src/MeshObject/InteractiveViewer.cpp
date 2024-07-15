@@ -155,7 +155,7 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
         update_display();
 
         // log
-        std::cout << "color_mode: " << settings_.color_mode << std::endl;
+        std::cout << "color_mode: original" << std::endl;
     }
     // kp number 1
     if (event.getKeySym() == "KP_End" && event.keyDown())
@@ -164,7 +164,7 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
         update_display();
 
         // log
-        std::cout << "color_mode: " << settings_.color_mode << std::endl;
+        std::cout << "color_mode: projected distance" << std::endl;
     }
     // kp number 2
     if (event.getKeySym() == "KP_Down" && event.keyDown())
@@ -173,7 +173,7 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
         update_display();
 
         // log
-        std::cout << "color_mode: " << settings_.color_mode << std::endl;
+        std::cout << "color_mode: number of siblings" << std::endl;
     }
     // kp number 3
     if (event.getKeySym() == "KP_Next" && event.keyDown())
@@ -182,7 +182,7 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
         update_display();
 
         // log
-        std::cout << "color_mode: " << settings_.color_mode << std::endl;
+        std::cout << "color_mode: radius" << std::endl;
     }
     // kp number 4
     if (event.getKeySym() == "KP_Left" && event.keyDown())
