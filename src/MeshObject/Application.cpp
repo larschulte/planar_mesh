@@ -336,9 +336,9 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
         continue;
     }
 
-    // for surfaces that match
-
     // connect the surface with the new vertex, then do a review
+
+    // for surfaces that match
     for (std::shared_ptr<Surface> surface : surfaces_that_match)
     {
         std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(generic_point);
@@ -350,6 +350,24 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
             sibling_vertices[0]->connect(new_vertex);
 
             new_vertex->add_matched_surface(surface);
+        }
+        else
+        {
+            storage_->delete_vertex(new_vertex);
+        }
+    }
+
+    // for surfaces with low confidence
+    for (std::shared_ptr<Surface> surface : surfaces_with_low_confidence)
+    {
+        std::cout << ">> low confidence surface " << surface->get_id() << std::endl;
+        
+        std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(generic_point);
+        bool connected = surface->connect_by_edges_and_faces(new_vertex, neighboring_vertices);
+        if (connected)
+        {
+            sibling_vertices.push_back(new_vertex);
+            sibling_vertices[0]->connect(new_vertex);
         }
         else
         {
@@ -384,24 +402,6 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
         new_surface->connect(new_vertex);
         sibling_vertices.push_back(new_vertex);
         sibling_vertices[0]->connect(new_vertex);
-
-        // also add to surface with low confidence
-        for (std::shared_ptr<Surface> surface : surfaces_with_low_confidence)
-        {
-            std::cout << ">> low confidence surface " << surface->get_id() << std::endl;
-            
-            std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(generic_point);
-            bool connected = surface->connect_by_edges_and_faces(new_vertex, neighboring_vertices);
-            if (connected)
-            {
-                sibling_vertices.push_back(new_vertex);
-                sibling_vertices[0]->connect(new_vertex);
-            }
-            else
-            {
-                storage_->delete_vertex(new_vertex);
-            }
-        }
     }
 
     // for surfaces that mismatch

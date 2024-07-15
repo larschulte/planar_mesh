@@ -490,8 +490,8 @@ void Vertex::review_surfaces()
 
     // delete if surface is high confidence and mismatched
     std::shared_ptr<Surface> surface = get_surface();
-    bool high_confidence = surface->get_total_point_size() > settings_.fit_plane_threshold;
-    if (high_confidence)
+    bool low_confidence = surface->get_total_point_size() < settings_.fit_plane_threshold;
+    if (!low_confidence)
     {
         // mismatch if observed from behind
         Eigen::Vector3d normal = surface->get_normal();
@@ -564,7 +564,7 @@ void Vertex::review_surfaces()
     }
 
     // record current surface positional uncertainty
-    double current_surface_positional_uncertainty = (surface->get_total_point_size() > settings_.fit_plane_threshold) ? surface->compute_surface_position_std_in_normal_direction() : std::numeric_limits<double>::max();
+    double current_surface_positional_uncertainty = (surface->get_total_point_size() < settings_.fit_plane_threshold) ? std::numeric_limits<double>::max() : surface->compute_surface_position_std_in_normal_direction();
     
     // if any sibling have surface with lower positional uncertainty, delete this vertex
     if (std::any_of(sibling_surface_uncertainty_list.begin(), sibling_surface_uncertainty_list.end(),

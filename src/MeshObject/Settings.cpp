@@ -33,7 +33,7 @@ Settings::Settings()
     
     start_cloud = 50;
     start_point = 0;
-    fit_plane_threshold = 3;
+    fit_plane_threshold = 4;
     shuffle_pointcloud = false;
     use_radius_value = false;
     pointcloud_fraction = 1;
