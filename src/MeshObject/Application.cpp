@@ -345,9 +345,20 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
         sorted_surfaces_that_match.push_back(surface);
     }
     std::sort(sorted_surfaces_that_match.begin(), sorted_surfaces_that_match.end(), 
-        [](const std::shared_ptr<Surface>& a, const std::shared_ptr<Surface>& b) -> bool
+        [&](const std::shared_ptr<Surface>& a, const std::shared_ptr<Surface>& b) -> bool
         {
-            return a->compute_surface_position_std_in_normal_direction() < b->compute_surface_position_std_in_normal_direction();
+            // sort with new point added
+            // create new vertex 
+            std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(generic_point);
+            a->connect(new_vertex);
+            b->connect(new_vertex);
+            bool value = a->compute_surface_position_std_in_normal_direction() < b->compute_surface_position_std_in_normal_direction();
+
+            storage_->disallow_creation_of_generic_point();
+            storage_->delete_vertex(new_vertex);
+            storage_->allow_creation_of_generic_point();
+
+            return value;
         });
 
     // add to the first surface
