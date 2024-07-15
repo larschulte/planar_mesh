@@ -564,13 +564,13 @@ void Vertex::review_surfaces()
     }
 
     // record current surface positional uncertainty
-    double current_surface_positional_uncertainty = high_confidence ? surface->compute_surface_position_std_in_normal_direction() : std::numeric_limits<double>::max();
+    double current_surface_positional_uncertainty = (surface->get_total_point_size() > settings_.fit_plane_threshold) ? surface->compute_surface_position_std_in_normal_direction() : std::numeric_limits<double>::max();
     
     // if any sibling have surface with lower positional uncertainty, delete this vertex
     if (std::any_of(sibling_surface_uncertainty_list.begin(), sibling_surface_uncertainty_list.end(),
             [&](double sibling_surface_uncertainty){ return sibling_surface_uncertainty < current_surface_positional_uncertainty; }))
     {
-        disconnect(surface);
+        storage_->delete_vertex(shared_from_this());
         under_review_ = false;
         return;
     }
