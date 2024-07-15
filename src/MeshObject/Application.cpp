@@ -371,6 +371,36 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
         }
     }
 
+    // if new vertex not in matched surface
+    bool new_vertex_not_in_matched_surface = sibling_vertices.size() == 0;
+    if (new_vertex_not_in_matched_surface)
+    {
+        // start a new seed
+        std::shared_ptr<Surface> new_surface = storage_->add_surface();
+        std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(generic_point);
+        new_surface->connect(new_vertex);
+        sibling_vertices.push_back(new_vertex);
+        sibling_vertices[0]->connect(new_vertex);
+
+        // also add to surface with low confidence
+        for (std::shared_ptr<Surface> surface : surfaces_with_low_confidence)
+        {
+            std::cout << ">> low confidence surface " << surface->get_id() << std::endl;
+            
+            std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(generic_point);
+            bool connected = surface->connect_by_edges_and_faces(new_vertex, neighboring_vertices);
+            if (connected)
+            {
+                sibling_vertices.push_back(new_vertex);
+                sibling_vertices[0]->connect(new_vertex);
+            }
+            else
+            {
+                storage_->delete_vertex(new_vertex);
+            }
+        }
+    }
+
     // for surfaces that mismatch
     for (std::shared_ptr<Surface> surface : surfaces_that_mismatch)
     {
@@ -416,35 +446,6 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
         storage_->allow_creation_of_generic_point();
     }
 
-    // if new vertex not in matched surface
-    bool new_vertex_not_in_matched_surface = sibling_vertices.size() == 0;
-    if (new_vertex_not_in_matched_surface)
-    {
-        // start a new seed
-        std::shared_ptr<Surface> new_surface = storage_->add_surface();
-        std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(generic_point);
-        new_surface->connect(new_vertex);
-        sibling_vertices.push_back(new_vertex);
-        sibling_vertices[0]->connect(new_vertex);
-
-        // also add to surface with low confidence
-        for (std::shared_ptr<Surface> surface : surfaces_with_low_confidence)
-        {
-            std::cout << ">> low confidence surface " << surface->get_id() << std::endl;
-            
-            std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(generic_point);
-            bool connected = surface->connect_by_edges_and_faces(new_vertex, neighboring_vertices);
-            if (connected)
-            {
-                sibling_vertices.push_back(new_vertex);
-                sibling_vertices[0]->connect(new_vertex);
-            }
-            else
-            {
-                storage_->delete_vertex(new_vertex);
-            }
-        }
-    }
 
     // // if new_vertex is in multiple surfaces, try merge them
     // if (new_vertex->get_surfaces().size() > 1)
