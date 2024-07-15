@@ -390,6 +390,21 @@ bool Storage::has_penetrating_point() const
     return has_penetrating_point_;
 }
 
+void Storage::disallow_creation_of_generic_point()
+{
+    can_create_generic_point_ = false;
+}
+
+void Storage::allow_creation_of_generic_point()
+{
+    can_create_generic_point_ = true;
+}
+
+bool Storage::can_create_generic_point() const
+{
+    return can_create_generic_point_;
+}
+
 // get edge
 const std::shared_ptr<Edge>& Storage::get_edge(std::shared_ptr<Vertex> vertex1, std::shared_ptr<Vertex> vertex2) const
 {

@@ -59,7 +59,7 @@ void InteriorPoint::delete_()
     for (const auto& surface : surfaces) disconnect(surface);
 
     // only create penetrated point / generic point if sibling is empty
-    if (sibling_interior_points_.empty())
+    if (sibling_interior_points_.empty() && storage_->can_create_generic_point())
     {
         if (storage_->has_penetrating_point())
         {

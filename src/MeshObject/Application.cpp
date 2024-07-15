@@ -410,7 +410,10 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
             }
         }
 
+        // don't creates generic points
+        storage_->disallow_creation_of_generic_point();
         storage_->delete_vertex(new_vertex);
+        storage_->allow_creation_of_generic_point();
     }
 
     // if new vertex not in matched surface

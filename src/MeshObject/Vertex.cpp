@@ -82,7 +82,7 @@ void Vertex::delete_()
     num_deletes_++;
 
     // only create penetrated point / generic point if sibling is empty
-    if (sibling_vertices_.empty())
+    if (sibling_vertices_.empty() && storage_->can_create_generic_point())
     {
         if (storage_->has_penetrating_point())
         {
@@ -532,7 +532,7 @@ void Vertex::review_surfaces()
                 interior_point->reduce_reverse_radius_search_radius(distance);
             }
 
-            disconnect(surface);
+            storage_->delete_vertex(shared_from_this());
             under_review_ = false;
             return;
         }

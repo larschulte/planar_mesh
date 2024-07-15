@@ -68,6 +68,10 @@ public: // to user
     void clear_penetrating_point();
     bool has_penetrating_point() const;
 
+    void disallow_creation_of_generic_point();
+    void allow_creation_of_generic_point();
+    bool can_create_generic_point() const;
+
     void print_rrs() const;
     void print_bvh() const;
     void rebuild_tree();
@@ -91,6 +95,7 @@ public: // to MeshObject class
 
 private:
     bool is_expired_ = true;
+    bool can_create_generic_point_ = true;
 
     Eigen::Vector3d penetrating_point_;
     bool has_penetrating_point_ = false;
