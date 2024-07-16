@@ -15,6 +15,7 @@ class Edge;
 class Face;
 class InteriorPoint;
 class Storage;
+class GenericPoint;
 
 enum class RelativePosition
 {
