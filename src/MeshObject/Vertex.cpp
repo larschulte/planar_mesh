@@ -484,6 +484,12 @@ void Vertex::review_surfaces()
 
     // delete if surface is high confidence and mismatched
     std::shared_ptr<Surface> surface = get_surface();
+
+    // disconnect surface from this vertex when reviewing
+    can_self_destruct_ = false;
+    disconnect(surface);
+    
+
     bool low_confidence = surface->get_total_point_size() < settings_.fit_plane_threshold;
     if (!low_confidence)
     {
@@ -536,6 +542,8 @@ void Vertex::review_surfaces()
     // if reached here, means either low confidence or high confidence but matched, record the surface uncertainty measure
     current_surface_uncertainty_ = (surface->get_total_point_size() < settings_.fit_plane_threshold) ? std::numeric_limits<double>::max() : surface->compute_surface_position_std_in_normal_direction();
 
+    // connect surface back
+    surface->connect(shared_from_this());
 
     // ask siblings to review themselves
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> sibling_vertices_copy = sibling_vertices_;
