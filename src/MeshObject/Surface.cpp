@@ -678,30 +678,18 @@ void Surface::remove_point_from_surface_fitting(const Eigen::Vector3d& position,
     Eigen::Matrix3d cov1 = remove_covariance(combined_cov, cov2, combined_mean, mean2, combined_size, size2);
 
     // plane estimate
-    if (mean1 == Eigen::Vector3d::Zero() || cov1 == Eigen::Matrix3d::Zero())
-    {
-        mean_ = Eigen::Vector3d::Zero();
-        covariance_ = Eigen::Matrix3d::Zero();
-        eigenvectors_ = Eigen::Matrix3d::Identity();
-        eigenvalues_ = Eigen::Vector3d::Zero();
-        normal_ = Eigen::Vector3d(0, 0, 1);
-        return;
-    }
-    else
-    {
-        Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> solver(cov1);
-        Eigen::Matrix3d eigenvectors1 = solver.eigenvectors();
-        Eigen::Vector3d eigenvalues1 = solver.eigenvalues();
-        Eigen::Vector3d normal1 = eigenvectors1.col(0); // Assuming the smallest eigenvalue corresponds to the normal
-        Eigen::Vector3d vector_towards_origin = origin - position;
-        if (normal1.dot(vector_towards_origin) < 0) normal1 *= -1; // normal should points towards the origin
+    Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> solver(cov1);
+    Eigen::Matrix3d eigenvectors1 = solver.eigenvectors();
+    Eigen::Vector3d eigenvalues1 = solver.eigenvalues();
+    Eigen::Vector3d normal1 = eigenvectors1.col(0); // Assuming the smallest eigenvalue corresponds to the normal
+    Eigen::Vector3d vector_towards_origin = origin - position;
+    if (normal1.dot(vector_towards_origin) < 0) normal1 *= -1; // normal should points towards the origin
 
-        mean_ = mean1;
-        covariance_ = cov1;
-        eigenvectors_ = eigenvectors1;
-        eigenvalues_ = eigenvalues1;
-        normal_ = normal1;
-    }
+    mean_ = mean1;
+    covariance_ = cov1;
+    eigenvectors_ = eigenvectors1;
+    eigenvalues_ = eigenvalues1;
+    normal_ = normal1;
 }
 
 void Surface::set_random_color()
