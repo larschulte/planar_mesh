@@ -321,12 +321,12 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
             continue;
         }
 
-        // mismatch if observed from behind
-        if (surface->get_normal().dot(generic_point->get_direction()) > 0) 
-        {
-            surfaces_that_mismatch.insert(surface);
-            continue;
-        }
+        // // mismatch if observed from behind
+        // if (surface->get_normal().dot(generic_point->get_direction()) > 0) 
+        // {
+        //     surfaces_that_mismatch.insert(surface);
+        //     continue;
+        // }
 
         // remaining surfaces that match
         surfaces_that_match.insert(surface);

@@ -487,15 +487,16 @@ void Vertex::review_surfaces()
     bool low_confidence = surface->get_total_point_size() < settings_.fit_plane_threshold;
     if (!low_confidence)
     {
-        // mismatch if observed from behind
-        Eigen::Vector3d normal = surface->get_normal();
-        Eigen::Vector3d direction = get_direction();
-        bool observed_from_behind = normal.dot(direction) > 0;
+        // // mismatch if observed from behind
+        // Eigen::Vector3d normal = surface->get_normal();
+        // Eigen::Vector3d direction = get_direction();
+        // bool observed_from_behind = normal.dot(direction) > 0;
         // mismatch if not within surface
        bool not_within_surface = surface->check_relative_position(shared_from_this()) != RelativePosition::WITHIN;
         
         // delete if surface is high confidence and mismatched
-        bool mismatch = observed_from_behind || not_within_surface;
+        // bool mismatch = observed_from_behind || not_within_surface;
+        bool mismatch = not_within_surface;
         if (mismatch)
         {
             // find connected vertices
