@@ -11,6 +11,7 @@
 // forward declarations
 class Vertex;
 class Edge;
+class Surface;
 
 class EdgeBVH
 {
@@ -38,6 +39,8 @@ private:
     };
 
 private:
+    std::shared_ptr<Surface> surface_;
+
     std::shared_ptr<Node> root;
     double rebuild_threshold;
     int size_at_last_rebuild;
@@ -57,6 +60,7 @@ private:
 
 public:
     EdgeBVH();
+    void set_surface(const std::shared_ptr<Surface>& surface);
     void rebuild();
     std::vector<std::shared_ptr<Edge>> get_edge_list() const;
 

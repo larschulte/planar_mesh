@@ -30,8 +30,10 @@ public: // to user
     const std::shared_ptr<GenericPoint>& add_generic_point(const Eigen::Vector3d& position, const Eigen::Vector3d& origin);
     const std::shared_ptr<GenericPoint>& add_generic_point(const std::shared_ptr<Vertex>& vertex);
     const std::shared_ptr<GenericPoint>& add_generic_point(const std::shared_ptr<InteriorPoint>& interior_point);
-    const std::shared_ptr<InteriorPoint>& add_interior_point(const std::shared_ptr<Face>& face, const Eigen::Vector3d& position, const Eigen::Vector3d& origin);
-    const std::shared_ptr<InteriorPoint>& add_interior_point(const std::shared_ptr<Face>& face, const std::shared_ptr<GenericPoint>& generic_point);
+    const std::shared_ptr<InteriorPoint>& add_interior_point(const Eigen::Vector3d& position, const Eigen::Vector3d& origin);
+    const std::shared_ptr<InteriorPoint>& add_interior_point(const std::shared_ptr<GenericPoint>& generic_point);
+    const std::shared_ptr<GenericPoint>& add_penetrated_point(const std::shared_ptr<Vertex>& vertex);
+    const std::shared_ptr<GenericPoint>& add_penetrated_point(const std::shared_ptr<InteriorPoint>& interior_point);
 
     void delete_vertex(const std::shared_ptr<Vertex>& vertex);
     void delete_edge(const std::shared_ptr<Edge>& edge);
@@ -39,6 +41,7 @@ public: // to user
     void delete_surface(const std::shared_ptr<Surface>& surface);
     void delete_generic_point(const std::shared_ptr<GenericPoint>& genertic_point);
     void delete_interior_point(const std::shared_ptr<InteriorPoint>& interior_point);
+    void delete_penetrated_point(const std::shared_ptr<GenericPoint>& penetrated_point);
 
     bool can_reverse_radius_search();
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> reverse_radius_search(const Eigen::Vector3d& point);
@@ -54,6 +57,7 @@ public: // to user
     const std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash>& get_surfaces() const;
     const std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash>& get_generic_points() const;
     const std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash>& get_interior_points() const;
+    const std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash>& get_penetrated_points() const;
 
     std::vector<std::shared_ptr<Vertex>> get_rrs_vertices();
     std::map<std::shared_ptr<Vertex>, int> get_vertex_to_cloud_indices_map() const;
@@ -63,6 +67,10 @@ public: // to user
     const Eigen::Vector3d& get_penetrating_point();
     void clear_penetrating_point();
     bool has_penetrating_point() const;
+
+    void disallow_creation_of_generic_point();
+    void allow_creation_of_generic_point();
+    bool can_create_generic_point() const;
 
     void print_rrs() const;
     void print_bvh() const;
@@ -87,6 +95,7 @@ public: // to MeshObject class
 
 private:
     bool is_expired_ = true;
+    bool can_create_generic_point_ = true;
 
     Eigen::Vector3d penetrating_point_;
     bool has_penetrating_point_ = false;
@@ -100,6 +109,7 @@ private:
     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_;
     std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash> genertic_points_;
     std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> interior_points_;
+    std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash> penetrated_points_;
 
     int next_vertex_id_ = 0;
     int next_edge_id_ = 0;

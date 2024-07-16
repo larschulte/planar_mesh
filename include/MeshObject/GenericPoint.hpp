@@ -11,9 +11,11 @@ class Storage;
 
 class GenericPoint : public std::enable_shared_from_this<GenericPoint>, public MeshObject
 {
+public:
+    void initialize_(const std::shared_ptr<Storage>& storage, const Eigen::Vector3d& position, const Eigen::Vector3d& origin);
+
 protected:
     friend class Storage;
-    void initialize_(const std::shared_ptr<Storage>& storage, const Eigen::Vector3d& position, const Eigen::Vector3d& origin);
     void initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<Vertex>& vertex);
     void initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<InteriorPoint>& interior_point);
     void delete_(); 
@@ -22,6 +24,7 @@ public:
     const int& get_id() const;
     const Eigen::Vector3d& get_position() const;
     const Eigen::Vector3d& get_origin() const;
+    const Eigen::Vector3d& get_direction() const;
     const double& get_radius() const;
     bool is_expired() const;
 
@@ -39,6 +42,7 @@ private:
     std::shared_ptr<Storage> storage_;
     Eigen::Vector3d position_;
     Eigen::Vector3d origin_;
+    Eigen::Vector3d direction_;
     double radius_;
 };
 

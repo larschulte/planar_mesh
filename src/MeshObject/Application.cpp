@@ -14,6 +14,7 @@
 #include <algorithm>
 #include <unordered_set>
 #include "MeshObject/MeshObject.hpp"
+#include "MeshObject/Simulation.hpp"
 
 template class Application<VilensPointT>;
 
@@ -48,70 +49,157 @@ double Application<PointT>::compute_eigenvalue_of_merged_surfaces(std::shared_pt
     return Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d>(covariance_matrix).eigenvalues()[0];
 }
 
-template <typename PointT>
-void Application<PointT>::try_merge_surfaces(std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash>& surfaces_to_merge)
-{
-    while (true) 
-    {
-        std::set<std::pair<std::shared_ptr<Surface>, std::shared_ptr<Surface>>> surface_pairs;
-        for (std::shared_ptr<Surface> surface1 : surfaces_to_merge) 
-        {
-            for (std::shared_ptr<Surface> surface2 : surfaces_to_merge) 
-            {
-                if (surface1 >= surface2) continue;
-                surface_pairs.insert(std::make_pair(surface1, surface2));
-            }
-        }
+// template <typename PointT>
+// void Application<PointT>::try_merge_surfaces(std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash>& surfaces_to_merge)
+// {
+    // while (true) 
+    // {
+    //     std::set<std::pair<std::shared_ptr<Surface>, std::shared_ptr<Surface>>> surface_pairs;
+    //     for (std::shared_ptr<Surface> surface1 : surfaces_to_merge) 
+    //     {
+    //         for (std::shared_ptr<Surface> surface2 : surfaces_to_merge) 
+    //         {
+    //             if (surface1 >= surface2) continue;
+    //             surface_pairs.insert(std::make_pair(surface1, surface2));
+    //         }
+    //     }
         
-        bool again = false;
-        for (const auto& pairs : surface_pairs) 
-        {
-            Eigen::Matrix3d covariance_matrix = merge_covariances_of_surfaces(pairs.first, pairs.second);
-            double eigenvalue = Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d>(covariance_matrix).eigenvalues()[0];
-            if (eigenvalue > settings_.merged_eigenvalue_threshold) continue;
+    //     bool again = false;
+    //     for (const auto& pairs : surface_pairs) 
+    //     {
+    //         Eigen::Matrix3d covariance_matrix = merge_covariances_of_surfaces(pairs.first, pairs.second);
+    //         double eigenvalue = Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d>(covariance_matrix).eigenvalues()[0];
+    //         if (eigenvalue > settings_.merged_eigenvalue_threshold) continue;
 
-            surfaces_to_merge.erase(pairs.second);
-            pairs.first->merge_surface(pairs.second);
+    //         surfaces_to_merge.erase(pairs.second);
+    //         pairs.first->merge_surface(pairs.second);
 
-            again = true;
-            break;
-        }
-        if (!again) break;
-    }
-}
+    //         again = true;
+    //         break;
+    //     }
+    //     if (!again) break;
+    // }
+// }
 
 template <typename PointT>
 void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<GenericPoint>& generic_point)
 {
-    // the reverse radius search provides a set of vertices that think the new point should be in
-    // the new point to surface fit is then performed -> represented by point to surface projective distance, point uncertainty and plane uncertainty
-    // by adding a point to a surface, we are essentially expanding the surface's boundary
+    /*
 
-    // each vertex can have multiple surfaces, but each edge and face and interiror point can only have one surface
+    contribution
+    - without
+        - voxelation
+        - outlier
+        - denoising
+        - radius
+        - neighborhood information
+    - generalize 
 
-    // when a surface have very few points, the surface have high self uncertainty, and the point is likely to be added to the surface with few points
-    // if the new point can be added into multiple surfaces, but not all surfaces, added to the surfaces, reduce the search radius of the neighboring vertices from different surfaces
-    // if the new point can be added into one surface, add it to that surface, reduce the search radius of the neighboring vertices from different surfaces
-    // if the new point can not be added into any surface, create a new surface and add it to that surface, reduce the search radius of the neighboring vertices from different surfaces
+    background:
+        - the reverse radius search provides a set of vertices that think the new point should be in
+        - the new point to surface fit is then performed -> represented by point to surface projective distance, point uncertainty and plane uncertainty
+        - by adding a point to a surface, we are essentially expanding the surface's boundary
 
-    // what about surface merging
-    // after adding the new point to surfaces, if the new point have multiple surfaces, try merge them
+    settings:
+        - each vertex can have multiple surfaces, but each edge and face and interiror point can only have one surface
 
-    // create new vertex
-    std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(generic_point);
+    steps:
+        - for surface with low confidence, add new point to surface
+        - for surface with high confidence and match, add new point to surface (if edge intersects, reduce radius of the other edge vertex)
+        - for surface with high confidence and mismatch, reduce the search radius of the neighboring vertices from the surface
+
+    merge neighboring surface
+        - after adding the new point to surfaces, if the new point have multiple surfaces, try merge them
+
+    average projected distance
+        - for surface with only three points, the average projective distance is zero
+
+    the surface the new point connected to may be duplicate
+
+    what does duplicate means
+        - if a vertex/edge/face/point is connected to more than one surface, it is duplicated
+
+    measurement points from planear structure don't have duplicate
+        - since edge and vertex of real surface have zero area, they can not be measured
+
+    for curved surface, duplicate may exist
+
+
+    a diff method between surfaces
+
+    new surface are created when a new point found no existing surface to add to
+
+
+    remove duplicate surface
+        - if a low confidence surface is also penetrated
+
+    
+    computing projective distance std when the surface is accurate, would in fact give the std of lidar range sensor
+        - perhaps use a metric to determine if the distribution of std is gaussian like, which can be used check if the surface is single modal
+        - graph the distribution of projective distance! perhaps we can see multiple peaks, which can be used to classify the surface
+
+    */
+
+   // 1. when we review a point, we should treat it as a new point, then decide which surface to keep / remove
+    // this is to ensure indepdenence of point adding order - if a reviewed point is disconnected from some surface, a new duplicate point 
+    // at the same location should not connect to the disconnected surfaces
+
+    // 2. confidence flag
+    // indicate whether the normal of a surface is reliable
+    
+    // 3. we add a point to the largest confidence surface
+    // (largest number of addtioanl points that agree with the surface)
+
+    // 4. if no confidence surface, we add it to all non confidence surface nearby 
+    // (this is the same as grouping a set of nearby points and try to fit a plane to them)
+
+    // 5. if a point is not added to a confidence surface, it will start a new seed
+
+    // 4 and 5 combined gives us a slightly more comprehensive method of grouping a set of nearby points
+    // (the best should be N choose K the set of nearby points)
+
+    // 6. abnormal test
+    // the projective distance of a sampled point to the sampled surface should follow the distribution of lidar sensor noise (fact)
+    // thus if the projective distance of a set of points to a surface have a distribution unlike the lidar sensor noise, unlike means
+        // gaussian but shifted origin
+        // gaussian but shifted origin and changed std
+        // changed std
+        // non gaussian
+    // that means the point to plane projective distance variable is due to more than just sensor noise, possible source includes
+        // shifted surface position
+        // shifted surface position and changed surface normal
+        // changed surface normal
+        // surface is not planar
+    // (non confidence surface should not attend the abnormal test)
+
+    // multi surface idea
+        // when at large n point threhsold threshold, it would be difficult for n points to be on the same surface, 
+        // which is the only way the proposed surface won't be treated as abnormal
+
+        // the proposed adding new point to multiple surface does not work in this case, 
+        // because each point only start a new seed from that point on
+        // which mean the next n consecutive points added to that point need to be on the same surface
+        // for the final surface to be treated as normal
+
+        // the adding to multiple surface idea is only possible if we solve the combination N choose P problem 
+
+    // only update surface close to new observation, such that the update time will be consistant
+    // otherwise the update time will be proportional to number of surface added
+    
 
     // when can not search
     if (!storage_->can_reverse_radius_search())
     {
         std::cout << ">> no points to search, adding new surface" << std::endl;
         std::shared_ptr<Surface> new_surface = storage_->add_surface();
+        std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(generic_point);
         new_surface->connect(new_vertex);
         return;
     }
 
     // get neighboring vertices
     std::map<int, double> point_to_radius_map;
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> neighboring_vertices = storage_->reverse_radius_search(new_vertex);
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> neighboring_vertices = storage_->reverse_radius_search(generic_point);
     std::cout << ">> found " << neighboring_vertices.size() << " neighboring vertices" << std::endl;
 
     // when no search results
@@ -119,166 +207,178 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
     {
         std::cout << ">> no search results, adding new surface" << std::endl;
         std::shared_ptr<Surface> new_surface = storage_->add_surface();
+        std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(generic_point);
         new_surface->connect(new_vertex);
         return;
     }
+
+    // add point logic
+        // add to matched surfaces
+        // if no matched surfaces, add to all low confidence surfaces
+    
+    // review point logic
+        // if low confidence surface changed into high confidence surface, check if match, if mismatch then disconnect
+        // if have matched surfaces, remove from low confidence surfaces
+        // remain in matched surfaces
+
+    // review point
+    // make a copy of the neighboring vertices as we will be modifying it
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> neighboring_vertices_copy = neighboring_vertices;
+    for (const std::shared_ptr<Vertex>& vertex : neighboring_vertices_copy)
+    {
+        // some sibling vertex may be expired during previous review 
+        if (vertex->is_expired()) continue;
+
+        vertex->review_surfaces();
+    }
+
+    // recompute neighboring vertices
+    neighboring_vertices.clear();
+    for (std::shared_ptr<Vertex> vertex : neighboring_vertices_copy)
+    {
+        // skip if the vertex is expired
+        if (vertex->is_expired()) continue;
+
+        neighboring_vertices.insert(vertex);
+    }
+
+    // add new vertex
+    std::vector<std::shared_ptr<Vertex>> sibling_vertices;
 
     // get neighboring surfaces
     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> neighboring_surfaces; 
     for (std::shared_ptr<Vertex> vertex : neighboring_vertices)
     {
-        neighboring_surfaces.insert(vertex->get_surfaces().begin(), vertex->get_surfaces().end());
+        // only add to neighboring surface if the vertex is boundary in that surface
+        for (std::shared_ptr<Surface> surface : vertex->get_surfaces())
+        {
+            if (vertex->is_boundary(surface))
+            {
+                neighboring_surfaces.insert(surface);
+            }
+        }
     }
     std::cout << ">> grouped into " << neighboring_surfaces.size() << " neighboring surfaces" << std::endl;
 
-    // split into - surfaces without plane / surfaces to add to / surfaces to not add to
-    std::vector<std::pair<std::shared_ptr<Surface>, std::size_t>> surfaces_without_plane;
-    std::vector<std::pair<std::shared_ptr<Surface>, double>> surfaces_to_add_to;
-    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_to_not_add_to;
-    for (std::shared_ptr<Surface> surface : neighboring_surfaces) 
+    // delete abnormal surfaces
+    for (const std::shared_ptr<Surface>& surface : neighboring_surfaces)
     {
-        // surface without plane if small in size
-        if (surface->get_total_point_size() < settings_.fit_plane_threshold) 
+        if (surface->is_abnormal())
         {
-            surfaces_without_plane.push_back(std::make_pair(surface, surface->get_total_point_size()));
-            continue;
+            // delete
+            std::cout << ">> removing abnormal surface during intersection search" << surface->get_id() << std::endl; // log
+            storage_->delete_surface(surface);
         }
-        
-        // now left with surfaces with large size
-
-        // not add if large distance
-        double distance = std::fabs(surface->compute_point_to_surface_distance(new_vertex));
-        if (distance >= settings_.distance_threshold) 
-        {
-            surfaces_to_not_add_to.insert(surface);
-            continue;
-        }
-
-        // not add if not in the same direction
-        Eigen::Vector3d normal = surface->get_normal();
-        Eigen::Vector3d direction = new_vertex->get_origin() - new_vertex->get_position();
-        if (normal.dot(direction) < 0) 
-        {
-            surfaces_to_not_add_to.insert(surface);
-            continue;
-        }
-
-        // add if surfaces with large size, small distance, and in the same direction
-        surfaces_to_add_to.push_back(std::make_pair(surface, distance));
-        continue;
     }
 
-    // sort surfaces to add to by distance
-    std::sort(surfaces_to_add_to.begin(), surfaces_to_add_to.end(), [](const std::pair<std::shared_ptr<Surface>, double>& a, const std::pair<std::shared_ptr<Surface>, double>& b) {
-        return a.second < b.second;
-    });
-
-    // sort surfaces without plane by size
-    std::sort(surfaces_without_plane.begin(), surfaces_without_plane.end(), [](const std::pair<std::shared_ptr<Surface>, std::size_t>& a, const std::pair<std::shared_ptr<Surface>, std::size_t>& b) {
-        return a.second > b.second;
-    });
-
-    // for surfaces to add to
-    std::shared_ptr<Surface> current_surface;
-    bool connected_to_one_surface = false;
-    for (const std::pair<std::shared_ptr<Surface>, double>& pair : surfaces_to_add_to)
+    // recompute neighboring vertices
+    neighboring_vertices.clear();
+    for (std::shared_ptr<Vertex> vertex : neighboring_vertices_copy)
     {
-        std::shared_ptr<Surface> candidate_surface = pair.first;
+        // skip if the vertex is expired
+        if (vertex->is_expired()) continue;
 
-        if (!connected_to_one_surface)
+        neighboring_vertices.insert(vertex);
+    }
+    
+    // recompute neighboring surfaces
+    neighboring_surfaces.clear();
+    for (std::shared_ptr<Vertex> vertex : neighboring_vertices)
+    {
+        // only add to neighboring surface if the vertex is boundary in that surface
+        for (std::shared_ptr<Surface> surface : vertex->get_surfaces())
         {
-            // skip if can't make connected to candidate surface
-            if (!candidate_surface->connect_by_edges_and_faces(new_vertex, neighboring_vertices)) continue;
+            if (vertex->is_boundary(surface))
+            {
+                neighboring_surfaces.insert(surface);
+            }
+        }
+    }
+    std::cout << ">> grouped into " << neighboring_surfaces.size() << " neighboring surfaces" << std::endl;
 
-            // else connect to the candidate surface
-            std::cout << ">> adding to surface " << candidate_surface->get_id() << std::endl;
-            current_surface = candidate_surface;
-            connected_to_one_surface = true;
+    // add to all neighboring surfaces, then do a review
+    for (std::shared_ptr<Surface> surface : neighboring_surfaces)
+    {
+        std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(generic_point);
+        bool connected = surface->connect_by_edges_and_faces(new_vertex, neighboring_vertices);
+        if (connected)
+        {
+            std::cout << ">> neighboring surface " << surface->get_id() << std::endl;
+            sibling_vertices.push_back(new_vertex);
+            sibling_vertices[0]->connect(new_vertex);
         }
         else
         {
-            // skip if new candidate surface don't match the current surface
-            if (compute_eigenvalue_of_merged_surfaces(current_surface, candidate_surface) > settings_.merged_eigenvalue_threshold) continue;
-            
-            // skip if can't make connected to candidate surface
-            if (!candidate_surface->connect_by_edges_and_faces(new_vertex, neighboring_vertices)) continue;
-
-            // else connect to the candidate surface and merge
-            std::cout << ">> adding to surface " << candidate_surface->get_id() << std::endl;
-            new_vertex->swap(current_surface, candidate_surface);
-            current_surface = candidate_surface;            
+            storage_->delete_vertex(new_vertex);
         }
     }
 
-    // for surfaces not to add to
-    for (std::shared_ptr<Surface> surface : surfaces_to_not_add_to)
+    // review the new vertex
+    for (std::shared_ptr<Vertex> vertex : sibling_vertices)
     {
-        std::cout << ">> not adding to surface " << surface->get_id() << std::endl;
+        // skip if expired
+        if (vertex->is_expired()) continue;
 
-        // find neighboring vertices from the surface
-        for (std::shared_ptr<Vertex> vertex : neighboring_vertices)
-        {
-            // skip if vertex is not in the surface
-            if (vertex->get_surfaces().find(surface) == vertex->get_surfaces().end()) continue;
-
-            // reduce the search radius
-            vertex->reduce_reverse_radius_search_radius((vertex->get_position() - new_vertex->get_position()).norm());
-
-            std::cout << ">>   reducing search radius of vertex " << vertex->get_id() << std::endl;
-        }
+        vertex->review_surfaces();
     }
 
-    // if new_vertex is not in any surface
-    if (new_vertex->get_surfaces().size() == 0)
+    // recompute sibling vertices
+    std::vector<std::shared_ptr<Vertex>> sibling_vertices_copy = sibling_vertices;
+    sibling_vertices.clear();
+    for (std::shared_ptr<Vertex> vertex : sibling_vertices_copy)
     {
-        // if we have surfaces without plane
-        if (surfaces_without_plane.size() > 0)
-        {
-            std::cout << ">> new vertex not in any surface, adding to largest surface without plane" << std::endl;
+        // skip if the vertex is expired
+        if (vertex->is_expired()) continue;
 
-            std::shared_ptr<Surface> largest_surface_without_plane = surfaces_without_plane[0].first;
-            largest_surface_without_plane->connect(new_vertex);
-        }
-        // if we don't have surface without plane
-        else
-        {
-            std::cout << ">> new vertex not in any surface, adding new surface" << std::endl;
-
-            std::shared_ptr<Surface> new_surface = storage_->add_surface();
-            new_surface->connect(new_vertex);
-        }
+        sibling_vertices.push_back(vertex);
     }
 
-    // // for any vertices in surfaces without plane, if they fit into the new surface, delete them
-    // for (const std::pair<std::shared_ptr<Surface>, std::size_t>& pair : surfaces_without_plane)
+    // if new vertex not in matched surface
+    bool new_vertex_not_in_matched_surface = sibling_vertices.size() == 0;
+    if (new_vertex_not_in_matched_surface)
+    {
+        // start a new seed
+        std::shared_ptr<Surface> new_surface = storage_->add_surface();
+        std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(generic_point);
+        new_surface->connect(new_vertex);
+        sibling_vertices.push_back(new_vertex);
+        sibling_vertices[0]->connect(new_vertex);
+    }
+
+    // // if new_vertex is in multiple surfaces, try merge them
+    // if (new_vertex->get_surfaces().size() > 1)
     // {
-    //     std::shared_ptr<Surface> surface = pair.first;
-
-    //     // skip if the surface is the current surface
-    //     if (surface == new_vertex->get_surface()) continue;
-
-    //     // skip if the current surface do not have enough points
-    //     if (new_vertex->get_surface()->get_total_point_size() < settings_.fit_plane_threshold) continue;
-
-    //     for (std::shared_ptr<Vertex> vertex : neighboring_vertices)
-    //     {
-    //         if (vertex->get_surfaces().find(surface) == vertex->get_surfaces().end()) continue;
-            
-    //         // compute distance
-    //         double distance = std::fabs(surface->compute_point_to_surface_distance(vertex));
-    //         if (distance < settings_.distance_threshold)
-    //         {
-    //             std::cout << ">> deleting vertex " << vertex->get_id() << " from surface " << surface->get_id() << std::endl;
-    //             storage_->delete_vertex(vertex);
-    //         }
-    //     }
+    //     new_vertex->try_merge_surfaces();
     // }
 
-    // try refine the surface this point is added to
-    if (new_vertex->get_surface()->get_eigenvalues()[0] > settings_.merged_eigenvalue_threshold) 
-    {
-        new_vertex->get_surface()->refine_surface();
-    }
+    // // get all edges the new vertex is connected to
+    // std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> all_connected_vertices;
+    // for (std::shared_ptr<Edge> edge : new_vertex->get_edges())
+    // {
+    //     all_connected_vertices.insert(edge->get_vertex(0));
+    //     all_connected_vertices.insert(edge->get_vertex(1));
+    // }
+    // // get smallest radius
+    // double smallest_radius = std::numeric_limits<double>::max();
+    // for (std::shared_ptr<Vertex> vertex : all_connected_vertices)
+    // {
+    //     double radius = vertex->get_radius();
+    //     if (radius < smallest_radius) smallest_radius = radius;
+    // }
+    // // set the smallest radius to new vertex
+    // new_vertex->reduce_reverse_radius_search_radius(smallest_radius);
+
+    // // if low confidence surface is still low confidence and have more than n points, remove it
+    // for (const std::shared_ptr<Surface>& surface : surfaces_with_low_confidence)
+    // {
+    //     bool still_low_confidence = surface->get_average_projective_distance() > settings_.projective_std_threshold;
+    //     bool more_than_n_points = surface->get_total_point_size() > settings_.remove_low_confidence_threshold;
+    //     if (still_low_confidence && more_than_n_points)
+    //     {
+    //         std::cout << ">> removing low confidence surface " << surface->get_id() << std::endl;
+    //         storage_->delete_surface(surface);
+    //     }
+    // }
 }
 
 template <typename PointT>
@@ -330,47 +430,150 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
     std::map<std::shared_ptr<Surface>, std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>> searched_surface_to_searched_faces;
     for (const std::shared_ptr<Face>& face : searched_faces)
     {
-        searched_surface_to_searched_faces[face->get_surface()].insert(face);
+        for (const std::shared_ptr<Surface>& surface : face->get_surfaces())
+        {
+            searched_surface_to_searched_faces[surface].insert(face);    
+        }
     }
 
-    bool point_added = false;
+    // delete abnormal surfaces
     for (const auto& pair : searched_surface_to_searched_faces)
     {
         const std::shared_ptr<Surface>& surface = pair.first;
-        const std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& searched_faces = pair.second;
 
-        double distance = surface->compute_point_to_surface_distance(generic_point);
-        bool points_before_surface = distance > settings_.distance_threshold;
-        bool points_behind_surface = distance < -settings_.distance_threshold;
-        bool points_within_surface = !points_before_surface && !points_behind_surface;
-        
-        if (points_behind_surface)
+        if (surface->is_abnormal())
         {
-            storage_->set_penetrating_point(generic_point);
-            for (const std::shared_ptr<Face>& face : searched_faces) storage_->delete_face(face);
-            storage_->clear_penetrating_point();
-        }
-        else if (points_within_surface)
-        {
-            if (!point_added)
-            {
-                storage_->add_interior_point(*searched_faces.begin(), generic_point);
-                point_added = true;
-            }
-            else
-            {
-                std::cout << "point within multiple surface" << std::endl;
-            }
-        }
-        else if (points_before_surface)
-        {
-            continue;
+            // delete
+            std::cout << ">> removing abnormal surface during intersection search" << surface->get_id() << std::endl; // log
+            storage_->delete_surface(surface);
         }
     }
-    if (!point_added) add_point_by_radius_search(generic_point);
 
-    if (ith_point == ith_size) 
-    {   
+    // recompute searched faces
+    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> searched_faces_copy = searched_faces;
+    searched_faces.clear();
+    for (const std::shared_ptr<Face>& face : searched_faces_copy)
+    {
+        // skip if the face is expired
+        if (face->is_expired()) continue;
+
+        searched_faces.insert(face);
+    }
+
+    // recompute searched surfaces to searched faces map
+    searched_surface_to_searched_faces.clear();
+    for (const std::shared_ptr<Face>& face : searched_faces)
+    {
+        for (const std::shared_ptr<Surface>& surface : face->get_surfaces())
+        {
+            searched_surface_to_searched_faces[surface].insert(face);    
+        }
+    }
+
+    // log
+    std::cout << ">> found " << searched_faces.size() << " searched faces grouped into " << searched_surface_to_searched_faces.size() << " searched surfaces" << std::endl;
+
+    // process point behind surface
+    for (const auto& pair : searched_surface_to_searched_faces)
+    {
+        const std::shared_ptr<Surface>& surface = pair.first;
+        const std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& mapped_searched_faces = pair.second;
+
+        if (surface->check_relative_position(generic_point) == RelativePosition::BEHIND)
+        {
+            storage_->set_penetrating_point(generic_point);
+            for (const std::shared_ptr<Face>& face : mapped_searched_faces) 
+            {
+                // log
+                std::cout << ">> disconnect penetrated face " << face->get_id() << " from surface " << surface->get_id() << std::endl;
+
+                surface->disconnect(face);
+            }
+            storage_->clear_penetrating_point();
+
+            // // add back penetrated points
+            // std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash> copy_of_penetrated_points = storage_->get_penetrated_points();
+            // for (const std::shared_ptr<GenericPoint>& penetrated_point : copy_of_penetrated_points)
+            // {
+            //     // log
+            //     std::cout << ">> adding back penetrated point as vertex" << std::endl;
+
+            //     add_point_by_radius_search(penetrated_point);
+            //     storage_->delete_penetrated_point(penetrated_point);
+            // }
+        }
+    }
+
+    // faces may become expired
+
+    // process points within surface
+
+    // try add as interior point
+    std::vector<std::shared_ptr<InteriorPoint>> sibling_interior_points;
+    for (const auto& pair : searched_surface_to_searched_faces)
+    {
+        const std::shared_ptr<Surface>& surface = pair.first;
+        const std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& mapped_searched_faces = pair.second;
+
+        // skip if faces are all expired
+        bool all_faces_expired = true;
+        for (const std::shared_ptr<Face>& face : mapped_searched_faces)
+        {
+            if (!face->is_expired())
+            {
+                all_faces_expired = false;
+                break;
+            }
+        }
+        if (all_faces_expired) continue;
+        
+        if (surface->check_relative_position(generic_point) == RelativePosition::WITHIN)
+        {
+            // log
+            std::cout << "========================== within surface " << surface->get_id() << std::endl;
+
+            // add as interior point
+            std::shared_ptr<InteriorPoint> temp_interior_point = storage_->add_interior_point(generic_point);
+            sibling_interior_points.push_back(temp_interior_point);
+            sibling_interior_points[0]->connect(temp_interior_point);
+
+            // connect to surface
+            temp_interior_point->connect(surface);
+
+            // connect to face
+            for (const std::shared_ptr<Face>& face : mapped_searched_faces)
+            {
+                // skip if the face is expired
+                if (face->is_expired()) continue;
+
+                // log
+                std::cout << ">> adding interior point to face " << face->get_id() << std::endl;
+
+                temp_interior_point->connect(face);
+            }
+        }
+    }
+
+    // if can't be added as interior point, add as vertex
+    if (sibling_interior_points.size() == 0) 
+    {
+        // log
+        std::cout << ">> adding point as vertex" << std::endl;
+
+        // add point as vertex
+        add_point_by_radius_search(generic_point);
+    }
+}
+
+template <typename PointT>
+void Application<PointT>::get_lidar_data(Eigen::Vector3d& origin, Eigen::Vector3d& position)
+{
+    origin = this->origin;
+    position = pointcloud->points[ith_point].getVector3fMap().cast<double>();
+    ith_point++;
+
+    if (ith_point == ith_size)
+    {
         ith_cloud += 1;
         ith_point = 0;
         load_point_cloud();
@@ -378,18 +581,34 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
 }
 
 template <typename PointT>
+void Application<PointT>::get_sim_data(Eigen::Vector3d& origin, Eigen::Vector3d& position)
+{
+    Simulation sim;
+    sim.set_object(settings_.sim_object);
+    sim.set_noise(settings_.noise_std);
+    sim.get_data_pair(origin, position);
+}
+
+template <typename PointT>
 void Application<PointT>::step()
 {        
-    Eigen::Vector3d thisPointVEC = pointcloud->points[ith_point].getVector3fMap().cast<double>();
-    Eigen::Vector3d thisPointOriginVEC = origin;
-    ith_point++;
+    Eigen::Vector3d thisPointVEC;
+    Eigen::Vector3d thisPointOriginVEC;
+    if (settings_.use_sim_data)
+    {
+        get_sim_data(thisPointOriginVEC, thisPointVEC);
+    }
+    else
+    {
+        get_lidar_data(thisPointOriginVEC, thisPointVEC);
+    }
 
     // log
     std::cout << "==================================================================== Processing point " << ith_point << " of cloud " << ith_cloud << std::endl;
 
-    const std::shared_ptr<GenericPoint>& generic_point = storage_->add_generic_point(thisPointVEC, thisPointOriginVEC);
+    std::shared_ptr<GenericPoint> generic_point = std::make_shared<GenericPoint>();
+    generic_point->initialize_(storage_, thisPointVEC, thisPointOriginVEC);
     process_point(generic_point);
-    storage_->delete_generic_point(generic_point);
 }
 
 template <typename PointT>
@@ -446,6 +665,9 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_interior_poi
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
     for (const std::shared_ptr<InteriorPoint>& interior_point : storage_->get_interior_points())
     {
+        // skip if not confirmed
+        if (settings.show_confirmed_only && !interior_point->is_confirmed()) continue;
+        
         pcl::PointXYZRGB point;
         if (settings.show_projected_point)
         {
@@ -476,7 +698,15 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_interior_poi
         }
         else if (settings.color_mode == 2)
         {
-            double distance = 1/5.0;
+            double distance = interior_point->get_sibling_interior_points().size() / settings.siblings_denominator;
+            std::tuple<int, int, int> color = valueToJet(distance);
+            point.r = std::get<0>(color);
+            point.g = std::get<1>(color);
+            point.b = std::get<2>(color);
+        }
+        else if (settings.color_mode == 3)
+        {
+            double distance = interior_point->get_radius() / settings.radius_denominator;
             std::tuple<int, int, int> color = valueToJet(distance);
             point.r = std::get<0>(color);
             point.g = std::get<1>(color);
@@ -543,6 +773,12 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_vertex_point
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
     for (const std::shared_ptr<Vertex>& vertex : storage_->get_vertices())
     {
+        // skip if not confirmed
+        if (setting.show_confirmed_only && !vertex->is_confirmed()) continue;
+
+        // skip if singular
+        if (!setting.show_singular_vertex && vertex->is_singular()) continue;
+
         pcl::PointXYZRGB point;
         if (setting.show_projected_point)
         {
@@ -573,7 +809,15 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_vertex_point
         }
         else if (setting.color_mode == 2)
         {
-            double distance = vertex->get_surfaces().size() / 5.0;
+            double distance = vertex->get_sibling_vertices().size() / setting.siblings_denominator;
+            std::tuple<int, int, int> color = valueToJet(distance);
+            point.r = std::get<0>(color);
+            point.g = std::get<1>(color);
+            point.b = std::get<2>(color);
+        }
+        else if (setting.color_mode == 3)
+        {
+            double distance = vertex->get_radius() / setting.radius_denominator;
             std::tuple<int, int, int> color = valueToJet(distance);
             point.r = std::get<0>(color);
             point.g = std::get<1>(color);

@@ -109,24 +109,44 @@ const std::shared_ptr<GenericPoint>& Storage::add_generic_point(const std::share
     return *genertic_points_.insert(genertic_point).first;
 }
 
-const std::shared_ptr<InteriorPoint>& Storage::add_interior_point(const std::shared_ptr<Face>& face, const Eigen::Vector3d& position, const Eigen::Vector3d& origin) 
+const std::shared_ptr<InteriorPoint>& Storage::add_interior_point(const Eigen::Vector3d& position, const Eigen::Vector3d& origin) 
 {
     // create
     std::shared_ptr<InteriorPoint> interior_point = std::make_shared<InteriorPoint>();
-    interior_point->initialize_(shared_from_this(), face, position, origin);
+    interior_point->initialize_(shared_from_this(), position, origin);
 
     // store
     return *interior_points_.insert(interior_point).first;
 }
 
-const std::shared_ptr<InteriorPoint>& Storage::add_interior_point(const std::shared_ptr<Face>& face, const std::shared_ptr<GenericPoint>& generic_point) 
+const std::shared_ptr<InteriorPoint>& Storage::add_interior_point(const std::shared_ptr<GenericPoint>& generic_point) 
 {
     // create
     std::shared_ptr<InteriorPoint> interior_point = std::make_shared<InteriorPoint>();
-    interior_point->initialize_(shared_from_this(), face, generic_point);
+    interior_point->initialize_(shared_from_this(), generic_point);
 
     // store
     return *interior_points_.insert(interior_point).first;
+}
+
+const std::shared_ptr<GenericPoint>& Storage::add_penetrated_point(const std::shared_ptr<Vertex>& vertex) 
+{
+    // create
+    std::shared_ptr<GenericPoint> genertic_point = std::make_shared<GenericPoint>();
+    genertic_point->initialize_(shared_from_this(), vertex);
+
+    // store
+    return *penetrated_points_.insert(genertic_point).first;
+}
+
+const std::shared_ptr<GenericPoint>& Storage::add_penetrated_point(const std::shared_ptr<InteriorPoint>& interior_point) 
+{
+    // create
+    std::shared_ptr<GenericPoint> genertic_point = std::make_shared<GenericPoint>();
+    genertic_point->initialize_(shared_from_this(), interior_point);
+
+    // store
+    return *penetrated_points_.insert(genertic_point).first;
 }
 
 // need to ensure the vertex/edge/face are only stored using shared_ptr here and nowhere else
@@ -203,6 +223,18 @@ void Storage::delete_interior_point(const std::shared_ptr<InteriorPoint>& interi
     
     // member delete
     interior_point->delete_();
+}
+
+void Storage::delete_penetrated_point(const std::shared_ptr<GenericPoint>& penetrated_point) 
+{
+    // check input
+    if (penetrated_point->is_expired()) throw std::runtime_error("Attempts to delete expired penetrated point.");
+
+    // storage delete
+    penetrated_points_.erase(penetrated_point);
+
+    // member delete
+    penetrated_point->delete_();
 }
 
 void Storage::add_searchable_vertex(const std::shared_ptr<Vertex>& vertex)
@@ -305,6 +337,11 @@ const std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash>& Storag
     return interior_points_;
 }
 
+const std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash>& Storage::get_penetrated_points() const
+{
+    return penetrated_points_;
+}
+
 std::vector<std::shared_ptr<Vertex>> Storage::get_rrs_vertices()
 {
     return rrs_tree_.compute_vertices_list();
@@ -351,6 +388,21 @@ void Storage::clear_penetrating_point()
 bool Storage::has_penetrating_point() const
 {
     return has_penetrating_point_;
+}
+
+void Storage::disallow_creation_of_generic_point()
+{
+    can_create_generic_point_ = false;
+}
+
+void Storage::allow_creation_of_generic_point()
+{
+    can_create_generic_point_ = true;
+}
+
+bool Storage::can_create_generic_point() const
+{
+    return can_create_generic_point_;
 }
 
 // get edge

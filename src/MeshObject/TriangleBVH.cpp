@@ -54,7 +54,7 @@ bool TriangleBVH::BoundingBox::intersect(const Eigen::Vector3d& orig, const Eige
         if (invD < 0.0) std::swap(t0, t1);
         tMin = std::max(tMin, t0);
         tMax = std::min(tMax, t1);
-        if (tMax <= tMin) return false;
+        if (tMax < tMin) return false;
     }
     return true;
 }

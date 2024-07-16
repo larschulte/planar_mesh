@@ -7,6 +7,7 @@
 #include "MeshObject/EdgeBVH.hpp"
 
 #include "MeshObject/MeshObject.hpp"
+#include "MeshObject/Settings.hpp"
 
 // forward declarations
 class Vertex;
@@ -14,6 +15,14 @@ class Edge;
 class Face;
 class InteriorPoint;
 class Storage;
+class GenericPoint;
+
+enum class RelativePosition
+{
+    IN_FRONT,
+    WITHIN,
+    BEHIND
+};
 
 class Surface : public std::enable_shared_from_this<Surface> 
 {
@@ -23,15 +32,22 @@ protected:
     void delete_();
 
 public:
-    double compute_point_to_surface_distance(const Eigen::Vector3d& origin, const Eigen::Vector3d& point) const;
-    double compute_point_to_surface_distance(const std::shared_ptr<GenericPoint>& generic_point) const;
-    double compute_point_to_surface_distance(const std::shared_ptr<Vertex>& vertex) const;
-    double compute_point_to_surface_distance_with_improved_covariance(const Eigen::Vector3d& origin, const Eigen::Vector3d& point) const;
-    Eigen::Vector3d compute_point_to_surface_position(const Eigen::Vector3d& origin, const Eigen::Vector3d& point) const;
+    double compute_point_projective_distance(const Eigen::Vector3d& origin, const Eigen::Vector3d& point) const;
+    double compute_point_projective_distance(const std::shared_ptr<GenericPoint>& generic_point) const;
+    double compute_point_projective_distance(const std::shared_ptr<Vertex>& vertex) const;
+    double compute_point_projective_distance_with_improved_covariance(const Eigen::Vector3d& origin, const Eigen::Vector3d& point) const;
+    Eigen::Vector3d compute_point_projective_position(const Eigen::Vector3d& origin, const Eigen::Vector3d& point) const;
     
+    RelativePosition check_relative_position(const Eigen::Vector3d& origin, const Eigen::Vector3d& point, const Eigen::Vector3d& direction);
+    RelativePosition check_relative_position(const std::shared_ptr<GenericPoint>& generic_point);
+    RelativePosition check_relative_position(const std::shared_ptr<Vertex>& vertex);
+    RelativePosition check_relative_position(const std::shared_ptr<InteriorPoint>& interior_point);
+
     void merge_surface(const std::shared_ptr<Surface>& surface);
 
     const int& get_id() const;
+    const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& get_vertices() const;
+    const std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash>& get_interior_points() const;
     const Eigen::Vector3d& get_mean() const;
     const Eigen::Matrix3d& get_covariance() const;
     const Eigen::Matrix3d& get_eigenvectors() const;
@@ -39,7 +55,11 @@ public:
     const Eigen::Vector3d& get_normal() const;
     std::size_t get_total_point_size() const;
     const std::tuple<int, int, int>& get_color() const;
+    const std::vector<double>& get_point_to_plane_distance_stats();
+    const std::vector<double>& get_projective_distance_stats();
+    double get_average_projective_distance();
     bool is_expired() const;
+    bool is_abnormal();
 
     void connect(const std::shared_ptr<Vertex>& vertex);
     void connect(const std::shared_ptr<Edge>& edge);
@@ -53,12 +73,18 @@ public:
 
     bool connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& all_nearby_vertices);
 
+    double compute_surface_position_std_in_normal_direction();
+
     void refine_surface();
 
     void add_searchable_edge(const std::shared_ptr<Edge>& edge);
     void remove_searchable_edge(const std::shared_ptr<Edge>& edge);
     
+    void print_info();
+
 private:
+    static Settings settings_;
+
     bool deleting_ = false;
     bool is_expired_ = true;
 
@@ -79,6 +105,12 @@ private:
     Eigen::Matrix3d eigenvectors_;
     Eigen::Vector3d eigenvalues_;
     Eigen::Vector3d normal_;
+
+    std::vector<double> stored_projective_distance_stats_;
+    std::vector<double> stored_point_to_plane_distance_stats_;
+    std::size_t previous_total_point_size_for_projective_;
+    std::size_t previous_total_point_size_for_point_to_plane_;
+
 
     std::tuple<int, int, int> color_;
 };

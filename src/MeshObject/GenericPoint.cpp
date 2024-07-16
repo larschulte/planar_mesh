@@ -22,6 +22,7 @@ void GenericPoint::initialize_(const std::shared_ptr<Storage>& storage, const Ei
     // store
     position_ = position;
     origin_ = origin;
+    direction_ = (position - origin).normalized();
     if (GenericPoint::settings_.use_radius_value)
     {
         radius_ = GenericPoint::settings_.radius_value;
@@ -81,6 +82,11 @@ const Eigen::Vector3d& GenericPoint::get_position() const
 const Eigen::Vector3d& GenericPoint::get_origin() const
 {
     return origin_;
+}
+
+const Eigen::Vector3d& GenericPoint::get_direction() const
+{
+    return direction_;
 }
 
 const double& GenericPoint::get_radius() const

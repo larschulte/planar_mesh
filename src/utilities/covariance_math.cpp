@@ -1,4 +1,5 @@
 #include "utilities/covariance_math.hpp"
+#include <numeric>
 
 // add mean2 to mean1
 Eigen::Vector3d merge_mean(const Eigen::Vector3d& mean1, const Eigen::Vector3d& mean2, int size1, int size2) 
@@ -50,4 +51,23 @@ Eigen::Matrix3d remove_covariance(const Eigen::Matrix3d& combined_covariance, co
     Eigen::Matrix3d cov1 = (combined_covariance * combined_size - size2 * cov2 - size1 * mean_diff1 - size2 * mean_diff2) / size1;
 
     return cov1;
+}
+
+// Function to compute the mean of a vector
+double compute_mean(const std::vector<double>& data) 
+{
+    double sum = std::accumulate(data.begin(), data.end(), 0.0);
+    return sum / data.size();
+}
+
+// Function to compute the standard deviation of a vector
+double compute_std(const std::vector<double>& data)
+{
+    double mean = compute_mean(data);
+    double sq_sum = std::accumulate(data.begin(), data.end(), 0.0, 
+        [mean](double acc, double val) 
+        {
+            return acc + (val - mean) * (val - mean);
+        });
+    return std::sqrt(sq_sum / data.size());
 }

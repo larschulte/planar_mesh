@@ -3,8 +3,9 @@
 #include "MeshObject/Face.hpp"
 #include "MeshObject/Surface.hpp"
 #include "MeshObject/GenericPoint.hpp"
+#include "utilities/covariance_math.hpp"
 
-void InteriorPoint::initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<Face>& face, const Eigen::Vector3d& position, const Eigen::Vector3d& origin, const double& radius)
+void InteriorPoint::initialize_(const std::shared_ptr<Storage>& storage, const Eigen::Vector3d& position, const Eigen::Vector3d& origin, const double& radius)
 {
     // set expired
     is_expired_ = false;
@@ -21,29 +22,26 @@ void InteriorPoint::initialize_(const std::shared_ptr<Storage>& storage, const s
     // store
     position_ = position;
     origin_ = origin;
+    direction_ = (position_ - origin_).normalized();
     radius_ = radius;
 
     num_deletes_ = 0;
-
-    // connect
-    connect(face);
-    connect(face->get_surface());
 
     // log
     std::cout << "InteriorPoint " << id_ << " created.\n";
 }
 
-void InteriorPoint::initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<Face>& face, const std::shared_ptr<GenericPoint>& generic_point)
-{
-    initialize_(storage, face, generic_point->get_position(), generic_point->get_origin(), generic_point->get_radius());
-    num_deletes_ = generic_point->get_num_deletes();
-}
-
-void InteriorPoint::initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<Face>& face, const Eigen::Vector3d& position, const Eigen::Vector3d& origin)
+void InteriorPoint::initialize_(const std::shared_ptr<Storage>& storage, const Eigen::Vector3d& position, const Eigen::Vector3d& origin)
 {
     std::shared_ptr<GenericPoint> generic_point = storage->add_generic_point(position, origin);
-    initialize_(storage, face, generic_point);
+    initialize_(storage, generic_point);
     storage->delete_generic_point(generic_point);
+}
+
+void InteriorPoint::initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<GenericPoint>& generic_point)
+{
+    initialize_(storage, generic_point->get_position(), generic_point->get_origin(), generic_point->get_radius());
+    num_deletes_ = generic_point->get_num_deletes();
 }
 
 void InteriorPoint::delete_()
@@ -56,21 +54,32 @@ void InteriorPoint::delete_()
 
     // disconnect
     std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces = faces_;
+    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces = surfaces_;
     for (const auto& face : faces) disconnect(face);
-    
-    // disconnect surface
-    if (surface_ != nullptr) disconnect(surface_);
+    for (const auto& surface : surfaces) disconnect(surface);
 
-    // compute radius
-    if (storage_->has_penetrating_point())
+    // only create penetrated point / generic point if sibling is empty
+    if (sibling_interior_points_.empty() && storage_->can_create_generic_point())
     {
-        // compute radius from storage
-        double radius = (storage_->get_penetrating_point() - get_position()).norm();
-        if (radius < radius_) radius_ = radius;
-    }
+        if (storage_->has_penetrating_point())
+        {
+            // compute radius from storage
+            double radius = (storage_->get_penetrating_point() - get_position()).norm();
+            if (radius < radius_) radius_ = radius;
 
-    // add to storage as generic point
-    storage_->add_generic_point(shared_from_this());
+            // add to storage as penetrated point
+            storage_->add_penetrated_point(shared_from_this());
+        }
+        else
+        {
+            // add to storage as generic point
+            storage_->add_generic_point(shared_from_this());
+        }
+    }
+    
+    // disconnect from sibling interior points
+    std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> sibling_interior_points = sibling_interior_points_;
+    for (const auto& sibling_interior_point : sibling_interior_points) disconnect(sibling_interior_point);
 
     // log
     std::cout << "---------- InteriorPoint " << id_ << " destroyed" << std::endl;
@@ -94,10 +103,31 @@ const Eigen::Vector3d& InteriorPoint::get_origin() const
     return origin_;
 }
 
+const Eigen::Vector3d& InteriorPoint::get_direction() const
+{
+    return direction_;
+}
+
 const std::shared_ptr<Surface>& InteriorPoint::get_surface() const
 {    
-    if (surface_ == nullptr) throw std::runtime_error("InteriorPoint not connected to a surface.");
-    return surface_;
+    if (surfaces_.empty()) throw std::runtime_error("InteriorPoint has no surface.");
+
+    // if more than one surface, throw error
+    if (surfaces_.size() > 1) throw std::runtime_error("Interior point connected to more than one surface.");
+
+    // return the first surface
+    return *surfaces_.begin();
+}
+
+
+const std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash>& InteriorPoint::get_surfaces() const
+{
+    return surfaces_;
+}
+
+const std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash>& InteriorPoint::get_sibling_interior_points() const
+{
+    return sibling_interior_points_;
 }
 
 const double& InteriorPoint::get_radius() const
@@ -105,32 +135,42 @@ const double& InteriorPoint::get_radius() const
     return radius_;
 }
 
-void InteriorPoint::try_update_surface_projection()
+void InteriorPoint::try_update_surface_projection(const std::shared_ptr<Surface> surface)
 {
     // update if surface changes
-    if (normal_used_ != get_surface()->get_normal())
+    if (normal_used_ != surface->get_normal())
     {
-        normal_used_ = get_surface()->get_normal();
-        projected_position_ = get_surface()->compute_point_to_surface_position(get_origin(), get_position());
-        projected_distance_ = get_surface()->compute_point_to_surface_distance(get_origin(), get_position());
+        normal_used_ = surface->get_normal();
+        projected_position_ = surface->compute_point_projective_position(get_origin(), get_position());
+        projected_distance_ = surface->compute_point_projective_distance(get_origin(), get_position());
     }
+}
+
+void InteriorPoint::try_update_surface_projection()
+{
+    try_update_surface_projection(get_surface());
+}
+
+const Eigen::Vector3d& InteriorPoint::get_projected_position(const std::shared_ptr<Surface> surface)
+{
+    try_update_surface_projection(surface);
+    return projected_position_;
 }
 
 const Eigen::Vector3d& InteriorPoint::get_projected_position()
 {
-    try_update_surface_projection();
-    return projected_position_;
+    return get_projected_position(get_surface());
+}
+
+const double& InteriorPoint::get_projected_distance(const std::shared_ptr<Surface> surface)
+{
+    try_update_surface_projection(surface);
+    return projected_distance_;
 }
 
 const double& InteriorPoint::get_projected_distance()
 {
-    try_update_surface_projection();
-    return projected_distance_;
-
-    // if (std::fabs(distance) > 0.03)
-    // {
-    //     storage_->delete_vertex(shared_from_this());
-    // }    
+    return get_projected_distance(get_surface());
 }
 
 bool InteriorPoint::is_expired() const
@@ -151,6 +191,9 @@ void InteriorPoint::connect(const std::shared_ptr<Face>& face)
     // connect
     bool inserted = faces_.insert(face).second;
     if (inserted) face->connect(shared_from_this());
+
+    // update confirmed status
+    if (inserted) update_confirmed_status();
 }
 
 void InteriorPoint::connect(const std::shared_ptr<Surface>& surface)
@@ -158,18 +201,29 @@ void InteriorPoint::connect(const std::shared_ptr<Surface>& surface)
     // check input
     if (surface->is_expired()) throw std::runtime_error("Attempts to connect interior point with invalid surface.");
 
-    // skip if already connected
-    if (surface_ == surface) return;
+    // connect
+    bool inserted = surfaces_.insert(surface).second;
+    if (inserted) surface->connect(shared_from_this());    
+}
+
+void InteriorPoint::connect(const std::shared_ptr<InteriorPoint>& sibling_interior_point)
+{
+    // check input
+    if (sibling_interior_point->is_expired()) throw std::runtime_error("Attempts to connect interior point with invalid sibling interior point.");
+
+    // skip if try to connect to itself
+    if (sibling_interior_point == shared_from_this()) return;
 
     // connect
-    if (surface_ == nullptr) 
+    bool inserted = sibling_interior_points_.insert(sibling_interior_point).second;
+    if (inserted) std::cout << "Connected interior point " << id_ << " with interiror point " << sibling_interior_point->get_id() << " as sibling."<< std::endl;
+    if (inserted) sibling_interior_point->connect(shared_from_this());
+    if (inserted)
     {
-        surface_ = surface;
-        surface_->connect(shared_from_this());
-    }
-    else
-    {
-        throw std::runtime_error("interior point already connected to a different surface.");
+        for (const std::shared_ptr<InteriorPoint>& sibling_interior_point_ : sibling_interior_points_)
+        {
+            sibling_interior_point_->connect(sibling_interior_point);
+        }
     }
 }
 
@@ -182,6 +236,9 @@ void InteriorPoint::disconnect(const std::shared_ptr<Face>& face)
     bool erased = faces_.erase(face);
     if (erased) face->disconnect(shared_from_this());
 
+    // udpate confirmed status
+    if (erased) update_confirmed_status();
+
     // self destruct
     if (!deleting_ && faces_.empty()) storage_->delete_interior_point(shared_from_this());
 }
@@ -191,29 +248,61 @@ void InteriorPoint::disconnect(const std::shared_ptr<Surface>& surface)
     // check input
     if (surface->is_expired()) return;
 
-    // skip if already disconnected
-    if (surface_ == nullptr) return;
+    // disconnect
+    bool erased = surfaces_.erase(surface);
+    if (erased) surface->disconnect(shared_from_this());
+
+    // self destruct
+    if (!deleting_ && surfaces_.empty()) storage_->delete_interior_point(shared_from_this());
+}
+
+void InteriorPoint::disconnect(const std::shared_ptr<InteriorPoint>& sibling_interior_point)
+{
+    // check input
+    if (sibling_interior_point->is_expired()) return;
 
     // disconnect
-    if (surface_ == surface)
+    bool erased = sibling_interior_points_.erase(sibling_interior_point);
+    if (erased) sibling_interior_point->disconnect(shared_from_this());
+}
+
+void InteriorPoint::reduce_reverse_radius_search_radius(double radius)
+{
+    if (radius < radius_) set_reverse_radius_search_radius(radius);
+}
+
+void InteriorPoint::set_reverse_radius_search_radius(double radius)
+{
+    radius_ = radius;
+}
+
+void InteriorPoint::update_confirmed_status()
+{
+    // update number of confirmed faces
+    num_confirmed_faces = 0;
+    for (const std::shared_ptr<Face>& face : faces_)
     {
-        surface_->disconnect(shared_from_this());
-        surface_ = nullptr;
+        if (face->is_confirmed()) num_confirmed_faces++;
     }
-    else
-    {
-        throw std::runtime_error("interior point not connected to the surface.");
-    }
+
+    // update confirmed status
+    if (num_confirmed_faces >= 1) is_confirmed_ = true;
+    else is_confirmed_ = false;
+}
+
+bool InteriorPoint::is_confirmed() const
+{
+    return is_confirmed_;
 }
 
 // swap surface1 with surface2
 void InteriorPoint::swap(const std::shared_ptr<Surface>& surface1, const std::shared_ptr<Surface>& surface2)
 {
     // if contains surfacce1
-    if (surface_ == surface1)
+    if (surfaces_.find(surface1) != surfaces_.end())
     {
-        disconnect(surface1);
         connect(surface2);
+        disconnect(surface1);
 
         // cascade swap
         for (const std::shared_ptr<Face>& face : faces_)

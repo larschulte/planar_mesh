@@ -27,7 +27,7 @@ public:
     // helper function
     Eigen::Matrix3d merge_covariances_of_surfaces(std::shared_ptr<Surface> surface1, std::shared_ptr<Surface> surface2);
     double compute_eigenvalue_of_merged_surfaces(std::shared_ptr<Surface> surface1, std::shared_ptr<Surface> surface2);
-    void try_merge_surfaces(std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash>& surfaces_to_merge);
+    // void try_merge_surfaces(std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash>& surfaces_to_merge);
     
     // algorithm
     void process_point(const std::shared_ptr<GenericPoint>& generic_point);
@@ -37,6 +37,8 @@ public:
     void refine_surfaces();
     void change_color();
     void add_back_generic_points();
+    void get_lidar_data(Eigen::Vector3d& origin, Eigen::Vector3d& position);
+    void get_sim_data(Eigen::Vector3d& origin, Eigen::Vector3d& position);
     void step();
     void loop();
     void restart();

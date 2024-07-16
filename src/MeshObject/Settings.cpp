@@ -18,20 +18,28 @@ Settings::Settings()
         "/home/jiahao/datasets/2024-03-14-09-09-02-lenord-walk-for-lintong/individual_clouds/",
         "/home/jiahao/datasets/2024-03-14-09-09-02-lenord-walk-for-lintong/slam_pose_graph.g2o"
     );
+    dataset_map["christchurch"] = std::make_pair(
+        "/home/jiahao/datasets/christ church spires/2024-03-18-09-43-37/individual_clouds/",
+        "/home/jiahao/datasets/christ church spires/2024-03-18-09-43-37/slam_pose_graph.g2o"
+    );
+    
     std::string dataset = "room";
     cloud_path = dataset_map[dataset].first;
     pose_path = dataset_map[dataset].second;
+
+    use_sim_data = false;
+    sim_object = 0;
+    noise_std = 0.01;
     
     start_cloud = 50;
     start_point = 0;
-    distance_threshold = 0.05;
-    fit_plane_threshold = 3;
-    merged_eigenvalue_threshold = 15e-5;
+    fit_plane_threshold = 4;
     shuffle_pointcloud = false;
     use_radius_value = false;
     pointcloud_fraction = 1;
     radius_value = 2;
     radius_ratio = tan(4 * M_PI / 180);
+    range_noise_std = 1.5*noise_std;
     
     // interactive viewer settings
     show_generic_points = true;
@@ -40,7 +48,14 @@ Settings::Settings()
     show_triangle = true;
     show_edge = true;
     show_projected_point = false;
+    show_confirmed_only = false;
+    show_keycode = false;
+    show_singular_edge = false;
+    show_singular_vertex = false;
     color_mode = 0;
+    surface_denominator = 10.0;
+    siblings_denominator = 3.0;
+    radius_denominator = 0.5;
     show_wireframe = true;
     show_sphere = false;
     number_of_spheres_to_display = 60;

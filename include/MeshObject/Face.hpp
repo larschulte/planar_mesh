@@ -24,9 +24,12 @@ public:
     const int& get_id() const;
     const Eigen::Vector3d& get_center() const;
     const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& get_vertices() const;
+    const std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash>& get_interior_points() const;
     const std::shared_ptr<Vertex>& get_vertex(int index) const;
-    const std::shared_ptr<Surface>& get_surface() const;
+    const std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash>& get_surfaces() const;
+    const std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& get_sibling_faces() const;
     bool is_expired() const;
+    bool has_vertex(const std::shared_ptr<Vertex>& vertex) const;
 
     bool intersects_point(const Eigen::Vector3d& origin, const Eigen::Vector3d& direction);
     Eigen::Vector3d compute_intersection_point(const Eigen::Vector3d& origin, const Eigen::Vector3d& direction);
@@ -35,10 +38,15 @@ public:
     void connect(const std::shared_ptr<Edge>& edge);
     void connect(const std::shared_ptr<Surface>& surface);
     void connect(const std::shared_ptr<InteriorPoint>& interior_point);
+    void connect(const std::shared_ptr<Face>& sibling_face);
     void disconnect(const std::shared_ptr<Vertex>& vertex);
     void disconnect(const std::shared_ptr<Edge>& edge);
     void disconnect(const std::shared_ptr<Surface>& surface);
     void disconnect(const std::shared_ptr<InteriorPoint>& interior_point);
+    void disconnect(const std::shared_ptr<Face>& sibling_face);
+
+    void update_confirmed_status();
+    bool is_confirmed() const;
 
     void swap(const std::shared_ptr<Surface>& surface1, const std::shared_ptr<Surface>& surface2);
 
@@ -48,6 +56,7 @@ private:
     bool deleting_ = false;
     bool is_searchable_ = false;
     bool is_expired_ = true;
+    bool is_confirmed_ = false;
 
     int id_;
     std::shared_ptr<Storage> storage_;
@@ -55,8 +64,9 @@ private:
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertices_;
     std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges_;
     std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> interior_points_;
+    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_;
 
-    std::shared_ptr<Surface> surface_ = nullptr;
+    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> sibling_faces_;
 };
 
 bool operator<(const std::shared_ptr<Face>& lhs, const std::shared_ptr<Face>& rhs);

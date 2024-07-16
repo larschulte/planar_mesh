@@ -24,11 +24,12 @@ template <typename PointT>
 void InteractiveViewer<PointT>::update_display()
 {
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr vertex_pointcloud = app_.compute_vertex_point_pointcloud(settings_);
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr interior_point_cloud = app_.compute_interior_point_pointcloud(settings_);
     std::map<std::shared_ptr<Vertex>, int> vertex_to_cloud_indices_map = app_.get_vertex_to_cloud_indices_map();
     std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces = app_.get_faces();
     std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> boundary_edges = app_.get_boundary_edges();
 
-    // pointcloud
+    // vertex points
     viewer_->removeShape("point_cloud");
     if (settings_.show_pointcloud)
     {
@@ -40,7 +41,6 @@ void InteractiveViewer<PointT>::update_display()
     viewer_->removeShape("interior_points");
     if (settings_.show_interior_points)
     {
-        pcl::PointCloud<pcl::PointXYZRGB>::Ptr interior_point_cloud = app_.compute_interior_point_pointcloud(settings_);
         viewer_->addPointCloud<pcl::PointXYZRGB>(interior_point_cloud, "interior_points");
         viewer_->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 6, "interior_points");
     }
@@ -62,6 +62,9 @@ void InteractiveViewer<PointT>::update_display()
         pcl::toPCLPointCloud2(*vertex_pointcloud, triangle_mesh.cloud);
         for (const std::shared_ptr<Face>& face : faces)
         {
+            // skip if not confirmed
+            if (settings_.show_confirmed_only && !face->is_confirmed()) continue;
+
             pcl::Vertices triangle;
             triangle.vertices.push_back(vertex_to_cloud_indices_map.at(face->get_vertex(0)));
             triangle.vertices.push_back(vertex_to_cloud_indices_map.at(face->get_vertex(1)));
@@ -79,6 +82,12 @@ void InteractiveViewer<PointT>::update_display()
         pcl::toPCLPointCloud2(*vertex_pointcloud, boundary_mesh.cloud);
         for (const std::shared_ptr<Edge>& edge : boundary_edges)
         {
+            // skip if not confirmed
+            if (settings_.show_confirmed_only && !edge->is_confirmed()) continue;
+
+            // skip if singular
+            if (!settings_.show_singular_edge && edge->is_singular()) continue;
+            
             pcl::Vertices boundary_edge;
             boundary_edge.vertices.push_back(vertex_to_cloud_indices_map.at(edge->get_vertex(0)));
             boundary_edge.vertices.push_back(vertex_to_cloud_indices_map.at(edge->get_vertex(1)));
@@ -120,148 +129,240 @@ void InteractiveViewer<PointT>::update_display()
 template <typename PointT>
 void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::KeyboardEvent &event, void*) 
 {
+    if (settings_.show_keycode)
+    {
+        std::cout << "keySym: " << event.getKeySym() << " | keyCode: " << event.getKeyCode() << std::endl;
+    }
+    if (event.getKeySym() == "Num_Lock" && event.keyDown())
+    {
+        settings_.show_keycode = !settings_.show_keycode;
+        
+        // log
+        std::cout << "show_keycode: " << settings_.show_keycode << std::endl;
+    }
     if (event.getKeySym() == "space" && event.keyDown())
     {
         app_.loop();
         update_display();
+
+        // log
+        std::cout << "loop" << std::endl;
     }
+    // kp number 0
     if (event.getKeySym() == "KP_Insert" && event.keyDown())
     {
-        for (int i = 0; i < 100; i++) app_.step();
+        settings_.color_mode = 0;
         update_display();
+
+        // log
+        std::cout << "color_mode: original" << std::endl;
     }
-    if (event.getKeySym() == "KP_Delete" && event.keyDown())
+    // kp number 1
+    if (event.getKeySym() == "KP_End" && event.keyDown())
     {
-        for (int i = 0; i < 1000; i++) app_.step();
+        settings_.color_mode = 1;
         update_display();
+
+        // log
+        std::cout << "color_mode: projected distance" << std::endl;
     }
-    if (event.getKeySym() == "KP_Enter" && event.keyDown())
+    // kp number 2
+    if (event.getKeySym() == "KP_Down" && event.keyDown())
     {
-        app_.loop();
+        settings_.color_mode = 2;
         update_display();
+
+        // log
+        std::cout << "color_mode: number of siblings" << std::endl;
     }
+    // kp number 3
+    if (event.getKeySym() == "KP_Next" && event.keyDown())
+    {
+        settings_.color_mode = 3;
+        update_display();
+
+        // log
+        std::cout << "color_mode: radius" << std::endl;
+    }
+    // kp number 4
+    if (event.getKeySym() == "KP_Left" && event.keyDown())
+    {
+    }
+    // kp number 5
+    if (event.getKeySym() == "KP_Begin" && event.keyDown())
+    {
+    }
+    // kp number 6
+    if (event.getKeySym() == "KP_Right" && event.keyDown())
+    {
+    }
+    // kp number 7
+    if (event.getKeySym() == "KP_Home" && event.keyDown())
+    { 
+    }
+    // kp numebr 8
+    if (event.getKeySym() == "KP_Up" && event.keyDown())
+    {
+    }
+    // kp numebr 9
+    if (event.getKeySym() == "KP_Prior" && event.keyDown())
+    {
+        // singular edge
+        settings_.show_singular_edge = !settings_.show_singular_edge;
+        settings_.show_singular_vertex = !settings_.show_singular_vertex;
+        update_display();
+
+        // log
+        std::cout << "show_singular_edge: " << settings_.show_singular_edge << std::endl;
+        std::cout << "show_singular_vertex: " << settings_.show_singular_vertex << std::endl;
+    }
+    
     if (event.getKeySym() == "1" && event.keyDown())
     {
         app_.step();
         update_display();
+
+        // log
+        std::cout << "step" << std::endl;
     }
     if (event.getKeySym() == "2" && event.keyDown())
     {
         for (int i = 0; i < 10; i++) app_.step();
         update_display();
+
+        // log
+        std::cout << "step 10" << std::endl;
     }
     if (event.getKeySym() == "3" && event.keyDown())
     {
         for (int i = 0; i < 100; i++) app_.step();
         update_display();
+
+        // log
+        std::cout << "step 100" << std::endl;
     }
     if (event.getKeySym() == "4" && event.keyDown())
     {
         for (int i = 0; i < 1000; i++) app_.step();
         update_display();
+
+        // log
+        std::cout << "step 1000" << std::endl;
     }
     if (event.getKeySym() == "0" && event.keyDown())
     {
         app_.loop();
         update_display();
+
+        // log
+        std::cout << "loop" << std::endl;
     }
     if (event.getKeySym() == "Tab" && event.keyDown())
     {
         app_.change_color();
         update_display();
+
+        // log
+        std::cout << "changed color" << std::endl;
     }
     if (event.getKeySym() == "comma" && event.keyDown())
     {
         settings_.show_pointcloud = !settings_.show_pointcloud;
         update_display();
+
+        // log
+        std::cout << "show_verticies: " << settings_.show_pointcloud << std::endl;
     }
     if (event.getKeySym() == "period" && event.keyDown())
     {
         settings_.show_edge = !settings_.show_edge;
         update_display();
+
+        // log
+        std::cout << "show_edges: " << settings_.show_edge << std::endl;
     }
     if (event.getKeySym() == "slash" && event.keyDown())
     {
         settings_.show_triangle = !settings_.show_triangle;
         update_display();
+
+        // log
+        std::cout << "show_faces: " << settings_.show_triangle << std::endl;
     }
     if (event.getKeySym() == "a" && event.keyDown())
     {
         settings_.show_projected_point = !settings_.show_projected_point;
         update_display();
+
+        // log
+        std::cout << "show_projected_point: " << settings_.show_projected_point << std::endl;
     }
     if (event.getKeySym() == "z" && event.keyDown())
     {
-        // change int color mode between 1 and 3
-        settings_.color_mode = (settings_.color_mode + 1) % 3;
+        // show confirmed only
+        settings_.show_confirmed_only = !settings_.show_confirmed_only;
         update_display();
+
+        // log
+        std::cout << "show_confirmed_only: " << settings_.show_confirmed_only << std::endl;
     }
     if (event.getKeySym() == "v" && event.keyDown())
     {
         settings_.show_wireframe = !settings_.show_wireframe;
         update_display();
-    }
-    if (event.getKeySym() == "KP_Next" && event.keyDown())
-    {
-        app_.ith_cloud += 1;
-        app_.load_point_cloud();
-    }
-    if (event.getKeySym() == "KP_End" && event.keyDown())
-    {
-        app_.ith_cloud -= 1;
-        app_.load_point_cloud();
-    }
-    if (event.getKeySym() == "KP_Right" && event.keyDown())
-    {
-        app_.ith_cloud += 10;
-        app_.load_point_cloud();
-    }
-    if (event.getKeySym() == "KP_Left" && event.keyDown())
-    {
-        app_.ith_cloud -= 10;
-        app_.load_point_cloud();
-    }
-    if (event.getKeySym() == "KP_Prior" && event.keyDown())
-    {
-        app_.ith_cloud += 100;
-        app_.load_point_cloud();
-    }
-    if (event.getKeySym() == "KP_Home" && event.keyDown())
-    {
-        app_.ith_cloud -= 100;
-        app_.load_point_cloud();
+
+        // log
+        std::cout << "show_wireframe: " << settings_.show_wireframe << std::endl;
     }
     if (event.getKeySym() == "m" && event.keyDown())
     {
         settings_.show_sphere = !settings_.show_sphere;
         update_display();
+
+        // log
+        std::cout << "show_sphere: " << settings_.show_sphere << std::endl;
     }
     if (event.getKeySym() == "b" && event.keyDown())
     {
         app_.refine_surfaces();
         update_display();
+
+        // log
+        std::cout << "refined surfaces" << std::endl;
     }
     if (event.getKeySym() == "n" && event.keyDown())
     {
         app_.add_back_generic_points();
         update_display();
+
+        // log
+        std::cout << "added back generic points" << std::endl;
     }
     if (event.getKeySym() == "k" && event.keyDown())
     {
         // toggle generic points
         settings_.show_generic_points = !settings_.show_generic_points;
         update_display();
+
+        // log
+        std::cout << "show_generic_points: " << settings_.show_generic_points << std::endl;
     }
     if (event.getKeySym() == "l" && event.keyDown())
     {
         // toggle generic points
         settings_.show_interior_points = !settings_.show_interior_points;
         update_display();
+
+        // log
+        std::cout << "show_interior_points: " << settings_.show_interior_points << std::endl;
     }
     if (event.getKeySym() == "r" && event.keyDown())
     {
         // restart
         app_.restart();
         update_display();
+
+        // log
+        std::cout << "restarted" << std::endl;
     }
 }
