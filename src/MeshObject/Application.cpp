@@ -370,10 +370,46 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
         }
     }
 
-    // review the new vertex
-    if (sibling_vertices.size() > 0)
+    // for surfaces that mismatch
+    for (std::shared_ptr<Surface> surface : surfaces_that_mismatch)
     {
-        sibling_vertices[0]->review_surfaces();
+        std::cout << ">> mismatched surface " << surface->get_id() << std::endl;
+        
+        std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(generic_point);
+        bool connected = surface->connect_by_edges_and_faces(new_vertex, neighboring_vertices);
+        if (connected)
+        {
+            sibling_vertices.push_back(new_vertex);
+            sibling_vertices[0]->connect(new_vertex);
+        }
+        else
+        {
+            storage_->delete_vertex(new_vertex);
+        }
+    }
+
+    // review the new vertex
+    for (std::shared_ptr<Vertex> vertex : sibling_vertices)
+    {
+        // skip if expired
+        if (vertex->is_expired()) continue;
+
+        vertex->review_surfaces();
+    }
+
+    // after review, make sure the sibling vertices are not connected to surfaces that mismatch
+    for (std::shared_ptr<Vertex> vertex : sibling_vertices)
+    {
+        // skip if expired
+        if (vertex->is_expired()) continue;
+
+        for (std::shared_ptr<Surface> surface : surfaces_that_mismatch)
+        {
+            if (vertex->get_surface() == surface)
+            {
+                throw std::runtime_error("new vertex connected to mismatched surface");
+            }
+        }
     }
 
     // recompute sibling vertices
@@ -398,52 +434,6 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
         sibling_vertices.push_back(new_vertex);
         sibling_vertices[0]->connect(new_vertex);
     }
-
-    // for surfaces that mismatch
-    for (std::shared_ptr<Surface> surface : surfaces_that_mismatch)
-    {
-        std::cout << ">> mismatched surface " << surface->get_id() << std::endl;
-
-        // connect to the surface with edge and faces, then identify connected vertices and reduce their search radius
-        std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(generic_point);
-        bool connected = surface->connect_by_edges_and_faces(new_vertex, neighboring_vertices);
-        if (connected)
-        {
-            // find connected vertices
-            std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> connected_vertices = new_vertex->compute_connected_vertices();
-
-            // find connected interior points
-            std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> connected_interior_points = new_vertex->compute_connected_interior_points();
-
-            // reduce the search radius of the connected vertices
-            for (std::shared_ptr<Vertex> vertex : connected_vertices)
-            {
-                // distance
-                double distance = (vertex->get_position() - generic_point->get_position()).norm();
-                
-                // reduce the search radius of the searched vertex
-                std::cout << ">>   reducing search radius of vertex " << vertex->get_id() << std::endl;
-                vertex->reduce_reverse_radius_search_radius(distance);
-            }
-
-            // reduce the search radius of the connected interior points
-            for (std::shared_ptr<InteriorPoint> interior_point : connected_interior_points)
-            {
-                // distance
-                double distance = (interior_point->get_position() - generic_point->get_position()).norm();
-                
-                // reduce the search radius of the searched interior point
-                std::cout << ">>   reducing search radius of interior point " << interior_point->get_id() << std::endl;
-                interior_point->reduce_reverse_radius_search_radius(distance);
-            }
-        }
-
-        // don't creates generic points
-        storage_->disallow_creation_of_generic_point();
-        storage_->delete_vertex(new_vertex);
-        storage_->allow_creation_of_generic_point();
-    }
-
 
     // // if new_vertex is in multiple surfaces, try merge them
     // if (new_vertex->get_surfaces().size() > 1)
