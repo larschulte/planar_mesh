@@ -65,11 +65,7 @@ public:
     void disconnect(const std::shared_ptr<Surface>& surface);
     void disconnect(const std::shared_ptr<Vertex>& sibling_vertex);
 
-    void add_matched_surface(const std::shared_ptr<Surface>& surface);
-    bool is_matched_surface(const std::shared_ptr<Surface>& surface) const;
-    
     void review_surfaces();
-    bool has_matched_surface();
 
     void update_confirmed_status();
     void update_singular_state(const std::shared_ptr<Surface>& surface);
@@ -121,8 +117,6 @@ private:
     std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges_;
     std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces_;
     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_;
-    
-    std::map<std::shared_ptr<Surface>, bool> is_matched_surface_map_;
 
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> sibling_vertices_;
 

@@ -348,8 +348,6 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
             std::cout << ">> matched surface " << surface->get_id() << std::endl;
             sibling_vertices.push_back(new_vertex);
             sibling_vertices[0]->connect(new_vertex);
-
-            new_vertex->add_matched_surface(surface);
         }
         else
         {
