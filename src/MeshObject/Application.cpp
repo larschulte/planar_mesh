@@ -296,89 +296,14 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
     }
     std::cout << ">> grouped into " << neighboring_surfaces.size() << " neighboring surfaces" << std::endl;
 
-    // split into - surfaces with low confidence, surfaces with high confidence, which are then split into surface that match, surface that don't match
-    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_with_low_confidence;
-    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_that_match;
-    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_that_mismatch;
-    for (std::shared_ptr<Surface> surface : neighboring_surfaces) 
-    {
-        // log
-        std::cout << ">> processing surface " << surface->get_id() << " with "<< surface->get_total_point_size() << " points" << std::endl;
-
-        // collect surfaces with low confidence
-        if (surface->get_total_point_size() < settings_.fit_plane_threshold)
-        {
-            surfaces_with_low_confidence.insert(surface);
-            continue;
-        }
-        
-        // remaining surfaces with high confidence
-
-        // mismatch if projective distance is too far from the mean
-        if (surface->check_relative_position(generic_point) != RelativePosition::WITHIN)
-        {
-            surfaces_that_mismatch.insert(surface);
-            continue;
-        }
-
-        // // mismatch if observed from behind
-        // if (surface->get_normal().dot(generic_point->get_direction()) > 0) 
-        // {
-        //     surfaces_that_mismatch.insert(surface);
-        //     continue;
-        // }
-
-        // remaining surfaces that match
-        surfaces_that_match.insert(surface);
-        continue;
-    }
-
-    // connect the surface with the new vertex, then do a review
-
-    // for surfaces that match
-    for (std::shared_ptr<Surface> surface : surfaces_that_match)
+    // add to all neighboring surfaces, then do a review
+    for (std::shared_ptr<Surface> surface : neighboring_surfaces)
     {
         std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(generic_point);
         bool connected = surface->connect_by_edges_and_faces(new_vertex, neighboring_vertices);
         if (connected)
         {
-            std::cout << ">> matched surface " << surface->get_id() << std::endl;
-            sibling_vertices.push_back(new_vertex);
-            sibling_vertices[0]->connect(new_vertex);
-        }
-        else
-        {
-            storage_->delete_vertex(new_vertex);
-        }
-    }
-
-    // for surfaces with low confidence
-    for (std::shared_ptr<Surface> surface : surfaces_with_low_confidence)
-    {
-        std::cout << ">> low confidence surface " << surface->get_id() << std::endl;
-        
-        std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(generic_point);
-        bool connected = surface->connect_by_edges_and_faces(new_vertex, neighboring_vertices);
-        if (connected)
-        {
-            sibling_vertices.push_back(new_vertex);
-            sibling_vertices[0]->connect(new_vertex);
-        }
-        else
-        {
-            storage_->delete_vertex(new_vertex);
-        }
-    }
-
-    // for surfaces that mismatch
-    for (std::shared_ptr<Surface> surface : surfaces_that_mismatch)
-    {
-        std::cout << ">> mismatched surface " << surface->get_id() << std::endl;
-        
-        std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(generic_point);
-        bool connected = surface->connect_by_edges_and_faces(new_vertex, neighboring_vertices);
-        if (connected)
-        {
+            std::cout << ">> neighboring surface " << surface->get_id() << std::endl;
             sibling_vertices.push_back(new_vertex);
             sibling_vertices[0]->connect(new_vertex);
         }
@@ -395,21 +320,6 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
         if (vertex->is_expired()) continue;
 
         vertex->review_surfaces();
-    }
-
-    // after review, make sure the sibling vertices are not connected to surfaces that mismatch
-    for (std::shared_ptr<Vertex> vertex : sibling_vertices)
-    {
-        // skip if expired
-        if (vertex->is_expired()) continue;
-
-        for (std::shared_ptr<Surface> surface : surfaces_that_mismatch)
-        {
-            if (vertex->get_surface() == surface)
-            {
-                throw std::runtime_error("new vertex connected to mismatched surface");
-            }
-        }
     }
 
     // recompute sibling vertices
