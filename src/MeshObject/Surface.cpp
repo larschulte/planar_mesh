@@ -306,6 +306,18 @@ bool Surface::is_expired() const
     return is_expired_;
 }
 
+bool Surface::is_abnormal()
+{
+    // not abnormal if low confidence surface
+    if (get_total_point_size() < settings_.fit_plane_threshold) return false;
+
+    // not abnormal if within range
+    if (compute_std(get_projective_distance_stats()) < 1.5*settings_.range_noise_std) return false;
+        
+    // return
+    return true;
+}
+
 void Surface::connect(const std::shared_ptr<Vertex>& vertex)
 {
     // check input

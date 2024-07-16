@@ -58,6 +58,7 @@ public:
     const std::vector<double>& get_projective_distance_stats();
     double get_average_projective_distance();
     bool is_expired() const;
+    bool is_abnormal();
 
     void connect(const std::shared_ptr<Vertex>& vertex);
     void connect(const std::shared_ptr<Edge>& edge);

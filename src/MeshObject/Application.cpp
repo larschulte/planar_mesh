@@ -263,15 +263,12 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
     // delete abnormal surfaces
     for (const std::shared_ptr<Surface>& surface : neighboring_surfaces)
     {
-        // skip low confidence surface
-        if (surface->get_total_point_size() < settings_.fit_plane_threshold) continue;
-
-        // skip normal surface
-        if (compute_std(surface->get_projective_distance_stats()) < 1.5*settings_.range_noise_std) continue;
-        
-        // delete
-        std::cout << ">> removing abnormal surface during radius search" << surface->get_id() << std::endl; // log
-        storage_->delete_surface(surface);
+        if (surface->is_abnormal())
+        {
+            // delete
+            std::cout << ">> removing abnormal surface during intersection search" << surface->get_id() << std::endl; // log
+            storage_->delete_surface(surface);
+        }
     }
 
     // recompute neighboring vertices
@@ -544,15 +541,12 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
     {
         const std::shared_ptr<Surface>& surface = pair.first;
 
-        // skip low confidence surface
-        if (surface->get_total_point_size() < settings_.fit_plane_threshold) continue;
-
-        // skip normal surface
-        if (compute_std(surface->get_projective_distance_stats()) < 1.5*settings_.range_noise_std) continue;
-        
-        // delete
-        std::cout << ">> removing abnormal surface during intersection search" << surface->get_id() << std::endl; // log
-        storage_->delete_surface(surface);
+        if (surface->is_abnormal())
+        {
+            // delete
+            std::cout << ">> removing abnormal surface during intersection search" << surface->get_id() << std::endl; // log
+            storage_->delete_surface(surface);
+        }
     }
 
     // recompute searched faces
