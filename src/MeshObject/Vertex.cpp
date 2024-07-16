@@ -702,6 +702,26 @@ void Vertex::update_searchable_state()
     }
 }
 
+void Vertex::print_info()
+{
+    std::cout << "Vertex " << id_ << " at " << position_.transpose() << std::endl;
+    std::cout << "Connected to " << edges_.size() << " edges, " << faces_.size() << " faces, " << surfaces_.size() << " surfaces, " << sibling_vertices_.size() << " sibling vertices." << std::endl;
+    std::cout << "Boundary state: ";
+    for (const auto& pair : is_boundary_map_)
+    {
+        std::cout << pair.first->get_id() << " " << pair.second << ", ";
+    }
+    std::cout << std::endl;
+    std::cout << "Singular state: ";
+    for (const auto& pair : is_singular_map_)
+    {
+        std::cout << pair.first->get_id() << " " << pair.second << ", ";
+    }
+    std::cout << std::endl;
+    std::cout << "Searchable state: " << is_searchable_ << std::endl;
+    std::cout << "Expired: " << is_expired_ << std::endl;
+}
+
 void Vertex::set_reverse_radius_search_radius(double radius)
 {
     // set radius

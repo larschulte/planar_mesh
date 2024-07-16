@@ -80,6 +80,8 @@ public:
     void update_boundary_state();
     void update_searchable_state();
 
+    void print_info();
+
 public: // for reverse radius search
     void set_reverse_radius_search_radius(double radius);
     void reduce_reverse_radius_search_radius(double radius);

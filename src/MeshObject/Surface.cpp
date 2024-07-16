@@ -629,6 +629,27 @@ void Surface::remove_searchable_edge(const std::shared_ptr<Edge>& edge)
     edge_bvh_.tree_delete_edge(edge);
 }
 
+void Surface::print_info()
+{
+    std::cout << "============================= info for surface " << id_ << " =============================" << std::endl;
+    // print surface info
+    std::cout << "Surface " << id_ << " has " << vertices_.size() << " vertices, " << interior_points_.size() << " interior points, " << edges_.size() << " edges, " << faces_.size() << " faces." << std::endl;
+
+    // print covariance etc.
+    std::cout << "Mean: " << mean_.transpose() << std::endl;
+    std::cout << "Covariance: " << covariance_ << std::endl;
+    std::cout << "Normal: " << normal_.transpose() << std::endl;
+    std::cout << "Eigenvalues: " << eigenvalues_.transpose() << std::endl;
+    std::cout << "Eigenvectors: " << eigenvectors_ << std::endl;
+    std::cout << "Color: " << std::get<0>(color_) << ", " << std::get<1>(color_) << ", " << std::get<2>(color_) << std::endl;
+    std::cout << "Total point size: " << get_total_point_size() << std::endl;
+    std::cout << "Average projective distance: " << get_average_projective_distance() << std::endl;
+    std::cout << "Projective distance std: " << compute_std(get_projective_distance_stats()) << std::endl;
+    std::cout << "Projective distance mean: " << compute_mean(get_projective_distance_stats()) << std::endl;
+
+    std::cout << "======================================================================================" << std::endl;
+}
+
 void Surface::add_point_to_surface_fitting(const Eigen::Vector3d& position, const Eigen::Vector3d& origin)
 {
     // surface

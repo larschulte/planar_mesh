@@ -78,6 +78,8 @@ public:
     void add_searchable_edge(const std::shared_ptr<Edge>& edge);
     void remove_searchable_edge(const std::shared_ptr<Edge>& edge);
     
+    void print_info();
+
 private:
     static Settings settings_;
 
