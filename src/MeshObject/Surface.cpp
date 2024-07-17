@@ -137,6 +137,31 @@ Eigen::Vector3d Surface::compute_point_projective_position(const Eigen::Vector3d
     return intersection;
 }
 
+std::size_t Surface::get_surface_composition_hash() const
+{
+    return composition_hash_;
+}
+
+void Surface::update_surface_composition_hash()
+{
+    // may collide as both vertex and interior point have id starting from 0
+
+    // initialize
+    composition_hash_ = 0;
+
+    // add vertices
+    for (const auto& vertex : vertices_)
+    {
+        composition_hash_ += MeshObjectHash{}(vertex);
+    }
+
+    // add interior points
+    for (const auto& interior_point : interior_points_)
+    {
+        composition_hash_ += MeshObjectHash{}(interior_point);
+    }
+}
+
 RelativePosition Surface::check_relative_position(const Eigen::Vector3d& origin, const Eigen::Vector3d& point, const Eigen::Vector3d& direction)
 {
     // compute
@@ -326,6 +351,8 @@ void Surface::connect(const std::shared_ptr<Vertex>& vertex)
     // connect
     if (vertices_.insert(vertex).second)
     {
+        update_surface_composition_hash();
+
         vertex->connect(shared_from_this());
         add_point_to_surface_fitting(vertex->get_position(), vertex->get_origin());
     }
@@ -538,15 +565,7 @@ double Surface::compute_surface_position_std_in_normal_direction()
 double Surface::buffered_compute_surface_position_std_in_normal_direction()
 {
     // compute current hash (may collide as both vertex and interior point have id starting from 0)
-    std::size_t hash = 0;
-    for (const auto& vertex : vertices_)
-    {
-        hash += MeshObjectHash{}(vertex);
-    }
-    for (const auto& interior_point : interior_points_)
-    {
-        hash += MeshObjectHash{}(interior_point);
-    }
+    std::size_t hash = get_surface_composition_hash();
 
     // put in buffer if not already computed
     if (buffer_surface_position_std_in_normal_direction.find(hash) == buffer_surface_position_std_in_normal_direction.end())
@@ -584,6 +603,7 @@ void Surface::connect(const std::shared_ptr<InteriorPoint>& interior_point)
 
     // connect
     bool inserted = interior_points_.insert(interior_point).second;
+    if (inserted) update_surface_composition_hash();
     if (inserted) interior_point->connect(shared_from_this());
 
     // update surface fitting
@@ -597,6 +617,7 @@ void Surface::disconnect(const std::shared_ptr<Vertex>& vertex)
 
     // disconnect
     bool erased = vertices_.erase(vertex);
+    if (erased) update_surface_composition_hash();
     if (erased) vertex->disconnect(shared_from_this());
 
     // remove from surface fitting
@@ -630,6 +651,7 @@ void Surface::disconnect(const std::shared_ptr<InteriorPoint>& interior_point)
 
     // disconnect
     bool erased = interior_points_.erase(interior_point);
+    if (erased) update_surface_composition_hash();
     if (erased) interior_point->disconnect(shared_from_this());
 
     // remove from surface fitting
