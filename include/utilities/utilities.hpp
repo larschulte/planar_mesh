@@ -6,7 +6,7 @@
 #include <pcl/point_types.h>
 #include <pcl/common/transforms.h>
 
-std::tuple<int, int, int> valueToJet(float value);
+std::tuple<int, int, int> valueToJet(double value);
 
 template <typename PointT>
 typename pcl::PointCloud<PointT>::Ptr 

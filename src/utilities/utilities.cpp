@@ -1,36 +1,36 @@
 #include "utilities/utilities.hpp"
 
-std::tuple<int, int, int> valueToJet(float value) 
+std::tuple<int, int, int> valueToJet(double value) 
 {
     // Ensure value is within [0, 1]
-    if (value < 0.0f) value = 0.0f;
-    if (value > 1.0f) value = 1.0f;
+    if (value < 0.0) value = 0.0;
+    if (value > 1.0) value = 1.0;
 
-    float r = 0, g = 0, b = 0;
+    double r = 0.0, g = 0.0, b = 0.0;
 
-    if (value < 0.25f) 
+    if (value < 0.25) 
     {
-        r = 0;
-        g = 4 * value;
-        b = 1;
+        r = 0.0;
+        g = 4.0 * value;
+        b = 1.0;
     } 
-    else if (value < 0.5f) 
+    else if (value < 0.5) 
     {
-        r = 0;
-        g = 1;
-        b = 1 - 4 * (value - 0.25f);
+        r = 0.0;
+        g = 1.0;
+        b = 1.0 - 4.0 * (value - 0.25);
     } 
-    else if (value < 0.75f) 
+    else if (value < 0.75) 
     {
-        r = 4 * (value - 0.5f);
-        g = 1;
-        b = 0;
+        r = 4.0 * (value - 0.5);
+        g = 1.0;
+        b = 0.0;
     } 
     else 
     {
-        r = 1;
-        g = 1 - 4 * (value - 0.75f);
-        b = 0;
+        r = 1.0;
+        g = 1.0 - 4.0 * (value - 0.75);
+        b = 0.0;
     }
 
     return std::make_tuple(static_cast<int>(r * 255), static_cast<int>(g * 255), static_cast<int>(b * 255));
