@@ -22,13 +22,17 @@ void Simulation::get_data_pair(Eigen::Vector3d& origin, Eigen::Vector3d& positio
     {
         get_plane_data_pair(origin, position);
     }
-    if (id_ == 1)
+    else if (id_ == 1)
     {
         get_cube_data_pair(origin, position);   
     }
-    if (id_ == 2)
+    else if (id_ == 2)
     {
         get_gap_data_pair(origin, position);
+    }
+    else if (id_ == 3)
+    {
+        get_cylinder_data_pair(origin, position);
     }
     else
     {
@@ -140,6 +144,35 @@ void Simulation::get_gap_data_pair(Eigen::Vector3d& out_origin, Eigen::Vector3d&
 
     // set position
     Eigen::Vector3d position = Eigen::Vector3d(u, v, z);
+
+    // return
+    out_origin = origin;
+    out_position = position;
+
+    // log
+    std::cout << "origin: " << origin.transpose() << ", position: " << position.transpose() << std::endl;
+}
+
+void Simulation::get_cylinder_data_pair(Eigen::Vector3d& out_origin, Eigen::Vector3d& out_position)
+{
+    // settings on the cube
+    double size = 2.0;
+    double radius = 1.0;
+    Eigen::Vector3d cylinder_center = Eigen::Vector3d(-1, 1, 0);
+    Eigen::Vector3d origin = Eigen::Vector3d(1, 1, 1);
+
+    // compute position
+
+    // random height between 0 and size
+    double z = (double)rand() / RAND_MAX * size;
+
+    // random angle between -pi/2 and pi/2
+    double angle = (double)rand() / RAND_MAX * M_PI - M_PI / 2;
+    double x = radius * cos(angle);
+    double y = radius * sin(angle);
+    
+    // set position
+    Eigen::Vector3d position = Eigen::Vector3d(x, y, z) + cylinder_center;
 
     // return
     out_origin = origin;
