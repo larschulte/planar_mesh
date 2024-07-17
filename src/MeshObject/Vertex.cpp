@@ -488,6 +488,7 @@ void Vertex::review_surfaces()
     // disconnect surface from this vertex when reviewing
     can_self_destruct_ = false;
     disconnect(surface);
+    can_self_destruct_ = true;
     
 
     bool low_confidence = surface->get_total_point_size() < settings_.fit_plane_threshold;
@@ -543,7 +544,7 @@ void Vertex::review_surfaces()
     current_surface_uncertainty_ = (surface->get_total_point_size() < settings_.fit_plane_threshold) ? std::numeric_limits<double>::max() : surface->compute_surface_position_std_in_normal_direction();
 
     // connect surface back
-    surface->connect(shared_from_this());
+    connect(surface);
 
     // ask siblings to review themselves
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> sibling_vertices_copy = sibling_vertices_;
@@ -572,9 +573,11 @@ void Vertex::review_surfaces()
             [&](double sibling_surface_uncertainty){ return sibling_surface_uncertainty < current_surface_uncertainty_; }))
     {
         storage_->delete_vertex(shared_from_this());
-        under_review_ = false;
-        return;
     }
+
+    // return
+    under_review_ = false;
+    return;
 }
 
 void Vertex::update_confirmed_status()
