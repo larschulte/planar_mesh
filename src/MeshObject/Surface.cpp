@@ -142,7 +142,7 @@ RelativePosition Surface::check_relative_position(const Eigen::Vector3d& origin,
     // compute
     double projective_distance = compute_point_projective_distance(origin, point);
 
-    double surface_position_std = compute_surface_position_std_in_normal_direction();
+    double surface_position_std = buffered_compute_surface_position_std_in_normal_direction();
     double surface_projective_std = surface_position_std / std::fabs(normal_.dot(direction));
 
     bool points_in_front_of_surface = projective_distance > 3 * (settings_.range_noise_std + surface_projective_std);
@@ -533,6 +533,28 @@ double Surface::compute_surface_position_std_in_normal_direction()
     
     // return
     return weighted_std;
+}
+
+double Surface::buffered_compute_surface_position_std_in_normal_direction()
+{
+    // compute current hash (may collide as both vertex and interior point have id starting from 0)
+    std::size_t hash = 0;
+    for (const auto& vertex : vertices_)
+    {
+        hash += MeshObjectHash{}(vertex);
+    }
+    for (const auto& interior_point : interior_points_)
+    {
+        hash += MeshObjectHash{}(interior_point);
+    }
+
+    // put in buffer if not already computed
+    if (buffer_surface_position_std_in_normal_direction.find(hash) == buffer_surface_position_std_in_normal_direction.end())
+    {
+        buffer_surface_position_std_in_normal_direction[hash] = compute_surface_position_std_in_normal_direction();
+    }
+
+    return buffer_surface_position_std_in_normal_direction[hash];
 }
 
 void Surface::connect(const std::shared_ptr<Edge>& edge)

@@ -541,7 +541,7 @@ void Vertex::review_surfaces()
     }
 
     // if reached here, means either low confidence or high confidence but matched, record the surface uncertainty measure
-    current_surface_uncertainty_ = (surface->get_total_point_size() < settings_.fit_plane_threshold) ? std::numeric_limits<double>::max() : surface->compute_surface_position_std_in_normal_direction();
+    current_surface_uncertainty_ = (surface->get_total_point_size() < settings_.fit_plane_threshold) ? std::numeric_limits<double>::max() : surface->buffered_compute_surface_position_std_in_normal_direction();
 
     // connect surface back
     connect(surface);
