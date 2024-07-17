@@ -37,6 +37,7 @@ struct Settings
     double surface_denominator;
     double siblings_denominator;
     double radius_denominator;
+    double positional_uncertainty_denominator;
     bool show_wireframe;
     bool show_sphere;
     int number_of_spheres_to_display;  

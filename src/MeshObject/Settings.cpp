@@ -56,6 +56,7 @@ Settings::Settings()
     surface_denominator = 10.0;
     siblings_denominator = 3.0;
     radius_denominator = 0.5;
+    positional_uncertainty_denominator = 0.002;
     show_wireframe = true;
     show_sphere = false;
     number_of_spheres_to_display = 60;

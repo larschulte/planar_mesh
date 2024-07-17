@@ -187,6 +187,11 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
     // kp number 4
     if (event.getKeySym() == "KP_Left" && event.keyDown())
     {
+        settings_.color_mode = 4;
+        update_display();
+
+        // log
+        std::cout << "color_mode: plane positional uncertainty" << std::endl;
     }
     // kp number 5
     if (event.getKeySym() == "KP_Begin" && event.keyDown())
