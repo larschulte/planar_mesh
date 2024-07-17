@@ -482,74 +482,57 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
 
 double Surface::compute_surface_position_std_in_normal_direction()
 {
-    // initialize
-    double bayesian_mean = 0;
-    double bayesian_std = 0;
+    // compute information weighted mean and std
 
-    // for each point, compute position to surface in normal direction, compute range std in normal direction
-    // for each vertex point
+    // get mean from all points and std from all points
+    std::vector<double> mean_list;
+    std::vector<double> information_list;
     for (auto& vertex : vertices_)
     {
-        // compute projective distance and std
-        double distance = vertex->get_projected_distance(shared_from_this());
-        double std = settings_.range_noise_std;
+        // compute conversion ratio
+        double ratio = std::fabs(normal_.dot(vertex->get_direction()));
 
-        // compute projective to normal conversion ratio
-        double projective_to_normal_ratio = std::fabs(normal_.dot(vertex->get_direction()));
-
-        // compute normal distance and std
-        double normal_distance = projective_to_normal_ratio * distance;
-        double normal_std = projective_to_normal_ratio * std;
-        // std::cout << "normal_distance: " << normal_distance << ", normal std: " << normal_std << std::endl;
-
-        // update bayesian mean and std
-
-        // for the first point
-        if (bayesian_std == 0)
-        {
-            bayesian_mean = normal_distance;
-            bayesian_std = normal_std;
-            continue;
-        }
-        // for the rest of the points
-        bayesian_mean = (bayesian_mean * bayesian_std * bayesian_std + normal_distance * normal_std * normal_std) / (bayesian_std * bayesian_std + normal_std * normal_std);
-        bayesian_std = std::sqrt((bayesian_std * bayesian_std * normal_std * normal_std) / (bayesian_std * bayesian_std + normal_std * normal_std));
+        // mean and informaiton
+        double mean = ratio * vertex->get_projected_distance(shared_from_this());
+        double std = ratio * settings_.range_noise_std;
+        double information = 1.0 / (std * std);
+        
+        // store
+        mean_list.push_back(mean);
+        information_list.push_back(information);
     }
-
-    // for each interior point
     for (auto& interior_point : interior_points_)
     {
-        // compute projective distance and std
-        double distance = interior_point->get_projected_distance(shared_from_this());
-        double std = settings_.range_noise_std;
+        // compute conversion ratio
+        double ratio = std::fabs(normal_.dot(interior_point->get_direction()));
 
-        // compute projective to normal conversion ratio
-        double projective_to_normal_ratio = std::fabs(normal_.dot(interior_point->get_direction()));
-
-        // compute normal distance and std
-        double normal_distance = projective_to_normal_ratio * distance;
-        double normal_std = projective_to_normal_ratio * std;
-        // std::cout << "normal_distance: " << normal_distance << ", normal std: " << normal_std << std::endl;
-
-        // update bayesian mean and std
+        // mean and informaiton
+        double mean = ratio * interior_point->get_projected_distance(shared_from_this());
+        double std = ratio * settings_.range_noise_std;
+        double information = 1.0 / (std * std);
         
-        // for the first point
-        if (bayesian_std == 0)
-        {
-            bayesian_mean = normal_distance;
-            bayesian_std = normal_std;
-            continue;
-        }
-        // for the rest of the points
-        bayesian_mean = (bayesian_mean * bayesian_std * bayesian_std + normal_distance * normal_std * normal_std) / (bayesian_std * bayesian_std + normal_std * normal_std);
-        bayesian_std = std::sqrt((bayesian_std * bayesian_std * normal_std * normal_std) / (bayesian_std * bayesian_std + normal_std * normal_std));
+        // store
+        mean_list.push_back(mean);
+        information_list.push_back(information);
     }
 
-    // print bayesian mean and std
-    std::cout << "computed surface position with Bayesian mean: " << bayesian_mean << ", Bayesian std: " << bayesian_std << std::endl;
+    // compute information weighted mean and std
+    double weighted_mean = 0;
+    double weighted_information = 0;
+    double weighted_std = 0;
+    for (std::size_t i = 0; i < mean_list.size(); i++)
+    {
+        weighted_mean += mean_list[i] * information_list[i];
+        weighted_information += information_list[i];
+    }
+    weighted_mean /= weighted_information;
+    weighted_std = 1.0 / std::sqrt(weighted_information);
+    
+    // log
+    std::cout << "computed surface position with Bayesian mean: " << weighted_mean << ", Bayesian std: " << weighted_std << std::endl;
     
     // return
-    return bayesian_std;
+    return weighted_std;
 }
 
 void Surface::connect(const std::shared_ptr<Edge>& edge)
