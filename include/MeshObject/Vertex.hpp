@@ -40,12 +40,10 @@ public:
 
     // void try_merge_surfaces();
 
-    void try_update_surface_projection(const std::shared_ptr<Surface> surface);
-    void try_update_surface_projection();
-    const Eigen::Vector3d& get_projected_position(const std::shared_ptr<Surface> surface);
-    const Eigen::Vector3d& get_projected_position();
-    const double& get_projected_distance(const std::shared_ptr<Surface> surface);
-    const double& get_projected_distance();
+    const Eigen::Vector3d& buffer_compute_projected_position(const std::shared_ptr<Surface> surface);
+    const Eigen::Vector3d& buffer_compute_projected_position();
+    const double& buffer_compute_projected_distance(const std::shared_ptr<Surface> surface);
+    const double& buffer_compute_projected_distance();
     const Eigen::Vector2d& get_surface_coordinate(const std::shared_ptr<Surface> surface);
     const Eigen::Vector2d& get_surface_coordinate();
 
@@ -124,10 +122,9 @@ private:
 
     Eigen::Matrix3d eigenvectors_used_;
     Eigen::Vector2d surface_coordinate_;
-    Eigen::Vector3d mean_used_;
-    Eigen::Vector3d projected_position_;
-    double projected_distance_;
-    
+
+    std::unordered_map<std::size_t, Eigen::Vector3d> buffer_projected_position_;
+    std::unordered_map<std::size_t, double> buffer_projected_distance_;
 
     Eigen::Vector3d position_;
     Eigen::Vector3d origin_;

@@ -790,9 +790,9 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_vertex_point
         pcl::PointXYZRGB point;
         if (setting.show_projected_point)
         {
-            point.x = vertex->get_projected_position()[0];
-            point.y = vertex->get_projected_position()[1];
-            point.z = vertex->get_projected_position()[2];
+            point.x = vertex->buffer_compute_projected_position()[0];
+            point.y = vertex->buffer_compute_projected_position()[1];
+            point.z = vertex->buffer_compute_projected_position()[2];
         }
         else
         {
@@ -809,7 +809,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_vertex_point
         }
         else if (setting.color_mode == 1)
         {
-            double distance = std::abs(vertex->get_projected_distance() / 0.05);
+            double distance = std::abs(vertex->buffer_compute_projected_distance() / 0.05);
             std::tuple<int, int, int> color = valueToJet(distance);
             point.r = std::get<0>(color);
             point.g = std::get<1>(color);

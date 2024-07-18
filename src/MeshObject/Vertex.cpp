@@ -121,43 +121,42 @@ const Eigen::Vector3d& Vertex::get_position() const
     return position_; 
 }
 
-void Vertex::try_update_surface_projection(const std::shared_ptr<Surface> surface)
+const Eigen::Vector3d& Vertex::buffer_compute_projected_position(const std::shared_ptr<Surface> surface)
 {
-    // update if surface changes
-    if (mean_used_ != surface->get_mean())
+    // compute hash
+    std::size_t hash = surface->get_surface_composition_hash();
+
+    // add to buffer if not exist
+    if (buffer_projected_position_.find(hash) == buffer_projected_position_.end())
     {
-        mean_used_ = surface->get_mean();
-        projected_position_ = surface->compute_point_projective_position(get_origin(), get_position());
-        projected_distance_ = surface->compute_point_projective_distance(get_origin(), get_position());
+        // clear buffer
+        buffer_projected_position_.clear();
+        buffer_projected_position_[hash] = surface->compute_point_projective_position(get_origin(), get_position());
     }
+
+    // return
+    return buffer_projected_position_[hash];
 }
 
-void Vertex::try_update_surface_projection()
+const double& Vertex::buffer_compute_projected_distance(const std::shared_ptr<Surface> surface)
 {
-    try_update_surface_projection(get_surface());
+    // compute hash
+    std::size_t hash = surface->get_surface_composition_hash();
+
+    // add to buffer if not exist
+    if (buffer_projected_distance_.find(hash) == buffer_projected_distance_.end())
+    {
+        // clear buffer
+        buffer_projected_distance_.clear();
+        buffer_projected_distance_[hash] = surface->compute_point_projective_distance(get_origin(), get_position());
+    }
+
+    // return 
+    return buffer_projected_distance_[hash];
 }
 
-const Eigen::Vector3d& Vertex::get_projected_position(const std::shared_ptr<Surface> surface)
-{
-    try_update_surface_projection(surface);
-    return projected_position_;
-}
-
-const Eigen::Vector3d& Vertex::get_projected_position()
-{
-    return get_projected_position(get_surface());
-}
-
-const double& Vertex::get_projected_distance(const std::shared_ptr<Surface> surface)
-{
-    try_update_surface_projection(surface);
-    return projected_distance_;
-}
-
-const double& Vertex::get_projected_distance()
-{
-    return get_projected_distance(get_surface());
-}
+const Eigen::Vector3d& Vertex::buffer_compute_projected_position() { return buffer_compute_projected_position(get_surface()); }
+const double& Vertex::buffer_compute_projected_distance() { return buffer_compute_projected_distance(get_surface()); }
 
 const Eigen::Vector3d& Vertex::get_origin() const 
 { 
@@ -288,7 +287,7 @@ const Eigen::Vector2d& Vertex::get_surface_coordinate(const std::shared_ptr<Surf
     {
         // compute new coordinate
         Eigen::Matrix<double, 3, 2> projection_matrix = eigenvectors.rightCols<2>();
-        Eigen::Vector3d projected_position = get_projected_position(surface);
+        Eigen::Vector3d projected_position = buffer_compute_projected_position(surface);
         surface_coordinate_ = (projection_matrix.transpose() * projected_position).head<2>();
         eigenvectors_used_ = eigenvectors;
         return surface_coordinate_;
