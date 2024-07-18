@@ -9,6 +9,8 @@
 #include "MeshObject/MeshObject.hpp"
 #include "MeshObject/Settings.hpp"
 
+#include "Cache/FIFOCache.hpp"
+
 // forward declarations
 class Vertex;
 class Edge;
@@ -117,7 +119,7 @@ private:
     std::size_t previous_total_point_size_for_projective_;
     std::size_t previous_total_point_size_for_point_to_plane_;
 
-    std::unordered_map<std::size_t, double> buffer_surface_position_std_in_normal_direction;
+    FIFOCache<std::size_t, double> buffer_surface_position_std_in_normal_direction{std::numeric_limits<std::size_t>::max()};
 
     std::tuple<int, int, int> color_;
 };

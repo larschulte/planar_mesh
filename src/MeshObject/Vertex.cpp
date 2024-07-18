@@ -126,16 +126,15 @@ const Eigen::Vector3d& Vertex::buffer_compute_projected_position(const std::shar
     // compute hash
     std::size_t hash = surface->get_surface_composition_hash();
 
-    // add to buffer if not exist
-    if (buffer_projected_position_.find(hash) == buffer_projected_position_.end())
+    // add to cache if not exist
+    if (!buffer_projected_position_.exists(hash)) 
     {
-        // clear buffer
-        buffer_projected_position_.clear();
-        buffer_projected_position_[hash] = surface->compute_point_projective_position(get_origin(), get_position());
+        const Eigen::Vector3d computedResult = surface->compute_point_projective_position(get_origin(), get_position());
+        buffer_projected_position_.put(hash, computedResult);
     }
 
     // return
-    return buffer_projected_position_[hash];
+    return buffer_projected_position_.get(hash);
 }
 
 const double& Vertex::buffer_compute_projected_distance(const std::shared_ptr<Surface> surface)
@@ -143,16 +142,15 @@ const double& Vertex::buffer_compute_projected_distance(const std::shared_ptr<Su
     // compute hash
     std::size_t hash = surface->get_surface_composition_hash();
 
-    // add to buffer if not exist
-    if (buffer_projected_distance_.find(hash) == buffer_projected_distance_.end())
+    // add to cache if not exist
+    if (!buffer_projected_distance_.exists(hash)) 
     {
-        // clear buffer
-        buffer_projected_distance_.clear();
-        buffer_projected_distance_[hash] = surface->compute_point_projective_distance(get_origin(), get_position());
+        const double computedResult = surface->compute_point_projective_distance(get_origin(), get_position());
+        buffer_projected_distance_.put(hash, computedResult);
     }
 
-    // return 
-    return buffer_projected_distance_[hash];
+    // return
+    return buffer_projected_distance_.get(hash);
 }
 
 const Eigen::Vector3d& Vertex::buffer_compute_projected_position() { return buffer_compute_projected_position(get_surface()); }

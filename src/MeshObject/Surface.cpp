@@ -568,12 +568,13 @@ double Surface::buffered_compute_surface_position_std_in_normal_direction()
     std::size_t hash = get_surface_composition_hash();
 
     // put in buffer if not already computed
-    if (buffer_surface_position_std_in_normal_direction.find(hash) == buffer_surface_position_std_in_normal_direction.end())
+    if (!buffer_surface_position_std_in_normal_direction.exists(hash))
     {
-        buffer_surface_position_std_in_normal_direction[hash] = compute_surface_position_std_in_normal_direction();
+        const double computedResult = compute_surface_position_std_in_normal_direction();
+        buffer_surface_position_std_in_normal_direction.put(hash, computedResult);
     }
 
-    return buffer_surface_position_std_in_normal_direction[hash];
+    return buffer_surface_position_std_in_normal_direction.get(hash);
 }
 
 void Surface::connect(const std::shared_ptr<Edge>& edge)
