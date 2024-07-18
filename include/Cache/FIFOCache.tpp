@@ -27,8 +27,8 @@ bool FIFOCache<Key, Value>::exists(const Key& key) const
     // check if key exists
     bool exists = cache_map.find(key) != cache_map.end();
 
-    // log
-    if (exists) std::cout << "found in cache" << std::endl;
+    // // log
+    // if (exists) std::cout << "found in cache" << std::endl;
 
     // return
     return exists;
