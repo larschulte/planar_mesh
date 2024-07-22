@@ -58,6 +58,7 @@ public:
     const Eigen::Matrix3d& get_eigenvectors() const;
     const Eigen::Vector3d& get_eigenvalues() const;
     const Eigen::Vector3d& get_normal() const;
+    const Eigen::Vector3d& get_approximate_normal() const;
     std::size_t get_total_point_size() const;
     const std::tuple<int, int, int>& get_color() const;
     const std::vector<double>& get_point_to_plane_distance_stats();
@@ -113,6 +114,7 @@ private:
     Eigen::Matrix3d eigenvectors_;
     Eigen::Vector3d eigenvalues_;
     Eigen::Vector3d normal_;
+    Eigen::Vector3d approximate_normal_;
 
     std::vector<double> stored_projective_distance_stats_;
     std::vector<double> stored_point_to_plane_distance_stats_;

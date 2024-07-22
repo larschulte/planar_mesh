@@ -247,6 +247,11 @@ const Eigen::Vector3d& Surface::get_normal() const
     return normal_;
 }
 
+const Eigen::Vector3d& Surface::get_approximate_normal() const
+{
+    return approximate_normal_;
+}
+
 std::size_t Surface::get_total_point_size() const
 {
     return vertices_.size() + interior_points_.size();
@@ -720,6 +725,10 @@ void Surface::add_point_to_surface_fitting(const Eigen::Vector3d& position, cons
     eigenvectors_ = new_eigenvectors;
     eigenvalues_ = new_eigenvalues;
     normal_ = new_normal;
+
+    // store approximate normal
+    approximate_normal_ = (normal_ * 10.0).array().round() / 10.0;
+    approximate_normal_ = approximate_normal_.normalized();
 }
 
 void Surface::remove_point_from_surface_fitting(const Eigen::Vector3d& position, const Eigen::Vector3d& origin)
@@ -751,6 +760,10 @@ void Surface::remove_point_from_surface_fitting(const Eigen::Vector3d& position,
     eigenvectors_ = eigenvectors1;
     eigenvalues_ = eigenvalues1;
     normal_ = normal1;
+
+    // store approximate normal
+    approximate_normal_ = (normal_ * 10.0).array().round() / 10.0;
+    approximate_normal_ = approximate_normal_.normalized();
 }
 
 void Surface::set_random_color()
