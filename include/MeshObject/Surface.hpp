@@ -79,8 +79,8 @@ public:
 
     bool connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& all_nearby_vertices);
 
-    double compute_surface_position_std_in_normal_direction();
-    double buffered_compute_surface_position_std_in_normal_direction();
+    void compute_surface_position_std_in_normal_direction();
+    double get_surface_position_std_in_normal_direction();
 
     void refine_surface();
 
@@ -121,6 +121,10 @@ private:
     std::size_t previous_total_point_size_for_point_to_plane_;
 
     FIFOCache<std::size_t, double> buffer_surface_position_std_in_normal_direction{std::numeric_limits<std::size_t>::max()};
+
+    std::size_t previous_approximate_normal_hash_;
+    double previous_normal_distance_;
+    double previous_normal_std_;
 
     std::tuple<int, int, int> color_;
 };

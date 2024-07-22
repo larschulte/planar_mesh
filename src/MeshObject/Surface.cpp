@@ -167,7 +167,7 @@ RelativePosition Surface::check_relative_position(const Eigen::Vector3d& origin,
     // compute
     double projective_distance = compute_point_projective_distance(origin, point);
 
-    double surface_position_std = buffered_compute_surface_position_std_in_normal_direction();
+    double surface_position_std = get_surface_position_std_in_normal_direction();
     double surface_projective_std = surface_position_std / std::fabs(normal_.dot(direction));
 
     bool points_in_front_of_surface = projective_distance > 3 * (settings_.range_noise_std + surface_projective_std);
@@ -521,7 +521,7 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
     return connected;
 }
 
-double Surface::compute_surface_position_std_in_normal_direction()
+void Surface::compute_surface_position_std_in_normal_direction()
 {
     // compute information weighted mean and std
 
@@ -572,23 +572,14 @@ double Surface::compute_surface_position_std_in_normal_direction()
     // log
     std::cout << "computed surface position with Bayesian mean: " << weighted_mean << ", Bayesian std: " << weighted_std << std::endl;
     
-    // return
-    return weighted_std;
+    // store
+    previous_normal_distance_ = weighted_mean;
+    previous_normal_std_ = weighted_std;
 }
 
-double Surface::buffered_compute_surface_position_std_in_normal_direction()
+double Surface::get_surface_position_std_in_normal_direction()
 {
-    // compute current hash (may collide as both vertex and interior point have id starting from 0)
-    std::size_t hash = get_surface_composition_hash();
-
-    // put in buffer if not already computed
-    if (!buffer_surface_position_std_in_normal_direction.exists(hash))
-    {
-        const double computedResult = compute_surface_position_std_in_normal_direction();
-        buffer_surface_position_std_in_normal_direction.put(hash, computedResult);
-    }
-
-    return buffer_surface_position_std_in_normal_direction.get(hash);
+    return previous_normal_std_;
 }
 
 void Surface::connect(const std::shared_ptr<Edge>& edge)
@@ -735,9 +726,37 @@ void Surface::add_point_to_surface_fitting(const Eigen::Vector3d& position, cons
     eigenvalues_ = new_eigenvalues;
     normal_ = new_normal;
 
-    // store approximate normal
-    approximate_normal_ = (normal_ * 10.0).array().round() / 10.0;
-    approximate_normal_ = approximate_normal_.normalized();
+    // update approximate uncertainty envelope
+    // if approximate normal is the same as last time, incrementally update the uncertianty envelope
+    // if approximate normal is not the same as last time, recompute the uncertainty envelope all together
+
+    // approximate_normal hash
+    std::size_t hash = get_approximate_normal_hash();
+
+    if (hash != previous_approximate_normal_hash_)
+    {
+        // recompute
+        compute_surface_position_std_in_normal_direction();
+        previous_approximate_normal_hash_ = hash;
+    }
+    else
+    {
+        // incrementally update
+        double old_distance = previous_normal_distance_;
+        double old_std = previous_normal_std_;
+        double old_information = 1.0 / (old_std * old_std);
+
+        double new_distance = compute_point_projective_distance(origin, position);
+        double new_std = settings_.range_noise_std;
+        double new_information = 1.0 / (new_std * new_std);
+
+        double combined_distance = merge_information_weighted_mean(old_distance, new_distance, old_information, new_information);
+        double combined_information = merge_information(old_information, new_information);
+        double combined_std = 1.0 / std::sqrt(combined_information);
+
+        previous_normal_distance_ = combined_distance;
+        previous_normal_std_ = combined_std;
+    }
 }
 
 void Surface::remove_point_from_surface_fitting(const Eigen::Vector3d& position, const Eigen::Vector3d& origin)
@@ -770,9 +789,37 @@ void Surface::remove_point_from_surface_fitting(const Eigen::Vector3d& position,
     eigenvalues_ = eigenvalues1;
     normal_ = normal1;
 
-    // store approximate normal
-    approximate_normal_ = (normal_ * 10.0).array().round() / 10.0;
-    approximate_normal_ = approximate_normal_.normalized();
+    // update approximate uncertainty envelope
+    // if approximate normal is the same as last time, incrementally update the uncertianty envelope
+    // if approximate normal is not the same as last time, recompute the uncertainty envelope all together
+
+    // approximate_normal hash
+    std::size_t hash = get_approximate_normal_hash();
+
+    if (hash != previous_approximate_normal_hash_)
+    {
+        // recompute
+        compute_surface_position_std_in_normal_direction();
+        previous_approximate_normal_hash_ = hash;
+    }
+    else
+    {
+        // incrementally update
+        double combined_distance = previous_normal_distance_;
+        double combined_std = previous_normal_std_;
+        double combined_information = 1.0 / (combined_std * combined_std);
+
+        double new_distance = compute_point_projective_distance(origin, position);
+        double new_std = settings_.range_noise_std;
+        double new_information = 1.0 / (new_std * new_std);
+
+        double old_distance = remove_information_weighted_mean(combined_distance, new_distance, combined_information, new_information);
+        double old_information = remove_information(combined_information, new_information);
+        double old_std = 1.0 / std::sqrt(old_information);
+
+        previous_normal_distance_ = old_distance;
+        previous_normal_std_ = old_std;
+    }
 }
 
 void Surface::set_random_color()

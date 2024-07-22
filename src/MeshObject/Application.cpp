@@ -714,7 +714,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_interior_poi
         }
         else if (settings.color_mode == 4)
         {
-            double distance = interior_point->get_surface()->buffered_compute_surface_position_std_in_normal_direction() / settings.positional_uncertainty_denominator;
+            double distance = interior_point->get_surface()->get_surface_position_std_in_normal_direction() / settings.positional_uncertainty_denominator;
             std::tuple<int, int, int> color = valueToJet(distance);
             point.r = std::get<0>(color);
             point.g = std::get<1>(color);
@@ -833,7 +833,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_vertex_point
         }
         else if (setting.color_mode == 4)
         {
-            double distance = vertex->get_surface()->buffered_compute_surface_position_std_in_normal_direction() / setting.positional_uncertainty_denominator;
+            double distance = vertex->get_surface()->get_surface_position_std_in_normal_direction() / setting.positional_uncertainty_denominator;
             std::tuple<int, int, int> color = valueToJet(distance);
             point.r = std::get<0>(color);
             point.g = std::get<1>(color);
