@@ -671,9 +671,9 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_interior_poi
         pcl::PointXYZRGB point;
         if (settings.show_projected_point)
         {
-            point.x = interior_point->get_projected_position()[0];
-            point.y = interior_point->get_projected_position()[1];
-            point.z = interior_point->get_projected_position()[2];
+            point.x = interior_point->buffer_compute_projected_position()[0];
+            point.y = interior_point->buffer_compute_projected_position()[1];
+            point.z = interior_point->buffer_compute_projected_position()[2];
         }
         else
         {
@@ -690,7 +690,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_interior_poi
         }
         else if (settings.color_mode == 1)
         {
-            double distance = std::fabs(interior_point->get_projected_distance() / 0.05);
+            double distance = std::fabs(interior_point->buffer_compute_projected_distance() / 0.05);
             std::tuple<int, int, int> color = valueToJet(distance);
             point.r = std::get<0>(color);
             point.g = std::get<1>(color);

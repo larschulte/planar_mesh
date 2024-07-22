@@ -306,7 +306,7 @@ const std::vector<double>& Surface::get_projective_distance_stats()
         }
         for (const auto& interior_point : interior_points_)
         {
-            double projective_distance = interior_point->get_projected_distance(shared_from_this());
+            double projective_distance = interior_point->buffer_compute_projected_distance(shared_from_this());
             stored_projective_distance_stats_.push_back(projective_distance);
         }
 
@@ -539,7 +539,7 @@ double Surface::compute_surface_position_std_in_normal_direction()
         double ratio = std::fabs(normal_.dot(interior_point->get_direction()));
 
         // mean and informaiton
-        double mean = ratio * interior_point->get_projected_distance(shared_from_this());
+        double mean = ratio * interior_point->buffer_compute_projected_distance(shared_from_this());
         double std = ratio * settings_.range_noise_std;
         double information = 1.0 / (std * std);
         

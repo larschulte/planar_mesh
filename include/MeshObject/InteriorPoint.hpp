@@ -5,6 +5,7 @@
 #include <unordered_set>
 
 #include "MeshObject/MeshObject.hpp"
+#include "Cache/FIFOCache.hpp"
 
 // Forward declarations
 class Storage;
@@ -34,12 +35,10 @@ public:
 
     std::size_t get_num_deletes() const;
 
-    void try_update_surface_projection(const std::shared_ptr<Surface> surface);
-    void try_update_surface_projection();
-    const Eigen::Vector3d& get_projected_position(const std::shared_ptr<Surface> surface);
-    const Eigen::Vector3d& get_projected_position();
-    const double& get_projected_distance(const std::shared_ptr<Surface> surface);
-    const double& get_projected_distance();
+    const Eigen::Vector3d& buffer_compute_projected_position(const std::shared_ptr<Surface> surface);
+    const Eigen::Vector3d& buffer_compute_projected_position();
+    const double& buffer_compute_projected_distance(const std::shared_ptr<Surface> surface);
+    const double& buffer_compute_projected_distance();
 
     void connect(const std::shared_ptr<Face>& face);
     void connect(const std::shared_ptr<Surface>& surface);
@@ -78,9 +77,8 @@ private:
     Eigen::Vector3d direction_;
     double radius_;
 
-    Eigen::Vector3d normal_used_;
-    Eigen::Vector3d projected_position_;
-    double projected_distance_;
+    FIFOCache<std::size_t, Eigen::Vector3d> buffer_projected_position_{3};
+    FIFOCache<std::size_t, double> buffer_projected_distance_{3};
 };
 
 bool operator<(const std::shared_ptr<InteriorPoint>& lhs, const std::shared_ptr<InteriorPoint>& rhs);

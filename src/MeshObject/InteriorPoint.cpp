@@ -135,43 +135,59 @@ const double& InteriorPoint::get_radius() const
     return radius_;
 }
 
-void InteriorPoint::try_update_surface_projection(const std::shared_ptr<Surface> surface)
+const Eigen::Vector3d& InteriorPoint::buffer_compute_projected_position(const std::shared_ptr<Surface> surface)
 {
-    // update if surface changes
-    if (normal_used_ != surface->get_normal())
+    // do cartersian rounding now, swtich to Locality Sensitive Hashing later
+
+    // compute hash
+    Eigen::Vector3d normal = surface->get_approximate_normal();
+
+    // round normal
+    normal = (normal * 10.0).array().round() / 10.0;
+
+    // hash for the three number 
+    std::size_t h1 = std::hash<double>{}(normal.x());
+    std::size_t h2 = std::hash<double>{}(normal.y());
+    std::size_t h3 = std::hash<double>{}(normal.z());
+    std::size_t hash = h1 ^ (h2 << 1) ^ (h3 << 2); // Combining hashes
+
+    // add to cache if not exist
+    if (!buffer_projected_position_.exists(hash)) 
     {
-        normal_used_ = surface->get_normal();
-        projected_position_ = surface->compute_point_projective_position(get_origin(), get_position());
-        projected_distance_ = surface->compute_point_projective_distance(get_origin(), get_position());
+        const Eigen::Vector3d computedResult = surface->compute_point_projective_position(get_origin(), get_position());
+        buffer_projected_position_.put(hash, computedResult);
     }
+
+    // return
+    return buffer_projected_position_.get(hash);
 }
 
-void InteriorPoint::try_update_surface_projection()
+const double& InteriorPoint::buffer_compute_projected_distance(const std::shared_ptr<Surface> surface)
 {
-    try_update_surface_projection(get_surface());
+    // do cartersian rounding now, swtich to Locality Sensitive Hashing later
+
+    // compute hash
+    Eigen::Vector3d normal = surface->get_approximate_normal();
+
+    // hash for the three number 
+    std::size_t h1 = std::hash<double>{}(normal.x());
+    std::size_t h2 = std::hash<double>{}(normal.y());
+    std::size_t h3 = std::hash<double>{}(normal.z());
+    std::size_t hash = h1 ^ (h2 << 1) ^ (h3 << 2); // Combining hashes
+
+    // add to cache if not exist
+    if (!buffer_projected_distance_.exists(hash)) 
+    {
+        const double computedResult = surface->compute_point_projective_distance(get_origin(), get_position());
+        buffer_projected_distance_.put(hash, computedResult);
+    }
+
+    // return
+    return buffer_projected_distance_.get(hash);
 }
 
-const Eigen::Vector3d& InteriorPoint::get_projected_position(const std::shared_ptr<Surface> surface)
-{
-    try_update_surface_projection(surface);
-    return projected_position_;
-}
-
-const Eigen::Vector3d& InteriorPoint::get_projected_position()
-{
-    return get_projected_position(get_surface());
-}
-
-const double& InteriorPoint::get_projected_distance(const std::shared_ptr<Surface> surface)
-{
-    try_update_surface_projection(surface);
-    return projected_distance_;
-}
-
-const double& InteriorPoint::get_projected_distance()
-{
-    return get_projected_distance(get_surface());
-}
+const Eigen::Vector3d& InteriorPoint::buffer_compute_projected_position() { return buffer_compute_projected_position(get_surface()); }
+const double& InteriorPoint::buffer_compute_projected_distance() { return buffer_compute_projected_distance(get_surface()); }
 
 bool InteriorPoint::is_expired() const
 {
