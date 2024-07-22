@@ -188,12 +188,40 @@ RelativePosition Surface::check_relative_position(const std::shared_ptr<GenericP
 
 RelativePosition Surface::check_relative_position(const std::shared_ptr<Vertex>& vertex)
 {
-    return check_relative_position(vertex->get_origin(), vertex->get_position(), vertex->get_direction());
+    // compute
+    double projective_distance = vertex->buffer_compute_projected_distance(shared_from_this());
+
+    double surface_position_std = get_surface_position_std_in_normal_direction();
+    double surface_projective_std = surface_position_std / std::fabs(normal_.dot(vertex->get_direction()));
+
+    bool points_in_front_of_surface = projective_distance > 3 * (settings_.range_noise_std + surface_projective_std);
+    bool points_behind_surface = projective_distance < - 3 * (settings_.range_noise_std + surface_projective_std);
+    bool points_within_surface = !points_in_front_of_surface && !points_behind_surface;
+
+    // return
+    if (points_in_front_of_surface) return RelativePosition::IN_FRONT;
+    else if (points_behind_surface) return RelativePosition::BEHIND;
+    else if (points_within_surface) return RelativePosition::WITHIN;
+    else throw std::runtime_error("Invalid relative position.");
 }
 
 RelativePosition Surface::check_relative_position(const std::shared_ptr<InteriorPoint>& interior_point)
 {
-    return check_relative_position(interior_point->get_origin(), interior_point->get_position(), interior_point->get_direction());
+    // compute
+    double projective_distance = interior_point->buffer_compute_projected_distance(shared_from_this());
+
+    double surface_position_std = get_surface_position_std_in_normal_direction();
+    double surface_projective_std = surface_position_std / std::fabs(normal_.dot(interior_point->get_direction()));
+
+    bool points_in_front_of_surface = projective_distance > 3 * (settings_.range_noise_std + surface_projective_std);
+    bool points_behind_surface = projective_distance < - 3 * (settings_.range_noise_std + surface_projective_std);
+    bool points_within_surface = !points_in_front_of_surface && !points_behind_surface;
+
+    // return
+    if (points_in_front_of_surface) return RelativePosition::IN_FRONT;
+    else if (points_behind_surface) return RelativePosition::BEHIND;
+    else if (points_within_surface) return RelativePosition::WITHIN;
+    else throw std::runtime_error("Invalid relative position.");
 }
 
 void Surface::merge_surface(const std::shared_ptr<Surface>& surface)
