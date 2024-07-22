@@ -53,6 +53,27 @@ Eigen::Matrix3d remove_covariance(const Eigen::Matrix3d& combined_covariance, co
     return cov1;
 }
 
+double merge_information_weighted_mean(const double& mean1, const double& mean2, const double& information1, const double& information2) 
+{
+    return (information1 * mean1 + information2 * mean2) / (information1 + information2);
+}
+
+double merge_information(const double& information1, const double& information2) 
+{
+    return information1 + information2;
+}
+
+double remove_information_weighted_mean(const double& combined_mean, const double& mean2, const double& combined_information, const double& information2) 
+{
+    double information1 = combined_information - information2;
+    return (combined_mean * combined_information - information2 * mean2) / information1;
+}
+
+double remove_information(const double& combined_information, const double& information2) 
+{
+    return combined_information - information2;
+}
+
 // Function to compute the mean of a vector
 double compute_mean(const std::vector<double>& data) 
 {
