@@ -247,9 +247,18 @@ const Eigen::Vector3d& Surface::get_normal() const
     return normal_;
 }
 
-const Eigen::Vector3d& Surface::get_approximate_normal() const
+std::size_t Surface::get_approximate_normal_hash()
 {
-    return approximate_normal_;
+    double factor = 100.0;
+    Eigen::Vector3d approximate_normal = (normal_ * factor).array().round() / factor;
+    approximate_normal = approximate_normal.normalized();
+
+    std::size_t h1 = std::hash<double>{}(approximate_normal.x());
+    std::size_t h2 = std::hash<double>{}(approximate_normal.y());
+    std::size_t h3 = std::hash<double>{}(approximate_normal.z());
+    std::size_t hash = h1 ^ (h2 << 1) ^ (h3 << 2); // Combining hashes
+
+    return hash;
 }
 
 std::size_t Surface::get_total_point_size() const

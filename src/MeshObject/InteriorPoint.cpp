@@ -140,16 +140,7 @@ const Eigen::Vector3d& InteriorPoint::buffer_compute_projected_position(const st
     // do cartersian rounding now, swtich to Locality Sensitive Hashing later
 
     // compute hash
-    Eigen::Vector3d normal = surface->get_approximate_normal();
-
-    // round normal
-    normal = (normal * 10.0).array().round() / 10.0;
-
-    // hash for the three number 
-    std::size_t h1 = std::hash<double>{}(normal.x());
-    std::size_t h2 = std::hash<double>{}(normal.y());
-    std::size_t h3 = std::hash<double>{}(normal.z());
-    std::size_t hash = h1 ^ (h2 << 1) ^ (h3 << 2); // Combining hashes
+    std::size_t hash = surface->get_approximate_normal_hash();
 
     // add to cache if not exist
     if (!buffer_projected_position_.exists(hash)) 
@@ -167,13 +158,7 @@ const double& InteriorPoint::buffer_compute_projected_distance(const std::shared
     // do cartersian rounding now, swtich to Locality Sensitive Hashing later
 
     // compute hash
-    Eigen::Vector3d normal = surface->get_approximate_normal();
-
-    // hash for the three number 
-    std::size_t h1 = std::hash<double>{}(normal.x());
-    std::size_t h2 = std::hash<double>{}(normal.y());
-    std::size_t h3 = std::hash<double>{}(normal.z());
-    std::size_t hash = h1 ^ (h2 << 1) ^ (h3 << 2); // Combining hashes
+    std::size_t hash = surface->get_approximate_normal_hash();
 
     // add to cache if not exist
     if (!buffer_projected_distance_.exists(hash)) 
