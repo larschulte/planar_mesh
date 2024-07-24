@@ -84,6 +84,19 @@ int main()
     // graph.add(boost::make_shared<gtsam::BetweenFactor<gtsam::Pose3>>(1, 2, gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(2.0, 0.0, 0.0)), odometryNoise));
     // graph.add(boost::make_shared<gtsam::BetweenFactor<gtsam::Pose3>>(2, 3, gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(2.0, 0.0, 0.0)), odometryNoise));
 
+    Eigen::Vector3d ray_origin(0, 0, 0);
+    Eigen::Vector3d ray_direction(0, 0, 1);
+    gtsam::Pose3 priorMean(gtsam::Rot3::RzRyRx(0.0, 0.0, 0.0), gtsam::Point3(ray_origin + ray_direction));
+    
+    // Custom noise model: High confidence along the ray, less confidence perpendicular to the ray
+    gtsam::Vector6 priorSigmas;
+    priorSigmas << 0.1, 0.1, 0.1, 0.01, 0.01, 0.01; // Small sigma for position along the ray direction
+    gtsam::noiseModel::Diagonal::shared_ptr priorNoise = gtsam::noiseModel::Diagonal::Sigmas(priorSigmas);
+    
+    graph.add(boost::make_shared<gtsam::PriorFactor<gtsam::Pose3>>(1, priorMean, priorNoise));
+
+
+
     // Measurement factors
     gtsam::noiseModel::Diagonal::shared_ptr projection_noise = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(1) << 0.01).finished());
     graph.add(boost::make_shared<ProjectionFactor>(1, Eigen::Vector3d(0, 0, 0), Eigen::Vector3d(0, 0, 1), projection_noise));
@@ -94,8 +107,14 @@ int main()
     gtsam::Values initial;
     initial.insert(1, gtsam::Pose3(gtsam::Rot3::RzRyRx(0.1, 0.1, 0.1), gtsam::Point3(0.5, 0.0, 0.2)));
 
+    // print graph
+    graph.print("Factor graph:\n");
+
     // Optimize using Levenberg-Marquardt optimization
     gtsam::Values result = gtsam::LevenbergMarquardtOptimizer(graph, initial).optimize();
+
+    // print result
+    result.print("Final result:\n");
 
     // Query the marginals
     std::cout.precision(2);
