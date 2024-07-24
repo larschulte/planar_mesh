@@ -28,6 +28,7 @@ add_definitions(${PCL_DEFINITIONS})
 
 # ceres solver
 find_package(Ceres REQUIRED)
+find_package(GTSAM REQUIRED)
 
 # MeshObject
 set(MeshObject_SOURCE 
@@ -144,6 +145,15 @@ PUBLIC
 add_executable(optimization src/utilities/optimization.cpp)
 target_link_libraries (optimization ${PCL_LIBRARIES} Ceres::ceres)
 target_include_directories(optimization
+  PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>)
+
+
+# add executable
+add_executable(gtsam_plane src/utilities/gtsam_plane.cpp)
+target_link_libraries (gtsam_plane ${PCL_LIBRARIES} gtsam)
+target_include_directories(gtsam_plane
   PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>)
