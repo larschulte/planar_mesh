@@ -17,34 +17,34 @@ class ProjectionFactor : public gtsam::NoiseModelFactor2<double, gtsam::Unit3>
 private:
 
     // plane 
-    Eigen::Vector3d o_plane_; // plane origin
+    Eigen::Vector3d po_plane_; // plane origin
     Eigen::Vector3d v_plane_; // plane direction
 
     // point
-    Eigen::Vector3d o_point_; // point origin
-    Eigen::Vector3d p_point_; // point position
+    Eigen::Vector3d po_point_; // point origin
+    Eigen::Vector3d pp_point_; // point position
     Eigen::Vector3d v_point_; // point direction
     double t_point_; // point distance
 
 public:
-    ProjectionFactor(gtsam::Key KEY_p_distance, gtsam::Key KEY_p_normal, Eigen::Vector3d o_plane, Eigen::Vector3d v_plane, Eigen::Vector3d o_point, Eigen::Vector3d p_point, const gtsam::SharedNoiseModel &model)
+    ProjectionFactor(gtsam::Key KEY_pp_distance, gtsam::Key KEY_pp_normal, Eigen::Vector3d po_plane, Eigen::Vector3d v_plane, Eigen::Vector3d po_point, Eigen::Vector3d pp_point, const gtsam::SharedNoiseModel &model)
         : 
-        gtsam::NoiseModelFactor2<double, gtsam::Unit3>(model, KEY_p_distance, KEY_p_normal),
-        o_plane_(o_plane),
+        gtsam::NoiseModelFactor2<double, gtsam::Unit3>(model, KEY_pp_distance, KEY_pp_normal),
+        po_plane_(po_plane),
         v_plane_(v_plane),
-        o_point_(o_point),
-        p_point_(p_point)
+        po_point_(po_point),
+        pp_point_(pp_point)
     {
-        v_point_ = (p_point - o_point).normalized();
-        t_point_ = (p_point - o_point).norm();
+        v_point_ = (pp_point - po_point).normalized();
+        t_point_ = (pp_point - po_point).norm();
     }
 
     gtsam::Vector evaluateError(const double& _t_plane, const gtsam::Unit3& _n_plane , boost::optional<gtsam::Matrix &> H_distance = boost::none, boost::optional<gtsam::Matrix &> H_normal = boost::none) const override
     {
         // h(q)
         Eigen::Vector3d n_plane = _n_plane.unitVector();
-        Eigen::Vector3d p_position = o_plane_ + v_plane_ * _t_plane;
-        double h = n_plane.dot(p_position - o_point_) / n_plane.dot(v_point_);
+        Eigen::Vector3d pp_plane = po_plane_ + v_plane_ * _t_plane;
+        double h = n_plane.dot(pp_plane - po_point_) / n_plane.dot(v_point_);
 
         // e
         double e = h - t_point_;
@@ -56,7 +56,7 @@ public:
         // Compute Jacobians
         if (H_distance) 
         {
-            // "e" = n_plane.dot(o_plane_ + v_plane_ * "_t_plane" - o_point_) / n_plane.dot(v_point_) - t_point_
+            // "e" = n_plane.dot(po_plane_ + v_plane_ * "_t_plane" - po_point_) / n_plane.dot(v_point_) - t_point_
             double d_e__d_t_plane = n_plane.dot(v_plane_) / n_plane.dot(v_point_);
 
             // fill in the Jacobian
@@ -66,11 +66,11 @@ public:
 
         if (H_normal) 
         {
-            // "e" = "n_plane".dot(p_position - o_point_) / "n_plane".dot(v_point_) - t_point_
+            // "e" = "n_plane".dot(pp_plane - po_point_) / "n_plane".dot(v_point_) - t_point_
             double v = n_plane.dot(v_point_);
-            double u = n_plane.dot(p_position - o_point_);
+            double u = n_plane.dot(pp_plane - po_point_);
             Eigen::Vector3d d_v__d_n_plane = v_point_;
-            Eigen::Vector3d d_u__d_n_plane = p_position - o_point_;
+            Eigen::Vector3d d_u__d_n_plane = pp_plane - po_point_;
             Eigen::Vector3d d_e__d_n_plane = (v * d_u__d_n_plane - u * d_v__d_n_plane) / (v * v);
 
             // fill in the Jacobian
@@ -88,47 +88,46 @@ int main()
     gtsam::NonlinearFactorGraph graph;
     
     // MEASUREMENT
-    Eigen::Vector3d x1_origin(0, 0, 0); Eigen::Vector3d x1_position(0, 0, 1);
-    Eigen::Vector3d x2_origin(0, 0, 0); Eigen::Vector3d x2_position(1, 0, 1);
-    Eigen::Vector3d x3_origin(0, 0, 0); Eigen::Vector3d x3_position(0, 1, 1);
+    Eigen::Vector3d po_point1(0, 0, 0); Eigen::Vector3d pp_point1(0, 0, 1);
+    Eigen::Vector3d po_point2(0, 0, 0); Eigen::Vector3d pp_point2(1, 0, 1);
+    Eigen::Vector3d po_point3(0, 0, 0); Eigen::Vector3d pp_point3(0, 1, 1);
 
     // PLANE
+    // sample point to define plane location
+    Eigen::Vector3d po_sample = po_point1;
+    Eigen::Vector3d pp_sample = pp_point1;
     // key
-    gtsam::Symbol KEY_p_distance('p', 1);
-    gtsam::Symbol KEY_p_normal('p', 2);
-    // sample point to use
-    Eigen::Vector3d x0_origin = x1_origin;
-    Eigen::Vector3d x0_position = x1_position;
+    gtsam::Symbol KEY_t_plane('p', 1);
+    gtsam::Symbol KEY_n_plane('p', 2);
     // contraint
-    Eigen::Vector3d p_origin = x0_origin;
-    Eigen::Vector3d p_direction = (x0_position - x0_origin).normalized();
+    Eigen::Vector3d CONSTRAINT_po_plane = po_sample;
+    Eigen::Vector3d CONSTRAINT_v_plane = (pp_sample - po_sample).normalized();
     // initial guess
     gtsam::Values initial;
-    gtsam::Unit3 initial_normal(1, 1, 1);
-    double initial_distance = (x0_position - x0_origin).norm();
-    initial.insert(KEY_p_distance, initial_distance);
-    initial.insert(KEY_p_normal, initial_normal);
+    gtsam::Unit3 INITIAL_n_plane(1, 1, 1);
+    double INITIAL_t_plane = (pp_sample - po_sample).norm();
+    initial.insert(KEY_t_plane, INITIAL_t_plane);
+    initial.insert(KEY_n_plane, INITIAL_n_plane);
 
     // FACTORS
     gtsam::noiseModel::Diagonal::shared_ptr range_noise = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(1) << 0.01).finished());
-    graph.add(boost::make_shared<ProjectionFactor>(KEY_p_distance, KEY_p_normal, p_origin, p_direction, x1_origin, x1_position, range_noise));
-    graph.add(boost::make_shared<ProjectionFactor>(KEY_p_distance, KEY_p_normal, p_origin, p_direction, x2_origin, x2_position, range_noise));
-    graph.add(boost::make_shared<ProjectionFactor>(KEY_p_distance, KEY_p_normal, p_origin, p_direction, x3_origin, x3_position, range_noise));
-
-    // print graph
-    graph.print("Factor graph:\n");
+    graph.add(boost::make_shared<ProjectionFactor>(KEY_t_plane, KEY_n_plane, CONSTRAINT_po_plane, CONSTRAINT_v_plane, po_point1, pp_point1, range_noise));
+    graph.add(boost::make_shared<ProjectionFactor>(KEY_t_plane, KEY_n_plane, CONSTRAINT_po_plane, CONSTRAINT_v_plane, po_point2, pp_point2, range_noise));
+    graph.add(boost::make_shared<ProjectionFactor>(KEY_t_plane, KEY_n_plane, CONSTRAINT_po_plane, CONSTRAINT_v_plane, po_point3, pp_point3, range_noise));
 
     // Optimize using Levenberg-Marquardt optimization
     gtsam::Values result = gtsam::LevenbergMarquardtOptimizer(graph, initial).optimize();
 
+    // PRINT
+    // print graph
+    graph.print("Factor graph:\n");
     // print result
     result.print("Final result:\n");
-
-    // Query the marginals
-    std::cout.precision(2);
+    // print covariance
     gtsam::Marginals marginals(graph, result);
-    std::cout << "distance covariance:\n" << marginals.marginalCovariance(KEY_p_distance) << std::endl;
-    std::cout << "normal covariance:\n" << marginals.marginalCovariance(KEY_p_normal) << std::endl;
+    std::cout.precision(2);
+    std::cout << "distance covariance:\n" << marginals.marginalCovariance(KEY_t_plane) << std::endl;
+    std::cout << "normal covariance:\n" << marginals.marginalCovariance(KEY_n_plane) << std::endl;
 
     return 0;
 }
