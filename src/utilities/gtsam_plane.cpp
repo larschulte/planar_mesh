@@ -39,7 +39,7 @@ public:
         t_point_ = (pp_point - po_point).norm();
     }
 
-    gtsam::Vector evaluateError(const double& _t_plane, const gtsam::Unit3& _n_plane , boost::optional<gtsam::Matrix &> H_distance = boost::none, boost::optional<gtsam::Matrix &> H_normal = boost::none) const override
+    gtsam::Vector evaluateError(const double& _t_plane, const gtsam::Unit3& _n_plane, boost::optional<gtsam::Matrix &> H_distance = boost::none, boost::optional<gtsam::Matrix &> H_normal = boost::none) const override
     {
         // h(q)
         Eigen::Vector3d n_plane = _n_plane.unitVector();
@@ -104,7 +104,7 @@ int main()
     Eigen::Vector3d CONSTRAINT_v_plane = (pp_sample - po_sample).normalized();
     // initial guess
     gtsam::Values initial;
-    gtsam::Unit3 INITIAL_n_plane(1, 1, 1);
+    gtsam::Unit3 INITIAL_n_plane((po_sample - pp_sample).normalized());
     double INITIAL_t_plane = (pp_sample - po_sample).norm();
     initial.insert(KEY_t_plane, INITIAL_t_plane);
     initial.insert(KEY_n_plane, INITIAL_n_plane);
