@@ -10,6 +10,7 @@
 #include <gtsam/slam/PriorFactor.h>
 #include <gtsam/slam/BetweenFactor.h>
 #include <gtsam/nonlinear/Marginals.h>
+#include <gtsam/sam/BearingRangeFactor.h>
 
 class ProjectionFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3>
 {
@@ -74,38 +75,26 @@ int main()
     // Create an empty nonlinear factor graph
     gtsam::NonlinearFactorGraph graph;
 
-    // // Prior factor
-    // gtsam::Pose3 priorMean(gtsam::Rot3::RzRyRx(0.0, 0.0, 0.0), gtsam::Point3(0.0, 0.0, 0.0));
-    // gtsam::noiseModel::Diagonal::shared_ptr priorNoise = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) << 0.1, 0.1, 0.1, 0.1, 0.1, 0.1).finished());
-    // graph.add(boost::make_shared<gtsam::PriorFactor<gtsam::Pose3>>(1, priorMean, priorNoise));
-
-    // // Odometry factors
-    // gtsam::noiseModel::Diagonal::shared_ptr odometryNoise = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) << 0.2, 0.2, 0.2, 0.1, 0.1, 0.1).finished());
-    // graph.add(boost::make_shared<gtsam::BetweenFactor<gtsam::Pose3>>(1, 2, gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(2.0, 0.0, 0.0)), odometryNoise));
-    // graph.add(boost::make_shared<gtsam::BetweenFactor<gtsam::Pose3>>(2, 3, gtsam::Pose3(gtsam::Rot3(), gtsam::Point3(2.0, 0.0, 0.0)), odometryNoise));
-
-    Eigen::Vector3d ray_origin(0, 0, 0);
-    Eigen::Vector3d ray_direction(0, 0, 1);
-    gtsam::Pose3 priorMean(gtsam::Rot3::RzRyRx(0.0, 0.0, 0.0), gtsam::Point3(ray_origin + ray_direction));
+    // Prior factor for origin
+    auto priorNoise = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector6::Ones() * 0.1);
+    graph.add(gtsam::PriorFactor<gtsam::Pose3>(1, gtsam::Pose3(), priorNoise));
     
-    // Custom noise model: High confidence along the ray, less confidence perpendicular to the ray
-    gtsam::Vector6 priorSigmas;
-    priorSigmas << 0.1, 0.1, 0.1, 0.01, 0.01, 0.01; // Small sigma for position along the ray direction
-    gtsam::noiseModel::Diagonal::shared_ptr priorNoise = gtsam::noiseModel::Diagonal::Sigmas(priorSigmas);
-    
-    graph.add(boost::make_shared<gtsam::PriorFactor<gtsam::Pose3>>(1, priorMean, priorNoise));
-
-
+    // Bearing range factor
+    auto bearing_range_noise = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector3(0.01, 0.01, 1.0));  // Azimuth, Elevation, Range
+    gtsam::Unit3 bearing = gtsam::Unit3::FromPoint3(gtsam::Point3(0, 0, 1));
+    double range = 1;
+    graph.add(boost::make_shared<gtsam::BearingRangeFactor<gtsam::Pose3, gtsam::Pose3>>(1, 2, bearing, range, bearing_range_noise));
 
     // Measurement factors
     gtsam::noiseModel::Diagonal::shared_ptr projection_noise = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(1) << 0.01).finished());
-    graph.add(boost::make_shared<ProjectionFactor>(1, Eigen::Vector3d(0, 0, 0), Eigen::Vector3d(0, 0, 1), projection_noise));
-    graph.add(boost::make_shared<ProjectionFactor>(1, Eigen::Vector3d(0, 0, 0), Eigen::Vector3d(1, 0, 1), projection_noise));
-    graph.add(boost::make_shared<ProjectionFactor>(1, Eigen::Vector3d(0, 0, 0), Eigen::Vector3d(0, 1, 1), projection_noise));
+    graph.add(boost::make_shared<ProjectionFactor>(2, Eigen::Vector3d(0, 0, 0), Eigen::Vector3d(1, 1, 1), projection_noise));
+    graph.add(boost::make_shared<ProjectionFactor>(2, Eigen::Vector3d(0, 0, 0), Eigen::Vector3d(1, 0, 1), projection_noise));
+    graph.add(boost::make_shared<ProjectionFactor>(2, Eigen::Vector3d(0, 0, 0), Eigen::Vector3d(0, 1, 1), projection_noise));
 
     // Create (deliberately inaccurate) initial estimate
     gtsam::Values initial;
-    initial.insert(1, gtsam::Pose3(gtsam::Rot3::RzRyRx(0.1, 0.1, 0.1), gtsam::Point3(0.5, 0.0, 0.2)));
+    initial.insert(1, gtsam::Pose3(gtsam::Rot3::RzRyRx(0.0, 0.0, 0.0), gtsam::Point3(0.0, 0.0, 0.0)));
+    initial.insert(2, gtsam::Pose3(gtsam::Rot3::RzRyRx(0.1, 0.1, 0.1), gtsam::Point3(0.5, 0.0, 0.2)));
 
     // print graph
     graph.print("Factor graph:\n");
