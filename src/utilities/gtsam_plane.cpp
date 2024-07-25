@@ -93,57 +93,60 @@ public:
 int main()
 {
     // MEASUREMENT
-    Eigen::Vector3d po_point1(0, 0, 0); Eigen::Vector3d pp_point1(0, 0, 1); double t_point1 = (pp_point1 - po_point1).norm();
-    Eigen::Vector3d po_point2(0, 0, 0); Eigen::Vector3d pp_point2(1, 0, 1); double t_point2 = (pp_point2 - po_point2).norm();
-    Eigen::Vector3d po_point3(0, 0, 0); Eigen::Vector3d pp_point3(0, 1, 1); double t_point3 = (pp_point3 - po_point3).norm();
-    Eigen::Vector3d po_point4(0, 0, 0); Eigen::Vector3d pp_point4(1, 1, 1); double t_point4 = (pp_point4 - po_point4).norm();
+    Eigen::Vector3d po_point1(0, 0, 0); Eigen::Vector3d pp_point1(0, 0, 1); 
+    Eigen::Vector3d po_point2(0, 0, 0); Eigen::Vector3d pp_point2(1, 0, 1); 
+    Eigen::Vector3d po_point3(0, 0, 0); Eigen::Vector3d pp_point3(0, 1, 1); 
+    Eigen::Vector3d po_point4(0, 0, 0); Eigen::Vector3d pp_point4(1, 1, 1); 
+    double MEASUREMENT_range1 = (pp_point1 - po_point1).norm();
+    double MEASUREMENT_range2 = (pp_point2 - po_point2).norm();
+    double MEASUREMENT_range3 = (pp_point3 - po_point3).norm();
+    double MEASUREMENT_range4 = (pp_point4 - po_point4).norm();
+    gtsam::Unit3 MEASUREMENT_bearing1((pp_point1 - po_point1).normalized()); 
+    gtsam::Unit3 MEASUREMENT_bearing2((pp_point2 - po_point2).normalized());
+    gtsam::Unit3 MEASUREMENT_bearing3((pp_point3 - po_point3).normalized());
+    gtsam::Unit3 MEASUREMENT_bearing4((pp_point4 - po_point4).normalized());
 
-    // PLANE
-    // sample point to define plane location
-    Eigen::Vector3d po_sample = po_point3;
-    Eigen::Vector3d pp_sample = pp_point3;
-    // contraint
+    // CONSTRAINT
+    // sample point to use
+    Eigen::Vector3d po_sample = po_point1;
+    Eigen::Vector3d pp_sample = pp_point1;
     Eigen::Vector3d CONSTRAINT_po_plane = po_sample;
     Eigen::Vector3d CONSTRAINT_v_plane = (pp_sample - po_sample).normalized();
 
-    // NODES
-    gtsam::Symbol KEY_t_plane('t', 1);
-    gtsam::Symbol KEY_n_plane('n', 1);
-    gtsam::Symbol KEY_v_point1('v', 1);
-    gtsam::Symbol KEY_v_point2('v', 2);
-    gtsam::Symbol KEY_v_point3('v', 3);
-    gtsam::Symbol KEY_v_point4('v', 4);
+    // VARIABLES
+    gtsam::Symbol VARIABLE_t_plane('t', 1);
+    gtsam::Symbol VARIABLE_n_plane('n', 1);
+    gtsam::Symbol VARIABLE_bearing1('v', 1);
+    gtsam::Symbol VARIABLE_bearing2('v', 2);
+    gtsam::Symbol VARIABLE_bearing3('v', 3);
+    gtsam::Symbol VARIABLE_bearing4('v', 4);
 
-    // INITIALS
+    // INITIAL GUESS
     gtsam::Values initial;
     double INITIAL_t_plane = (pp_sample - po_sample).norm();
     gtsam::Unit3 INITIAL_n_plane((po_sample - pp_sample).normalized());
-    gtsam::Unit3 INITIAL_v_point1((pp_point1 - po_point1).normalized()); 
-    gtsam::Unit3 INITIAL_v_point2((pp_point2 - po_point2).normalized());
-    gtsam::Unit3 INITIAL_v_point3((pp_point3 - po_point3).normalized());
-    gtsam::Unit3 INITIAL_v_point4((pp_point4 - po_point4).normalized());
-    initial.insert(KEY_t_plane, INITIAL_t_plane);
-    initial.insert(KEY_n_plane, INITIAL_n_plane);
-    initial.insert(KEY_v_point1, INITIAL_v_point1);
-    initial.insert(KEY_v_point2, INITIAL_v_point2);
-    initial.insert(KEY_v_point3, INITIAL_v_point3);
-    initial.insert(KEY_v_point4, INITIAL_v_point4);
+    initial.insert(VARIABLE_t_plane, INITIAL_t_plane);
+    initial.insert(VARIABLE_n_plane, INITIAL_n_plane);
+    initial.insert(VARIABLE_bearing1, MEASUREMENT_bearing1);
+    initial.insert(VARIABLE_bearing2, MEASUREMENT_bearing2);
+    initial.insert(VARIABLE_bearing3, MEASUREMENT_bearing3);
+    initial.insert(VARIABLE_bearing4, MEASUREMENT_bearing4);
 
     // FACTORS
     gtsam::NonlinearFactorGraph graph;
-    // projection factor
-    gtsam::noiseModel::Diagonal::shared_ptr sensor_noise = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(1) << 0.01).finished()); // range + bearing
-    graph.add(boost::make_shared<ProjectionFactor>(KEY_t_plane, KEY_n_plane, KEY_v_point1, CONSTRAINT_po_plane, CONSTRAINT_v_plane, po_point1, t_point1, sensor_noise));
-    graph.add(boost::make_shared<ProjectionFactor>(KEY_t_plane, KEY_n_plane, KEY_v_point2, CONSTRAINT_po_plane, CONSTRAINT_v_plane, po_point2, t_point2, sensor_noise));
-    graph.add(boost::make_shared<ProjectionFactor>(KEY_t_plane, KEY_n_plane, KEY_v_point3, CONSTRAINT_po_plane, CONSTRAINT_v_plane, po_point3, t_point3, sensor_noise));
-    graph.add(boost::make_shared<ProjectionFactor>(KEY_t_plane, KEY_n_plane, KEY_v_point4, CONSTRAINT_po_plane, CONSTRAINT_v_plane, po_point4, t_point4, sensor_noise));
-    // prior factor
-    gtsam::noiseModel::Diagonal::shared_ptr prior_noise = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(2) << 0.01, 0.01).finished()); // bearing only
-    graph.add(gtsam::PriorFactor<gtsam::Unit3>(KEY_v_point1, INITIAL_v_point1, prior_noise));
-    graph.add(gtsam::PriorFactor<gtsam::Unit3>(KEY_v_point2, INITIAL_v_point2, prior_noise));
-    graph.add(gtsam::PriorFactor<gtsam::Unit3>(KEY_v_point3, INITIAL_v_point3, prior_noise));
-    graph.add(gtsam::PriorFactor<gtsam::Unit3>(KEY_v_point4, INITIAL_v_point4, prior_noise));
-
+    // bearing factor
+    gtsam::noiseModel::Diagonal::shared_ptr NOISE_bearing = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(2) << 0.01, 0.01).finished());
+    graph.add(gtsam::PriorFactor<gtsam::Unit3>(VARIABLE_bearing1, MEASUREMENT_bearing1, NOISE_bearing));
+    graph.add(gtsam::PriorFactor<gtsam::Unit3>(VARIABLE_bearing2, MEASUREMENT_bearing2, NOISE_bearing));
+    graph.add(gtsam::PriorFactor<gtsam::Unit3>(VARIABLE_bearing3, MEASUREMENT_bearing3, NOISE_bearing));
+    graph.add(gtsam::PriorFactor<gtsam::Unit3>(VARIABLE_bearing4, MEASUREMENT_bearing4, NOISE_bearing));
+    // range factor
+    gtsam::noiseModel::Diagonal::shared_ptr NOISE_range = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(1) << 0.01).finished());
+    graph.add(boost::make_shared<ProjectionFactor>(VARIABLE_t_plane, VARIABLE_n_plane, VARIABLE_bearing1, CONSTRAINT_po_plane, CONSTRAINT_v_plane, po_point1, MEASUREMENT_range1, NOISE_range));
+    graph.add(boost::make_shared<ProjectionFactor>(VARIABLE_t_plane, VARIABLE_n_plane, VARIABLE_bearing2, CONSTRAINT_po_plane, CONSTRAINT_v_plane, po_point2, MEASUREMENT_range2, NOISE_range));
+    graph.add(boost::make_shared<ProjectionFactor>(VARIABLE_t_plane, VARIABLE_n_plane, VARIABLE_bearing3, CONSTRAINT_po_plane, CONSTRAINT_v_plane, po_point3, MEASUREMENT_range3, NOISE_range));
+    graph.add(boost::make_shared<ProjectionFactor>(VARIABLE_t_plane, VARIABLE_n_plane, VARIABLE_bearing4, CONSTRAINT_po_plane, CONSTRAINT_v_plane, po_point4, MEASUREMENT_range4, NOISE_range));
+    
     // OPTIMIZATION
     gtsam::Values result = gtsam::LevenbergMarquardtOptimizer(graph, initial).optimize();
 
@@ -155,8 +158,8 @@ int main()
     // print covariance
     gtsam::Marginals marginals(graph, result);
     std::cout.precision(2);
-    std::cout << "distance covariance:\n" << marginals.marginalCovariance(KEY_t_plane) << std::endl;
-    std::cout << "normal covariance:\n" << marginals.marginalCovariance(KEY_n_plane) << std::endl;
+    std::cout << "distance covariance:\n" << marginals.marginalCovariance(VARIABLE_t_plane) << std::endl;
+    std::cout << "normal covariance:\n" << marginals.marginalCovariance(VARIABLE_n_plane) << std::endl;
 
     // RETURN
     return 0;
