@@ -69,7 +69,7 @@ gtsam::Vector RangeFactor::evaluateError(const double& _t_plane, const gtsam::Un
     return error;
 }
 
-void fit_plane_to_points(std::vector<std::pair<Eigen::Vector3d, Eigen::Vector3d>> dataset, Eigen::Vector3d &plane_position, Eigen::Vector3d &plane_normal, double bearing_noise, double range_noise)
+void fit_plane_to_points(const std::vector<std::pair<Eigen::Vector3d, Eigen::Vector3d>>& dataset, Eigen::Vector3d &plane_position, Eigen::Vector3d &plane_normal, double bearing_noise, double range_noise)
 {
     // CHECK NUMBER OF POINTS
     if (dataset.size() < 3) throw std::runtime_error("At least 3 points are required to fit a plane.");
@@ -91,7 +91,7 @@ void fit_plane_to_points(std::vector<std::pair<Eigen::Vector3d, Eigen::Vector3d>
 
     // CONSTRAINT
     Eigen::Vector3d CONSTRAINT_po_plane = dataset[0].first;
-    Eigen::Vector3d CONSTRAINT_v_plane = (dataset[0].second - dataset[0].first).normalized();
+    Eigen::Vector3d CONSTRAINT_v_plane = (plane_position != Eigen::Vector3d::Zero()) ? (plane_position - dataset[0].first).normalized() : (dataset[0].second - dataset[0].first).normalized();
         
     // FACTORS
     gtsam::NonlinearFactorGraph graph;
@@ -107,8 +107,8 @@ void fit_plane_to_points(std::vector<std::pair<Eigen::Vector3d, Eigen::Vector3d>
 
     // INITIAL
     gtsam::Values initial;
-    initial.insert(VARIABLE_t_plane, (dataset[0].second - dataset[0].first).norm());
-    initial.insert(VARIABLE_n_plane, gtsam::Unit3((dataset[0].first - dataset[0].second).normalized()));
+    initial.insert(VARIABLE_n_plane, (plane_normal != Eigen::Vector3d::Zero()) ? gtsam::Unit3(plane_normal) : gtsam::Unit3((dataset[0].first - dataset[0].second).normalized()));
+    initial.insert(VARIABLE_t_plane, (plane_position != Eigen::Vector3d::Zero()) ? (plane_position - dataset[0].first).norm() : (dataset[0].second - dataset[0].first).norm());
     for (std::size_t i = 0; i < dataset.size(); i++) initial.insert(VARIABLES_BEARINGS[i], MEASUREMENT_BEARINGS[i]);
     
     // OPTIMIZATION

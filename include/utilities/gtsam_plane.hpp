@@ -20,4 +20,4 @@ private:
     double t_point_; // point direction
 };
 
-void fit_plane_to_points(std::vector<std::pair<Eigen::Vector3d, Eigen::Vector3d>> dataset, Eigen::Vector3d &plane_position, Eigen::Vector3d &plane_normal, double bearing_noise, double range_noise);
+void fit_plane_to_points(const std::vector<std::pair<Eigen::Vector3d, Eigen::Vector3d>>& dataset, Eigen::Vector3d &plane_position, Eigen::Vector3d &plane_normal, double bearing_noise, double range_noise);
