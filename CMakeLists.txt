@@ -53,11 +53,12 @@ set(MeshObject_SOURCE
   src/utilities/covariance_math.cpp
   src/utilities/utilities.cpp
   src/MeshObject/Simulation.cpp
+  src/utilities/gtsam_plane.cpp
 )
 
 # add executable
 add_executable(main src/main.cpp ${MeshObject_SOURCE})
-target_link_libraries (main ${PCL_LIBRARIES})
+target_link_libraries (main ${PCL_LIBRARIES} gtsam)
 target_include_directories(main
   PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>

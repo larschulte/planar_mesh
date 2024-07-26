@@ -11,6 +11,8 @@
 #include "MeshObject/GenericPoint.hpp"
 #include "utilities/utilities.hpp"
 
+#include "utilities/gtsam_plane.hpp"
+
 Settings Surface::settings_;
 
 void Surface::initialize_(const std::shared_ptr<Storage>& storage)
@@ -393,6 +395,7 @@ void Surface::connect(const std::shared_ptr<Vertex>& vertex)
     // connect
     if (vertices_.insert(vertex).second)
     {
+        dataset.push_back(std::make_pair(vertex->get_origin(), vertex->get_position()));
         update_surface_composition_hash();
 
         vertex->connect(shared_from_this());
@@ -637,6 +640,7 @@ void Surface::connect(const std::shared_ptr<InteriorPoint>& interior_point)
 
     // connect
     bool inserted = interior_points_.insert(interior_point).second;
+    if (inserted) dataset.push_back(std::make_pair(interior_point->get_origin(), interior_point->get_position()));
     if (inserted) update_surface_composition_hash();
     if (inserted) interior_point->connect(shared_from_this());
 
@@ -651,6 +655,7 @@ void Surface::disconnect(const std::shared_ptr<Vertex>& vertex)
 
     // disconnect
     bool erased = vertices_.erase(vertex);
+    if (erased) dataset.erase(std::remove(dataset.begin(), dataset.end(), std::make_pair(vertex->get_origin(), vertex->get_position())), dataset.end());
     if (erased) update_surface_composition_hash();
     if (erased) vertex->disconnect(shared_from_this());
 
@@ -685,6 +690,7 @@ void Surface::disconnect(const std::shared_ptr<InteriorPoint>& interior_point)
 
     // disconnect
     bool erased = interior_points_.erase(interior_point);
+    if (erased) dataset.erase(std::remove(dataset.begin(), dataset.end(), std::make_pair(interior_point->get_origin(), interior_point->get_position())), dataset.end());
     if (erased) update_surface_composition_hash();
     if (erased) interior_point->disconnect(shared_from_this());
 
@@ -856,59 +862,73 @@ void Surface::set_random_color()
     color_ = std::make_tuple(rand() % 256, rand() % 256, rand() % 256);
 }
 
+void Surface::optimize_surface_normal()
+{
+    // FIT PLANE
+    double bearing_noise = 0.01;
+    double range_noise = 0.01;
+    fit_plane_to_points(dataset, mean_, normal_, bearing_noise, range_noise);
+}
+
 void Surface::refine_surface()
 {
-    // collect vertices to delete
-    std::vector<std::shared_ptr<Vertex>> vertices_to_delete;
-    for (const auto& vertex : vertices_)
-    {
-        // check input
-        if (vertex->is_expired()) throw std::runtime_error("Surface contains expired vertex.");
+    // skip if less than 3 points   
+    if (get_total_point_size() < 3) return;
 
-        // if vertex is not within the surface, add to remove list
-        if (check_relative_position(vertex) != RelativePosition::WITHIN) vertices_to_delete.push_back(vertex);
-    }
+    // optimize normal
+    optimize_surface_normal();
 
-    // collect interior points to delete
-    std::vector<std::shared_ptr<InteriorPoint>> interior_points_to_delete;
-    for (const auto& interior_point : interior_points_)
-    {
-        // check input
-        if (interior_point->is_expired()) throw std::runtime_error("Surface contains expired interior point.");
+    // // collect vertices to delete
+    // std::vector<std::shared_ptr<Vertex>> vertices_to_delete;
+    // for (const auto& vertex : vertices_)
+    // {
+    //     // check input
+    //     if (vertex->is_expired()) throw std::runtime_error("Surface contains expired vertex.");
 
-        // if interior point is not within the surface, add to remove list
-        if (check_relative_position(interior_point) != RelativePosition::WITHIN) interior_points_to_delete.push_back(interior_point);
-    }
+    //     // if vertex is not within the surface, add to remove list
+    //     if (check_relative_position(vertex) != RelativePosition::WITHIN) vertices_to_delete.push_back(vertex);
+    // }
 
-    // delete points
-    for (const auto& vertex : vertices_to_delete)
-    {
-        if (vertex->is_expired()) continue;
-        storage_->delete_vertex(vertex);
-    }
+    // // collect interior points to delete
+    // std::vector<std::shared_ptr<InteriorPoint>> interior_points_to_delete;
+    // for (const auto& interior_point : interior_points_)
+    // {
+    //     // check input
+    //     if (interior_point->is_expired()) throw std::runtime_error("Surface contains expired interior point.");
 
-    for (const auto& interior_point : interior_points_to_delete)
-    {
-        if (interior_point->is_expired()) continue;
-        storage_->delete_interior_point(interior_point);
-    }
+    //     // if interior point is not within the surface, add to remove list
+    //     if (check_relative_position(interior_point) != RelativePosition::WITHIN) interior_points_to_delete.push_back(interior_point);
+    // }
 
-    // split surface
-    UnionFind uf;
-    uf.add_vertices(vertices_);
-    uf.add_edges(edges_);
-    std::vector<std::pair<std::shared_ptr<Vertex>, std::vector<std::shared_ptr<Vertex>>>> sorted_grouped_vertices = uf.compute_sorted_grouped_vertices();
+    // // delete points
+    // for (const auto& vertex : vertices_to_delete)
+    // {
+    //     if (vertex->is_expired()) continue;
+    //     storage_->delete_vertex(vertex);
+    // }
 
-    // create new surfaces from the second group onwards
-    for (std::size_t i = 1; i < sorted_grouped_vertices.size(); i++)
-    {
-        // get root vertex
-        const auto& root_vertex = sorted_grouped_vertices[i].first;
+    // for (const auto& interior_point : interior_points_to_delete)
+    // {
+    //     if (interior_point->is_expired()) continue;
+    //     storage_->delete_interior_point(interior_point);
+    // }
 
-        // connect to new surface
-        std::shared_ptr<Surface> new_surface = storage_->add_surface();
-        root_vertex->swap(shared_from_this(), new_surface);
-    }
+    // // split surface
+    // UnionFind uf;
+    // uf.add_vertices(vertices_);
+    // uf.add_edges(edges_);
+    // std::vector<std::pair<std::shared_ptr<Vertex>, std::vector<std::shared_ptr<Vertex>>>> sorted_grouped_vertices = uf.compute_sorted_grouped_vertices();
+
+    // // create new surfaces from the second group onwards
+    // for (std::size_t i = 1; i < sorted_grouped_vertices.size(); i++)
+    // {
+    //     // get root vertex
+    //     const auto& root_vertex = sorted_grouped_vertices[i].first;
+
+    //     // connect to new surface
+    //     std::shared_ptr<Surface> new_surface = storage_->add_surface();
+    //     root_vertex->swap(shared_from_this(), new_surface);
+    // }
 }
 
 bool operator<(const std::shared_ptr<Surface> &lhs, const std::shared_ptr<Surface> &rhs)

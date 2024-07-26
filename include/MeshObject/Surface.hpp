@@ -82,6 +82,7 @@ public:
     void compute_surface_position_std_in_normal_direction();
     double get_surface_position_std_in_normal_direction();
 
+    void optimize_surface_normal();
     void refine_surface();
 
     void add_searchable_edge(const std::shared_ptr<Edge>& edge);
@@ -114,6 +115,8 @@ private:
     Eigen::Matrix3d eigenvectors_;
     Eigen::Vector3d eigenvalues_;
     Eigen::Vector3d normal_;
+
+    std::vector<std::pair<Eigen::Vector3d, Eigen::Vector3d>> dataset;
 
     std::vector<double> stored_projective_distance_stats_;
     std::vector<double> stored_point_to_plane_distance_stats_;
