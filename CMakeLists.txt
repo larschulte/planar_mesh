@@ -154,9 +154,9 @@ target_include_directories(optimization
 
 
 # add executable
-add_executable(gtsam_plane src/utilities/gtsam_plane.cpp)
-target_link_libraries (gtsam_plane ${PCL_LIBRARIES} gtsam Matplot++::matplot)
-target_include_directories(gtsam_plane
+add_executable(test_gtsam_plane src/test/test_gtsam_plane.cpp src/utilities/gtsam_plane.cpp)
+target_link_libraries (test_gtsam_plane ${PCL_LIBRARIES} gtsam Matplot++::matplot)
+target_include_directories(test_gtsam_plane
   PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>)

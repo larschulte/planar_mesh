@@ -1,94 +1,73 @@
-#include <iostream>
-#include <Eigen/Dense>
-#include <gtsam/nonlinear/NonlinearFactor.h>
-#include <gtsam/nonlinear/NonlinearFactorGraph.h>
-#include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
-#include <gtsam/nonlinear/Values.h>
+#include "utilities/gtsam_plane.hpp"
 #include <gtsam/inference/Symbol.h>
-#include <gtsam/geometry/Pose3.h>
-#include <gtsam/geometry/Point3.h>
+#include <gtsam/nonlinear/Values.h>
 #include <gtsam/slam/PriorFactor.h>
-#include <gtsam/slam/BetweenFactor.h>
+#include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 #include <gtsam/nonlinear/Marginals.h>
-#include <gtsam/sam/BearingRangeFactor.h>
 
-class RangeFactor : public gtsam::NoiseModelFactor3<double, gtsam::Unit3, gtsam::Unit3>
+RangeFactor::RangeFactor(gtsam::Key KEY_pp_distance, gtsam::Key KEY_pp_normal, gtsam::Key KEY_v_point, Eigen::Vector3d po_plane, Eigen::Vector3d v_plane, Eigen::Vector3d po_point, double t_point, const gtsam::SharedNoiseModel &model)
+    : 
+    gtsam::NoiseModelFactor3<double, gtsam::Unit3, gtsam::Unit3>(model, KEY_pp_distance, KEY_pp_normal, KEY_v_point),
+    po_plane_(po_plane),
+    v_plane_(v_plane),
+    po_point_(po_point),
+    t_point_(t_point)
+{}
+
+gtsam::Vector RangeFactor::evaluateError(const double& _t_plane, const gtsam::Unit3& _n_plane, const gtsam::Unit3& _v_point, boost::optional<gtsam::Matrix &> H_distance, boost::optional<gtsam::Matrix &> H_normal, boost::optional<gtsam::Matrix &> H_bearing) const
 {
-private:
+    // Convert to Eigen
+    Eigen::Vector3d n_plane = _n_plane.unitVector();
+    Eigen::Vector3d v_point = _v_point.unitVector();
 
-    // plane 
-    Eigen::Vector3d po_plane_; // plane origin
-    Eigen::Vector3d v_plane_; // plane direction
+    // h(q)
+    Eigen::Vector3d pp_plane = po_plane_ + v_plane_ * _t_plane;
+    double h = n_plane.dot(pp_plane - po_point_) / n_plane.dot(v_point);
 
-    // point
-    Eigen::Vector3d po_point_; // point origin
-    double t_point_; // point direction
+    // e
+    double e = h - t_point_;
 
-public:
-    RangeFactor(gtsam::Key KEY_pp_distance, gtsam::Key KEY_pp_normal, gtsam::Key KEY_v_point, Eigen::Vector3d po_plane, Eigen::Vector3d v_plane, Eigen::Vector3d po_point, double t_point, const gtsam::SharedNoiseModel &model)
-        : 
-        gtsam::NoiseModelFactor3<double, gtsam::Unit3, gtsam::Unit3>(model, KEY_pp_distance, KEY_pp_normal, KEY_v_point),
-        po_plane_(po_plane),
-        v_plane_(v_plane),
-        po_point_(po_point),
-        t_point_(t_point)
-    {}
+    // error
+    gtsam::Vector error(1);
+    error << e;
 
-    gtsam::Vector evaluateError(const double& _t_plane, const gtsam::Unit3& _n_plane, const gtsam::Unit3& _v_point, boost::optional<gtsam::Matrix &> H_distance = boost::none, boost::optional<gtsam::Matrix &> H_normal = boost::none, boost::optional<gtsam::Matrix &> H_bearing = boost::none) const override
+    // Compute Jacobians
+    if (H_distance) 
     {
-        // Convert to Eigen
-        Eigen::Vector3d n_plane = _n_plane.unitVector();
-        Eigen::Vector3d v_point = _v_point.unitVector();
+        // "e" = n_plane.dot(po_plane_ + v_plane_ * "_t_plane" - po_point_) / n_plane.dot(v_point) - t_point_
+        double d_e__d_t_plane = n_plane.dot(v_plane_) / n_plane.dot(v_point);
 
-        // h(q)
-        Eigen::Vector3d pp_plane = po_plane_ + v_plane_ * _t_plane;
-        double h = n_plane.dot(pp_plane - po_point_) / n_plane.dot(v_point);
-
-        // e
-        double e = h - t_point_;
-
-        // error
-        gtsam::Vector error(1);
-        error << e;
-
-        // Compute Jacobians
-        if (H_distance) 
-        {
-            // "e" = n_plane.dot(po_plane_ + v_plane_ * "_t_plane" - po_point_) / n_plane.dot(v_point) - t_point_
-            double d_e__d_t_plane = n_plane.dot(v_plane_) / n_plane.dot(v_point);
-
-            // fill in the Jacobian
-            *H_distance = gtsam::Matrix(1, 1);
-            (*H_distance)(0, 0) = d_e__d_t_plane;
-        }
-
-        if (H_normal) 
-        {
-            // "e" = "n_plane".dot(pp_plane - po_point_) / "n_plane".dot(v_point) - t_point_
-            double v = n_plane.dot(v_point);
-            double u = n_plane.dot(pp_plane - po_point_);
-            Eigen::Vector3d d_v__d_n_plane = v_point;
-            Eigen::Vector3d d_u__d_n_plane = pp_plane - po_point_;
-            Eigen::Vector3d d_e__d_n_plane = (v * d_u__d_n_plane - u * d_v__d_n_plane) / (v * v);
-
-            // fill in the Jacobian
-            *H_normal = gtsam::Matrix(1, 2);
-            (*H_normal).block<1, 2>(0, 0) = d_e__d_n_plane.transpose() * _n_plane.basis();
-        }
-
-        if (H_bearing)
-        {
-            // "e" = n_plane.dot(pp_plane - po_point_) / n_plane.dot("v_point") - t_point_
-            Eigen::Vector3d d_e_range__d_v_point = -1 * n_plane.dot(pp_plane - po_point_) * n_plane / (n_plane.dot(v_point) * n_plane.dot(v_point));
-
-            // fill in the Jacobian
-            *H_bearing = gtsam::Matrix::Zero(1, 2);
-            (*H_bearing).block<1, 2>(0, 0) = d_e_range__d_v_point.transpose() * _v_point.basis();
-        }
-
-        return error;
+        // fill in the Jacobian
+        *H_distance = gtsam::Matrix(1, 1);
+        (*H_distance)(0, 0) = d_e__d_t_plane;
     }
-};
+
+    if (H_normal) 
+    {
+        // "e" = "n_plane".dot(pp_plane - po_point_) / "n_plane".dot(v_point) - t_point_
+        double v = n_plane.dot(v_point);
+        double u = n_plane.dot(pp_plane - po_point_);
+        Eigen::Vector3d d_v__d_n_plane = v_point;
+        Eigen::Vector3d d_u__d_n_plane = pp_plane - po_point_;
+        Eigen::Vector3d d_e__d_n_plane = (v * d_u__d_n_plane - u * d_v__d_n_plane) / (v * v);
+
+        // fill in the Jacobian
+        *H_normal = gtsam::Matrix(1, 2);
+        (*H_normal).block<1, 2>(0, 0) = d_e__d_n_plane.transpose() * _n_plane.basis();
+    }
+
+    if (H_bearing)
+    {
+        // "e" = n_plane.dot(pp_plane - po_point_) / n_plane.dot("v_point") - t_point_
+        Eigen::Vector3d d_e_range__d_v_point = -1 * n_plane.dot(pp_plane - po_point_) * n_plane / (n_plane.dot(v_point) * n_plane.dot(v_point));
+
+        // fill in the Jacobian
+        *H_bearing = gtsam::Matrix::Zero(1, 2);
+        (*H_bearing).block<1, 2>(0, 0) = d_e_range__d_v_point.transpose() * _v_point.basis();
+    }
+
+    return error;
+}
 
 void fit_plane_to_points(std::vector<std::pair<Eigen::Vector3d, Eigen::Vector3d>> dataset, Eigen::Vector3d &plane_position, Eigen::Vector3d &plane_normal, double bearing_noise, double range_noise)
 {
@@ -144,33 +123,4 @@ void fit_plane_to_points(std::vector<std::pair<Eigen::Vector3d, Eigen::Vector3d>
     // std::cout.precision(2);
     // std::cout << "distance covariance:\n" << marginals.marginalCovariance(VARIABLE_t_plane) << std::endl;
     // std::cout << "normal covariance:\n" << marginals.marginalCovariance(VARIABLE_n_plane) << std::endl;
-}
-
-int main()
-{
-    // DATASET
-    // origin + position
-    std::vector<std::pair<Eigen::Vector3d, Eigen::Vector3d>> dataset
-    {
-        {Eigen::Vector3d(0, 0, 0), Eigen::Vector3d(0, 0, 1)},
-        {Eigen::Vector3d(0, 0, 0), Eigen::Vector3d(1, 0, 1)},
-        {Eigen::Vector3d(0, 0, 0), Eigen::Vector3d(0, 1, 1)},
-        {Eigen::Vector3d(0, 0, 0), Eigen::Vector3d(1, 1, 1)}
-    };
-    
-    // PLANE
-    Eigen::Vector3d plane_position;
-    Eigen::Vector3d plane_normal;
-
-    // FIT PLANE
-    double bearing_noise = 0.01;
-    double range_noise = 0.01;
-    fit_plane_to_points(dataset, plane_position, plane_normal, bearing_noise, range_noise);
-
-    // OUTPUT
-    std::cout << "plane_position: " << plane_position.transpose() << std::endl;
-    std::cout << "plane_normal: " << plane_normal.transpose() << std::endl;
-
-    // END
-    return 0;
 }
