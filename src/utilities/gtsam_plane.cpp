@@ -12,7 +12,7 @@
 #include <gtsam/nonlinear/Marginals.h>
 #include <gtsam/sam/BearingRangeFactor.h>
 
-class ProjectionFactor : public gtsam::NoiseModelFactor3<double, gtsam::Unit3, gtsam::Unit3>
+class RangeFactor : public gtsam::NoiseModelFactor3<double, gtsam::Unit3, gtsam::Unit3>
 {
 private:
 
@@ -25,7 +25,7 @@ private:
     double t_point_; // point direction
 
 public:
-    ProjectionFactor(gtsam::Key KEY_pp_distance, gtsam::Key KEY_pp_normal, gtsam::Key KEY_v_point, Eigen::Vector3d po_plane, Eigen::Vector3d v_plane, Eigen::Vector3d po_point, double t_point, const gtsam::SharedNoiseModel &model)
+    RangeFactor(gtsam::Key KEY_pp_distance, gtsam::Key KEY_pp_normal, gtsam::Key KEY_v_point, Eigen::Vector3d po_plane, Eigen::Vector3d v_plane, Eigen::Vector3d po_point, double t_point, const gtsam::SharedNoiseModel &model)
         : 
         gtsam::NoiseModelFactor3<double, gtsam::Unit3, gtsam::Unit3>(model, KEY_pp_distance, KEY_pp_normal, KEY_v_point),
         po_plane_(po_plane),
@@ -92,75 +92,64 @@ public:
 
 int main()
 {
-    // MEASUREMENT
-    Eigen::Vector3d po_point1(0, 0, 0); Eigen::Vector3d pp_point1(0, 0, 1); 
-    Eigen::Vector3d po_point2(0, 0, 0); Eigen::Vector3d pp_point2(1, 0, 1); 
-    Eigen::Vector3d po_point3(0, 0, 0); Eigen::Vector3d pp_point3(0, 1, 1); 
-    Eigen::Vector3d po_point4(0, 0, 0); Eigen::Vector3d pp_point4(1, 1, 1); 
-    double MEASUREMENT_range1 = (pp_point1 - po_point1).norm();
-    double MEASUREMENT_range2 = (pp_point2 - po_point2).norm();
-    double MEASUREMENT_range3 = (pp_point3 - po_point3).norm();
-    double MEASUREMENT_range4 = (pp_point4 - po_point4).norm();
-    gtsam::Unit3 MEASUREMENT_bearing1((pp_point1 - po_point1).normalized()); 
-    gtsam::Unit3 MEASUREMENT_bearing2((pp_point2 - po_point2).normalized());
-    gtsam::Unit3 MEASUREMENT_bearing3((pp_point3 - po_point3).normalized());
-    gtsam::Unit3 MEASUREMENT_bearing4((pp_point4 - po_point4).normalized());
+    // DATASET
+    // origin + position
+    std::vector<std::pair<Eigen::Vector3d, Eigen::Vector3d>> dataset
+    {
+        {Eigen::Vector3d(0, 0, 0), Eigen::Vector3d(0, 0, 1)},
+        {Eigen::Vector3d(0, 0, 0), Eigen::Vector3d(1, 0, 1)},
+        {Eigen::Vector3d(0, 0, 0), Eigen::Vector3d(0, 1, 1)},
+        {Eigen::Vector3d(0, 0, 0), Eigen::Vector3d(1, 1, 1)}
+    };
 
-    // CONSTRAINT
-    // sample point to use
-    Eigen::Vector3d po_sample = po_point1;
-    Eigen::Vector3d pp_sample = pp_point1;
-    Eigen::Vector3d CONSTRAINT_po_plane = po_sample;
-    Eigen::Vector3d CONSTRAINT_v_plane = (pp_sample - po_sample).normalized();
+    // MEASUREMENT
+    std::vector<double> MEASUREMENT_RANGES;
+    std::vector<gtsam::Unit3> MEASUREMENT_BEARINGS;
+    for (auto &data : dataset)
+    {
+        MEASUREMENT_RANGES.push_back((data.second - data.first).norm());
+        MEASUREMENT_BEARINGS.push_back(gtsam::Unit3((data.second - data.first).normalized()));
+    }
 
     // VARIABLES
     gtsam::Symbol VARIABLE_t_plane('t', 1);
     gtsam::Symbol VARIABLE_n_plane('n', 1);
-    gtsam::Symbol VARIABLE_bearing1('v', 1);
-    gtsam::Symbol VARIABLE_bearing2('v', 2);
-    gtsam::Symbol VARIABLE_bearing3('v', 3);
-    gtsam::Symbol VARIABLE_bearing4('v', 4);
+    std::vector<gtsam::Symbol> VARIABLES_BEARINGS;
+    for (std::size_t i = 0; i < dataset.size(); i++) VARIABLES_BEARINGS.push_back(gtsam::Symbol('v', i + 1));
 
-    // INITIAL GUESS
-    gtsam::Values initial;
-    double INITIAL_t_plane = (pp_sample - po_sample).norm();
-    gtsam::Unit3 INITIAL_n_plane((po_sample - pp_sample).normalized());
-    initial.insert(VARIABLE_t_plane, INITIAL_t_plane);
-    initial.insert(VARIABLE_n_plane, INITIAL_n_plane);
-    initial.insert(VARIABLE_bearing1, MEASUREMENT_bearing1);
-    initial.insert(VARIABLE_bearing2, MEASUREMENT_bearing2);
-    initial.insert(VARIABLE_bearing3, MEASUREMENT_bearing3);
-    initial.insert(VARIABLE_bearing4, MEASUREMENT_bearing4);
-
+    // CONSTRAINT
+    Eigen::Vector3d CONSTRAINT_po_plane = dataset[0].first;
+    Eigen::Vector3d CONSTRAINT_v_plane = (dataset[0].second - dataset[0].first).normalized();
+        
     // FACTORS
     gtsam::NonlinearFactorGraph graph;
-    // bearing factor
     gtsam::noiseModel::Diagonal::shared_ptr NOISE_bearing = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(2) << 0.01, 0.01).finished());
-    graph.add(gtsam::PriorFactor<gtsam::Unit3>(VARIABLE_bearing1, MEASUREMENT_bearing1, NOISE_bearing));
-    graph.add(gtsam::PriorFactor<gtsam::Unit3>(VARIABLE_bearing2, MEASUREMENT_bearing2, NOISE_bearing));
-    graph.add(gtsam::PriorFactor<gtsam::Unit3>(VARIABLE_bearing3, MEASUREMENT_bearing3, NOISE_bearing));
-    graph.add(gtsam::PriorFactor<gtsam::Unit3>(VARIABLE_bearing4, MEASUREMENT_bearing4, NOISE_bearing));
-    // range factor
     gtsam::noiseModel::Diagonal::shared_ptr NOISE_range = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(1) << 0.01).finished());
-    graph.add(boost::make_shared<ProjectionFactor>(VARIABLE_t_plane, VARIABLE_n_plane, VARIABLE_bearing1, CONSTRAINT_po_plane, CONSTRAINT_v_plane, po_point1, MEASUREMENT_range1, NOISE_range));
-    graph.add(boost::make_shared<ProjectionFactor>(VARIABLE_t_plane, VARIABLE_n_plane, VARIABLE_bearing2, CONSTRAINT_po_plane, CONSTRAINT_v_plane, po_point2, MEASUREMENT_range2, NOISE_range));
-    graph.add(boost::make_shared<ProjectionFactor>(VARIABLE_t_plane, VARIABLE_n_plane, VARIABLE_bearing3, CONSTRAINT_po_plane, CONSTRAINT_v_plane, po_point3, MEASUREMENT_range3, NOISE_range));
-    graph.add(boost::make_shared<ProjectionFactor>(VARIABLE_t_plane, VARIABLE_n_plane, VARIABLE_bearing4, CONSTRAINT_po_plane, CONSTRAINT_v_plane, po_point4, MEASUREMENT_range4, NOISE_range));
+    for (std::size_t i = 0; i < dataset.size(); i++)
+    {
+        auto FACTOR_range = boost::make_shared<RangeFactor>(VARIABLE_t_plane, VARIABLE_n_plane, VARIABLES_BEARINGS[i], CONSTRAINT_po_plane, CONSTRAINT_v_plane, dataset[i].first, MEASUREMENT_RANGES[i], NOISE_range);
+        auto FACTOR_bearing = gtsam::PriorFactor<gtsam::Unit3>(VARIABLES_BEARINGS[i], MEASUREMENT_BEARINGS[i], NOISE_bearing);
+        graph.add(FACTOR_range);
+        graph.add(FACTOR_bearing);
+    }
+
+    // INITIAL
+    gtsam::Values initial;
+    initial.insert(VARIABLE_t_plane, (dataset[0].second - dataset[0].first).norm());
+    initial.insert(VARIABLE_n_plane, gtsam::Unit3((dataset[0].first - dataset[0].second).normalized()));
+    for (std::size_t i = 0; i < dataset.size(); i++) initial.insert(VARIABLES_BEARINGS[i], MEASUREMENT_BEARINGS[i]);
     
     // OPTIMIZATION
     gtsam::Values result = gtsam::LevenbergMarquardtOptimizer(graph, initial).optimize();
 
     // OUTPUT
-    // print graph
     graph.print("Factor graph:\n");
-    // print result
     result.print("Final result:\n");
-    // print covariance
     gtsam::Marginals marginals(graph, result);
     std::cout.precision(2);
     std::cout << "distance covariance:\n" << marginals.marginalCovariance(VARIABLE_t_plane) << std::endl;
     std::cout << "normal covariance:\n" << marginals.marginalCovariance(VARIABLE_n_plane) << std::endl;
 
-    // RETURN
+    // END
     return 0;
 }
