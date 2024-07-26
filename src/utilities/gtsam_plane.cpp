@@ -12,9 +12,6 @@
 #include <gtsam/nonlinear/Marginals.h>
 #include <gtsam/sam/BearingRangeFactor.h>
 
-#include <matplot/matplot.h>
-namespace plt = matplot;
-
 class RangeFactor : public gtsam::NoiseModelFactor3<double, gtsam::Unit3, gtsam::Unit3>
 {
 private:
@@ -93,17 +90,10 @@ public:
     }
 };
 
-int main()
+void fit_plane_to_points(std::vector<std::pair<Eigen::Vector3d, Eigen::Vector3d>> dataset, Eigen::Vector3d &plane_position, Eigen::Vector3d &plane_normal, double bearing_noise, double range_noise)
 {
-    // DATASET
-    // origin + position
-    std::vector<std::pair<Eigen::Vector3d, Eigen::Vector3d>> dataset
-    {
-        {Eigen::Vector3d(0, 0, 0), Eigen::Vector3d(0, 0, 1)},
-        {Eigen::Vector3d(0, 0, 0), Eigen::Vector3d(1, 0, 1)},
-        {Eigen::Vector3d(0, 0, 0), Eigen::Vector3d(0, 1, 1)},
-        {Eigen::Vector3d(0, 0, 0), Eigen::Vector3d(1, 1, 1)}
-    };
+    // CHECK NUMBER OF POINTS
+    if (dataset.size() < 3) throw std::runtime_error("At least 3 points are required to fit a plane.");
 
     // MEASUREMENT
     std::vector<double> MEASUREMENT_RANGES;
@@ -126,8 +116,8 @@ int main()
         
     // FACTORS
     gtsam::NonlinearFactorGraph graph;
-    gtsam::noiseModel::Diagonal::shared_ptr NOISE_bearing = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(2) << 0.01, 0.01).finished());
-    gtsam::noiseModel::Diagonal::shared_ptr NOISE_range = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(1) << 0.01).finished());
+    gtsam::noiseModel::Diagonal::shared_ptr NOISE_bearing = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(2) << bearing_noise, bearing_noise).finished());
+    gtsam::noiseModel::Diagonal::shared_ptr NOISE_range = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(1) << range_noise).finished());
     for (std::size_t i = 0; i < dataset.size(); i++)
     {
         auto FACTOR_range = boost::make_shared<RangeFactor>(VARIABLE_t_plane, VARIABLE_n_plane, VARIABLES_BEARINGS[i], CONSTRAINT_po_plane, CONSTRAINT_v_plane, dataset[i].first, MEASUREMENT_RANGES[i], NOISE_range);
@@ -144,59 +134,42 @@ int main()
     
     // OPTIMIZATION
     gtsam::Values result = gtsam::LevenbergMarquardtOptimizer(graph, initial).optimize();
+    plane_position = CONSTRAINT_po_plane + CONSTRAINT_v_plane * result.at<double>(VARIABLE_t_plane);
+    plane_normal = result.at<gtsam::Unit3>(VARIABLE_n_plane).unitVector();
+
+    // // LOG
+    // graph.print("Factor graph:\n");
+    // result.print("Final result:\n");
+    // gtsam::Marginals marginals(graph, result);
+    // std::cout.precision(2);
+    // std::cout << "distance covariance:\n" << marginals.marginalCovariance(VARIABLE_t_plane) << std::endl;
+    // std::cout << "normal covariance:\n" << marginals.marginalCovariance(VARIABLE_n_plane) << std::endl;
+}
+
+int main()
+{
+    // DATASET
+    // origin + position
+    std::vector<std::pair<Eigen::Vector3d, Eigen::Vector3d>> dataset
+    {
+        {Eigen::Vector3d(0, 0, 0), Eigen::Vector3d(0, 0, 1)},
+        {Eigen::Vector3d(0, 0, 0), Eigen::Vector3d(1, 0, 1)},
+        {Eigen::Vector3d(0, 0, 0), Eigen::Vector3d(0, 1, 1)},
+        {Eigen::Vector3d(0, 0, 0), Eigen::Vector3d(1, 1, 1)}
+    };
+    
+    // PLANE
+    Eigen::Vector3d plane_position;
+    Eigen::Vector3d plane_normal;
+
+    // FIT PLANE
+    double bearing_noise = 0.01;
+    double range_noise = 0.01;
+    fit_plane_to_points(dataset, plane_position, plane_normal, bearing_noise, range_noise);
 
     // OUTPUT
-    graph.print("Factor graph:\n");
-    result.print("Final result:\n");
-    gtsam::Marginals marginals(graph, result);
-    std::cout.precision(2);
-    std::cout << "distance covariance:\n" << marginals.marginalCovariance(VARIABLE_t_plane) << std::endl;
-    std::cout << "normal covariance:\n" << marginals.marginalCovariance(VARIABLE_n_plane) << std::endl;
-
-    // PLOT
-    Eigen::Vector3d plane_position = CONSTRAINT_po_plane + CONSTRAINT_v_plane * result.at<double>(VARIABLE_t_plane);
-    Eigen::Vector3d plane_normal = result.at<gtsam::Unit3>(VARIABLE_n_plane).unitVector();
-
-    // compute intersection of point and plane
-    std::vector<Eigen::Vector3d> point_positions;
-    for (std::size_t i = 0; i < dataset.size(); i++)
-    {
-        Eigen::Vector3d v_point = result.at<gtsam::Unit3>(VARIABLES_BEARINGS[i]).unitVector();
-        double t_point = plane_normal.dot(plane_position - dataset[i].first) / plane_normal.dot(v_point);
-        Eigen::Vector3d point_position = dataset[i].first + v_point * t_point;
-        point_positions.push_back(point_position);
-    }
-
-    // plot 
-    plt::figure();
-    plt::hold(true);
-    for (std::size_t i = 0; i < dataset.size(); i++)
-    {
-        // original line
-        std::vector<double> x = {dataset[i].first(0), dataset[i].second(0)};
-        std::vector<double> y = {dataset[i].first(1), dataset[i].second(1)};
-        std::vector<double> z = {dataset[i].first(2), dataset[i].second(2)};
-        plt::plot3(x, y, z, "r-");
-
-        // new line
-        std::vector<double> x_point = {dataset[i].first(0), point_positions[i](0)};
-        std::vector<double> y_point = {dataset[i].first(1), point_positions[i](1)};
-        std::vector<double> z_point = {dataset[i].first(2), point_positions[i](2)};
-        plt::plot3(x_point, y_point, z_point, "g-");
-    }
-    // plot fitted plane
-    { 
-        // plot surface specified by plane position, normal
-        auto [X, Y] = plt::meshgrid(plt::iota(-1, 0.1, 1), plt::iota(-1, 0.1, 1));
-        auto Z = plt::transform(X, Y, [&](double x, double y) { return plane_position(2) - (plane_normal(0) * (x - plane_position(0)) + plane_normal(1) * (y - plane_position(1))) / plane_normal(2); });
-        plt::surf(X, Y, Z)->face_alpha(0.1);
-    }
-    plt::xlabel("X");
-    plt::ylabel("Y");
-    plt::zlabel("Z");
-    plt::grid(true);
-    plt::axis("equal");
-    plt::show();
+    std::cout << "plane_position: " << plane_position.transpose() << std::endl;
+    std::cout << "plane_normal: " << plane_normal.transpose() << std::endl;
 
     // END
     return 0;
