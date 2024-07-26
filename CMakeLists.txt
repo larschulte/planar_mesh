@@ -30,6 +30,9 @@ add_definitions(${PCL_DEFINITIONS})
 find_package(Ceres REQUIRED)
 find_package(GTSAM REQUIRED)
 
+# matplotlib-cpp
+find_package(Matplot++ REQUIRED)
+
 # MeshObject
 set(MeshObject_SOURCE 
   src/MeshObject/Vertex.cpp
@@ -152,7 +155,7 @@ target_include_directories(optimization
 
 # add executable
 add_executable(gtsam_plane src/utilities/gtsam_plane.cpp)
-target_link_libraries (gtsam_plane ${PCL_LIBRARIES} gtsam)
+target_link_libraries (gtsam_plane ${PCL_LIBRARIES} gtsam Matplot++::matplot)
 target_include_directories(gtsam_plane
   PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>

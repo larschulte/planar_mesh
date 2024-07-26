@@ -12,6 +12,9 @@
 #include <gtsam/nonlinear/Marginals.h>
 #include <gtsam/sam/BearingRangeFactor.h>
 
+#include <matplot/matplot.h>
+namespace plt = matplot;
+
 class RangeFactor : public gtsam::NoiseModelFactor3<double, gtsam::Unit3, gtsam::Unit3>
 {
 private:
@@ -149,6 +152,51 @@ int main()
     std::cout.precision(2);
     std::cout << "distance covariance:\n" << marginals.marginalCovariance(VARIABLE_t_plane) << std::endl;
     std::cout << "normal covariance:\n" << marginals.marginalCovariance(VARIABLE_n_plane) << std::endl;
+
+    // PLOT
+    Eigen::Vector3d plane_position = CONSTRAINT_po_plane + CONSTRAINT_v_plane * result.at<double>(VARIABLE_t_plane);
+    Eigen::Vector3d plane_normal = result.at<gtsam::Unit3>(VARIABLE_n_plane).unitVector();
+
+    // compute intersection of point and plane
+    std::vector<Eigen::Vector3d> point_positions;
+    for (std::size_t i = 0; i < dataset.size(); i++)
+    {
+        Eigen::Vector3d v_point = result.at<gtsam::Unit3>(VARIABLES_BEARINGS[i]).unitVector();
+        double t_point = plane_normal.dot(plane_position - dataset[i].first) / plane_normal.dot(v_point);
+        Eigen::Vector3d point_position = dataset[i].first + v_point * t_point;
+        point_positions.push_back(point_position);
+    }
+
+    // plot 
+    plt::figure();
+    plt::hold(true);
+    for (std::size_t i = 0; i < dataset.size(); i++)
+    {
+        // original line
+        std::vector<double> x = {dataset[i].first(0), dataset[i].second(0)};
+        std::vector<double> y = {dataset[i].first(1), dataset[i].second(1)};
+        std::vector<double> z = {dataset[i].first(2), dataset[i].second(2)};
+        plt::plot3(x, y, z, "r-");
+
+        // new line
+        std::vector<double> x_point = {dataset[i].first(0), point_positions[i](0)};
+        std::vector<double> y_point = {dataset[i].first(1), point_positions[i](1)};
+        std::vector<double> z_point = {dataset[i].first(2), point_positions[i](2)};
+        plt::plot3(x_point, y_point, z_point, "g-");
+    }
+    // plot fitted plane
+    { 
+        // plot surface specified by plane position, normal
+        auto [X, Y] = plt::meshgrid(plt::iota(-1, 0.1, 1), plt::iota(-1, 0.1, 1));
+        auto Z = plt::transform(X, Y, [&](double x, double y) { return plane_position(2) - (plane_normal(0) * (x - plane_position(0)) + plane_normal(1) * (y - plane_position(1))) / plane_normal(2); });
+        plt::surf(X, Y, Z)->face_alpha(0.1);
+    }
+    plt::xlabel("X");
+    plt::ylabel("Y");
+    plt::zlabel("Z");
+    plt::grid(true);
+    plt::axis("equal");
+    plt::show();
 
     // END
     return 0;
