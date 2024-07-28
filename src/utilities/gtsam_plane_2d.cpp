@@ -5,6 +5,8 @@
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 #include <gtsam/nonlinear/Marginals.h>
 
+#include <matplot/matplot.h>
+
 RangeFactor::RangeFactor(gtsam::Key KEY_pp_distance, gtsam::Key KEY_pp_normal, gtsam::Key KEY_v_point, Eigen::Vector2d po_plane, Eigen::Vector2d v_plane, Eigen::Vector2d po_point, double t_point, const gtsam::SharedNoiseModel &model)
     : 
     gtsam::NoiseModelFactor3<double, gtsam::Rot2, gtsam::Rot2>(model, KEY_pp_distance, KEY_pp_normal, KEY_v_point),
@@ -83,7 +85,7 @@ gtsam::Vector RangeFactor::evaluateError(const double& _t_plane, const gtsam::Ro
     return error;
 }
 
-void fit_plane_to_points(const std::vector<std::pair<Eigen::Vector2d, Eigen::Vector2d>>& dataset, Eigen::Vector2d &plane_position, Eigen::Vector2d &plane_normal, double bearing_noise, double range_noise)
+void fit_plane_to_points(const std::vector<std::pair<Eigen::Vector2d, Eigen::Vector2d>>& dataset, Eigen::Vector2d &plane_position, Eigen::Vector2d &plane_normal, double bearing_noise, double range_noise, bool plot_graph)
 {
     // CHECK NUMBER OF POINTS
     if (dataset.size() < 2) throw std::runtime_error("At least 3 points are required to fit a plane.");
@@ -129,6 +131,61 @@ void fit_plane_to_points(const std::vector<std::pair<Eigen::Vector2d, Eigen::Vec
     gtsam::Values result = gtsam::LevenbergMarquardtOptimizer(graph, initial).optimize();
     plane_position = CONSTRAINT_po_plane + CONSTRAINT_v_plane * result.at<double>(VARIABLE_t_plane);
     plane_normal = Eigen::Vector2d(std::cos(result.at<gtsam::Rot2>(VARIABLE_n_plane).theta()), std::sin(result.at<gtsam::Rot2>(VARIABLE_n_plane).theta()));
+
+    // PLOT GRAPH
+    if (plot_graph)
+    {
+        // compute locations to plot
+        std::vector<Eigen::Vector2d> points_origin;
+        std::vector<Eigen::Vector2d> points_position;
+        std::vector<Eigen::Vector2d> optimized_points_position;
+        for (std::size_t i = 0; i < dataset.size(); i++)
+        {
+            // origin
+            Eigen::Vector2d point_origin = dataset[i].first; 
+            points_origin.push_back(point_origin);
+
+            // position
+            Eigen::Vector2d point_position = dataset[i].second;
+            points_position.push_back(point_position);
+
+            // optimized position
+            Eigen::Vector2d optimized_bearing = Eigen::Vector2d(std::cos(result.at<gtsam::Rot2>(VARIABLES_BEARINGS[i]).theta()), std::sin(result.at<gtsam::Rot2>(VARIABLES_BEARINGS[i]).theta()));
+            double optimized_range = (plane_position - point_origin).dot(plane_normal) / (plane_normal.dot(optimized_bearing)) ;
+            Eigen::Vector2d optimized_position = point_origin + optimized_range * optimized_bearing;
+            optimized_points_position.push_back(optimized_position);
+        }
+
+        // add figure
+        matplot::figure();
+        matplot::hold(matplot::on);
+        matplot::axis("equal");
+
+        // plot ray and position
+        for (std::size_t i = 0; i < dataset.size(); i++)
+        {
+            // ray
+            matplot::plot({points_origin[i].x(), points_position[i].x()}, {points_origin[i].y(), points_position[i].y()}, "r-");
+
+            // position
+            matplot::plot({points_position[i].x()}, {points_position[i].y()}, "ro");
+
+            // optimized ray
+            matplot::plot({points_origin[i].x(), optimized_points_position[i].x()}, {points_origin[i].y(), optimized_points_position[i].y()}, "g-");
+
+            // optimized position
+            matplot::plot({optimized_points_position[i].x()}, {optimized_points_position[i].y()}, "go");
+        }
+        
+        // plot optimized plane
+        Eigen::Vector2d plane_normal_rotated = Eigen::Vector2d(-plane_normal.y(), plane_normal.x());
+        Eigen::Vector2d line_start = plane_position - 3 * plane_normal_rotated;
+        Eigen::Vector2d line_end = plane_position + 3 * plane_normal_rotated;
+        matplot::plot({line_start.x(), line_end.x()}, {line_start.y(), line_end.y()}, "g--");
+        
+        // show
+        matplot::show();
+    }
 
     // // LOG
     // graph.print("Factor graph:\n");

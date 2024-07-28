@@ -20,7 +20,8 @@ int main()
     // FIT PLANE
     double bearing_noise = 0.01;
     double range_noise = 0.01;
-    fit_plane_to_points(dataset, plane_position, plane_normal, bearing_noise, range_noise);
+    bool plot_graph = true;
+    fit_plane_to_points(dataset, plane_position, plane_normal, bearing_noise, range_noise, plot_graph);
 
     // OUTPUT
     std::cout << "plane_position: " << plane_position.transpose() << std::endl;

@@ -20,4 +20,4 @@ private:
     double t_point_; // point direction
 };
 
-void fit_plane_to_points(const std::vector<std::pair<Eigen::Vector2d, Eigen::Vector2d>>& dataset, Eigen::Vector2d &plane_position, Eigen::Vector2d &plane_normal, double bearing_noise, double range_noise);
+void fit_plane_to_points(const std::vector<std::pair<Eigen::Vector2d, Eigen::Vector2d>>& dataset, Eigen::Vector2d &plane_position, Eigen::Vector2d &plane_normal, double bearing_noise, double range_noise, bool plot_graph);
