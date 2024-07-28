@@ -162,5 +162,14 @@ target_include_directories(test_gtsam_plane
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>)
 
+# add executable
+add_executable(test_gtsam_plane_2d src/test/test_gtsam_plane_2d.cpp src/utilities/gtsam_plane_2d.cpp)
+target_link_libraries (test_gtsam_plane_2d ${PCL_LIBRARIES} gtsam Matplot++::matplot)
+target_include_directories(test_gtsam_plane_2d
+  PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>)
+
+
 # call ament build system
 ament_package()
