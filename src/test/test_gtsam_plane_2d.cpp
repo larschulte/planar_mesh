@@ -18,6 +18,9 @@ std::vector<Eigen::Vector2d> generate_ray_directions(Eigen::Vector2d center_ray_
     double min_angle = min_angle_degree / 180.0 * M_PI;
     double max_angle = max_angle_degree / 180.0 * M_PI;
 
+    // normalized vectors
+    center_ray_direction.normalize();
+
     std::vector<Eigen::Vector2d> ray_directions;
     double step_angle = (max_angle - min_angle) / (double)(num_points - 1.0);
     for (int i = 0; i < num_points; i++)
@@ -28,15 +31,15 @@ std::vector<Eigen::Vector2d> generate_ray_directions(Eigen::Vector2d center_ray_
     return ray_directions;
 }
 
-void generate_dataset(
-    double angle_std,
-    double range_std,
+void add_dataset(
+    std::vector<std::pair<Eigen::Vector2d, Eigen::Vector2d>>& dataset_gt, 
+    std::vector<std::pair<Eigen::Vector2d, Eigen::Vector2d>>& dataset_noisy,
     Eigen::Vector2d gt_plane_position,
     Eigen::Vector2d gt_plane_normal,
     Eigen::Vector2d sensor_origin,
     std::vector<Eigen::Vector2d> ray_directions,
-    std::vector<std::pair<Eigen::Vector2d, Eigen::Vector2d>>& dataset_gt, 
-    std::vector<std::pair<Eigen::Vector2d, Eigen::Vector2d>>& dataset_noisy
+    double angle_std,
+    double range_std
     )
 {
     // noise generators
@@ -222,17 +225,16 @@ void plot_graph(
 int main()
 {
     // settings
-    double angle_std = 1.0 / 180.0 * M_PI;
-    double range_std = 0.01;
     Eigen::Vector2d gt_plane_position(0, 1);
     Eigen::Vector2d gt_plane_normal = Eigen::Vector2d(-1, -1).normalized();
-    Eigen::Vector2d sensor_origin(0, 0);
-    std::vector<Eigen::Vector2d> ray_directions = generate_ray_directions(Eigen::Vector2d(0, 1), 31, -30.0, 30.0);
+    double angle_std = 1.0 / 180.0 * M_PI;
+    double range_std = 0.01;
 
-    // generate dataset
+    // dataset
     std::vector<std::pair<Eigen::Vector2d, Eigen::Vector2d>> dataset_gt;
     std::vector<std::pair<Eigen::Vector2d, Eigen::Vector2d>> dataset_noisy;
-    generate_dataset(angle_std, range_std, gt_plane_position, gt_plane_normal, sensor_origin, ray_directions, dataset_gt, dataset_noisy);
+    add_dataset(dataset_gt, dataset_noisy, gt_plane_position, gt_plane_normal, Eigen::Vector2d(0, 0), generate_ray_directions(Eigen::Vector2d(0, 1), 31, -30.0, 30.0), angle_std, range_std);
+    add_dataset(dataset_gt, dataset_noisy, gt_plane_position, gt_plane_normal, Eigen::Vector2d(-1, 0), generate_ray_directions(Eigen::Vector2d(1, 1), 31, -30.0, 30.0), angle_std, range_std);
 
     // fit plane
     Eigen::Vector2d initial_plane_position(0, 0);
