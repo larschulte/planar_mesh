@@ -143,82 +143,6 @@ void fit_plane(
     std::cout << "optimized plane_normal: " << optimized_plane_normal.transpose() << std::endl;
 }
 
-void plot_graph(
-    std::vector<std::pair<Eigen::Vector2d, Eigen::Vector2d>> dataset_gt, 
-    std::vector<std::pair<Eigen::Vector2d, Eigen::Vector2d>> dataset_noisy, 
-    Eigen::Vector2d gt_plane_position, 
-    Eigen::Vector2d gt_plane_normal, 
-    Eigen::Vector2d optimized_plane_position, 
-    Eigen::Vector2d optimized_plane_normal, 
-    std::vector<gtsam::Rot2> optimized_bearings
-    )
-{
-    // compute locations to plot
-    std::vector<Eigen::Vector2d> points_origin;
-    std::vector<Eigen::Vector2d> points_position;
-    std::vector<Eigen::Vector2d> optimized_points_position;
-    for (std::size_t i = 0; i < dataset_noisy.size(); i++)
-    {
-        // origin
-        Eigen::Vector2d point_origin = dataset_noisy[i].first; 
-        points_origin.push_back(point_origin);
-
-        // position
-        Eigen::Vector2d point_position = dataset_noisy[i].second;
-        points_position.push_back(point_position);
-
-        // optimized position
-        Eigen::Vector2d optimized_bearing = Eigen::Vector2d(std::cos(optimized_bearings[i].theta()), std::sin(optimized_bearings[i].theta()));
-        double optimized_range = (optimized_plane_position - point_origin).dot(optimized_plane_normal) / (optimized_plane_normal.dot(optimized_bearing)) ;
-        Eigen::Vector2d optimized_position = point_origin + optimized_range * optimized_bearing;
-        optimized_points_position.push_back(optimized_position);
-    }
-
-    // add figure
-    matplot::figure();
-    matplot::hold(matplot::on);
-    matplot::axis("equal");
-    matplot::axis("square");
-
-    // plot ray and position
-    for (std::size_t i = 0; i < dataset_noisy.size(); i++)
-    {
-        // ray
-        matplot::plot({points_origin[i].x(), points_position[i].x()}, {points_origin[i].y(), points_position[i].y()}, "r-");
-
-        // position
-        matplot::plot({points_position[i].x()}, {points_position[i].y()}, "ro");
-
-        // optimized ray
-        matplot::plot({points_origin[i].x(), optimized_points_position[i].x()}, {points_origin[i].y(), optimized_points_position[i].y()}, "g-");
-
-        // optimized position
-        matplot::plot({optimized_points_position[i].x()}, {optimized_points_position[i].y()}, "go");
-    }
-    
-    // plot optimized plane
-    Eigen::Vector2d optimized_plane_normal_rotated = Eigen::Vector2d(-optimized_plane_normal.y(), optimized_plane_normal.x());
-    Eigen::Vector2d optimized_line_start = optimized_plane_position - 3 * optimized_plane_normal_rotated;
-    Eigen::Vector2d optimized_line_end = optimized_plane_position + 3 * optimized_plane_normal_rotated;
-    matplot::plot({optimized_line_start.x(), optimized_line_end.x()}, {optimized_line_start.y(), optimized_line_end.y()}, "g--");
-    
-    // plot gt ray and position
-    for (std::size_t i = 0; i < dataset_gt.size(); i++)
-    {
-        // ray
-        matplot::plot({dataset_gt[i].first.x(), dataset_gt[i].second.x()}, {dataset_gt[i].first.y(), dataset_gt[i].second.y()}, "k-");
-
-        // position
-        matplot::plot({dataset_gt[i].second.x()}, {dataset_gt[i].second.y()}, "ko");
-    }
-    
-    // plot gt plane
-    Eigen::Vector2d gt_plane_normal_rotated = Eigen::Vector2d(-gt_plane_normal.y(), gt_plane_normal.x());
-    Eigen::Vector2d gt_line_start = gt_plane_position - 3 * gt_plane_normal_rotated;
-    Eigen::Vector2d gt_line_end = gt_plane_position + 3 * gt_plane_normal_rotated;
-    matplot::plot({gt_line_start.x(), gt_line_end.x()}, {gt_line_start.y(), gt_line_end.y()}, "k--");
-}
-
 void fit_plane_eigen(
     const std::vector<std::pair<Eigen::Vector2d, Eigen::Vector2d>>& dataset_noisy, 
     Eigen::Vector2d& optimized_plane_position,
@@ -264,15 +188,15 @@ void fit_plane_eigen(
 int main()
 {
     // settings
-    Eigen::Vector2d gt_plane_position(0, 10);
-    Eigen::Vector2d gt_plane_normal = Eigen::Vector2d(0, -1).normalized();
-    double angle_std = 0.1 / 180.0 * M_PI;
-    double range_std = 0.1;
+    Eigen::Vector2d gt_plane_position(0, 100);
+    Eigen::Vector2d gt_plane_normal = Eigen::Vector2d(-3, -1).normalized();
+    double angle_std = 1 / 180.0 * M_PI;
+    double range_std = 0.01;
 
     // dataset
     std::vector<std::pair<Eigen::Vector2d, Eigen::Vector2d>> dataset_gt;
     std::vector<std::pair<Eigen::Vector2d, Eigen::Vector2d>> dataset_noisy;
-    add_dataset(dataset_gt, dataset_noisy, gt_plane_position, gt_plane_normal, Eigen::Vector2d(0, 0), generate_ray_directions(Eigen::Vector2d(0, 1), 31, -30.0, 30.0), angle_std, range_std);
+    add_dataset(dataset_gt, dataset_noisy, gt_plane_position, gt_plane_normal, Eigen::Vector2d(0, 0), generate_ray_directions(Eigen::Vector2d(0, 1), 21, -10.0, 10.0), angle_std, range_std);
     // add_dataset(dataset_gt, dataset_noisy, gt_plane_position, gt_plane_normal, Eigen::Vector2d(-1, 0), generate_ray_directions(Eigen::Vector2d(1, 1), 11, -30.0, 30.0), angle_std, range_std);
 
     // NEW METHOD 
@@ -283,46 +207,78 @@ int main()
     Eigen::Vector2d optimized_plane_normal;
     std::vector<gtsam::Rot2> optimized_bearings;
     fit_plane(dataset_noisy, angle_std, range_std, initial_plane_position, initial_plane_normal, optimized_plane_position, optimized_plane_normal, optimized_bearings);
-    plot_graph(dataset_gt, dataset_noisy, gt_plane_position, gt_plane_normal, optimized_plane_position, optimized_plane_normal, optimized_bearings);
 
-    // OLD METHOD
+    // compute optimized position
+    std::vector<Eigen::Vector2d> optimized_positions;
+    for (std::size_t i = 0; i < dataset_noisy.size(); i++)
+    {
+        // optimized position
+        Eigen::Vector2d optimized_bearing = Eigen::Vector2d(std::cos(optimized_bearings[i].theta()), std::sin(optimized_bearings[i].theta()));
+        double optimized_range = (optimized_plane_position - dataset_noisy[i].first).dot(optimized_plane_normal) / (optimized_plane_normal.dot(optimized_bearing)) ;
+        optimized_positions.push_back(dataset_noisy[i].first + optimized_range * optimized_bearing);
+    }
+
+    // EIGEN METHOD
     Eigen::Vector2d optimized_plane_position_eigen;
     Eigen::Vector2d optimized_plane_normal_eigen;
-    std::vector<Eigen::Vector2d> optimized_positions;
-    fit_plane_eigen(dataset_noisy, optimized_plane_position_eigen, optimized_plane_normal_eigen, optimized_positions);
+    std::vector<Eigen::Vector2d> optimized_positions_eigen;
+    fit_plane_eigen(dataset_noisy, optimized_plane_position_eigen, optimized_plane_normal_eigen, optimized_positions_eigen);
     
-    // plot
+    
+    // PLOT
     matplot::figure();
     matplot::hold(matplot::on);
     matplot::axis("equal");
     matplot::axis("square");
-    for (std::size_t i = 0; i < dataset_noisy.size(); i++)
-    {
-        // noisy
-        matplot::plot({dataset_noisy[i].first.x(), dataset_noisy[i].second.x()}, {dataset_noisy[i].first.y(), dataset_noisy[i].second.y()}, "r-");
-        matplot::plot({dataset_noisy[i].second.x()}, {dataset_noisy[i].second.y()}, "ro");
 
-        // optimized
-        matplot::plot({dataset_noisy[i].first.x(), optimized_positions[i].x()}, {dataset_noisy[i].first.y(), optimized_positions[i].y()}, "g-");
-        matplot::plot({optimized_positions[i].x()}, {optimized_positions[i].y()}, "go");
-    }
+    bool show_eigen = false;
 
+    // gt points
     for (std::size_t i = 0; i < dataset_gt.size(); i++)
     {
-        // gt
         matplot::plot({dataset_gt[i].first.x(), dataset_gt[i].second.x()}, {dataset_gt[i].first.y(), dataset_gt[i].second.y()}, "k-");
         matplot::plot({dataset_gt[i].second.x()}, {dataset_gt[i].second.y()}, "ko");
     }
-
-    Eigen::Vector2d gt_plane_normal_rotated = Eigen::Vector2d(-gt_plane_normal.y(), gt_plane_normal.x());
-    Eigen::Vector2d gt_line_start = gt_plane_position - 3 * gt_plane_normal_rotated;
-    Eigen::Vector2d gt_line_end = gt_plane_position + 3 * gt_plane_normal_rotated;
-    matplot::plot({gt_line_start.x(), gt_line_end.x()}, {gt_line_start.y(), gt_line_end.y()}, "k--");
     
-    Eigen::Vector2d optimized_plane_normal_eigen_rotated = Eigen::Vector2d(-optimized_plane_normal_eigen.y(), optimized_plane_normal_eigen.x());
-    Eigen::Vector2d optimized_line_eigen_start = optimized_plane_position_eigen - 3 * optimized_plane_normal_eigen_rotated;
-    Eigen::Vector2d optimized_line_eigen_end = optimized_plane_position_eigen + 3 * optimized_plane_normal_eigen_rotated;
-    matplot::plot({optimized_line_eigen_start.x(), optimized_line_eigen_end.x()}, {optimized_line_eigen_start.y(), optimized_line_eigen_end.y()}, "g--");
+    // noisy points
+    for (std::size_t i = 0; i < dataset_noisy.size(); i++)
+    {
+        matplot::plot({dataset_noisy[i].first.x(), dataset_noisy[i].second.x()}, {dataset_noisy[i].first.y(), dataset_noisy[i].second.y()}, "r-");
+        matplot::plot({dataset_noisy[i].second.x()}, {dataset_noisy[i].second.y()}, "ro");
+    }
+
+    // new points
+    for (std::size_t i = 0; i < dataset_noisy.size(); i++)
+    {
+        // matplot::plot({dataset_noisy[i].first.x(), optimized_positions[i].x()}, {dataset_noisy[i].first.y(), optimized_positions[i].y()}, "g-");
+        matplot::plot({optimized_positions[i].x()}, {optimized_positions[i].y()}, "go");
+    }
+
+    // eigen points
+    if (show_eigen)
+    {
+        for (std::size_t i = 0; i < dataset_noisy.size(); i++)
+        {
+            // matplot::plot({dataset_noisy[i].first.x(), optimized_positions_eigen[i].x()}, {dataset_noisy[i].first.y(), optimized_positions_eigen[i].y()}, "b-");
+            matplot::plot({optimized_positions_eigen[i].x()}, {optimized_positions_eigen[i].y()}, "bo");
+        }
+    }
+    
+    // gt plane
+    auto gt_plane = matplot::line(dataset_gt.front().second.x(), dataset_gt.front().second.y(), dataset_gt.back().second.x(), dataset_gt.back().second.y());
+    gt_plane->color("k");
+
+    // new plane
+    auto new_plane = matplot::line(optimized_positions.front().x(), optimized_positions.front().y(), optimized_positions.back().x(), optimized_positions.back().y());
+    new_plane->color("g");
+
+
+    // eigen plane
+    if (show_eigen)
+    {
+        auto eigen_plane = matplot::line(optimized_positions_eigen.front().x(), optimized_positions_eigen.front().y(), optimized_positions_eigen.back().x(), optimized_positions_eigen.back().y());
+        eigen_plane->color("b");
+    }
     
     // show
     matplot::show();
