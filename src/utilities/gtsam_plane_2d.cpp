@@ -56,13 +56,10 @@ gtsam::Vector RangeFactor::evaluateError(const double& _t_plane, const gtsam::Ro
         // fill in the Jacobian
         // Convert d_e__d_n_plane to derivative with respect to the angle of Rot2
         double angle_n = _n_plane.theta();
-        Eigen::Matrix2d R;
-        R << -std::sin(angle_n), -std::cos(angle_n), std::cos(angle_n), -std::sin(angle_n);
-        Eigen::Vector2d d_e__d_theta_n = R * d_e__d_n_plane;
 
         // fill in the Jacobian
         *H_normal = gtsam::Matrix(1, 1);
-        (*H_normal)(0, 0) = d_e__d_theta_n.sum();
+        (*H_normal)(0, 0) = d_e__d_n_plane(0) * -std::sin(angle_n) + d_e__d_n_plane(1) * std::cos(angle_n);
     }
 
     if (H_bearing)
@@ -73,13 +70,10 @@ gtsam::Vector RangeFactor::evaluateError(const double& _t_plane, const gtsam::Ro
         // fill in the Jacobian
         // Convert d_e__d_v_point to derivative with respect to the angle of Rot2
         double angle_v = _v_point.theta();
-        Eigen::Matrix2d R;
-        R << -std::sin(angle_v), -std::cos(angle_v), std::cos(angle_v), -std::sin(angle_v);
-        Eigen::Vector2d d_e__d_theta_v = R * d_e_range__d_v_point;
 
         // fill in the Jacobian
         *H_bearing = gtsam::Matrix(1, 1);
-        (*H_bearing)(0, 0) = d_e__d_theta_v.sum();
+        (*H_bearing)(0, 0) = d_e_range__d_v_point(0) * -std::sin(angle_v) + d_e_range__d_v_point(1) * std::cos(angle_v);
     }
 
     return error;
