@@ -185,18 +185,24 @@ void fit_plane_eigen(
     }
 }
 
+Eigen::Vector2d angle_to_vector(double angle)
+{
+    double angle_rad = angle / 180.0 * M_PI;
+    return Eigen::Vector2d(std::cos(angle_rad), std::sin(angle_rad));
+}
+
 int main()
 {
     // settings
-    Eigen::Vector2d gt_plane_position(0, 100);
-    Eigen::Vector2d gt_plane_normal = Eigen::Vector2d(-3, -1).normalized();
-    double angle_std = 1 / 180.0 * M_PI;
+    Eigen::Vector2d gt_plane_position(0, 0);
+    Eigen::Vector2d gt_plane_normal = angle_to_vector(90);
+    double angle_std = 0.01 / 180.0 * M_PI;
     double range_std = 0.01;
 
     // dataset
     std::vector<std::pair<Eigen::Vector2d, Eigen::Vector2d>> dataset_gt;
     std::vector<std::pair<Eigen::Vector2d, Eigen::Vector2d>> dataset_noisy;
-    add_dataset(dataset_gt, dataset_noisy, gt_plane_position, gt_plane_normal, Eigen::Vector2d(0, 0), generate_ray_directions(Eigen::Vector2d(0, 1), 21, -10.0, 10.0), angle_std, range_std);
+    add_dataset(dataset_gt, dataset_noisy, gt_plane_position, gt_plane_normal, Eigen::Vector2d(0, 1), generate_ray_directions(angle_to_vector(-20), 21, -10.0, 10.0), angle_std, range_std);
     // add_dataset(dataset_gt, dataset_noisy, gt_plane_position, gt_plane_normal, Eigen::Vector2d(-1, 0), generate_ray_directions(Eigen::Vector2d(1, 1), 11, -30.0, 30.0), angle_std, range_std);
 
     // NEW METHOD 
@@ -231,26 +237,26 @@ int main()
     matplot::axis("equal");
     matplot::axis("square");
 
-    bool show_eigen = false;
+    bool show_eigen = true;
 
     // gt points
     for (std::size_t i = 0; i < dataset_gt.size(); i++)
     {
-        matplot::plot({dataset_gt[i].first.x(), dataset_gt[i].second.x()}, {dataset_gt[i].first.y(), dataset_gt[i].second.y()}, "k-");
+        matplot::plot({dataset_gt[i].first.x(), dataset_gt[i].second.x()}, {dataset_gt[i].first.y(), dataset_gt[i].second.y()}, "k:");
         matplot::plot({dataset_gt[i].second.x()}, {dataset_gt[i].second.y()}, "ko");
     }
     
     // noisy points
     for (std::size_t i = 0; i < dataset_noisy.size(); i++)
     {
-        matplot::plot({dataset_noisy[i].first.x(), dataset_noisy[i].second.x()}, {dataset_noisy[i].first.y(), dataset_noisy[i].second.y()}, "r-");
+        matplot::plot({dataset_noisy[i].first.x(), dataset_noisy[i].second.x()}, {dataset_noisy[i].first.y(), dataset_noisy[i].second.y()}, "r:");
         matplot::plot({dataset_noisy[i].second.x()}, {dataset_noisy[i].second.y()}, "ro");
     }
 
     // new points
     for (std::size_t i = 0; i < dataset_noisy.size(); i++)
     {
-        // matplot::plot({dataset_noisy[i].first.x(), optimized_positions[i].x()}, {dataset_noisy[i].first.y(), optimized_positions[i].y()}, "g-");
+        matplot::plot({dataset_noisy[i].first.x(), optimized_positions[i].x()}, {dataset_noisy[i].first.y(), optimized_positions[i].y()}, "g:");
         matplot::plot({optimized_positions[i].x()}, {optimized_positions[i].y()}, "go");
     }
 
@@ -259,7 +265,7 @@ int main()
     {
         for (std::size_t i = 0; i < dataset_noisy.size(); i++)
         {
-            // matplot::plot({dataset_noisy[i].first.x(), optimized_positions_eigen[i].x()}, {dataset_noisy[i].first.y(), optimized_positions_eigen[i].y()}, "b-");
+            matplot::plot({dataset_noisy[i].first.x(), optimized_positions_eigen[i].x()}, {dataset_noisy[i].first.y(), optimized_positions_eigen[i].y()}, "b:");
             matplot::plot({optimized_positions_eigen[i].x()}, {optimized_positions_eigen[i].y()}, "bo");
         }
     }
