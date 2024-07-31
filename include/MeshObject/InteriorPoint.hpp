@@ -64,6 +64,8 @@ private:
     std::size_t num_confirmed_faces = 0;
     bool is_confirmed_ = false;
 
+    bool can_self_destruct_ = true;
+
     int id_;
     std::shared_ptr<Storage> storage_;
 

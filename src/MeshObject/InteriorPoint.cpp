@@ -254,7 +254,7 @@ void InteriorPoint::disconnect(const std::shared_ptr<Surface>& surface)
     if (erased) surface->disconnect(shared_from_this());
 
     // self destruct
-    if (!deleting_ && surfaces_.empty()) storage_->delete_interior_point(shared_from_this());
+    if (!deleting_ && surfaces_.empty() && can_self_destruct_) storage_->delete_interior_point(shared_from_this());
 }
 
 void InteriorPoint::disconnect(const std::shared_ptr<InteriorPoint>& sibling_interior_point)
@@ -302,8 +302,10 @@ void InteriorPoint::swap(const std::shared_ptr<Surface>& surface1, const std::sh
     // if contains surfacce1
     if (surfaces_.find(surface1) != surfaces_.end())
     {
-        connect(surface2);
+        can_self_destruct_ = false;
         disconnect(surface1);
+        connect(surface2);
+        can_self_destruct_ = true;
 
         // cascade swap
         for (const std::shared_ptr<Face>& face : faces_)

@@ -644,13 +644,13 @@ bool Vertex::is_singular() const
 // swap surface1 with surface2
 void Vertex::swap(const std::shared_ptr<Surface>& surface1, const std::shared_ptr<Surface>& surface2)
 {
-    // if contains surfacce1
-    bool contains_surface1 = surfaces_.find(surface1) != surfaces_.end();
-    
-    if (contains_surface1)
+    // if contains surface1
+    if (surfaces_.find(surface1) != surfaces_.end())
     {
-        connect(surface2);
+        can_self_destruct_ = false;
         disconnect(surface1);
+        connect(surface2);
+        can_self_destruct_ = true;
 
         // cascade swap
         for (const std::shared_ptr<Edge>& edge : edges_)
