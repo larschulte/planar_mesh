@@ -558,20 +558,85 @@ void Vertex::review_surfaces()
         sibling->review_surfaces();
     }
 
-    // record sibling surface positional uncertainty
-    std::vector<double> sibling_surface_uncertainty_list;
+    // given correct uncertainty envelope computation, can assume no surface will overlap each other
+    // a point will only be connected to a surface if there is edge connecting to the surface
+    
+    // Currently
+    // if a point is connected to multiple high confidence matched surface, will delete the current positional uncertainty if not lowest.
+
+    // Proposed
+    // if point is in high uncertainty surface, check if can be merged into low uncertainty surface, if not, delete the point
+    // if can merged, merge into the low uncertainty surface
+
+    // Procedure
+    // 1. collected a list of all surfaces and positional uncertainty
+    // 2. sort so surface with smallest positional uncertainty is first
+    // 3. check if the current surface can merge with the first uncertainty surface, merge into it, break
+    // 4. if can't merge, check next surface that have smaller positional uncertainty
+    // 5. if there is a surface with smaller positional uncertainty, but the current larger positoinal uncertianty surface can't merge into any, delete this vertex
+
+    // get list of siblings and their surface uncertainty
+    std::vector<std::pair<std::shared_ptr<Vertex>, double>> sibling_surface_uncertainty_list;
     for (const std::shared_ptr<Vertex>& sibling : sibling_vertices_copy)
     {
         // skip if expired
         if (sibling->is_expired()) continue;
 
         // record
-        sibling_surface_uncertainty_list.push_back(sibling->get_current_surface_uncertainty());
+        sibling_surface_uncertainty_list.push_back(std::make_pair(sibling, sibling->get_current_surface_uncertainty()));
     }
 
-    // if any sibling have surface with lower positional uncertainty, delete this vertex
-    if (std::any_of(sibling_surface_uncertainty_list.begin(), sibling_surface_uncertainty_list.end(),
-            [&](double sibling_surface_uncertainty){ return sibling_surface_uncertainty < current_surface_uncertainty_; }))
+    // sort by surface uncertainty
+    std::sort(sibling_surface_uncertainty_list.begin(), sibling_surface_uncertainty_list.end(), 
+        [](const std::pair<std::shared_ptr<Vertex>, double>& a, const std::pair<std::shared_ptr<Vertex>, double>& b) { return a.second < b.second; });
+
+    // start from the smallest uncertainty, check if the current surface can merge into the sibling surface
+    bool exists_smaller_uncertainty = false;
+    bool merge_happened = false;
+    for (const auto& sibling_surface_uncertainty_pair : sibling_surface_uncertainty_list)
+    {
+        // extract
+        const std::shared_ptr<Vertex> sibling_vertex = sibling_surface_uncertainty_pair.first;
+        const std::shared_ptr<Surface> sibling_surface = sibling_surface_uncertainty_pair.first->get_surface();
+        double sibling_surface_uncertainty = sibling_surface_uncertainty_pair.second;
+
+        // skip if sibling surface have higher positional uncertainty than current one
+        if (sibling_surface_uncertainty > current_surface_uncertainty_) continue;
+        exists_smaller_uncertainty = true;
+        
+        // check if can merge
+        can_self_destruct_ = false;
+        disconnect(surface); // remove dupliate point before checking if can merge
+        bool can_merge = surface->can_merge(sibling_surface);
+        connect(surface);
+        can_self_destruct_ = true;
+
+        // merging
+        if (can_merge) 
+        {
+            // flag
+            merge_happened = true;
+
+            // ask edges to swap this vertex to the sibling
+            std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges_copy = edges_; // make a copy as the list will be modified during the swap
+            for (const std::shared_ptr<Edge>& edge : edges_copy) edge->swap(shared_from_this(), sibling_surface_uncertainty_pair.first);
+
+            // ask faces to swap this vertex to the sibling
+            std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces_copy = faces_; // make a copy as the list will be modified during the swap
+            for (const std::shared_ptr<Face>& face : faces_copy) face->swap(shared_from_this(), sibling_surface_uncertainty_pair.first);
+
+            // ask the sibling to swap surface to this surface
+            sibling_surface_uncertainty_pair.first->swap(sibling_surface, surface); // sibling_surface here is not a reference so no copy needed
+
+            // delete this vertex
+            storage_->delete_vertex(shared_from_this());
+
+            // break        
+            break;
+        }
+    }
+
+    if (exists_smaller_uncertainty && !merge_happened)
     {
         storage_->delete_vertex(shared_from_this());
     }
