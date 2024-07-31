@@ -387,6 +387,44 @@ bool Surface::is_abnormal()
     return true;
 }
 
+bool Surface::can_merge(const std::shared_ptr<Surface>& surface) const
+{
+    // check input
+    if (surface->is_expired()) throw std::runtime_error("Attempts to check mergeability with invalid surface.");
+
+    // get mean and covariance
+    Eigen::Vector3d mean1 = mean_;
+    Eigen::Matrix3d cov1 = covariance_;
+    int size1 = get_total_point_size();
+
+    Eigen::Vector3d mean2 = surface->get_mean();
+    Eigen::Matrix3d cov2 = surface->get_covariance();
+    int size2 = surface->get_total_point_size();
+
+    // combined mean and covariance
+    Eigen::Vector3d new_mean = merge_mean(mean1, mean2, size1, size2);
+    Eigen::Matrix3d new_cov = merge_covariance(cov1, cov2, mean1, mean2, size1, size2);
+
+    // compute normal
+    Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> solver(new_cov);
+    Eigen::Matrix3d new_eigenvectors = solver.eigenvectors();
+    Eigen::Vector3d new_normal = new_eigenvectors.col(0); // Assuming the smallest eigenvalue corresponds to the normal
+
+    // compute projective distance stats for the combined surface
+    std::vector<double> projective_distance_list;
+    for (const auto& vertex : vertices_)                            projective_distance_list.push_back((new_mean - vertex->get_position()).dot(new_normal) / vertex->get_direction().dot(new_normal));
+    for (const auto& interior_point : interior_points_)             projective_distance_list.push_back((new_mean - interior_point->get_position()).dot(new_normal) / interior_point->get_direction().dot(new_normal));
+    for (const auto& vertex : surface->vertices_)                   projective_distance_list.push_back((new_mean - vertex->get_position()).dot(new_normal) / vertex->get_direction().dot(new_normal));
+    for (const auto& interior_point : surface->interior_points_)    projective_distance_list.push_back((new_mean - interior_point->get_position()).dot(new_normal) / interior_point->get_direction().dot(new_normal));
+    double new_projective_std = compute_std(projective_distance_list);
+
+    // check if mergable
+    bool mergeable = new_projective_std < 0.8*settings_.range_noise_std;
+
+    // return
+    return mergeable;
+}
+
 void Surface::connect(const std::shared_ptr<Vertex>& vertex)
 {
     // check input
