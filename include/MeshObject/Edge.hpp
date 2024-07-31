@@ -39,6 +39,8 @@ public:
     void disconnect(const std::shared_ptr<Surface>& surface);
     void disconnect(const std::shared_ptr<Edge>& sibling_edge);
 
+    void swap(const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2);
+
     void update_confirmed_status();
     bool is_confirmed() const;
 
@@ -65,6 +67,8 @@ private:
     std::map<std::shared_ptr<Surface>, bool> is_boundary_map_;
     std::map<std::shared_ptr<Surface>, bool> is_singular_map_;
     std::map<std::shared_ptr<Surface>, bool> is_searchable_map_;
+
+    bool can_self_destruct_ = true;
 
     std::size_t num_confirmed_faces = 0;
     bool is_confirmed_ = false;

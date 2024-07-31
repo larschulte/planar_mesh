@@ -67,6 +67,8 @@ public:
     bool is_expired() const;
     bool is_abnormal();
 
+    bool can_merge(const std::shared_ptr<Surface>& surface) const;
+
     void connect(const std::shared_ptr<Vertex>& vertex);
     void connect(const std::shared_ptr<Edge>& edge);
     void connect(const std::shared_ptr<Face>& face);
@@ -75,6 +77,9 @@ public:
     void disconnect(const std::shared_ptr<Edge>& edge);
     void disconnect(const std::shared_ptr<Face>& face);
     void disconnect(const std::shared_ptr<InteriorPoint>& interior_point);
+
+    void swap(const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2);
+
     void set_random_color();
 
     bool connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& all_nearby_vertices);

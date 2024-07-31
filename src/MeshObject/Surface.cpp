@@ -698,6 +698,16 @@ void Surface::disconnect(const std::shared_ptr<InteriorPoint>& interior_point)
     if (erased) remove_point_from_surface_fitting(interior_point->get_position(), interior_point->get_origin());
 }
 
+void Surface::swap(const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2)
+{
+    // if contains vertex1
+    if (vertices_.find(vertex1) != vertices_.end())
+    {
+        disconnect(vertex1);
+        connect(vertex2);
+    }
+}
+
 void Surface::add_searchable_edge(const std::shared_ptr<Edge>& edge)
 {
     edge_bvh_.tree_add_edge(edge);

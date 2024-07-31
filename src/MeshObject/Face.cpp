@@ -317,7 +317,7 @@ void Face::disconnect(const std::shared_ptr<Vertex>& vertex)
     if (erased) vertex->disconnect(shared_from_this());
 
     // self destruct
-    if (!deleting_) storage_->delete_face(shared_from_this());
+    if (!deleting_ && can_self_destruct_) storage_->delete_face(shared_from_this());
 }
 
 void Face::disconnect(const std::shared_ptr<Edge>& edge)
@@ -368,6 +368,18 @@ void Face::disconnect(const std::shared_ptr<Face>& sibling_face)
     // delete
     bool erased = sibling_faces_.erase(sibling_face);
     if (erased) sibling_face->disconnect(shared_from_this());
+}
+
+void Face::swap(const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2)
+{
+    // if contains vertex1
+    if (vertices_.find(vertex1) != vertices_.end())
+    {
+        can_self_destruct_ = false;
+        disconnect(vertex1);
+        connect(vertex2);
+        can_self_destruct_ = true;
+    }
 }
 
 void Face::update_confirmed_status()

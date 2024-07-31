@@ -148,7 +148,7 @@ void Edge::disconnect(const std::shared_ptr<Vertex>& vertex)
     if (erased) vertex->disconnect(shared_from_this());
 
     // self destruct
-    if (!deleting_) storage_->delete_edge(shared_from_this());
+    if (!deleting_ && can_self_destruct_) storage_->delete_edge(shared_from_this());
 }
 
 void Edge::disconnect(const std::shared_ptr<Face>& face)
@@ -199,6 +199,17 @@ void Edge::disconnect(const std::shared_ptr<Edge>& sibling_edge)
     // disconnect
     bool erased = sibling_edges_.erase(sibling_edge);
     if (erased) sibling_edge->disconnect(shared_from_this());
+}
+
+void Edge::swap(const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2)
+{
+    if (vertices_.find(vertex1) != vertices_.end())
+    {
+        can_self_destruct_ = false;
+        disconnect(vertex1);
+        connect(vertex2);
+        can_self_destruct_ = true;
+    }
 }
 
 void Edge::update_confirmed_status()

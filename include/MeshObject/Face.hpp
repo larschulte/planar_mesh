@@ -45,6 +45,8 @@ public:
     void disconnect(const std::shared_ptr<InteriorPoint>& interior_point);
     void disconnect(const std::shared_ptr<Face>& sibling_face);
 
+    void swap(const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2);
+
     void update_confirmed_status();
     bool is_confirmed() const;
 
@@ -57,6 +59,8 @@ private:
     bool is_searchable_ = false;
     bool is_expired_ = true;
     bool is_confirmed_ = false;
+
+    bool can_self_destruct_ = true;
 
     int id_;
     std::shared_ptr<Storage> storage_;
