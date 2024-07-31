@@ -619,14 +619,14 @@ void Vertex::review_surfaces()
 
             // ask edges to swap this vertex to the sibling
             std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges_copy = edges_; // make a copy as the list will be modified during the swap
-            for (const std::shared_ptr<Edge>& edge : edges_copy) edge->swap(shared_from_this(), sibling_surface_uncertainty_pair.first);
+            for (const std::shared_ptr<Edge>& edge : edges_copy) edge->swap(shared_from_this(), sibling_vertex);
 
             // ask faces to swap this vertex to the sibling
             std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces_copy = faces_; // make a copy as the list will be modified during the swap
-            for (const std::shared_ptr<Face>& face : faces_copy) face->swap(shared_from_this(), sibling_surface_uncertainty_pair.first);
+            for (const std::shared_ptr<Face>& face : faces_copy) face->swap(shared_from_this(), sibling_vertex);
 
             // ask the sibling to swap surface to this surface
-            sibling_surface_uncertainty_pair.first->swap(sibling_surface, surface); // sibling_surface here is not a reference so no copy needed
+            sibling_vertex->swap(sibling_surface, surface); // sibling_surface here is not a reference so no copy needed
 
             // delete this vertex
             storage_->delete_vertex(shared_from_this());
