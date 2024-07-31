@@ -629,12 +629,16 @@ bool Vertex::is_singular(const std::shared_ptr<Surface>& surface) const
 
 bool Vertex::is_singular() const
 {
-    // singular if all singular
-    for (const auto& pair : is_singular_map_)
-    {
-        if (!pair.second) return false;
-    }
+    // not singular if connected to face
+    if (!faces_.empty()) return false;
     return true;
+
+    // // singular if all singular
+    // for (const auto& pair : is_singular_map_)
+    // {
+    //     if (!pair.second) return false;
+    // }
+    // return true;
 }
 
 // swap surface1 with surface2
