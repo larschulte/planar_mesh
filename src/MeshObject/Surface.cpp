@@ -753,6 +753,17 @@ void Surface::swap(const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr
     }
 }
 
+void Surface::pause_normal_std_update()
+{
+    update_normal_position_std_ = false;
+}
+
+void Surface::resume_normal_std_update()
+{
+    update_normal_position_std_ = true;
+    compute_surface_position_std_in_normal_direction();
+}
+
 void Surface::add_searchable_edge(const std::shared_ptr<Edge>& edge)
 {
     edge_bvh_.tree_add_edge(edge);
@@ -819,6 +830,8 @@ void Surface::add_point_to_surface_fitting(const Eigen::Vector3d& position, cons
     // if approximate normal is the same as last time, incrementally update the uncertianty envelope
     // if approximate normal is not the same as last time, recompute the uncertainty envelope all together
 
+    if (!update_normal_position_std_) return;
+
     // approximate_normal hash
     std::size_t hash = get_approximate_normal_hash();
 
@@ -881,6 +894,8 @@ void Surface::remove_point_from_surface_fitting(const Eigen::Vector3d& position,
     // update approximate uncertainty envelope
     // if approximate normal is the same as last time, incrementally update the uncertianty envelope
     // if approximate normal is not the same as last time, recompute the uncertainty envelope all together
+
+    if (!update_normal_position_std_) return;
 
     // approximate_normal hash
     std::size_t hash = get_approximate_normal_hash();

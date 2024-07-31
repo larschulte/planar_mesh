@@ -79,6 +79,8 @@ public:
     void disconnect(const std::shared_ptr<InteriorPoint>& interior_point);
 
     void swap(const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2);
+    void pause_normal_std_update();
+    void resume_normal_std_update();
 
     void set_random_color();
 
@@ -100,6 +102,8 @@ private:
 
     bool deleting_ = false;
     bool is_expired_ = true;
+
+    bool update_normal_position_std_ = true;
 
     EdgeBVH edge_bvh_;
 

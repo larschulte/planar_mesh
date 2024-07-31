@@ -626,7 +626,11 @@ void Vertex::review_surfaces()
             for (const std::shared_ptr<Face>& face : faces_copy) face->swap(shared_from_this(), sibling_vertex);
 
             // ask the sibling to swap surface to this surface
+            sibling_surface->pause_normal_std_update();
+            surface->pause_normal_std_update();
             sibling_vertex->swap(sibling_surface, surface); // sibling_surface here is not a reference so no copy needed
+            sibling_surface->resume_normal_std_update();
+            surface->resume_normal_std_update();
 
             // delete this vertex
             storage_->delete_vertex(shared_from_this());
