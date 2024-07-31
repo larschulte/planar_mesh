@@ -389,6 +389,13 @@ bool Surface::is_abnormal()
 
 bool Surface::can_merge(const std::shared_ptr<Surface>& surface) const
 {
+    // should use the abnormal surface test        
+    // collect all points in this surface and all points in the other surface, 
+    // compute the covariance matrix, 
+    // decompose to find the normal, compute the projective distance.
+    // compute stats of projective distance, 
+    // if not abnormal, means can merge
+
     // check input
     if (surface->is_expired()) throw std::runtime_error("Attempts to check mergeability with invalid surface.");
 
@@ -419,7 +426,7 @@ bool Surface::can_merge(const std::shared_ptr<Surface>& surface) const
     double new_projective_std = compute_std(projective_distance_list);
 
     // check if mergable
-    bool mergeable = new_projective_std < 0.8*settings_.range_noise_std;
+    bool mergeable = new_projective_std < 1.0*settings_.range_noise_std;
 
     // return
     return mergeable;
