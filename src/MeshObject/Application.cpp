@@ -313,10 +313,13 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
         }
     }
 
-    // review the new vertex (start the chain from the first vertex)
-    if (sibling_vertices.size() > 0)
+    // review the new vertex
+    for (std::shared_ptr<Vertex> vertex : sibling_vertices)
     {
-        sibling_vertices[0]->review_surfaces();
+        // skip if the vertex is expired
+        if (vertex->is_expired()) continue;
+
+        vertex->review_surfaces();
     }
 
     // recompute sibling vertices
