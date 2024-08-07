@@ -39,9 +39,6 @@ public:
     double compute_point_projective_distance(const std::shared_ptr<Vertex>& vertex) const;
     double compute_point_projective_distance_with_improved_covariance(const Eigen::Vector3d& origin, const Eigen::Vector3d& point) const;
     Eigen::Vector3d compute_point_projective_position(const Eigen::Vector3d& origin, const Eigen::Vector3d& point) const;
-    
-    std::size_t get_surface_composition_hash() const;
-    void update_surface_composition_hash();
 
     RelativePosition check_relative_position(const Eigen::Vector3d& origin, const Eigen::Vector3d& point, const Eigen::Vector3d& direction);
     RelativePosition check_relative_position(const std::shared_ptr<GenericPoint>& generic_point);

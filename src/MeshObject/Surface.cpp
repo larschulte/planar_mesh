@@ -139,31 +139,6 @@ Eigen::Vector3d Surface::compute_point_projective_position(const Eigen::Vector3d
     return intersection;
 }
 
-std::size_t Surface::get_surface_composition_hash() const
-{
-    return composition_hash_;
-}
-
-void Surface::update_surface_composition_hash()
-{
-    // may collide as both vertex and interior point have id starting from 0
-
-    // initialize
-    composition_hash_ = 0;
-
-    // add vertices
-    for (const auto& vertex : vertices_)
-    {
-        composition_hash_ += MeshObjectHash{}(vertex);
-    }
-
-    // add interior points
-    for (const auto& interior_point : interior_points_)
-    {
-        composition_hash_ += MeshObjectHash{}(interior_point);
-    }
-}
-
 RelativePosition Surface::check_relative_position(const Eigen::Vector3d& origin, const Eigen::Vector3d& point, const Eigen::Vector3d& direction)
 {
     // compute
@@ -441,7 +416,6 @@ void Surface::connect(const std::shared_ptr<Vertex>& vertex)
     if (vertices_.insert(vertex).second)
     {
         dataset.push_back(std::make_pair(vertex->get_origin(), vertex->get_position()));
-        update_surface_composition_hash();
 
         vertex->connect(shared_from_this());
         add_point_to_surface_fitting(vertex->get_position(), vertex->get_origin());
@@ -686,7 +660,6 @@ void Surface::connect(const std::shared_ptr<InteriorPoint>& interior_point)
     // connect
     bool inserted = interior_points_.insert(interior_point).second;
     if (inserted) dataset.push_back(std::make_pair(interior_point->get_origin(), interior_point->get_position()));
-    if (inserted) update_surface_composition_hash();
     if (inserted) interior_point->connect(shared_from_this());
 
     // update surface fitting
@@ -701,7 +674,6 @@ void Surface::disconnect(const std::shared_ptr<Vertex>& vertex)
     // disconnect
     bool erased = vertices_.erase(vertex);
     if (erased) dataset.erase(std::remove(dataset.begin(), dataset.end(), std::make_pair(vertex->get_origin(), vertex->get_position())), dataset.end());
-    if (erased) update_surface_composition_hash();
     if (erased) vertex->disconnect(shared_from_this());
 
     // remove from surface fitting
@@ -736,7 +708,6 @@ void Surface::disconnect(const std::shared_ptr<InteriorPoint>& interior_point)
     // disconnect
     bool erased = interior_points_.erase(interior_point);
     if (erased) dataset.erase(std::remove(dataset.begin(), dataset.end(), std::make_pair(interior_point->get_origin(), interior_point->get_position())), dataset.end());
-    if (erased) update_surface_composition_hash();
     if (erased) interior_point->disconnect(shared_from_this());
 
     // remove from surface fitting
