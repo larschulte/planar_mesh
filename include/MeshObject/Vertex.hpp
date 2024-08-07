@@ -66,6 +66,7 @@ public:
     void disconnect(const std::shared_ptr<Vertex>& sibling_vertex);
 
     void review_surfaces();
+    bool is_under_review() const;
 
     void update_confirmed_status();
     void update_singular_state(const std::shared_ptr<Surface>& surface);

@@ -554,6 +554,9 @@ void Vertex::review_surfaces()
         // skip if expired
         if (sibling->is_expired()) continue; // some sibling vertex may be expired during previous review 
 
+        // skip if sibling is already under review
+        if (sibling->is_under_review()) continue;
+
         // review
         sibling->review_surfaces();
     }
@@ -648,6 +651,11 @@ void Vertex::review_surfaces()
     // return
     under_review_ = false;
     return;
+}
+
+bool Vertex::is_under_review() const
+{
+    return under_review_;
 }
 
 void Vertex::update_confirmed_status()
