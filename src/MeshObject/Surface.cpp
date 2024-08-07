@@ -415,8 +415,6 @@ void Surface::connect(const std::shared_ptr<Vertex>& vertex)
     // connect
     if (vertices_.insert(vertex).second)
     {
-        dataset.push_back(std::make_pair(vertex->get_origin(), vertex->get_position()));
-
         vertex->connect(shared_from_this());
         add_point_to_surface_fitting(vertex->get_position(), vertex->get_origin());
     }
@@ -659,7 +657,6 @@ void Surface::connect(const std::shared_ptr<InteriorPoint>& interior_point)
 
     // connect
     bool inserted = interior_points_.insert(interior_point).second;
-    if (inserted) dataset.push_back(std::make_pair(interior_point->get_origin(), interior_point->get_position()));
     if (inserted) interior_point->connect(shared_from_this());
 
     // update surface fitting
@@ -673,7 +670,6 @@ void Surface::disconnect(const std::shared_ptr<Vertex>& vertex)
 
     // disconnect
     bool erased = vertices_.erase(vertex);
-    if (erased) dataset.erase(std::remove(dataset.begin(), dataset.end(), std::make_pair(vertex->get_origin(), vertex->get_position())), dataset.end());
     if (erased) vertex->disconnect(shared_from_this());
 
     // remove from surface fitting
@@ -707,7 +703,6 @@ void Surface::disconnect(const std::shared_ptr<InteriorPoint>& interior_point)
 
     // disconnect
     bool erased = interior_points_.erase(interior_point);
-    if (erased) dataset.erase(std::remove(dataset.begin(), dataset.end(), std::make_pair(interior_point->get_origin(), interior_point->get_position())), dataset.end());
     if (erased) interior_point->disconnect(shared_from_this());
 
     // remove from surface fitting
@@ -908,6 +903,18 @@ void Surface::optimize_surface_normal()
     // FIT PLANE
     double bearing_noise = 0.01;
     double range_noise = 0.01;
+
+    // generate dataset
+    std::vector<std::pair<Eigen::Vector3d, Eigen::Vector3d>> dataset;
+    for (const auto& vertex : vertices_)
+    {
+        dataset.push_back(std::make_pair(vertex->get_origin(), vertex->get_position()));
+    }
+    for (const auto& interior_point : interior_points_)
+    {
+        dataset.push_back(std::make_pair(interior_point->get_origin(), interior_point->get_position()));
+    }
+
     fit_plane_to_points(dataset, mean_, normal_, bearing_noise, range_noise);
 }
 

@@ -122,8 +122,6 @@ private:
     Eigen::Vector3d eigenvalues_;
     Eigen::Vector3d normal_;
 
-    std::vector<std::pair<Eigen::Vector3d, Eigen::Vector3d>> dataset;
-
     std::vector<double> stored_projective_distance_stats_;
     std::vector<double> stored_point_to_plane_distance_stats_;
     std::size_t previous_total_point_size_for_projective_;
