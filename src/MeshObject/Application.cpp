@@ -296,7 +296,7 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
     }
     std::cout << ">> grouped into " << neighboring_surfaces.size() << " neighboring surfaces" << std::endl;
 
-    // add to all neighboring surfaces, then do a review
+    // add to all neighboring surfaces, including a new seed, then do a review
     for (std::shared_ptr<Surface> surface : neighboring_surfaces)
     {
         std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(generic_point);
@@ -309,9 +309,17 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
         }
         else
         {
+            storage_->disallow_creation_of_generic_point();
             storage_->delete_vertex(new_vertex);
+            storage_->allow_creation_of_generic_point();
         }
     }
+    // start a new seed
+    std::shared_ptr<Surface> new_surface = storage_->add_surface();
+    std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(generic_point);
+    new_surface->connect(new_vertex);
+    sibling_vertices.push_back(new_vertex);
+    sibling_vertices[0]->connect(new_vertex);
 
     // review the new vertex
     for (std::shared_ptr<Vertex> vertex : sibling_vertices)
@@ -322,28 +330,28 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
         vertex->review_surfaces();
     }
 
-    // recompute sibling vertices
-    std::vector<std::shared_ptr<Vertex>> sibling_vertices_copy = sibling_vertices;
-    sibling_vertices.clear();
-    for (std::shared_ptr<Vertex> vertex : sibling_vertices_copy)
-    {
-        // skip if the vertex is expired
-        if (vertex->is_expired()) continue;
+    // // recompute sibling vertices
+    // std::vector<std::shared_ptr<Vertex>> sibling_vertices_copy = sibling_vertices;
+    // sibling_vertices.clear();
+    // for (std::shared_ptr<Vertex> vertex : sibling_vertices_copy)
+    // {
+    //     // skip if the vertex is expired
+    //     if (vertex->is_expired()) continue;
 
-        sibling_vertices.push_back(vertex);
-    }
+    //     sibling_vertices.push_back(vertex);
+    // }
 
-    // if new vertex not in matched surface
-    bool new_vertex_not_in_matched_surface = sibling_vertices.size() == 0;
-    if (new_vertex_not_in_matched_surface)
-    {
-        // start a new seed
-        std::shared_ptr<Surface> new_surface = storage_->add_surface();
-        std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(generic_point);
-        new_surface->connect(new_vertex);
-        sibling_vertices.push_back(new_vertex);
-        sibling_vertices[0]->connect(new_vertex);
-    }
+    // // if new vertex not in matched surface
+    // bool new_vertex_not_in_matched_surface = sibling_vertices.size() == 0;
+    // if (new_vertex_not_in_matched_surface)
+    // {
+    //     // start a new seed
+    //     std::shared_ptr<Surface> new_surface = storage_->add_surface();
+    //     std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(generic_point);
+    //     new_surface->connect(new_vertex);
+    //     sibling_vertices.push_back(new_vertex);
+    //     sibling_vertices[0]->connect(new_vertex);
+    // }
 
     // // if new_vertex is in multiple surfaces, try merge them
     // if (new_vertex->get_surfaces().size() > 1)
