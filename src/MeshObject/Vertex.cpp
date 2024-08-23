@@ -879,6 +879,6 @@ bool operator==(const std::shared_ptr<Vertex>& lhs, const std::shared_ptr<Vertex
 {
     if (!lhs && !rhs) return true; // true if both are nullptr
     if (!lhs || !rhs) return false; // false if either is nullptr
-    if (lhs->is_expired() || rhs->is_expired()) throw std::runtime_error("Comparing expired edges");
+    if (lhs->is_expired() || rhs->is_expired()) throw std::runtime_error("Comparing expired vertices");
     return lhs->get_id() == rhs->get_id();
 }
