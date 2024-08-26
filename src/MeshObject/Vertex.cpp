@@ -82,7 +82,7 @@ void Vertex::delete_()
     num_deletes_++;
 
     // only create penetrated point / generic point if sibling is empty
-    if (sibling_vertices_.empty() && storage_->can_create_generic_point())
+    if (sibling_vertices_.empty() && storage_->can_create_generic_point() && can_create_generic_point_)
     {
         if (storage_->has_penetrating_point())
         {
@@ -828,6 +828,11 @@ void Vertex::print_info()
     std::cout << std::endl;
     std::cout << "Searchable state: " << is_searchable_ << std::endl;
     std::cout << "Expired: " << is_expired_ << std::endl;
+}
+
+void Vertex::can_create_generic_point(bool state)
+{
+    can_create_generic_point_ = state;
 }
 
 void Vertex::set_reverse_radius_search_radius(double radius)

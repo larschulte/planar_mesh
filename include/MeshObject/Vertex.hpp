@@ -84,6 +84,8 @@ public:
 
     void print_info();
 
+    void can_create_generic_point(bool can_create);
+
 public: // for reverse radius search
     void set_reverse_radius_search_radius(double radius);
     void reduce_reverse_radius_search_radius(double radius);
@@ -108,6 +110,7 @@ private:
     bool is_expired_ = true;
     std::map<std::shared_ptr<Surface>, bool> is_singular_map_;
     bool can_self_destruct_ = true;
+    bool can_create_generic_point_ = true;
     double current_surface_uncertainty_;
 
     std::size_t num_deletes_;
