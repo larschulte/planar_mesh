@@ -152,14 +152,7 @@ RelativePosition Surface::check_relative_position(const Eigen::Vector3d& origin,
 
     // distance is positive when in front of the surface
     // modify projective_distance
-    if (std::fabs(projective_distance) < settings_.range_accuracy) 
-    {
-        projective_distance = 0;
-    }
-    else
-    {
-        projective_distance = projective_distance - sign(projective_distance) * settings_.range_accuracy;
-    }
+    projective_distance = sign(projective_distance) * std::max(0.0, std::fabs(projective_distance) - settings_.range_accuracy);
 
     double threshold_in_front = 3.0 * new_std;
     double threshold_behind = - 3.0 * new_std;
