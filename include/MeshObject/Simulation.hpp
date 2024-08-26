@@ -7,7 +7,7 @@ public:
     Simulation();
 
     void set_object(int id);
-    void set_noise(double noise_std);
+    void set_noise(double range_precision, double range_accuracy);
     void get_data_pair(Eigen::Vector3d& origin, Eigen::Vector3d& position);
     void get_cube_data_pair(Eigen::Vector3d& origin, Eigen::Vector3d& position);
     void get_plane_data_pair(Eigen::Vector3d& origin, Eigen::Vector3d& position);
@@ -16,5 +16,6 @@ public:
 
 private:
     int id_;
-    double noise_std_;
+    double range_precision_;
+    double range_accuracy_;
 };
