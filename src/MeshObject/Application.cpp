@@ -781,7 +781,7 @@ void Application<PointT>::refine_surfaces()
     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> copy_of_surfaces = storage_->get_surfaces();
     for (const std::shared_ptr<Surface>& surface : copy_of_surfaces)
     {
-        surface->refine_surface();
+        surface->remove_unmatched_points();
     }
     std::cout << "number of generic points after refine: " << storage_->get_generic_points().size() << std::endl;
 }
