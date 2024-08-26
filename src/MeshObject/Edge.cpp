@@ -114,6 +114,7 @@ void Edge::connect(const std::shared_ptr<Surface>& surface)
     if (inserted) is_searchable_map_[surface] = false;
     if (inserted) is_boundary_map_[surface] = false;
     if (inserted) is_singular_map_[surface] = true;
+    if (inserted) update_singular_state(surface);
     if (inserted) update_boundary_state(surface);
 }
 
