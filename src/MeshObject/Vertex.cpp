@@ -196,6 +196,11 @@ const std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& Vertex::get_edg
     return edges_; 
 }
 
+const std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& Vertex::get_faces() const 
+{ 
+    return faces_; 
+}
+
 const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& Vertex::get_sibling_vertices() const 
 { 
     return sibling_vertices_; 
