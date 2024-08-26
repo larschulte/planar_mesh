@@ -724,6 +724,8 @@ void Vertex::swap(const std::shared_ptr<Surface>& surface1, const std::shared_pt
     // if contains surface1
     if (surfaces_.find(surface1) != surfaces_.end())
     {
+        // std::cout << "Swapping vertex " << id_ << " surface " << surface1->get_id() << " with surface " << surface2->get_id() << std::endl;
+
         can_self_destruct_ = false;
         disconnect(surface1);
         connect(surface2);

@@ -375,6 +375,8 @@ void Face::swap(const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Ve
     // if contains vertex1
     if (vertices_.find(vertex1) != vertices_.end())
     {
+        // std::cout << "Swapping face " << id_ << " vertex " << vertex1->get_id() << " with vertex " << vertex2->get_id() << std::endl;
+
         can_self_destruct_ = false;
         disconnect(vertex1);
         connect(vertex2);
@@ -417,6 +419,8 @@ void Face::swap(const std::shared_ptr<Surface>& surface1, const std::shared_ptr<
     // if contains surfacce1    
     if (surfaces_.find(surface1) != surfaces_.end())
     {
+        // std::cout << "Swapping face " << id_ << " surface " << surface1->get_id() << " with surface " << surface2->get_id() << std::endl;
+
         can_self_destruct_ = false;
         disconnect(surface1);
         connect(surface2);
