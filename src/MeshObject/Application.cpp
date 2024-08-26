@@ -299,11 +299,12 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
     // add to all neighboring surfaces, including a new seed, then do a review
     for (std::shared_ptr<Surface> surface : neighboring_surfaces)
     {
+        std::cout << ">> neighboring surface " << surface->get_id() << std::endl;
+
         std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(generic_point);
         bool connected = surface->connect_by_edges_and_faces(new_vertex, neighboring_vertices);
         if (connected)
-        {
-            std::cout << ">> neighboring surface " << surface->get_id() << std::endl;
+        {    
             sibling_vertices.push_back(new_vertex);
             sibling_vertices[0]->connect(new_vertex);
         }
@@ -322,6 +323,7 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
     sibling_vertices[0]->connect(new_vertex);
 
     // review the new vertex
+    std::cout << ">> reviewing new vertices" << std::endl;
     for (std::shared_ptr<Vertex> vertex : sibling_vertices)
     {
         // skip if the vertex is expired

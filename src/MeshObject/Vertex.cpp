@@ -488,6 +488,8 @@ void Vertex::review_surfaces()
     if (under_review_) return;
     under_review_ = true;
 
+    std::cout << "reviewing vertex " << id_ << std::endl;
+
     // delete if surface is high confidence and mismatched
     std::shared_ptr<Surface> surface = get_surface();
 
@@ -554,6 +556,7 @@ void Vertex::review_surfaces()
 
     // ask siblings to review themselves
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> sibling_vertices_copy = sibling_vertices_;
+    std::cout << ">> Reviewing sibling vertices" << std::endl;
     for (const std::shared_ptr<Vertex>& sibling : sibling_vertices_copy)
     {
         // skip if expired
@@ -565,6 +568,8 @@ void Vertex::review_surfaces()
         // review
         sibling->review_surfaces();
     }
+    std::cout << ">> Finished reviewing sibling vertices" << std::endl;
+
 
     // given correct uncertainty envelope computation, can assume no surface will overlap each other
     // a point will only be connected to a surface if there is edge connecting to the surface
@@ -622,6 +627,8 @@ void Vertex::review_surfaces()
         // merging
         if (can_merge) 
         {
+            std::cout << ">> Merging between current vertex " << id_ << " with surface " << surface->get_id() << " and sibling vertex " << sibling_vertex->get_id() << " with surface " << sibling_surface->get_id() << std::endl;
+
             // flag
             merge_happened = true;
 
