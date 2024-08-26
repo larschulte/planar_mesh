@@ -566,10 +566,14 @@ void Vertex::review_surfaces()
         if (sibling->is_under_review()) continue;
 
         // review
+        sibling->can_create_generic_point(false);
         sibling->review_surfaces();
+        sibling->can_create_generic_point(true);
     }
     std::cout << ">> Finished reviewing sibling vertices" << std::endl;
 
+    // skip if current one is expired during sibling review
+    if (is_expired()) return;
 
     // given correct uncertainty envelope computation, can assume no surface will overlap each other
     // a point will only be connected to a surface if there is edge connecting to the surface
@@ -632,23 +636,22 @@ void Vertex::review_surfaces()
             // flag
             merge_happened = true;
 
-            // ask edges to swap this vertex to the sibling
-            std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges_copy = edges_; // make a copy as the list will be modified during the swap
-            for (const std::shared_ptr<Edge>& edge : edges_copy) edge->swap(shared_from_this(), sibling_vertex);
+            // swap sibling edges and faces to connect to this vertex
+            std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces_copy = sibling_vertex->get_faces();
+            for (const std::shared_ptr<Face>& face : faces_copy) face->swap(sibling_vertex, shared_from_this());            
+            std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges_copy = sibling_vertex->get_edges();
+            for (const std::shared_ptr<Edge>& edge : edges_copy) edge->swap(sibling_vertex, shared_from_this());
 
-            // ask faces to swap this vertex to the sibling
-            std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces_copy = faces_; // make a copy as the list will be modified during the swap
-            for (const std::shared_ptr<Face>& face : faces_copy) face->swap(shared_from_this(), sibling_vertex);
+            // delete sibling vertex
+            storage_->delete_vertex(sibling_vertex);
 
-            // ask the sibling to swap surface to this surface
+            // propogate surface to the newly connected edges and faces
             sibling_surface->pause_normal_std_update();
             surface->pause_normal_std_update();
-            sibling_vertex->swap(sibling_surface, surface); // sibling_surface here is not a reference so no copy needed
+            for (const std::shared_ptr<Face>& face : faces_copy) face->swap(sibling_surface, surface); // swap faces first, as edges depends on faces to update singular state
+            for (const std::shared_ptr<Edge>& edge : edges_copy) edge->swap(sibling_surface, surface);
             sibling_surface->resume_normal_std_update();
             surface->resume_normal_std_update();
-
-            // delete this vertex
-            storage_->delete_vertex(shared_from_this());
 
             // break        
             break;
