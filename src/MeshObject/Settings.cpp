@@ -42,6 +42,9 @@ Settings::Settings()
     pointcloud_fraction = 1;
     radius_value = 2;
     radius_ratio = tan(4 * M_PI / 180);
+
+    abnormal_size = 1.5;
+    envelope_size = 3.5;
     
     // interactive viewer settings
     show_generic_points = true;

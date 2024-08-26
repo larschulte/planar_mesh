@@ -154,8 +154,8 @@ RelativePosition Surface::check_relative_position(const Eigen::Vector3d& origin,
     // modify projective_distance
     projective_distance = sign(projective_distance) * std::max(0.0, std::fabs(projective_distance) - settings_.range_accuracy);
 
-    double threshold_in_front = 3.0 * new_std;
-    double threshold_behind = - 3.0 * new_std;
+    double threshold_in_front = settings_.envelope_size * new_std;
+    double threshold_behind = - settings_.envelope_size * new_std;
 
     // check
     bool points_in_front_of_surface = projective_distance > threshold_in_front;

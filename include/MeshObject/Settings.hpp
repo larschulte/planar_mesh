@@ -22,6 +22,9 @@ struct Settings
     double radius_value;
     double radius_ratio; // distance to radius ratio
 
+    double abnormal_size; // number of std
+    double envelope_size; // number of std
+
     // interactive viewer settings
     bool show_generic_points;
     bool show_interior_points;
