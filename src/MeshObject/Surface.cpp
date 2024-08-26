@@ -437,10 +437,23 @@ bool Surface::can_merge(const std::shared_ptr<Surface>& surface) const
     for (const auto& interior_point : interior_points_)             projective_distance_list.push_back((new_mean - interior_point->get_position()).dot(new_normal) / interior_point->get_direction().dot(new_normal));
     for (const auto& vertex : surface->vertices_)                   projective_distance_list.push_back((new_mean - vertex->get_position()).dot(new_normal) / vertex->get_direction().dot(new_normal));
     for (const auto& interior_point : surface->interior_points_)    projective_distance_list.push_back((new_mean - interior_point->get_position()).dot(new_normal) / interior_point->get_direction().dot(new_normal));
-    double new_projective_std = compute_std(projective_distance_list);
+
+    // subtract accuracy from each distance
+    std::vector<double> projective_distance_list_modified = projective_distance_list;
+    for (double& distance : projective_distance_list_modified) 
+    {
+        distance = sign(distance) * std::max(0.0, std::fabs(distance) - settings_.range_accuracy);
+    }
+
+    double new_projective_std = compute_std(projective_distance_list_modified);
 
     // check if mergable
-    bool mergeable = new_projective_std < 1.0*settings_.range_noise_std;
+    bool mergeable = new_projective_std <= settings_.range_precision;
+    if (!mergeable)
+    {
+        std::cout << "Surface " << id_ << " with " << get_total_point_size() << " points and surface " << surface->get_id() << " with " << surface->get_total_point_size() << " points are not mergable." << std::endl;
+        std::cout << "New projective std: " << new_projective_std << std::endl;
+    }
 
     // return
     return mergeable;
