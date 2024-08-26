@@ -73,6 +73,7 @@ public:
     bool is_singular() const;
     
     void swap(const std::shared_ptr<Surface>& surface1, const std::shared_ptr<Surface>& surface2);
+    void absorbs(const std::shared_ptr<Vertex>& input_vertex);
 
     void update_boundary_state();
     void update_searchable_state();

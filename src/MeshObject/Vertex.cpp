@@ -617,24 +617,19 @@ void Vertex::review_surfaces()
             // flag
             merge_happened = true;
 
-            // swap sibling edges and faces to connect to this vertex
-            std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces_copy = sibling_vertex->get_faces();
-            for (const std::shared_ptr<Face>& face : faces_copy) face->swap(sibling_vertex, shared_from_this());            
-            std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges_copy = sibling_vertex->get_edges();
-            for (const std::shared_ptr<Edge>& edge : edges_copy) edge->swap(sibling_vertex, shared_from_this());
+            // merge (the smaller one is absorbed by the larger one)
+            if (sibling_surface->get_total_point_size() <= surface_->get_total_point_size())
+            {
+                absorbs(sibling_vertex);
+                storage_->delete_vertex(sibling_vertex);
+            }
+            else
+            {
+                sibling_vertex->absorbs(shared_from_this());
+                storage_->delete_vertex(shared_from_this());
+            }
 
-            // delete sibling vertex
-            storage_->delete_vertex(sibling_vertex);
-
-            // propogate surface to the newly connected edges and faces
-            sibling_surface->pause_normal_std_update();
-            surface->pause_normal_std_update();
-            for (const std::shared_ptr<Face>& face : faces_copy) face->swap(sibling_surface, surface); // swap faces first, as edges depends on faces to update singular state
-            for (const std::shared_ptr<Edge>& edge : edges_copy) edge->swap(sibling_surface, surface);
-            sibling_surface->resume_normal_std_update();
-            surface->resume_normal_std_update();
-
-            // break        
+            // break
             break;
         }
     }
@@ -711,6 +706,21 @@ void Vertex::swap(const std::shared_ptr<Surface>& surface1, const std::shared_pt
             face->swap(surface1, surface2);
         }
     }
+}
+
+// replace this vertex with the input vertex
+void Vertex::absorbs(const std::shared_ptr<Vertex>& input_vertex)
+{
+    // change input_vertex's surface to this vertex's surface
+    std::shared_ptr<Surface> current_surface = input_vertex->get_surface();
+    std::shared_ptr<Surface> new_surface = surface_;
+    input_vertex->swap(current_surface, new_surface);
+
+    // make input_vertex's edges and faces connect to this vertex
+    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces_copy = input_vertex->get_faces();
+    std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges_copy = input_vertex->get_edges();
+    for (const std::shared_ptr<Face>& face : faces_copy) face->swap(input_vertex, shared_from_this());            
+    for (const std::shared_ptr<Edge>& edge : edges_copy) edge->swap(input_vertex, shared_from_this());
 }
 
 void Vertex::update_boundary_state()
