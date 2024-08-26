@@ -382,16 +382,26 @@ bool Surface::is_expired() const
     return is_expired_;
 }
 
+// decide wheather to remove this surface completely
 bool Surface::is_abnormal()
 {
     // not abnormal if low confidence surface
     if (get_total_point_size() < settings_.fit_plane_threshold) return false;
 
     // not abnormal if within range
-    if (compute_std(get_projective_distance_stats()) < 1.5*settings_.range_noise_std) return false;
-        
-    // return
-    return true;
+    std::vector <double> projective_distance_stats = get_projective_distance_stats();
+    // subtract accuracy from each distance
+    std::vector<double> projective_distance_stats_modified = projective_distance_stats;
+    for (double& distance : projective_distance_stats_modified) 
+    {
+        distance = sign(distance) * std::max(0.0, std::fabs(distance) - settings_.range_accuracy);
+    }
+
+    double new_projective_std = compute_std(projective_distance_stats_modified);
+
+    // check if abnormal
+    bool abnormal = new_projective_std > settings_.abnormal_size * settings_.range_precision;
+    return abnormal;
 }
 
 bool Surface::can_merge(const std::shared_ptr<Surface>& surface) const
