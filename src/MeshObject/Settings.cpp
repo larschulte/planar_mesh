@@ -29,7 +29,10 @@ Settings::Settings()
 
     use_sim_data = false;
     sim_object = 0;
-    noise_std = 0.01;
+    range_precision = 0.005;
+    range_accuracy = 0.01; 
+    // range_precision = 0.01;
+    // range_accuracy = 0true.01;
     
     start_cloud = 50;
     start_point = 0;
@@ -39,7 +42,6 @@ Settings::Settings()
     pointcloud_fraction = 1;
     radius_value = 2;
     radius_ratio = tan(4 * M_PI / 180);
-    range_noise_std = 1.5*noise_std;
     
     // interactive viewer settings
     show_generic_points = true;

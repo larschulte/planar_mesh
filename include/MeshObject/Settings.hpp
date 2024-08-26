@@ -9,7 +9,8 @@ struct Settings
     // application settings
     bool use_sim_data;
     int sim_object;
-    double noise_std;
+    double range_precision;
+    double range_accuracy;
     std::string cloud_path;
     std::string pose_path;
     int start_cloud;
@@ -20,7 +21,6 @@ struct Settings
     double pointcloud_fraction;
     double radius_value;
     double radius_ratio; // distance to radius ratio
-    double range_noise_std;
 
     // interactive viewer settings
     bool show_generic_points;

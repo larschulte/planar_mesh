@@ -147,8 +147,26 @@ RelativePosition Surface::check_relative_position(const Eigen::Vector3d& origin,
     double surface_position_std = get_surface_position_std_in_normal_direction();
     double surface_projective_std = surface_position_std / std::fabs(normal_.dot(direction));
 
-    bool points_in_front_of_surface = projective_distance > 3 * (settings_.range_noise_std + surface_projective_std);
-    bool points_behind_surface = projective_distance < - 3 * (settings_.range_noise_std + surface_projective_std);
+    // given projective_distance and surface_projective_std and range_precision and range_accuracy
+    double new_std = std::sqrt(surface_projective_std * surface_projective_std + settings_.range_precision * settings_.range_precision);
+
+    // distance is positive when in front of the surface
+    // modify projective_distance
+    if (std::fabs(projective_distance) < settings_.range_accuracy) 
+    {
+        projective_distance = 0;
+    }
+    else
+    {
+        projective_distance = projective_distance - sign(projective_distance) * settings_.range_accuracy;
+    }
+
+    double threshold_in_front = 3.0 * new_std;
+    double threshold_behind = - 3.0 * new_std;
+
+    // check
+    bool points_in_front_of_surface = projective_distance > threshold_in_front;
+    bool points_behind_surface = projective_distance < threshold_behind;
     bool points_within_surface = !points_in_front_of_surface && !points_behind_surface;
 
     // return
@@ -165,41 +183,62 @@ RelativePosition Surface::check_relative_position(const std::shared_ptr<GenericP
 
 RelativePosition Surface::check_relative_position(const std::shared_ptr<Vertex>& vertex)
 {
-    // compute
-    double projective_distance = vertex->buffer_compute_projected_distance(shared_from_this());
-
-    double surface_position_std = get_surface_position_std_in_normal_direction();
-    double surface_projective_std = surface_position_std / std::fabs(normal_.dot(vertex->get_direction()));
-
-    bool points_in_front_of_surface = projective_distance > 3 * (settings_.range_noise_std + surface_projective_std);
-    bool points_behind_surface = projective_distance < - 3 * (settings_.range_noise_std + surface_projective_std);
-    bool points_within_surface = !points_in_front_of_surface && !points_behind_surface;
-
-    // return
-    if (points_in_front_of_surface) return RelativePosition::IN_FRONT;
-    else if (points_behind_surface) return RelativePosition::BEHIND;
-    else if (points_within_surface) return RelativePosition::WITHIN;
-    else throw std::runtime_error("Invalid relative position.");
+    return check_relative_position(vertex->get_origin(), vertex->get_position(), vertex->get_direction());
 }
+
+// RelativePosition Surface::check_relative_position(const std::shared_ptr<Vertex>& vertex)
+// {
+//     // compute
+//     // double projective_distance = vertex->buffer_compute_projected_distance(shared_from_this());
+//     double projective_distance = compute_point_projective_distance(vertex);
+
+//     double surface_position_std = get_surface_position_std_in_normal_direction();
+//     double surface_projective_std = surface_position_std / std::fabs(normal_.dot(vertex->get_direction()));
+
+//     // given projective_distance and surface_projective_std and range_precision and range_accuracy
+//     double new_std = surface_projective_std + settings_.range_precision;
+
+//     // distance is positive when in front of the surface
+//     double threshold_in_front = 3.0 * new_std + settings_.range_accuracy;
+//     double threshold_behind = - 3.0 * new_std - settings_.range_accuracy;
+//     std::cout << "threshold_in_front: " << threshold_in_front << std::endl;
+//     std::cout << "threshold_behind: " << threshold_behind << std::endl;
+
+//     // check
+//     bool points_in_front_of_surface = projective_distance > threshold_in_front;
+//     bool points_behind_surface = projective_distance < threshold_behind;
+//     bool points_within_surface = !points_in_front_of_surface && !points_behind_surface;
+
+//     // return
+//     if (points_in_front_of_surface) return RelativePosition::IN_FRONT;
+//     else if (points_behind_surface) return RelativePosition::BEHIND;
+//     else if (points_within_surface) return RelativePosition::WITHIN;
+//     else throw std::runtime_error("Invalid relative position.");
+// }
 
 RelativePosition Surface::check_relative_position(const std::shared_ptr<InteriorPoint>& interior_point)
 {
-    // compute
-    double projective_distance = interior_point->buffer_compute_projected_distance(shared_from_this());
-
-    double surface_position_std = get_surface_position_std_in_normal_direction();
-    double surface_projective_std = surface_position_std / std::fabs(normal_.dot(interior_point->get_direction()));
-
-    bool points_in_front_of_surface = projective_distance > 3 * (settings_.range_noise_std + surface_projective_std);
-    bool points_behind_surface = projective_distance < - 3 * (settings_.range_noise_std + surface_projective_std);
-    bool points_within_surface = !points_in_front_of_surface && !points_behind_surface;
-
-    // return
-    if (points_in_front_of_surface) return RelativePosition::IN_FRONT;
-    else if (points_behind_surface) return RelativePosition::BEHIND;
-    else if (points_within_surface) return RelativePosition::WITHIN;
-    else throw std::runtime_error("Invalid relative position.");
+    return check_relative_position(interior_point->get_origin(), interior_point->get_position(), interior_point->get_direction());
 }
+
+// RelativePosition Surface::check_relative_position(const std::shared_ptr<InteriorPoint>& interior_point)
+// {
+//     // compute
+//     double projective_distance = interior_point->buffer_compute_projected_distance(shared_from_this());
+
+//     double surface_position_std = get_surface_position_std_in_normal_direction();
+//     double surface_projective_std = surface_position_std / std::fabs(normal_.dot(interior_point->get_direction()));
+
+//     bool points_in_front_of_surface = projective_distance > 3 * (settings_.range_precision + surface_projective_std);
+//     bool points_behind_surface = projective_distance < - 3 * (settings_.range_precision + surface_projective_std);
+//     bool points_within_surface = !points_in_front_of_surface && !points_behind_surface;
+
+//     // return
+//     if (points_in_front_of_surface) return RelativePosition::IN_FRONT;
+//     else if (points_behind_surface) return RelativePosition::BEHIND;
+//     else if (points_within_surface) return RelativePosition::WITHIN;
+//     else throw std::runtime_error("Invalid relative position.");
+// }
 
 void Surface::merge_surface(const std::shared_ptr<Surface>& surface)
 {
@@ -583,7 +622,7 @@ void Surface::compute_surface_position_std_in_normal_direction()
 
         // mean and informaiton
         double mean = ratio * vertex->buffer_compute_projected_distance(shared_from_this());
-        double std = ratio * settings_.range_noise_std;
+        double std = ratio * settings_.range_precision;
         double information = 1.0 / (std * std);
         
         // store
@@ -597,7 +636,7 @@ void Surface::compute_surface_position_std_in_normal_direction()
 
         // mean and informaiton
         double mean = ratio * interior_point->buffer_compute_projected_distance(shared_from_this());
-        double std = ratio * settings_.range_noise_std;
+        double std = ratio * settings_.range_precision;
         double information = 1.0 / (std * std);
         
         // store
@@ -617,8 +656,8 @@ void Surface::compute_surface_position_std_in_normal_direction()
     weighted_mean /= weighted_information;
     weighted_std = 1.0 / std::sqrt(weighted_information);
     
-    // log
-    std::cout << "computed surface position with Bayesian mean: " << weighted_mean << ", Bayesian std: " << weighted_std << std::endl;
+    // // log
+    // std::cout << "computed surface position with Bayesian mean: " << weighted_mean << ", Bayesian std: " << weighted_std << std::endl;
     
     // store
     previous_normal_distance_ = weighted_mean;
@@ -815,7 +854,7 @@ void Surface::add_point_to_surface_fitting(const Eigen::Vector3d& position, cons
         double old_information = 1.0 / (old_std * old_std);
 
         double new_distance = compute_point_projective_distance(origin, position);
-        double new_std = settings_.range_noise_std;
+        double new_std = settings_.range_precision;
         double new_information = 1.0 / (new_std * new_std);
 
         double combined_distance = merge_information_weighted_mean(old_distance, new_distance, old_information, new_information);
@@ -880,7 +919,7 @@ void Surface::remove_point_from_surface_fitting(const Eigen::Vector3d& position,
         double combined_information = 1.0 / (combined_std * combined_std);
 
         double new_distance = compute_point_projective_distance(origin, position);
-        double new_std = settings_.range_noise_std;
+        double new_std = settings_.range_precision;
         double new_information = 1.0 / (new_std * new_std);
 
         double old_distance = remove_information_weighted_mean(combined_distance, new_distance, combined_information, new_information);
