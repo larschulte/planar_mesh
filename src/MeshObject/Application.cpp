@@ -296,7 +296,7 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
     }
     std::cout << ">> grouped into " << neighboring_surfaces.size() << " neighboring surfaces" << std::endl;
 
-    // add to all neighboring surfaces, including a new seed, then do a review
+    // add to all neighboring surfaces, then do a review
     for (std::shared_ptr<Surface> surface : neighboring_surfaces)
     {
         std::cout << ">> neighboring surface " << surface->get_id() << std::endl;
@@ -315,12 +315,6 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
             storage_->allow_creation_of_generic_point();
         }
     }
-    // start a new seed
-    std::shared_ptr<Surface> new_surface = storage_->add_surface();
-    std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(generic_point);
-    new_surface->connect(new_vertex);
-    sibling_vertices.push_back(new_vertex);
-    sibling_vertices[0]->connect(new_vertex);
 
     // review the new vertex
     std::cout << ">> reviewing new vertices" << std::endl;
@@ -329,7 +323,26 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
         // skip if the vertex is expired
         if (vertex->is_expired()) continue;
 
+        vertex->can_create_generic_point(false);
         vertex->review_surfaces();
+        vertex->can_create_generic_point(true);
+    }
+
+    // if zero sibling vertices, start a new seed
+    bool zero_sibling_vertices = true;
+    for (std::shared_ptr<Vertex> vertex : sibling_vertices)
+    {
+        if (!vertex->is_expired())
+        {
+            zero_sibling_vertices = false;
+            break;
+        }
+    }
+    if (zero_sibling_vertices)
+    {
+        std::shared_ptr<Surface> new_surface = storage_->add_surface();
+        std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(generic_point);
+        new_surface->connect(new_vertex);
     }
 
     // // recompute sibling vertices
