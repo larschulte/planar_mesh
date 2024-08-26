@@ -250,12 +250,9 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
     for (std::shared_ptr<Vertex> vertex : neighboring_vertices)
     {
         // only add to neighboring surface if the vertex is boundary in that surface
-        for (std::shared_ptr<Surface> surface : vertex->get_surfaces())
+        if (vertex->is_boundary())
         {
-            if (vertex->is_boundary(surface))
-            {
-                neighboring_surfaces.insert(surface);
-            }
+            neighboring_surfaces.insert(vertex->get_surface());
         }
     }
     std::cout << ">> grouped into " << neighboring_surfaces.size() << " neighboring surfaces" << std::endl;
@@ -286,13 +283,11 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
     for (std::shared_ptr<Vertex> vertex : neighboring_vertices)
     {
         // only add to neighboring surface if the vertex is boundary in that surface
-        for (std::shared_ptr<Surface> surface : vertex->get_surfaces())
+        if (vertex->is_boundary())
         {
-            if (vertex->is_boundary(surface))
-            {
-                neighboring_surfaces.insert(surface);
-            }
+            neighboring_surfaces.insert(vertex->get_surface());
         }
+
     }
     std::cout << ">> grouped into " << neighboring_surfaces.size() << " neighboring surfaces" << std::endl;
 
@@ -453,10 +448,7 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
     std::map<std::shared_ptr<Surface>, std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>> searched_surface_to_searched_faces;
     for (const std::shared_ptr<Face>& face : searched_faces)
     {
-        for (const std::shared_ptr<Surface>& surface : face->get_surfaces())
-        {
-            searched_surface_to_searched_faces[surface].insert(face);    
-        }
+        searched_surface_to_searched_faces[face->get_surface()].insert(face);    
     }
 
     // delete abnormal surfaces
@@ -487,10 +479,7 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
     searched_surface_to_searched_faces.clear();
     for (const std::shared_ptr<Face>& face : searched_faces)
     {
-        for (const std::shared_ptr<Surface>& surface : face->get_surfaces())
-        {
-            searched_surface_to_searched_faces[surface].insert(face);    
-        }
+        searched_surface_to_searched_faces[face->get_surface()].insert(face);   
     }
 
     // log

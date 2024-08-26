@@ -475,7 +475,7 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
         if (nearby_vertex == vertex) continue;
 
         // skip if does not belong to the same surface
-        if (nearby_vertex->get_surfaces().find(shared_from_this()) == nearby_vertex->get_surfaces().end()) continue;
+        if (nearby_vertex->get_surface() != shared_from_this()) continue;
 
         // add to nearby vertices
         nearby_vertices.insert(nearby_vertex);
@@ -533,7 +533,7 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
             std::shared_ptr<Edge> existing_edge;
             for (const std::shared_ptr<Edge>& edge : nearby_vertex0->get_edges())
             {
-                if (edge->get_surfaces().find(shared_from_this()) == edge->get_surfaces().end()) continue;
+                if (edge->get_surface() != shared_from_this()) continue;
                 if (edge->has_vertex(nearby_vertex1))
                 {
                     edge_exist = true;
@@ -544,7 +544,7 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
             if (!edge_exist) continue;
 
             // skip if edge is not boundary
-            if (!existing_edge->is_boundary(shared_from_this())) continue;
+            if (!existing_edge->is_boundary()) continue;
 
             // skip if face contains nearby vertices
             // get surface coordinate of the vertices

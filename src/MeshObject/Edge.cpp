@@ -59,11 +59,10 @@ void Edge::delete_()
     // make copy of vertices_ and faces_ to avoid iterator invalidation
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertices = vertices_;
     std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces = faces_;
-    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces = surfaces_;
     std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> sibling_edges = sibling_edges_;
     for (const auto& vertex : vertices) disconnect(vertex);
     for (const auto& face : faces) disconnect(face);
-    for (const auto& surface : surfaces) disconnect(surface);
+    if (surface_ != nullptr) disconnect(surface_);
     for (const auto& sibling_edge : sibling_edges) disconnect(sibling_edge);
 
     // log
@@ -109,13 +108,14 @@ void Edge::connect(const std::shared_ptr<Surface>& surface)
     if (surface->is_expired()) throw std::runtime_error("Attempts to connect edge with invalid surface.");
 
     // connect
-    bool inserted = surfaces_.insert(surface).second;
+    bool inserted = surface_ != surface;
+    if (inserted) surface_ = surface;
     if (inserted) surface->connect(shared_from_this());
-    if (inserted) is_searchable_map_[surface] = false;
-    if (inserted) is_boundary_map_[surface] = false;
-    if (inserted) is_singular_map_[surface] = true;
-    if (inserted) update_singular_state(surface);
-    if (inserted) update_boundary_state(surface);
+    if (inserted) is_searchable_ = false;
+    if (inserted) is_boundary_ = false;
+    if (inserted) is_singular_ = true;
+    if (inserted) update_singular_state();
+    if (inserted) update_boundary_state();
 }
 
 void Edge::connect(const std::shared_ptr<Edge>& sibling_edge)
@@ -181,15 +181,16 @@ void Edge::disconnect(const std::shared_ptr<Surface>& surface)
     if (surface->is_expired()) return;
 
     // disconnect
-    bool erased = surfaces_.erase(surface);
+    bool erased = surface_ == surface;
     if (erased) surface->disconnect(shared_from_this());
-    if (erased) remove_searchable_state(surface);
-    if (erased) is_boundary_map_.erase(surface);
-    if (erased) is_singular_map_.erase(surface);
-    if (erased) is_searchable_map_.erase(surface);
+    if (erased) remove_searchable_state();
+    if (erased) is_boundary_ = false;
+    if (erased) is_singular_ = false;
+    if (erased) is_searchable_ = false;
+    if (erased) surface_ = nullptr;
 
     // check self destruct
-    if (!deleting_ && surfaces_.empty() && can_self_destruct_) storage_->delete_edge(shared_from_this());
+    if (!deleting_ && erased && can_self_destruct_) storage_->delete_edge(shared_from_this());
 }
 
 void Edge::disconnect(const std::shared_ptr<Edge>& sibling_edge)
@@ -237,7 +238,7 @@ bool Edge::is_confirmed() const
 // swap surface1 with surface2
 void Edge::swap(const std::shared_ptr<Surface>& surface1, const std::shared_ptr<Surface>& surface2)
 {
-    if (surfaces_.find(surface1) != surfaces_.end())
+    if (surface_ == surface1)
     {
         // std::cout << "Swapping edge " << id_ << " surface " << surface1->get_id() << " with surface " << surface2->get_id() << std::endl;
 
@@ -282,141 +283,89 @@ bool Edge::has_vertex(const std::shared_ptr<Vertex>& vertex) const
     return get_vertex(0) == vertex || get_vertex(1) == vertex;
 }
 
-bool Edge::is_boundary(const std::shared_ptr<Surface>& surface) const
-{
-    return is_boundary_map_.at(surface);
-}
-
 bool Edge::is_boundary() const
 {
-    for (const auto& pair : is_boundary_map_)
-    {
-        if (pair.second) return true;
-    }
-    return false;
-}
-
-bool Edge::is_singular(const std::shared_ptr<Surface>& surface) const
-{
-    return is_singular_map_.at(surface);
+    return is_boundary_;
 }
 
 bool Edge::is_singular() const
 {
-    // singular if all singular
-    for (const auto& pair : is_singular_map_)
-    {
-        if (!pair.second) return false;
-    }
-    return true;
+    return is_singular_;
 }
 
-void Edge::update_boundary_state(const std::shared_ptr<Surface>& surface)
+void Edge::update_boundary_state()
 {
     if (deleting_) return;
 
     // update boundary state
-    bool previous_boundary_state = is_boundary_map_.at(surface);
+    bool previous_boundary_state = is_boundary_;
     // count number of faces in this surface
-    int num_faces_in_this_surface = 0;
-    for (const std::shared_ptr<Face>& face : faces_)
-    {
-        if (face->get_surfaces().find(surface) != face->get_surfaces().end())
-        {
-            num_faces_in_this_surface++;
-        }
-    }
+    int num_faces_in_this_surface = faces_.size();
     if (num_faces_in_this_surface <= 1) 
     {
-        is_boundary_map_.at(surface) = true;
+        is_boundary_ = true;
     }
     else 
     {
-        is_boundary_map_.at(surface) = false;
+        is_boundary_ = false;
     }
-    bool changed_boundary_state = previous_boundary_state != is_boundary_map_.at(surface);
+    bool changed_boundary_state = previous_boundary_state != is_boundary_;
 
     // if changed state
     if (changed_boundary_state) 
     {
         // update connected surfaces
-        update_searchable_state(surface);
+        update_searchable_state();
 
         // update connected vertices
         for (const std::shared_ptr<Vertex>& vertex : vertices_)
         {
-            vertex->update_boundary_state(surface);
+            vertex->update_boundary_state();
         }
     }
 }
 
-void Edge::update_boundary_state()
-{
-    for (const std::shared_ptr<Surface>& surface : surfaces_)
-    {
-        update_boundary_state(surface);
-    }
-}
-
-void Edge::update_singular_state(const std::shared_ptr<Surface>& surface)
-{
-    // count number of faces in this surface
-    int num_faces_in_this_surface = 0;
-    for (const std::shared_ptr<Face>& face : faces_)
-    {
-        if (face->get_surfaces().find(surface) != face->get_surfaces().end()) num_faces_in_this_surface++;
-    }
-
-    // update singular state
-    if (num_faces_in_this_surface == 0) is_singular_map_.at(surface) = true;
-    else is_singular_map_.at(surface) = false; 
-}
-
 void Edge::update_singular_state()
 {
-    for (const std::shared_ptr<Surface>& surface : surfaces_)
-    {
-        update_singular_state(surface);
-    }
+    // count number of faces in this surface
+    int num_faces_in_this_surface = faces_.size();
+
+    // update singular state
+    if (num_faces_in_this_surface == 0) is_singular_ = true;
+    else is_singular_ = false; 
 }
 
 void Edge::update_searchable_state()
 {
-    for (const std::shared_ptr<Surface>& surface : surfaces_)
-    {
-        update_searchable_state(surface);
-    }
-}
+    if (surface_ == nullptr) return;
 
-void Edge::update_searchable_state(const std::shared_ptr<Surface>& surface)
-{
     // upon changes of boundary state
     // add
-    if (is_boundary_map_.at(surface) && !is_searchable_map_.at(surface))
+    if (is_boundary_ && !is_searchable_)
     {
-        surface->add_searchable_edge(shared_from_this());
-        is_searchable_map_.at(surface) = true;
+        surface_->add_searchable_edge(shared_from_this());
+        is_searchable_ = true;
     }
     // remove
-    if (!is_boundary_map_.at(surface) && is_searchable_map_.at(surface))
+    if (!is_boundary_ && is_searchable_)
     {   
-        surface->remove_searchable_edge(shared_from_this());
-        is_searchable_map_.at(surface) = false;
+        surface_->remove_searchable_edge(shared_from_this());
+        is_searchable_ = false;
     }
 }
 
-void Edge::remove_searchable_state(const std::shared_ptr<Surface>& surface)
+void Edge::remove_searchable_state()
 {
-    if (is_searchable_map_.at(surface))
+    if (is_searchable_)
     {
-        surface->remove_searchable_edge(shared_from_this());
-        is_searchable_map_.at(surface) = false;
+        surface_->remove_searchable_edge(shared_from_this());
+        is_searchable_ = false;
     }
 }
 
-const std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash>& Edge::get_surfaces() const
+const std::shared_ptr<Surface>& Edge::get_surface() const
 {
-    return surfaces_;
+    return surface_;
 }
 
 const std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& Edge::get_faces() const

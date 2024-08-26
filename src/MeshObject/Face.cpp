@@ -38,7 +38,7 @@ void Face::initialize_(const std::shared_ptr<Storage>& storage, const std::share
     std::shared_ptr<Edge> edge2;
     for (const std::shared_ptr<Edge>& edge : vertex0->get_edges())
     {
-        if (edge->get_surfaces().find(surface) == edge->get_surfaces().end()) continue;
+        if (edge->get_surface() != surface_) continue;
         if (edge->has_vertex(vertex1))
         {
             edge0 = edge;
@@ -47,7 +47,7 @@ void Face::initialize_(const std::shared_ptr<Storage>& storage, const std::share
     }
     for (const std::shared_ptr<Edge>& edge : vertex1->get_edges())
     {
-        if (edge->get_surfaces().find(surface) == edge->get_surfaces().end()) continue;
+        if (edge->get_surface() != surface_) continue;
         if (edge->has_vertex(vertex2))
         {
             edge1 = edge;
@@ -56,7 +56,7 @@ void Face::initialize_(const std::shared_ptr<Storage>& storage, const std::share
     }
     for (const std::shared_ptr<Edge>& edge : vertex2->get_edges())
     {
-        if (edge->get_surfaces().find(surface) == edge->get_surfaces().end()) continue;
+        if (edge->get_surface() != surface_) continue;
         if (edge->has_vertex(vertex0))
         {
             edge2 = edge;
@@ -97,12 +97,11 @@ void Face::delete_()
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertices = vertices_;
     std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges = edges_;
     std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> interior_points = interior_points_;
-    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces = surfaces_;
     std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> sibling_faces = sibling_faces_;
     for (const auto& vertex : vertices) disconnect(vertex);
     for (const auto& edge : edges) disconnect(edge);
     for (const auto& interior_point : interior_points) disconnect(interior_point);
-    for (const auto& surface : surfaces) disconnect(surface);
+    if (surface_ != nullptr) disconnect(surface_);
     for (const auto& sibling_face : sibling_faces) disconnect(sibling_face);
 
     // remove from search tree
@@ -147,9 +146,9 @@ const std::shared_ptr<Vertex>& Face::get_vertex(int index) const
     return *it;
 }
 
-const std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash>& Face::get_surfaces() const
+const std::shared_ptr<Surface>& Face::get_surface() const
 {
-    return surfaces_;
+    return surface_;
 }
 
 const std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& Face::get_sibling_faces() const
@@ -271,7 +270,8 @@ void Face::connect(const std::shared_ptr<Surface>& surface)
     if (surface->is_expired()) throw std::runtime_error("Attempts to connect face with invalid surface.");
 
     // connect
-    bool inserted = surfaces_.insert(surface).second;
+    bool inserted = surface_ != surface;
+    if (inserted) surface_ = surface;
     if (inserted) surface->connect(shared_from_this());
 }
 
@@ -339,11 +339,12 @@ void Face::disconnect(const std::shared_ptr<Surface>& surface)
     if (surface->is_expired()) return;
 
     // disconnect
-    bool erased = surfaces_.erase(surface);
+    bool erased = surface_ == surface;
     if (erased) surface->disconnect(shared_from_this());
+    if (erased) surface_ = nullptr;
 
     // self destruct
-    if (!deleting_ && surfaces_.empty() && can_self_destruct_) storage_->delete_face(shared_from_this());
+    if (!deleting_ && erased && can_self_destruct_) storage_->delete_face(shared_from_this());
 }
 
 void Face::disconnect(const std::shared_ptr<InteriorPoint>& interior_point)
@@ -417,7 +418,7 @@ bool Face::is_confirmed() const
 void Face::swap(const std::shared_ptr<Surface>& surface1, const std::shared_ptr<Surface>& surface2)
 {
     // if contains surfacce1    
-    if (surfaces_.find(surface1) != surfaces_.end())
+    if (surface_ == surface1)
     {
         // std::cout << "Swapping face " << id_ << " surface " << surface1->get_id() << " with surface " << surface2->get_id() << std::endl;
 

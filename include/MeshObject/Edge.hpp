@@ -22,7 +22,7 @@ protected:
 public:
     const int& get_id() const;
     const std::shared_ptr<Vertex>& get_vertex(int index) const;
-    const std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash>& get_surfaces() const;
+    const std::shared_ptr<Surface>& get_surface() const;
     const std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& get_faces() const;
     const std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& get_sibling_edges() const;
     const Eigen::Vector3d& get_center() const;
@@ -47,26 +47,21 @@ public:
     void swap(const std::shared_ptr<Surface>& surface1, const std::shared_ptr<Surface>& surface2);
 
     bool has_vertex(const std::shared_ptr<Vertex>& vertex) const;
-    bool is_boundary(const std::shared_ptr<Surface>& surface) const;
     bool is_boundary() const;
-    bool is_singular(const std::shared_ptr<Surface>& surface) const;
     bool is_singular() const;
-    void update_boundary_state(const std::shared_ptr<Surface>& surface);
     void update_boundary_state();
-    void update_singular_state(const std::shared_ptr<Surface>& surface);
     void update_singular_state();
-    void update_searchable_state(const std::shared_ptr<Surface>& surface);
     void update_searchable_state();
-    void remove_searchable_state(const std::shared_ptr<Surface>& surface);
+    void remove_searchable_state();
 
     bool intersects_edge(const std::shared_ptr<Surface>& surface, const std::shared_ptr<Vertex>& vertex0, const std::shared_ptr<Vertex>& vertex1);
 
 private:
     bool deleting_ = false;
     bool is_expired_ = true;
-    std::map<std::shared_ptr<Surface>, bool> is_boundary_map_;
-    std::map<std::shared_ptr<Surface>, bool> is_singular_map_;
-    std::map<std::shared_ptr<Surface>, bool> is_searchable_map_;
+    bool is_boundary_;
+    bool is_singular_;
+    bool is_searchable_;
 
     bool can_self_destruct_ = true;
 
@@ -82,7 +77,7 @@ private:
 
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertices_;
     std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces_;
-    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_;
+    std::shared_ptr<Surface> surface_;
     
     std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> sibling_edges_;
 };

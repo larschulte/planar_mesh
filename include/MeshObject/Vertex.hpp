@@ -33,7 +33,6 @@ public:
     const Eigen::Vector3d& get_origin() const;
     const Eigen::Vector3d& get_direction() const;
     const std::shared_ptr<Surface>& get_surface() const;
-    const std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash>& get_surfaces() const;
     bool has_surface() const;
     const std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& get_edges() const;
     const std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& get_faces() const;
@@ -54,7 +53,6 @@ public:
     std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> compute_connected_interior_points();
 
     bool is_expired() const;
-    bool is_boundary(const std::shared_ptr<Surface>& surface) const;
     bool is_boundary() const;
 
     void connect(const std::shared_ptr<Edge>& edge);
@@ -70,15 +68,12 @@ public:
     bool is_under_review() const;
 
     void update_confirmed_status();
-    void update_singular_state(const std::shared_ptr<Surface>& surface);
     void update_singular_state();
     bool is_confirmed() const;
-    bool is_singular(const std::shared_ptr<Surface>& surface) const;
     bool is_singular() const;
     
     void swap(const std::shared_ptr<Surface>& surface1, const std::shared_ptr<Surface>& surface2);
 
-    void update_boundary_state(const std::shared_ptr<Surface>& surface);
     void update_boundary_state();
     void update_searchable_state();
 
@@ -105,10 +100,10 @@ private:
 
     bool deleting_ = false;
     bool under_review_ = false;
-    std::map<std::shared_ptr<Surface>, bool> is_boundary_map_;
+    bool is_boundary_;
     bool is_searchable_ = false;
     bool is_expired_ = true;
-    std::map<std::shared_ptr<Surface>, bool> is_singular_map_;
+    bool is_singular_;
     bool can_self_destruct_ = true;
     bool can_create_generic_point_ = true;
     double current_surface_uncertainty_;
@@ -123,7 +118,7 @@ private:
 
     std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges_;
     std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces_;
-    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_;
+    std::shared_ptr<Surface> surface_;
 
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> sibling_vertices_;
 

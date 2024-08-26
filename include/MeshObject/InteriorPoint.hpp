@@ -28,7 +28,6 @@ public:
     const Eigen::Vector3d& get_origin() const;
     const Eigen::Vector3d& get_direction() const;
     const std::shared_ptr<Surface>& get_surface() const;
-    const std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash>& get_surfaces() const;
     const std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash>& get_sibling_interior_points() const;
     const double& get_radius() const;
     bool is_expired() const;
@@ -70,7 +69,7 @@ private:
     std::shared_ptr<Storage> storage_;
 
     std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces_;
-    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_;
+    std::shared_ptr<Surface> surface_;
 
     std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> sibling_interior_points_;
 
