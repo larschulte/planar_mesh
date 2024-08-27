@@ -366,13 +366,13 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
     // [todo] if a point is within a surface, but can't connect to it dues to intersecting edge, ignore it for now
     if (surfaces_with_point_within.size() > 0)
     {
-        // sort by surface uncertainty
+        // sort by number of points ([todo] replace by better metric later)
         std::vector<std::shared_ptr<Surface>> sorted_surfaces_with_point_within;
         sorted_surfaces_with_point_within.insert(sorted_surfaces_with_point_within.end(), surfaces_with_point_within.begin(), surfaces_with_point_within.end());
         std::sort(sorted_surfaces_with_point_within.begin(), sorted_surfaces_with_point_within.end(), 
             [](const std::shared_ptr<Surface>& a, const std::shared_ptr<Surface>& b) -> bool
             {
-                return a->get_surface_position_std_in_normal_direction() < b->get_surface_position_std_in_normal_direction();
+                return a->get_total_point_size() > b->get_total_point_size();
             });
         
         // add to the smallest uncertainty surface as current surface
