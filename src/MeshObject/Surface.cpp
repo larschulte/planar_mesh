@@ -485,7 +485,7 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
     for (const auto& nearby_vertex : all_nearby_vertices)
     {
         // check input
-        if (nearby_vertex->is_expired()) throw std::runtime_error("Attempts to connect surface with invalid nearby vertex.");
+        if (nearby_vertex->is_expired()) continue;
 
         // skip if same vertex
         if (nearby_vertex == vertex) continue;
