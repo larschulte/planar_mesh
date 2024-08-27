@@ -296,49 +296,122 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
         std::cout << ">> grouped into " << neighboring_surfaces.size() << " neighboring surfaces" << std::endl;
     }
 
-    // add to all neighboring surfaces, then do a review
+    // for each surface, check if confidence surface, then check if new point is within
+    std::set<std::shared_ptr<Surface>> surfaces_with_low_confidence;
+    std::set<std::shared_ptr<Surface>> surfaces_with_point_within;
     for (std::shared_ptr<Surface> surface : neighboring_surfaces)
     {
-        std::cout << ">> neighboring surface " << surface->get_id() << std::endl;
+        // skip if the surface is expired
+        if (surface->is_expired()) continue;
 
-        std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(generic_point);
-        bool connected = surface->connect_by_edges_and_faces(new_vertex, neighboring_vertices);
-        if (connected)
-        {    
-            sibling_vertices.push_back(new_vertex);
-            sibling_vertices[0]->connect(new_vertex);
+        // if low confidence surface
+        bool low_confidence = surface->get_total_point_size() < settings_.fit_plane_threshold;
+        if (low_confidence)
+        {
+            surfaces_with_low_confidence.insert(surface);
         }
+        // else high confidence surface
         else
         {
-            storage_->disallow_creation_of_generic_point();
-            storage_->delete_vertex(new_vertex);
-            storage_->allow_creation_of_generic_point();
+            // if within high confidence surface
+            bool within = surface->check_relative_position(generic_point) == RelativePosition::WITHIN;
+            if (within)
+            { 
+                surfaces_with_point_within.insert(surface);
+            }
         }
     }
 
-    // review the new vertex
-    std::cout << ">> reviewing new vertices" << std::endl;
-    for (std::shared_ptr<Vertex> vertex : sibling_vertices)
+    // if there is surface with points within, add to these surfaces then do a review
+    // if there is no surface with points within, add to all low confidence surfaces
+    // if there is no surface with points within and no low confidence surfaces, add new surface
+    // [todo] if a point is within a surface, but can't connect to it dues to intersecting edge, ignore it for now
+    if (surfaces_with_point_within.size() > 0)
     {
-        // skip if the vertex is expired
-        if (vertex->is_expired()) continue;
-
-        vertex->can_create_generic_point(false);
-        vertex->review_surfaces();
-        vertex->can_create_generic_point(true);
-    }
-
-    // if zero sibling vertices, start a new seed
-    bool zero_sibling_vertices = true;
-    for (std::shared_ptr<Vertex> vertex : sibling_vertices)
-    {
-        if (!vertex->is_expired())
+        // sort by surface uncertainty
+        std::vector<std::shared_ptr<Surface>> sorted_surfaces_with_point_within;
+        sorted_surfaces_with_point_within.insert(sorted_surfaces_with_point_within.end(), surfaces_with_point_within.begin(), surfaces_with_point_within.end());
+        std::sort(sorted_surfaces_with_point_within.begin(), sorted_surfaces_with_point_within.end(), 
+            [](const std::shared_ptr<Surface>& a, const std::shared_ptr<Surface>& b) -> bool
+            {
+                return a->get_surface_position_std_in_normal_direction() < b->get_surface_position_std_in_normal_direction();
+            });
+        
+        // add to the smallest uncertainty surface as current surface
+        std::shared_ptr<Surface> current_surface = nullptr;
+        std::shared_ptr<Vertex> current_vertex = nullptr;
+        std::size_t current_i = 0;
+        for (std::size_t i = 0; i < sorted_surfaces_with_point_within.size(); i++)
         {
-            zero_sibling_vertices = false;
-            break;
+            std::shared_ptr<Surface> next_surface = sorted_surfaces_with_point_within[i];
+            std::shared_ptr<Vertex> next_vertex = storage_->add_vertex(generic_point);
+            bool connected = next_surface->connect_by_edges_and_faces(next_vertex, neighboring_vertices);
+            if (connected)
+            {
+                current_surface = next_surface;
+                current_vertex = next_vertex;
+                current_i = i;
+                break;
+            }
+            else
+            {
+                storage_->disallow_creation_of_generic_point();
+                storage_->delete_vertex(next_vertex);
+                storage_->allow_creation_of_generic_point();
+            }
+        }
+        
+        // connect and merge to next surface if possible
+        for (std::size_t i = current_i + 1; i < sorted_surfaces_with_point_within.size(); i++)
+        {
+            std::shared_ptr<Surface> next_surface = sorted_surfaces_with_point_within[i];
+            
+            // check if mergable
+            bool can_merge = current_surface->can_merge(next_surface);
+            if (can_merge)
+            {
+                // check if connectable
+                std::shared_ptr<Vertex> next_vertex = storage_->add_vertex(generic_point);
+                bool connected = next_surface->connect_by_edges_and_faces(next_vertex, neighboring_vertices);
+                if (connected)
+                {
+                    // if both satisfied, merge
+                    current_vertex->absorbs(next_vertex);
+                    storage_->disallow_creation_of_generic_point();
+                    storage_->delete_vertex(next_vertex);
+                    storage_->allow_creation_of_generic_point();
+                }
+                else
+                {
+                    storage_->disallow_creation_of_generic_point();
+                    storage_->delete_vertex(next_vertex);
+                    storage_->allow_creation_of_generic_point();
+                }
+            }
         }
     }
-    if (zero_sibling_vertices)
+    else if (surfaces_with_low_confidence.size() > 0)
+    {
+        for (std::shared_ptr<Surface> surface : surfaces_with_low_confidence)
+        {
+            std::cout << ">> low confidence surface " << surface->get_id() << std::endl;
+
+            std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(generic_point);
+            bool connected = surface->connect_by_edges_and_faces(new_vertex, neighboring_vertices);
+            if (connected)
+            {
+                // sibling_vertices.push_back(new_vertex);
+                // sibling_vertices[0]->connect(new_vertex);
+            }
+            else
+            {
+                storage_->disallow_creation_of_generic_point();
+                storage_->delete_vertex(new_vertex);
+                storage_->allow_creation_of_generic_point();
+            }
+        }
+    }
+    else
     {
         std::shared_ptr<Surface> new_surface = storage_->add_surface();
         std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(generic_point);
