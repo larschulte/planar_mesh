@@ -341,16 +341,15 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
         std::shared_ptr<Surface> current_surface = nullptr;
         std::shared_ptr<Vertex> current_vertex = nullptr;
         std::size_t current_i = 0;
-        for (std::size_t i = 0; i < sorted_surfaces_with_point_within.size(); i++)
+        for (; current_i < sorted_surfaces_with_point_within.size(); current_i++)
         {
-            std::shared_ptr<Surface> next_surface = sorted_surfaces_with_point_within[i];
+            std::shared_ptr<Surface> next_surface = sorted_surfaces_with_point_within[current_i];
             std::shared_ptr<Vertex> next_vertex = storage_->add_vertex(generic_point);
             bool connected = next_surface->connect_by_edges_and_faces(next_vertex, neighboring_vertices);
             if (connected)
             {
                 current_surface = next_surface;
                 current_vertex = next_vertex;
-                current_i = i;
                 break;
             }
             else
