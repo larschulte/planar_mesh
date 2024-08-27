@@ -23,16 +23,25 @@ Settings::Settings()
         "/home/jiahao/datasets/christ church spires/2024-03-18-09-43-37/slam_pose_graph.g2o"
     );
     
-    std::string dataset = "room";
+    std::string dataset = "christchurch";
     cloud_path = dataset_map[dataset].first;
     pose_path = dataset_map[dataset].second;
 
     use_sim_data = false;
     sim_object = 0;
-    range_precision = 0.005;
-    range_accuracy = 0.01; 
-    // range_precision = 0.01;
-    // range_accuracy = 0true.01;
+    std::string lidar = "64";
+    if (lidar == "32")
+    {
+        range_precision = 0.005;
+        range_accuracy = 0.01; 
+        radius_ratio = tan(4 * M_PI / 180);
+    }
+    else if (lidar == "64")
+    {
+        range_precision = 0.02;
+        range_accuracy = 0.03; 
+        radius_ratio = tan(4 * M_PI / 180);
+    }
     
     start_cloud = 50;
     start_point = 0;
@@ -41,7 +50,6 @@ Settings::Settings()
     use_radius_value = false;
     pointcloud_fraction = 1;
     radius_value = 2;
-    radius_ratio = tan(4 * M_PI / 180);
 
     abnormal_size = 1.5;
     envelope_size = 3.5;
