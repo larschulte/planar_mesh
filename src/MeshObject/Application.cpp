@@ -623,16 +623,16 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
             }
             storage_->clear_penetrating_point();
 
-            // // add back penetrated points
-            // std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash> copy_of_penetrated_points = storage_->get_penetrated_points();
-            // for (const std::shared_ptr<GenericPoint>& penetrated_point : copy_of_penetrated_points)
-            // {
-            //     // log
-            //     std::cout << ">> adding back penetrated point as vertex" << std::endl;
+            // add back penetrated points
+            std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash> copy_of_penetrated_points = storage_->get_penetrated_points();
+            for (const std::shared_ptr<GenericPoint>& penetrated_point : copy_of_penetrated_points)
+            {
+                // log
+                std::cout << ">> adding back penetrated point as vertex" << std::endl;
 
-            //     add_point_by_radius_search(penetrated_point);
-            //     storage_->delete_penetrated_point(penetrated_point);
-            // }
+                add_point_by_radius_search(penetrated_point);
+                storage_->delete_penetrated_point(penetrated_point);
+            }
         }
     }
 
