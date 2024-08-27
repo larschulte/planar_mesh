@@ -87,7 +87,8 @@ public:
     double get_surface_position_std_in_normal_direction();
 
     void optimize_surface_normal();
-    void remove_unmatched_points();
+    bool remove_unmatched_points();
+    void remove_singular_components();
     void split_surface_by_connected_components();
 
     void add_searchable_edge(const std::shared_ptr<Edge>& edge);

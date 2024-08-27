@@ -973,10 +973,10 @@ void Surface::optimize_surface_normal()
     fit_plane_to_points(dataset, mean_, normal_, bearing_noise, range_noise);
 }
 
-void Surface::remove_unmatched_points()
+bool Surface::remove_unmatched_points()
 {
     // skip if less than 3 points   
-    if (get_total_point_size() < 3) return;
+    if (get_total_point_size() < 3) return false;
 
     // collect vertices to delete
     std::vector<std::shared_ptr<Vertex>> vertices_to_delete;
@@ -1013,8 +1013,29 @@ void Surface::remove_unmatched_points()
         storage_->delete_interior_point(interior_point);
     }
 
-    // try to split surface
-    split_surface_by_connected_components();
+    // return
+    return !vertices_to_delete.empty();
+}
+
+void Surface::remove_singular_components()
+{
+    // get singular components
+    std::vector<std::shared_ptr<Vertex>> singular_vertices;
+    std::vector<std::shared_ptr<Edge>> singular_edges;
+    for (const auto& vertex : vertices_) if (vertex->is_singular()) singular_vertices.push_back(vertex);
+    for (const auto& edge : edges_) if (edge->is_singular()) singular_edges.push_back(edge);
+
+    // delete singular components
+    for (const auto& vertex : singular_vertices)
+    {
+        if (vertex->is_expired()) continue;
+        storage_->delete_vertex(vertex);
+    }
+    for (const auto& edge : singular_edges)
+    {
+        if (edge->is_expired()) continue;
+        storage_->delete_edge(edge);
+    }
 }
 
 void Surface::split_surface_by_connected_components()

@@ -296,6 +296,44 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
         std::cout << ">> grouped into " << neighboring_surfaces.size() << " neighboring surfaces" << std::endl;
     }
 
+    // remove unmatched points in the surfaces
+    bool removed_unmatched_points = false;
+    for (const std::shared_ptr<Surface>& surface : neighboring_surfaces)
+    {
+        if (surface->remove_unmatched_points())
+        {
+            removed_unmatched_points = true;
+            surface->remove_singular_components();
+            surface->split_surface_by_connected_components();
+        }
+    }
+
+    if (removed_unmatched_points)
+    {
+        // recompute neighboring vertices
+        std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> neighboring_vertices_copy = neighboring_vertices;
+        neighboring_vertices.clear();
+        for (std::shared_ptr<Vertex> vertex : neighboring_vertices_copy)
+        {
+            // skip if the vertex is expired
+            if (vertex->is_expired()) continue;
+
+            neighboring_vertices.insert(vertex);
+        }
+        
+        // recompute neighboring surfaces
+        neighboring_surfaces.clear();
+        for (std::shared_ptr<Vertex> vertex : neighboring_vertices)
+        {
+            // only add to neighboring surface if the vertex is boundary in that surface
+            if (vertex->is_boundary())
+            {
+                neighboring_surfaces.insert(vertex->get_surface());
+            }
+        }
+        std::cout << ">> grouped into " << neighboring_surfaces.size() << " neighboring surfaces" << std::endl;
+    }
+
     // for each surface, check if confidence surface, then check if new point is within
     std::set<std::shared_ptr<Surface>> surfaces_with_low_confidence;
     std::set<std::shared_ptr<Surface>> surfaces_with_point_within;
@@ -864,6 +902,8 @@ void Application<PointT>::refine_surfaces()
     for (const std::shared_ptr<Surface>& surface : copy_of_surfaces)
     {
         surface->remove_unmatched_points();
+        surface->remove_singular_components();
+        surface->split_surface_by_connected_components();
     }
     std::cout << "number of generic points after refine: " << storage_->get_generic_points().size() << std::endl;
 }
