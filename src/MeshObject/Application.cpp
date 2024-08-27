@@ -664,9 +664,9 @@ void Application<PointT>::get_lidar_data(Eigen::Vector3d& origin, Eigen::Vector3
 {
     origin = this->origin;
     position = pointcloud->points[ith_point].getVector3fMap().cast<double>();
-    ith_point++;
+    ith_point += settings_.process_every_n_points;
 
-    if (ith_point == ith_size)
+    if (ith_point >= ith_size)
     {
         ith_cloud += 1;
         ith_point = 0;

@@ -21,6 +21,7 @@ struct Settings
     double pointcloud_fraction;
     double radius_value;
     double radius_ratio; // distance to radius ratio
+    std::size_t process_every_n_points;
 
     double abnormal_size; // number of std
     double envelope_size; // number of std

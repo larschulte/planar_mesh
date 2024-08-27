@@ -42,6 +42,7 @@ Settings::Settings()
         range_accuracy = 0.03; 
         radius_ratio = tan(4 * M_PI / 180);
     }
+    process_every_n_points = 10;
     
     start_cloud = 50;
     start_point = 0;
