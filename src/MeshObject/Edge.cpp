@@ -31,6 +31,7 @@ void Edge::initialize_(const std::shared_ptr<Storage>& storage, const std::share
     connect(vertex1);
     connect(vertex2);
 
+    // center min and max are computed once, and are not updated, otherwise BVH tree will cause search error
     // compute center
     center_ = 0.5 * (vertex1_valid->get_position() + vertex2_valid->get_position());
 
@@ -38,6 +39,9 @@ void Edge::initialize_(const std::shared_ptr<Storage>& storage, const std::share
     double margin = 0.05;
     max_ = vertex1->get_position().cwiseMax(vertex2->get_position()) + margin * Eigen::Vector3d::Ones();
     min_ = vertex1->get_position().cwiseMin(vertex2->get_position()) - margin * Eigen::Vector3d::Ones();
+
+    // compute length
+    length_ = (vertex1->get_position() - vertex2->get_position()).norm();
 
     // update boundary state
     update_boundary_state();
