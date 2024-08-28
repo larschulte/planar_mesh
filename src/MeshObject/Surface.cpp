@@ -512,6 +512,7 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
 
     // create edges
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> used_vertices;
+    std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> new_edges;
     for (const auto& nearby_vertex : nearby_vertices)
     {
         // if edge intersects
@@ -532,6 +533,7 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
             connect(new_edge);
             connect(vertex);
             used_vertices.insert(nearby_vertex);
+            new_edges.insert(new_edge);
 
             connected = true;
 
@@ -550,6 +552,7 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
     }
 
     // create faces
+    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> new_faces;
     for (const std::shared_ptr<Vertex>& nearby_vertex0 : used_vertices)
     {
         for (const std::shared_ptr<Vertex>& nearby_vertex1 : used_vertices)
@@ -618,6 +621,7 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
 
             // if face not already exists, create face
             std::shared_ptr<Face> new_face = storage_->add_face(shared_from_this(), vertex, nearby_vertex0, nearby_vertex1);
+            new_faces.insert(new_face);
 
             // connnect new face to its sibling faces
             for (const auto& sibling_edge : existing_edge->get_sibling_edges())
@@ -630,6 +634,15 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
                     }
                 }
             }
+        }
+    }
+
+    // if there is new face, remove all singular edges
+    if (!new_faces.empty())
+    {
+        for (const auto& edge : new_edges)
+        {
+            if (edge->is_singular()) storage_->delete_edge(edge);
         }
     }
 
