@@ -28,6 +28,7 @@ public:
     const Eigen::Vector3d& get_center() const;
     const Eigen::Vector3d& get_max() const;
     const Eigen::Vector3d& get_min() const;
+    const double& get_length() const;
     bool is_expired() const;
 
     void connect(const std::shared_ptr<Vertex>& vertex);
@@ -71,6 +72,7 @@ private:
     Eigen::Vector3d center_;
     Eigen::Vector3d max_;
     Eigen::Vector3d min_;
+    double length_;
 
     int id_;
     std::shared_ptr<Storage> storage_;

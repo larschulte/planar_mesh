@@ -393,6 +393,11 @@ const Eigen::Vector3d& Edge::get_min() const
     return min_;
 }
 
+const double& Edge::get_length() const
+{
+    return length_;
+}
+
 bool Edge::intersects_edge(const std::shared_ptr<Surface>& surface, const std::shared_ptr<Vertex>& vertex0, const std::shared_ptr<Vertex>& vertex1)
 {
     // skip if vertices are connected
