@@ -50,6 +50,8 @@ public:
     const int& get_id() const;
     const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& get_vertices() const;
     const std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash>& get_interior_points() const;
+    const std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& get_edges() const;
+    const std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& get_faces() const;
     const Eigen::Vector3d& get_mean() const;
     const Eigen::Matrix3d& get_covariance() const;
     const Eigen::Matrix3d& get_eigenvectors() const;

@@ -259,6 +259,16 @@ const std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash>& Surfac
     return interior_points_;
 }
 
+const std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& Surface::get_edges() const
+{
+    return edges_;
+}
+
+const std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& Surface::get_faces() const
+{
+    return faces_;
+}
+
 const Eigen::Vector3d& Surface::get_mean() const
 {
     return mean_;
