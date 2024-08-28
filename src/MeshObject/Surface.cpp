@@ -385,6 +385,9 @@ bool Surface::is_expired() const
 // decide wheather to remove this surface completely
 bool Surface::is_abnormal()
 {
+    bool do_abnormal_check = false;
+    if (!do_abnormal_check) return false;
+    
     // not abnormal if low confidence surface
     if (get_total_point_size() < settings_.fit_plane_threshold) return false;
 

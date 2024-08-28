@@ -221,25 +221,29 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
         // if have matched surfaces, remove from low confidence surfaces
         // remain in matched surfaces
 
-    // review point
-    // make a copy of the neighboring vertices as we will be modifying it
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> neighboring_vertices_copy = neighboring_vertices;
-    for (const std::shared_ptr<Vertex>& vertex : neighboring_vertices_copy)
+    bool review_point = false;
+    if (review_point)
     {
-        // some sibling vertex may be expired during previous review 
-        if (vertex->is_expired()) continue;
+        // review point
+        // make a copy of the neighboring vertices as we will be modifying it
+        std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> neighboring_vertices_copy = neighboring_vertices;
+        for (const std::shared_ptr<Vertex>& vertex : neighboring_vertices_copy)
+        {
+            // some sibling vertex may be expired during previous review 
+            if (vertex->is_expired()) continue;
 
-        vertex->review_surfaces();
-    }
+            vertex->review_surfaces();
+        }
 
-    // recompute neighboring vertices
-    neighboring_vertices.clear();
-    for (std::shared_ptr<Vertex> vertex : neighboring_vertices_copy)
-    {
-        // skip if the vertex is expired
-        if (vertex->is_expired()) continue;
+        // recompute neighboring vertices
+        neighboring_vertices.clear();
+        for (std::shared_ptr<Vertex> vertex : neighboring_vertices_copy)
+        {
+            // skip if the vertex is expired
+            if (vertex->is_expired()) continue;
 
-        neighboring_vertices.insert(vertex);
+            neighboring_vertices.insert(vertex);
+        }
     }
 
     // get neighboring surfaces
@@ -297,10 +301,16 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
     bool removed_unmatched_points = false;
     for (const std::shared_ptr<Surface>& surface : neighboring_surfaces)
     {
+        // the remove unmatched point creates generic points that are not added back
         if (surface->remove_unmatched_points())
         {
             removed_unmatched_points = true;
-            surface->remove_singular_components();
+            bool remove_singular_components = false;
+            if (remove_singular_components)
+            {
+                // remove singular components
+                surface->remove_singular_components();
+            }
             surface->split_surface_by_connected_components();
         }
     }
