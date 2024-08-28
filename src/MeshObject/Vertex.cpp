@@ -788,6 +788,16 @@ void Vertex::set_reverse_radius_search_radius(double radius)
 void Vertex::reduce_reverse_radius_search_radius(double radius)
 {
     if (radius < reverse_search_radius_) set_reverse_radius_search_radius(radius);
+
+    // if any edge have larger length than radius, delete the edge
+    std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges_copy = edges_;
+    for (const std::shared_ptr<Edge>& edge : edges_copy)
+    {
+        if (edge->get_length() > radius)
+        {
+            disconnect(edge);
+        }
+    }
 }
 
 Eigen::Vector3d Vertex::get_min() const
