@@ -344,6 +344,7 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
     // for each surface, check if confidence surface, then check if new point is within
     std::set<std::shared_ptr<Surface>> surfaces_with_low_confidence;
     std::set<std::shared_ptr<Surface>> surfaces_with_point_within;
+    std::set<std::shared_ptr<Surface>> surfaces_with_point_not_within;
     for (std::shared_ptr<Surface> surface : neighboring_surfaces)
     {
         // skip if the surface is expired
@@ -364,7 +365,27 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
             { 
                 surfaces_with_point_within.insert(surface);
             }
+            else
+            {
+                surfaces_with_point_not_within.insert(surface);
+            }
         }
+    }
+
+    // for points belong to surface_with_point_not_within, update reverse search radius
+    for (std::shared_ptr<Vertex> vertex : neighboring_vertices)
+    {
+        // skip if the vertex is expired
+        if (vertex->is_expired()) continue;
+
+        // skip if the vertex is not in surfaces_with_point_not_within
+        if (surfaces_with_point_not_within.find(vertex->get_surface()) == surfaces_with_point_not_within.end()) continue;
+
+        // compute distance
+        double distance = (vertex->get_position() - generic_point->get_position()).norm();
+
+        // reduce reverse search radius
+        vertex->reduce_reverse_radius_search_radius(distance);
     }
 
     // if there is surface with points within, add to these surfaces then do a review
