@@ -211,6 +211,9 @@ void Edge::disconnect(const std::shared_ptr<Edge>& sibling_edge)
 
 void Edge::swap(const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2)
 {
+    // make sure the position of vertex 1 and 2 are identical, otherwise need to update BVH which is not yet implemented
+    if ((vertex1->get_position() - vertex2->get_position()).norm() > 1e-8) throw std::runtime_error("Swapping edge with non-identical vertices.");
+    
     if (vertices_.find(vertex1) != vertices_.end())
     {
         // std::cout << "Swapping edge " << id_ << " vertex " << vertex1->get_id() << " with vertex " << vertex2->get_id() << std::endl;
