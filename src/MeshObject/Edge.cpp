@@ -5,6 +5,8 @@
 #include "MeshObject/Surface.hpp"
 #include <iostream>
 
+Settings Edge::settings_;
+
 void Edge::initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2)
 {
     // set expired
@@ -36,7 +38,7 @@ void Edge::initialize_(const std::shared_ptr<Storage>& storage, const std::share
     center_ = 0.5 * (vertex1_valid->get_position() + vertex2_valid->get_position());
 
     // compute max and min
-    double margin = 0.05;
+    double margin = settings_.range_accuracy + settings_.envelope_size * settings_.range_precision;
     max_ = vertex1->get_position().cwiseMax(vertex2->get_position()) + margin * Eigen::Vector3d::Ones();
     min_ = vertex1->get_position().cwiseMin(vertex2->get_position()) - margin * Eigen::Vector3d::Ones();
 

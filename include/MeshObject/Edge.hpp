@@ -5,6 +5,7 @@
 #include <map>
 
 #include "MeshObject/MeshObject.hpp"
+#include "MeshObject/Settings.hpp"
 
 // Forward declarations
 class Vertex;
@@ -58,6 +59,8 @@ public:
     bool intersects_edge(const std::shared_ptr<Surface>& surface, const std::shared_ptr<Vertex>& vertex0, const std::shared_ptr<Vertex>& vertex1);
 
 private:
+    static Settings settings_;
+
     bool deleting_ = false;
     bool is_expired_ = true;
     bool is_boundary_;
