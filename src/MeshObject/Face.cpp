@@ -92,6 +92,19 @@ void Face::delete_()
     // set deletion flag
     deleting_ = true;
 
+    // if there is penetrating point, update the radius of face vertices
+    if (storage_->has_penetrating_point())
+    {
+        for (const auto& vertex : vertices_)
+        {
+            // compute distance
+            const Eigen::Vector3d& vertex_position = vertex->get_position();
+            const Eigen::Vector3d& penetrating_point_position = storage_->get_penetrating_point();
+            double distance = (vertex_position - penetrating_point_position).norm();
+            vertex->reduce_reverse_radius_search_radius(distance);
+        }
+    }
+
     // disconnect
     // make a copy of the set to avoid iterator invalidation
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertices = vertices_;
