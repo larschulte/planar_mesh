@@ -242,9 +242,6 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
         neighboring_vertices.insert(vertex);
     }
 
-    // add new vertex
-    std::vector<std::shared_ptr<Vertex>> sibling_vertices;
-
     // get neighboring surfaces
     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> neighboring_surfaces; 
     for (std::shared_ptr<Vertex> vertex : neighboring_vertices)
