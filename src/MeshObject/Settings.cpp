@@ -22,8 +22,12 @@ Settings::Settings()
         "/home/jiahao/datasets/christ church spires/2024-03-18-09-43-37/individual_clouds/",
         "/home/jiahao/datasets/christ church spires/2024-03-18-09-43-37/slam_pose_graph.g2o"
     );
+    dataset_map["math"] = std::make_pair(
+        "/home/jiahao/datasets/math/individual_clouds/",
+        "/home/jiahao/datasets/math/slam_pose_graph.g2o"
+    );
     
-    std::string dataset = "christchurch";
+    std::string dataset = "math";
     cloud_path = dataset_map[dataset].first;
     pose_path = dataset_map[dataset].second;
 
