@@ -655,10 +655,13 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
             storage_->set_penetrating_point(generic_point);
             for (const std::shared_ptr<Face>& face : mapped_searched_faces) 
             {
+                // skip if face is expired from previous delete face operation
+                if (face->is_expired()) continue;
+                
                 // log
                 std::cout << ">> disconnect penetrated face " << face->get_id() << " from surface " << surface->get_id() << std::endl;
 
-                surface->disconnect(face);
+                storage_->delete_face(face);
             }
             storage_->clear_penetrating_point();
 
