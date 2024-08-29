@@ -373,6 +373,7 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
     }
 
     // for points belong to surface_with_point_not_within, update reverse search radius
+    double smallest_distance = std::numeric_limits<double>::max();
     for (std::shared_ptr<Vertex> vertex : neighboring_vertices)
     {
         // skip if the vertex is expired
@@ -386,6 +387,12 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
 
         // reduce reverse search radius
         vertex->reduce_reverse_radius_search_radius(distance);
+
+        // update smallest distance
+        if (distance < smallest_distance)
+        {
+            smallest_distance = distance;
+        }
     }
 
     // if there is surface with points within, add to these surfaces then do a review
@@ -411,6 +418,7 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
         {
             std::shared_ptr<Surface> next_surface = sorted_surfaces_with_point_within[current_i];
             std::shared_ptr<Vertex> next_vertex = storage_->add_vertex(generic_point);
+            next_vertex->reduce_reverse_radius_search_radius(smallest_distance);
             bool connected = next_surface->connect_by_edges_and_faces(next_vertex, neighboring_vertices);
             if (connected)
             {
@@ -437,6 +445,7 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
             {
                 // check if connectable
                 std::shared_ptr<Vertex> next_vertex = storage_->add_vertex(generic_point);
+                next_vertex->reduce_reverse_radius_search_radius(smallest_distance);
                 bool connected = next_surface->connect_by_edges_and_faces(next_vertex, neighboring_vertices);
                 if (connected)
                 {
@@ -462,6 +471,7 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
             std::cout << ">> low confidence surface " << surface->get_id() << std::endl;
 
             std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(generic_point);
+            new_vertex->reduce_reverse_radius_search_radius(smallest_distance);
             bool connected = surface->connect_by_edges_and_faces(new_vertex, neighboring_vertices);
             if (connected)
             {
@@ -480,6 +490,7 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
     {
         std::shared_ptr<Surface> new_surface = storage_->add_surface();
         std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(generic_point);
+        new_vertex->reduce_reverse_radius_search_radius(smallest_distance);
         new_surface->connect(new_vertex);
     }
 
