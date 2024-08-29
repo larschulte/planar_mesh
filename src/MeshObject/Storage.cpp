@@ -332,6 +332,11 @@ const std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash>& Storage
     return genertic_points_;
 }
 
+void Storage::clear_generic_points()
+{
+    genertic_points_.clear();
+}
+
 const std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash>& Storage::get_interior_points() const
 {
     return interior_points_;
@@ -340,6 +345,11 @@ const std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash>& Storag
 const std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash>& Storage::get_penetrated_points() const
 {
     return penetrated_points_;
+}
+
+void Storage::clear_penetrated_points()
+{
+    penetrated_points_.clear();
 }
 
 std::vector<std::shared_ptr<Vertex>> Storage::get_rrs_vertices()
