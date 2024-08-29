@@ -426,8 +426,9 @@ void Vertex::disconnect(const std::shared_ptr<Face>& face)
     if (erased) update_confirmed_status();
     if (erased) update_singular_state();
 
+    // do not self destruct when have no face
     // // check self destruct
-    // if (!deleting_ && faces_.empty()) storage_->delete_vertex(shared_from_this());
+    // if (!deleting_ && faces_.empty() && can_self_destruct_) storage_->delete_vertex(shared_from_this());
 }
 
 void Vertex::disconnect(const std::shared_ptr<Surface>& surface)

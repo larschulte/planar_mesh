@@ -174,11 +174,9 @@ void Edge::disconnect(const std::shared_ptr<Face>& face)
     if (erased) update_confirmed_status();
     if (erased) update_singular_state();
 
+    // do not self destruct when have no face
     // // check self destruct
-    // if (faces_.empty())
-    // {
-    //     if (!deleting_) storage_->delete_edge(shared_from_this());
-    // }
+    // if (erased && faces_.empty() && !deleting_ && can_self_destruct_) storage_->delete_edge(shared_from_this());
 }
 
 void Edge::disconnect(const std::shared_ptr<Surface>& surface)
