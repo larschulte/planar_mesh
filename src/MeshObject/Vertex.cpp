@@ -282,7 +282,7 @@ const Eigen::Vector2d& Vertex::get_surface_coordinate(const std::shared_ptr<Surf
     {
         // compute new coordinate
         Eigen::Matrix<double, 3, 2> projection_matrix = eigenvectors.rightCols<2>();
-        Eigen::Vector3d projected_position = buffer_compute_projected_position(surface);
+        Eigen::Vector3d projected_position = surface->compute_point_projective_position(get_origin(), get_position());
         surface_coordinate_ = (projection_matrix.transpose() * projected_position).head<2>();
         eigenvectors_used_ = eigenvectors;
         return surface_coordinate_;
