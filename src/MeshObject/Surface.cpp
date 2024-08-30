@@ -646,15 +646,6 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
         }
     }
 
-    // if there is new face, remove all singular edges
-    if (!new_faces.empty())
-    {
-        for (const auto& edge : new_edges)
-        {
-            if (edge->is_singular()) storage_->delete_edge(edge);
-        }
-    }
-
     // return
     return connected;
 }
