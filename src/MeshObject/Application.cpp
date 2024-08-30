@@ -427,31 +427,15 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
             });
         
         // add to the smallest uncertainty surface as current surface
-        std::shared_ptr<Surface> current_surface = nullptr;
-        std::shared_ptr<Vertex> current_vertex = nullptr;
-        std::size_t current_i = 0;
-        for (; current_i < sorted_surfaces_with_point_within.size(); current_i++)
-        {
-            std::shared_ptr<Surface> next_surface = sorted_surfaces_with_point_within[current_i];
-            std::shared_ptr<Vertex> next_vertex = storage_->add_vertex(generic_point);
-            next_vertex->reduce_reverse_radius_search_radius(smallest_distance);
-            bool connected = next_surface->connect_by_edges_and_faces(next_vertex, neighboring_vertices);
-            if (connected)
-            {
-                current_surface = next_surface;
-                current_vertex = next_vertex;
-                break;
-            }
-            else
-            {
-                storage_->set_deleted_points_storage_name(DeletedPointStorage::NONE);
-                storage_->delete_vertex(next_vertex);
-                storage_->set_deleted_points_storage_name(DeletedPointStorage::GENERIC);
-            }
-        }
+        std::shared_ptr<Surface> current_surface = sorted_surfaces_with_point_within[0];
+        std::shared_ptr<Vertex> current_vertex = storage_->add_vertex(generic_point);
+
+        current_vertex->reduce_reverse_radius_search_radius(smallest_distance);
+        current_surface->connect_by_edges_and_faces(current_vertex, neighboring_vertices);
+        current_surface->connect(current_vertex);
         
         // connect and merge to next surface if possible
-        for (std::size_t i = current_i + 1; i < sorted_surfaces_with_point_within.size(); i++)
+        for (std::size_t i = 1; i < sorted_surfaces_with_point_within.size(); i++)
         {
             std::shared_ptr<Surface> next_surface = sorted_surfaces_with_point_within[i];
             
@@ -459,48 +443,39 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
             bool can_merge = current_surface->can_merge(next_surface);
             if (can_merge)
             {
-                // check if connectable
+                // add to surface
                 std::shared_ptr<Vertex> next_vertex = storage_->add_vertex(generic_point);
                 next_vertex->reduce_reverse_radius_search_radius(smallest_distance);
-                bool connected = next_surface->connect_by_edges_and_faces(next_vertex, neighboring_vertices);
-                if (connected)
-                {
-                    // if both satisfied, merge
-                    current_vertex->absorbs(next_vertex);
-                    storage_->set_deleted_points_storage_name(DeletedPointStorage::NONE);
-                    storage_->delete_vertex(next_vertex);
-                    storage_->set_deleted_points_storage_name(DeletedPointStorage::GENERIC);
-                }
-                else
-                {
-                    storage_->set_deleted_points_storage_name(DeletedPointStorage::NONE);
-                    storage_->delete_vertex(next_vertex);
-                    storage_->set_deleted_points_storage_name(DeletedPointStorage::GENERIC);
-                }
+                next_surface->connect_by_edges_and_faces(next_vertex, neighboring_vertices);
+                next_surface->connect(next_vertex);
+                // merge surfaces
+                current_vertex->absorbs(next_vertex);
+                DeletedPointStorage original_name = storage_->get_deleted_points_storage_name();
+                storage_->set_deleted_points_storage_name(DeletedPointStorage::NONE);
+                storage_->delete_vertex(next_vertex);
+                storage_->set_deleted_points_storage_name(original_name);
             }
         }
     }
     else if (surfaces_with_low_confidence.size() > 0)
     {
-        for (std::shared_ptr<Surface> surface : surfaces_with_low_confidence)
-        {
-            std::cout << ">> low confidence surface " << surface->get_id() << std::endl;
+        // add to the smallest surface with low confidence
 
-            std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(generic_point);
-            new_vertex->reduce_reverse_radius_search_radius(smallest_distance);
-            bool connected = surface->connect_by_edges_and_faces(new_vertex, neighboring_vertices);
-            if (connected)
+        // sort by number of points ([todo] replace by better metric later)
+        std::vector<std::shared_ptr<Surface>> sorted_surfaces_with_low_confidence;
+        sorted_surfaces_with_low_confidence.insert(sorted_surfaces_with_low_confidence.end(), surfaces_with_low_confidence.begin(), surfaces_with_low_confidence.end());
+        std::sort(sorted_surfaces_with_low_confidence.begin(), sorted_surfaces_with_low_confidence.end(), 
+            [](const std::shared_ptr<Surface>& a, const std::shared_ptr<Surface>& b) -> bool
             {
-                // sibling_vertices.push_back(new_vertex);
-                // sibling_vertices[0]->connect(new_vertex);
-            }
-            else
-            {
-                storage_->set_deleted_points_storage_name(DeletedPointStorage::NONE);
-                storage_->delete_vertex(new_vertex);
-                storage_->set_deleted_points_storage_name(DeletedPointStorage::GENERIC);
-            }
-        }
+                return a->get_total_point_size() < b->get_total_point_size();
+            });
+
+        // add to the smallest uncertainty surface
+        std::shared_ptr<Surface> smallest_surface = sorted_surfaces_with_low_confidence[0];
+        std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(generic_point);
+        new_vertex->reduce_reverse_radius_search_radius(smallest_distance);
+        smallest_surface->connect_by_edges_and_faces(new_vertex, neighboring_vertices);
+        smallest_surface->connect(new_vertex);
     }
     else
     {
