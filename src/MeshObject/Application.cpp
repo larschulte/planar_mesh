@@ -428,9 +428,9 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
             }
             else
             {
-                storage_->disallow_creation_of_generic_point();
+                storage_->set_deleted_points_storage_name(DeletedPointStorage::NONE);
                 storage_->delete_vertex(next_vertex);
-                storage_->allow_creation_of_generic_point();
+                storage_->set_deleted_points_storage_name(DeletedPointStorage::GENERIC);
             }
         }
         
@@ -451,15 +451,15 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
                 {
                     // if both satisfied, merge
                     current_vertex->absorbs(next_vertex);
-                    storage_->disallow_creation_of_generic_point();
+                    storage_->set_deleted_points_storage_name(DeletedPointStorage::NONE);
                     storage_->delete_vertex(next_vertex);
-                    storage_->allow_creation_of_generic_point();
+                    storage_->set_deleted_points_storage_name(DeletedPointStorage::GENERIC);
                 }
                 else
                 {
-                    storage_->disallow_creation_of_generic_point();
+                    storage_->set_deleted_points_storage_name(DeletedPointStorage::NONE);
                     storage_->delete_vertex(next_vertex);
-                    storage_->allow_creation_of_generic_point();
+                    storage_->set_deleted_points_storage_name(DeletedPointStorage::GENERIC);
                 }
             }
         }
@@ -480,9 +480,9 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
             }
             else
             {
-                storage_->disallow_creation_of_generic_point();
+                storage_->set_deleted_points_storage_name(DeletedPointStorage::NONE);
                 storage_->delete_vertex(new_vertex);
-                storage_->allow_creation_of_generic_point();
+                storage_->set_deleted_points_storage_name(DeletedPointStorage::GENERIC);
             }
         }
     }
@@ -653,6 +653,7 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
         if (surface->check_relative_position(generic_point) == RelativePosition::BEHIND)
         {
             storage_->set_penetrating_point(generic_point);
+            storage_->set_deleted_points_storage_name(DeletedPointStorage::PENETRATED);
             for (const std::shared_ptr<Face>& face : mapped_searched_faces) 
             {
                 // skip if face is expired from previous delete face operation
@@ -663,6 +664,7 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
 
                 storage_->delete_face(face);
             }
+            storage_->set_deleted_points_storage_name(DeletedPointStorage::GENERIC);
             storage_->clear_penetrating_point();
 
             // add back penetrated points

@@ -15,6 +15,14 @@ class Surface;
 class GenericPoint;
 class InteriorPoint;
 
+enum class DeletedPointStorage
+{
+    NONE,
+    GENERIC,
+    PENETRATED,
+    RADIUS_CHANGE
+};
+
 class Storage : public std::enable_shared_from_this<Storage> 
 {
 public: // to user
@@ -28,20 +36,28 @@ public: // to user
     const std::shared_ptr<Face>& add_face(const std::shared_ptr<Surface>& surface, const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2, const std::shared_ptr<Vertex>& vertex3);
     const std::shared_ptr<Surface>& add_surface();
     const std::shared_ptr<GenericPoint>& add_generic_point(const Eigen::Vector3d& position, const Eigen::Vector3d& origin);
-    const std::shared_ptr<GenericPoint>& add_generic_point(const std::shared_ptr<Vertex>& vertex);
-    const std::shared_ptr<GenericPoint>& add_generic_point(const std::shared_ptr<InteriorPoint>& interior_point);
     const std::shared_ptr<InteriorPoint>& add_interior_point(const Eigen::Vector3d& position, const Eigen::Vector3d& origin);
     const std::shared_ptr<InteriorPoint>& add_interior_point(const std::shared_ptr<GenericPoint>& generic_point);
-    const std::shared_ptr<GenericPoint>& add_penetrated_point(const std::shared_ptr<Vertex>& vertex);
-    const std::shared_ptr<GenericPoint>& add_penetrated_point(const std::shared_ptr<InteriorPoint>& interior_point);
-
+    
     void delete_vertex(const std::shared_ptr<Vertex>& vertex);
     void delete_edge(const std::shared_ptr<Edge>& edge);
     void delete_face(const std::shared_ptr<Face>& face);
     void delete_surface(const std::shared_ptr<Surface>& surface);
-    void delete_generic_point(const std::shared_ptr<GenericPoint>& genertic_point);
     void delete_interior_point(const std::shared_ptr<InteriorPoint>& interior_point);
+
+    void set_deleted_points_storage_name(const DeletedPointStorage& storage_name);
+    DeletedPointStorage get_deleted_points_storage_name() const;
+    void add_deleted_point(const std::shared_ptr<Vertex>& vertex);
+    void add_deleted_point(const std::shared_ptr<InteriorPoint>& interior_point);
+    const std::shared_ptr<GenericPoint>& add_generic_point(const std::shared_ptr<Vertex>& vertex);
+    const std::shared_ptr<GenericPoint>& add_generic_point(const std::shared_ptr<InteriorPoint>& interior_point);
+    const std::shared_ptr<GenericPoint>& add_penetrated_point(const std::shared_ptr<Vertex>& vertex);
+    const std::shared_ptr<GenericPoint>& add_penetrated_point(const std::shared_ptr<InteriorPoint>& interior_point);
+    const std::shared_ptr<GenericPoint>& add_radius_point(const std::shared_ptr<Vertex>& vertex);
+    const std::shared_ptr<GenericPoint>& add_radius_point(const std::shared_ptr<InteriorPoint>& interior_point);
+    void delete_generic_point(const std::shared_ptr<GenericPoint>& genertic_point);
     void delete_penetrated_point(const std::shared_ptr<GenericPoint>& penetrated_point);
+    void delete_radius_point(const std::shared_ptr<GenericPoint>& radius_point);
 
     bool can_reverse_radius_search();
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> reverse_radius_search(const Eigen::Vector3d& point);
@@ -70,10 +86,6 @@ public: // to user
     void clear_penetrating_point();
     bool has_penetrating_point() const;
 
-    void disallow_creation_of_generic_point();
-    void allow_creation_of_generic_point();
-    bool can_create_generic_point() const;
-
     void print_rrs() const;
     void print_bvh() const;
     void rebuild_tree();
@@ -97,7 +109,6 @@ public: // to MeshObject class
 
 private:
     bool is_expired_ = true;
-    bool can_create_generic_point_ = true;
 
     Eigen::Vector3d penetrating_point_;
     bool has_penetrating_point_ = false;
@@ -109,9 +120,13 @@ private:
     std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges_;
     std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces_;
     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_;
-    std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash> genertic_points_;
     std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> interior_points_;
+
+    std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash> genertic_points_;
     std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash> penetrated_points_;
+    std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash> radius_points_;
+
+    DeletedPointStorage deleted_points_storage_name_ = DeletedPointStorage::GENERIC;
 
     int next_vertex_id_ = 0;
     int next_edge_id_ = 0;

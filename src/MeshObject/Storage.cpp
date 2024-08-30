@@ -149,6 +149,26 @@ const std::shared_ptr<GenericPoint>& Storage::add_penetrated_point(const std::sh
     return *penetrated_points_.insert(genertic_point).first;
 }
 
+const std::shared_ptr<GenericPoint>& Storage::add_radius_point(const std::shared_ptr<Vertex>& vertex) 
+{
+    // create
+    std::shared_ptr<GenericPoint> genertic_point = std::make_shared<GenericPoint>();
+    genertic_point->initialize_(shared_from_this(), vertex);
+
+    // store
+    return *radius_points_.insert(genertic_point).first;
+}
+
+const std::shared_ptr<GenericPoint>& Storage::add_radius_point(const std::shared_ptr<InteriorPoint>& interior_point) 
+{
+    // create
+    std::shared_ptr<GenericPoint> genertic_point = std::make_shared<GenericPoint>();
+    genertic_point->initialize_(shared_from_this(), interior_point);
+
+    // store
+    return *radius_points_.insert(genertic_point).first;
+}
+
 // need to ensure the vertex/edge/face are only stored using shared_ptr here and nowhere else
 void Storage::delete_vertex(const std::shared_ptr<Vertex>& vertex) 
 {
@@ -235,6 +255,72 @@ void Storage::delete_penetrated_point(const std::shared_ptr<GenericPoint>& penet
 
     // member delete
     penetrated_point->delete_();
+}
+
+void Storage::delete_radius_point(const std::shared_ptr<GenericPoint>& radius_point) 
+{
+    // check input
+    if (radius_point->is_expired()) throw std::runtime_error("Attempts to delete expired radius point.");
+
+    // storage delete
+    radius_points_.erase(radius_point);
+
+    // member delete
+    radius_point->delete_();
+}
+
+void Storage::set_deleted_points_storage_name(const DeletedPointStorage& name)
+{
+    deleted_points_storage_name_ = name;
+}
+
+DeletedPointStorage Storage::get_deleted_points_storage_name() const
+{
+    return deleted_points_storage_name_;
+}
+
+void Storage::add_deleted_point(const std::shared_ptr<Vertex>& vertex)
+{
+    if (deleted_points_storage_name_ == DeletedPointStorage::NONE)
+    {
+        // not allowed to create deleted points
+    }
+    else if (deleted_points_storage_name_ == DeletedPointStorage::PENETRATED)
+    {
+        // add to storage as penetrated point
+        add_penetrated_point(vertex);
+    }
+    else if (deleted_points_storage_name_ == DeletedPointStorage::RADIUS_CHANGE)
+    {
+        add_radius_point(vertex);
+    }
+    else if (deleted_points_storage_name_ == DeletedPointStorage::GENERIC)
+    {
+        // add to storage as generic point
+        add_generic_point(vertex);
+    }   
+}
+
+void Storage::add_deleted_point(const std::shared_ptr<InteriorPoint>& interior_point)
+{
+    if (deleted_points_storage_name_ == DeletedPointStorage::NONE)
+    {
+        // not allowed to create deleted points
+    }
+    else if (deleted_points_storage_name_ == DeletedPointStorage::PENETRATED)
+    {
+        // add to storage as penetrated point
+        add_penetrated_point(interior_point);
+    }
+    else if (deleted_points_storage_name_ == DeletedPointStorage::RADIUS_CHANGE)
+    {
+        add_radius_point(interior_point);
+    }
+    else if (deleted_points_storage_name_ == DeletedPointStorage::GENERIC)
+    {
+        // add to storage as generic point
+        add_generic_point(interior_point);
+    }
 }
 
 void Storage::add_searchable_vertex(const std::shared_ptr<Vertex>& vertex)
@@ -398,21 +484,6 @@ void Storage::clear_penetrating_point()
 bool Storage::has_penetrating_point() const
 {
     return has_penetrating_point_;
-}
-
-void Storage::disallow_creation_of_generic_point()
-{
-    can_create_generic_point_ = false;
-}
-
-void Storage::allow_creation_of_generic_point()
-{
-    can_create_generic_point_ = true;
-}
-
-bool Storage::can_create_generic_point() const
-{
-    return can_create_generic_point_;
 }
 
 // get edge

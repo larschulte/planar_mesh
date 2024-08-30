@@ -81,22 +81,17 @@ void Vertex::delete_()
     num_deletes_++;
 
     // only create penetrated point / generic point if sibling is empty
-    if (sibling_vertices_.empty() && storage_->can_create_generic_point() && can_create_generic_point_)
+    if (sibling_vertices_.empty() && can_create_generic_point_)
     {
-        if (storage_->has_penetrating_point())
+        // update radius if there is penetrating point
+        if (storage_->get_deleted_points_storage_name() == DeletedPointStorage::PENETRATED)
         {
             // compute radius from storage
             double radius = (storage_->get_penetrating_point() - get_position()).norm();
-            if (radius < reverse_search_radius_) reverse_search_radius_ = radius;
+            if (radius < get_radius()) set_reverse_radius_search_radius(radius);
+        }
 
-            // add to storage as penetrated point
-            storage_->add_penetrated_point(shared_from_this());
-        }
-        else
-        {
-            // add to storage as generic point
-            storage_->add_generic_point(shared_from_this());
-        }
+        storage_->add_deleted_point(shared_from_this());
     }
 
     // disconnect from sibling vertices
