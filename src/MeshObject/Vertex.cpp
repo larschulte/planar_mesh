@@ -265,7 +265,7 @@ double Vertex::get_current_surface_uncertainty() const
     // }
 // }
 
-const Eigen::Vector2d& Vertex::get_surface_coordinate(const std::shared_ptr<Surface> surface)
+const Eigen::Vector2d& Vertex::get_surface_coordinate(const std::shared_ptr<Surface>& surface)
 {
     const Eigen::Matrix3d& eigenvectors = surface->get_eigenvectors();
     if (eigenvectors_used_ == eigenvectors)

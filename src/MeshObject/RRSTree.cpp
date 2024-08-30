@@ -13,7 +13,9 @@ void RRSTree::BoundingBox::expand(const Eigen::Vector3d& point)
 
 bool RRSTree::BoundingBox::contains(const Eigen::Vector3d& point)
 {
-    return (point.array() >= min.array()).all() && (point.array() <= max.array()).all();
+    return (point[0] >= min[0] && point[0] <= max[0] &&
+            point[1] >= min[1] && point[1] <= max[1] &&
+            point[2] >= min[2] && point[2] <= max[2]);
 }
 
 int RRSTree::BoundingBox::get_longest_axis()

@@ -46,7 +46,7 @@ public:
     const Eigen::Vector3d& buffer_compute_projected_position();
     const double& buffer_compute_projected_distance(const std::shared_ptr<Surface> surface);
     const double& buffer_compute_projected_distance();
-    const Eigen::Vector2d& get_surface_coordinate(const std::shared_ptr<Surface> surface);
+    const Eigen::Vector2d& get_surface_coordinate(const std::shared_ptr<Surface>& surface);
     const Eigen::Vector2d& get_surface_coordinate();
 
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> compute_connected_vertices();
