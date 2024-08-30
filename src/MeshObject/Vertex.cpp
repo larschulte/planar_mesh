@@ -404,8 +404,8 @@ void Vertex::disconnect(const std::shared_ptr<Edge>& edge)
     // update boundary state
     update_boundary_state();
 
-    // // check self destruct
-    // if (!deleting_ && edges_.empty()) storage_->delete_vertex(shared_from_this());
+    // check self destruct
+    if (!deleting_ && edges_.empty()) storage_->delete_vertex(shared_from_this());
 }
 
 void Vertex::disconnect(const std::shared_ptr<Face>& face)
@@ -422,8 +422,8 @@ void Vertex::disconnect(const std::shared_ptr<Face>& face)
     if (erased) update_singular_state();
 
     // do not self destruct when have no face
-    // // check self destruct
-    // if (!deleting_ && faces_.empty() && can_self_destruct_) storage_->delete_vertex(shared_from_this());
+    // check self destruct
+    if (!deleting_ && faces_.empty() && can_self_destruct_) storage_->delete_vertex(shared_from_this());
 }
 
 void Vertex::disconnect(const std::shared_ptr<Surface>& surface)
@@ -793,6 +793,7 @@ void Vertex::reduce_reverse_radius_search_radius(double radius)
     for (const std::shared_ptr<Edge>& edge : edges_copy)
     {
         if (edge->is_expired()) continue; // could turn expired if below deletes an edge which then deletes a face
+        if (edge->is_deleting()) continue; // could be deleting
 
         if (edge->get_length() > edge->get_vertex(0)->get_radius() || edge->get_length() > edge->get_vertex(1)->get_radius())
         {

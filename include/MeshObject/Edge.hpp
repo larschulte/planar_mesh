@@ -51,6 +51,7 @@ public:
     bool has_vertex(const std::shared_ptr<Vertex>& vertex) const;
     bool is_boundary() const;
     bool is_singular() const;
+    bool is_deleting() const;
     void update_boundary_state();
     void update_singular_state();
     void update_searchable_state();

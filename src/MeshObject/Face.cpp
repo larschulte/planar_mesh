@@ -95,7 +95,9 @@ void Face::delete_()
     // if there is penetrating point, update the radius of face vertices
     if (storage_->has_penetrating_point())
     {
-        for (const auto& vertex : vertices_)
+        // make a copy of vertices, as reduce_reverse_radius_search_radius will modify the set
+        std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> copy_vertices = vertices_;
+        for (const auto& vertex : copy_vertices)
         {
             // compute distance
             const Eigen::Vector3d& vertex_position = vertex->get_position();
