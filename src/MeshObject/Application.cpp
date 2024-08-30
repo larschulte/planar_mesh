@@ -373,6 +373,7 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
     }
 
     // for points belong to surface_with_point_not_within, update reverse search radius
+    DeletedPointStorage original_name = storage_->get_deleted_points_storage_name();
     storage_->set_deleted_points_storage_name(DeletedPointStorage::RADIUS_CHANGE);
     double smallest_distance = std::numeric_limits<double>::max();
     for (std::shared_ptr<Vertex> vertex : neighboring_vertices)
@@ -395,7 +396,7 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
             smallest_distance = distance;
         }
     }
-    storage_->set_deleted_points_storage_name(DeletedPointStorage::GENERIC);
+    storage_->set_deleted_points_storage_name(original_name);
 
     // add back points deleted due to reduction of radius
     std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash> copy_of_radius_points = storage_->pop_radius_points();
@@ -644,6 +645,7 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
         if (surface->check_relative_position(generic_point) == RelativePosition::BEHIND)
         {
             storage_->set_penetrating_point(generic_point);
+            DeletedPointStorage original_name = storage_->get_deleted_points_storage_name();
             storage_->set_deleted_points_storage_name(DeletedPointStorage::PENETRATED);
             for (const std::shared_ptr<Face>& face : mapped_searched_faces) 
             {
@@ -655,7 +657,7 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
 
                 storage_->delete_face(face);
             }
-            storage_->set_deleted_points_storage_name(DeletedPointStorage::GENERIC);
+            storage_->set_deleted_points_storage_name(original_name);
             storage_->clear_penetrating_point();
 
             // add back penetrated points
@@ -942,6 +944,8 @@ std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> Application<PointT>::g
 template <typename PointT>
 void Application<PointT>::refine_surfaces()
 {
+    DeletedPointStorage original_name = storage_->get_deleted_points_storage_name();
+    storage_->set_deleted_points_storage_name(DeletedPointStorage::GENERIC);
     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> copy_of_surfaces = storage_->get_surfaces();
     for (const std::shared_ptr<Surface>& surface : copy_of_surfaces)
     {
@@ -950,6 +954,7 @@ void Application<PointT>::refine_surfaces()
         surface->split_surface_by_connected_components();
     }
     std::cout << "number of generic points after refine: " << storage_->get_generic_points().size() << std::endl;
+    storage_->set_deleted_points_storage_name(original_name);
 }
 
 template <typename PointT>
