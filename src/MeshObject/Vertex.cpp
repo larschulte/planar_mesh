@@ -783,15 +783,20 @@ void Vertex::set_reverse_radius_search_radius(double radius)
 
 void Vertex::reduce_reverse_radius_search_radius(double radius)
 {
-    if (radius < reverse_search_radius_) set_reverse_radius_search_radius(radius);
+    if (radius > reverse_search_radius_) return;
 
-    // if any edge have larger length than radius, delete the edge
+    // update radius
+    set_reverse_radius_search_radius(radius);
+
+    // if for an edge, both vertices have smaller radius than the length of the edge, delete the edge
     std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges_copy = edges_;
     for (const std::shared_ptr<Edge>& edge : edges_copy)
     {
-        if (edge->get_length() > radius)
+        if (edge->is_expired()) continue; // could turn expired if below deletes an edge which then deletes a face
+
+        if (edge->get_length() > edge->get_vertex(0)->get_radius() || edge->get_length() > edge->get_vertex(1)->get_radius())
         {
-            disconnect(edge);
+            storage_->delete_edge(edge);
         }
     }
 }

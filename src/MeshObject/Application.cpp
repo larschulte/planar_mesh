@@ -373,6 +373,7 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
     }
 
     // for points belong to surface_with_point_not_within, update reverse search radius
+    storage_->set_deleted_points_storage_name(DeletedPointStorage::RADIUS_CHANGE);
     double smallest_distance = std::numeric_limits<double>::max();
     for (std::shared_ptr<Vertex> vertex : neighboring_vertices)
     {
@@ -394,6 +395,21 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
             smallest_distance = distance;
         }
     }
+    storage_->set_deleted_points_storage_name(DeletedPointStorage::GENERIC);
+
+    // add back points deleted due to reduction of radius
+    std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash> copy_of_radius_points = storage_->pop_radius_points();
+    for (const std::shared_ptr<GenericPoint>& radius_point : copy_of_radius_points)
+    {
+        // log
+        std::cout << ">> adding back radius point" << std::endl;
+
+        // process
+        process_point(radius_point);
+    }
+    
+    // there are some overlapping points -> perhaps due to points added to multiple uncertain surface and not merged
+
 
     // if there is surface with points within, add to these surfaces then do a review
     // if there is no surface with points within, add to all low confidence surfaces
