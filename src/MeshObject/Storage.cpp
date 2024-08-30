@@ -269,6 +269,42 @@ void Storage::delete_radius_point(const std::shared_ptr<GenericPoint>& radius_po
     radius_point->delete_();
 }
 
+std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash> Storage::pop_generic_points()
+{
+    // copy
+    std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash> generic_points = genertic_points_;
+
+    // clear
+    genertic_points_.clear();
+
+    // return
+    return generic_points;
+}
+
+std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash> Storage::pop_penetrated_points()
+{
+    // copy
+    std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash> penetrated_points = penetrated_points_;
+
+    // clear
+    penetrated_points_.clear();
+
+    // return
+    return penetrated_points;
+}
+
+std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash> Storage::pop_radius_points()
+{
+    // copy
+    std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash> radius_points = radius_points_;
+
+    // clear
+    radius_points_.clear();
+
+    // return
+    return radius_points;
+}
+
 void Storage::set_deleted_points_storage_name(const DeletedPointStorage& name)
 {
     deleted_points_storage_name_ = name;

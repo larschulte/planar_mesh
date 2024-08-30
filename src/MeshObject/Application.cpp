@@ -668,8 +668,7 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
             storage_->clear_penetrating_point();
 
             // add back penetrated points
-            std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash> copy_of_penetrated_points = storage_->get_penetrated_points();
-            storage_->clear_penetrated_points();
+            std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash> copy_of_penetrated_points = storage_->pop_penetrated_points();
             for (const std::shared_ptr<GenericPoint>& penetrated_point : copy_of_penetrated_points)
             {
                 // log
@@ -741,8 +740,7 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
         add_point_by_radius_search(generic_point);
 
         // // add back deleted points
-        // std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash> copy_of_generic_points = storage_->get_generic_points();
-        // storage_->clear_generic_points();
+        // std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash> copy_of_generic_points = storage_->pop_generic_points();
         // for (const std::shared_ptr<GenericPoint>& generic_point : copy_of_generic_points)
         // {
         //     // log
@@ -802,8 +800,7 @@ void Application<PointT>::step()
 template <typename PointT>
 void Application<PointT>::add_back_generic_points()
 {
-    std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash> copy_of_generic_points = storage_->get_generic_points();
-    storage_->clear_generic_points();
+    std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash> copy_of_generic_points = storage_->pop_generic_points();
     for (const std::shared_ptr<GenericPoint>& generic_point : copy_of_generic_points)
     {
         process_point(generic_point);

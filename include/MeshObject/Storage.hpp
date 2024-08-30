@@ -58,6 +58,9 @@ public: // to user
     void delete_generic_point(const std::shared_ptr<GenericPoint>& genertic_point);
     void delete_penetrated_point(const std::shared_ptr<GenericPoint>& penetrated_point);
     void delete_radius_point(const std::shared_ptr<GenericPoint>& radius_point);
+    std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash> pop_generic_points();
+    std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash> pop_penetrated_points();
+    std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash> pop_radius_points();
 
     bool can_reverse_radius_search();
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> reverse_radius_search(const Eigen::Vector3d& point);
