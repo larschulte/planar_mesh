@@ -182,16 +182,10 @@ bool Face::has_vertex(const std::shared_ptr<Vertex>& vertex) const
 }
 
 bool Face::intersects_point(const Eigen::Vector3d& origin, const Eigen::Vector3d& direction)
-{
-    // get first Vertex in vertices_
-    auto it = vertices_.begin();
-    std::shared_ptr vertex0 = *(it++);
-    std::shared_ptr vertex1 = *(it++);
-    std::shared_ptr vertex2 = *(it++);
-    const Eigen::Vector3d& v0 = vertex0->get_position();
-    const Eigen::Vector3d& v1 = vertex1->get_position();
-    const Eigen::Vector3d& v2 = vertex2->get_position();
-
+{    
+    const Eigen::Vector3d& v0 = get_vertex(0)->get_position();
+    const Eigen::Vector3d& v1 = get_vertex(1)->get_position();
+    const Eigen::Vector3d& v2 = get_vertex(2)->get_position();
 
     const double EPSILON = 1e-8;
     Eigen::Vector3d edge1 = v1 - v0;
