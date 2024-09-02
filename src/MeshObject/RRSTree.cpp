@@ -77,7 +77,7 @@ std::shared_ptr<RRSTree::Node> RRSTree::build_node(const std::vector<std::shared
     node->boundary_vertices = std::vector<std::shared_ptr<Vertex>>(boundary_vertex_list.begin() + start, boundary_vertex_list.begin() + end);
 
     // convert to branch
-    if (node->boundary_vertices.size() > 4) convert_leaf_to_branch(node);
+    if (node->boundary_vertices.size() > leaf_size) convert_leaf_to_branch(node);
 
     return node;
 }
@@ -89,7 +89,7 @@ void RRSTree::node_add_vertex(const std::shared_ptr<Node>& node, const std::shar
     if (node->isLeaf())
     {    
         node->boundary_vertices.push_back(boundary_vertex);
-        if (node->boundary_vertices.size() > 4) convert_leaf_to_branch(node);
+        if (node->boundary_vertices.size() > leaf_size) convert_leaf_to_branch(node);
     }
     else
     {
@@ -221,6 +221,7 @@ void RRSTree::node_print(const std::shared_ptr<Node>& node, int level) const
 
 RRSTree::RRSTree() : rebuild_threshold(2), size_at_last_rebuild(0), tree_size(0)
 {
+    leaf_size = 64;
     rebuild();
 }
 
