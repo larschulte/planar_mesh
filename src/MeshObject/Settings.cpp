@@ -51,10 +51,10 @@ Settings::Settings()
     start_cloud = 50;
     start_point = 0;
     fit_plane_threshold = 4;
-    shuffle_pointcloud = false;
-    use_radius_value = false;
+    shuffle_pointcloud = true;
+    use_radius_value = true;
     pointcloud_fraction = 1;
-    radius_value = 2;
+    radius_value = 3;
 
     abnormal_size = 1.5;
     envelope_size = 3.5;
