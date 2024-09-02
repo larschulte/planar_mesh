@@ -593,10 +593,30 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
     std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> searched_faces = storage_->face_intersection_search(generic_point);
 
     // searched surfaces
-    std::map<std::shared_ptr<Surface>, std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>> searched_surface_to_searched_faces;
+    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> searched_surfaces;
     for (const std::shared_ptr<Face>& face : searched_faces)
     {
-        searched_surface_to_searched_faces[face->get_surface()].insert(face);    
+        searched_surfaces.insert(face->get_surface());
+    }
+
+    // check relative position with the searched surfaces
+    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_with_point_within;
+    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_with_point_behind;
+    for (const std::shared_ptr<Surface>& surface : searched_surfaces)
+    {
+        // skip if the surface is expired
+        if (surface->is_expired()) continue;
+
+        // if within surface
+        if (surface->check_relative_position(generic_point) == RelativePosition::WITHIN)
+        {
+            surfaces_with_point_within.insert(surface);
+        }
+        // if behind surface
+        else if (surface->check_relative_position(generic_point) == RelativePosition::BEHIND)
+        {
+            surfaces_with_point_behind.insert(surface);
+        }
     }
 
     // // delete abnormal surfaces
@@ -636,97 +656,107 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
     // }
     
     // log
-    std::cout << ">> found " << searched_faces.size() << " searched faces grouped into " << searched_surface_to_searched_faces.size() << " searched surfaces" << std::endl;
+    std::cout << ">> found " << searched_faces.size() << " searched faces grouped into " << searched_surfaces.size() << " searched surfaces" << std::endl;
 
     // process point behind surface
-    for (const auto& pair : searched_surface_to_searched_faces)
+    for (const std::shared_ptr<Surface>& surface : surfaces_with_point_behind)
     {
-        const std::shared_ptr<Surface>& surface = pair.first;
-        const std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& mapped_searched_faces = pair.second;
+        // log
+        std::cout << "========================== behind surface " << surface->get_id() << std::endl;
 
-        if (surface->check_relative_position(generic_point) == RelativePosition::BEHIND)
+        // delete penetrated faces
+        DeletedPointStorage original_name = storage_->get_deleted_points_storage_name();
+        storage_->set_deleted_points_storage_name(DeletedPointStorage::PENETRATED);
+        for (const std::shared_ptr<Face>& face : searched_faces)
         {
-            storage_->set_penetrating_point(generic_point);
-            DeletedPointStorage original_name = storage_->get_deleted_points_storage_name();
-            storage_->set_deleted_points_storage_name(DeletedPointStorage::PENETRATED);
-            for (const std::shared_ptr<Face>& face : mapped_searched_faces) 
-            {
-                // skip if face is expired from previous delete face operation
-                if (face->is_expired()) continue;
-                
-                // log
-                std::cout << ">> disconnect penetrated face " << face->get_id() << " from surface " << surface->get_id() << std::endl;
+            // skip if face is not from the surface
+            if (face->get_surface() != surface) continue;
 
-                storage_->delete_face(face);
-            }
-            storage_->set_deleted_points_storage_name(original_name);
-            storage_->clear_penetrating_point();
+            // skip if face is expired from previous delete face operation
+            if (face->is_expired()) continue;
 
-            // add back penetrated points
-            std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash> copy_of_penetrated_points = storage_->pop_penetrated_points();
-            for (const std::shared_ptr<GenericPoint>& penetrated_point : copy_of_penetrated_points)
-            {
-                // log
-                std::cout << ">> adding back penetrated point as vertex" << std::endl;
+            // log
+            std::cout << ">> disconnect penetrated face " << face->get_id() << " from surface " << surface->get_id() << std::endl;
 
-                // process
-                process_point(penetrated_point);
-            }
+            storage_->delete_face(face);
+        }
+        storage_->set_deleted_points_storage_name(original_name);
+        storage_->clear_penetrating_point();
+
+        // add back penetrated points
+        std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash> copy_of_penetrated_points = storage_->pop_penetrated_points();
+        for (const std::shared_ptr<GenericPoint>& penetrated_point : copy_of_penetrated_points)
+        {
+            // log
+            std::cout << ">> adding back penetrated point as vertex" << std::endl;
+
+            // process
+            process_point(penetrated_point);
         }
     }
 
-    // faces may become expired
-
     // process points within surface
-
-    // try add as interior point
-    std::vector<std::shared_ptr<InteriorPoint>> sibling_interior_points;
-    for (const auto& pair : searched_surface_to_searched_faces)
+    // find the surface with the largest size
+    bool added_as_interior_point = false;
+    std::shared_ptr<Surface> largest_surface;
+    std::size_t largest_surface_size = 0;
+    for (const std::shared_ptr<Surface>& surface : surfaces_with_point_within)
     {
-        const std::shared_ptr<Surface>& surface = pair.first;
-        const std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& mapped_searched_faces = pair.second;
+        // skip if the surface is expired
+        if (surface->is_expired()) continue;
 
-        // skip if faces are all expired
-        bool all_faces_expired = true;
-        for (const std::shared_ptr<Face>& face : mapped_searched_faces)
+        // update largest surface
+        std::size_t surface_size = surface->get_total_point_size();
+        if (surface_size > largest_surface_size)
         {
-            if (!face->is_expired())
-            {
-                all_faces_expired = false;
-                break;
-            }
+            largest_surface = surface;
+            largest_surface_size = surface_size;
         }
-        if (all_faces_expired) continue;
-        
-        if (surface->check_relative_position(generic_point) == RelativePosition::WITHIN)
+    }
+
+    // add to the largest surface
+    if (largest_surface != nullptr)
+    {
+        // log
+        std::cout << "========================== within surface " << largest_surface->get_id() << std::endl;
+
+        // add as interior point
+        const std::shared_ptr<InteriorPoint>& temp_interior_point = storage_->add_interior_point(generic_point);
+        temp_interior_point->connect(largest_surface);
+
+        // get faces with points within
+        std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces_with_points_within;
+        for (const std::shared_ptr<Face>& face : searched_faces)
+        {
+            // skip if the face is not from the surface
+            if (face->get_surface() != largest_surface) continue;
+
+            // skip if the face is expired
+            if (face->is_expired()) continue;
+
+            // insert
+            faces_with_points_within.insert(face);
+        }
+
+        // connect to the first face
+        for (const std::shared_ptr<Face>& face : faces_with_points_within)
         {
             // log
-            std::cout << "========================== within surface " << surface->get_id() << std::endl;
+            std::cout << ">> adding interior point to face " << face->get_id() << std::endl;
 
-            // add as interior point
-            std::shared_ptr<InteriorPoint> temp_interior_point = storage_->add_interior_point(generic_point);
-            sibling_interior_points.push_back(temp_interior_point);
-            sibling_interior_points[0]->connect(temp_interior_point);
+            // connect
+            temp_interior_point->connect(face);
 
-            // connect to surface
-            temp_interior_point->connect(surface);
+            // update flag
+            added_as_interior_point = true;
 
-            // connect to face
-            for (const std::shared_ptr<Face>& face : mapped_searched_faces)
-            {
-                // skip if the face is expired
-                if (face->is_expired()) continue;
-
-                // log
-                std::cout << ">> adding interior point to face " << face->get_id() << std::endl;
-
-                temp_interior_point->connect(face);
-            }
+            // break so only added to the first surface
+            break;
         }
     }
 
     // if can't be added as interior point, add as vertex
-    if (sibling_interior_points.size() == 0) 
+    if (!added_as_interior_point)
     {
         // log
         std::cout << ">> adding point as vertex" << std::endl;
