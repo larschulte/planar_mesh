@@ -58,6 +58,8 @@ Settings::Settings()
 
     abnormal_size = 1.5;
     envelope_size = 3.5;
+
+    // min_face_angle = 20;
     
     // interactive viewer settings
     show_generic_points = true;

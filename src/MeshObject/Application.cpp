@@ -221,30 +221,30 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
         // if have matched surfaces, remove from low confidence surfaces
         // remain in matched surfaces
 
-    bool review_point = false;
-    if (review_point)
-    {
-        // review point
-        // make a copy of the neighboring vertices as we will be modifying it
-        std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> neighboring_vertices_copy = neighboring_vertices;
-        for (const std::shared_ptr<Vertex>& vertex : neighboring_vertices_copy)
-        {
-            // some sibling vertex may be expired during previous review 
-            if (vertex->is_expired()) continue;
+    // bool review_point = false;
+    // if (review_point)
+    // {
+    //     // review point
+    //     // make a copy of the neighboring vertices as we will be modifying it
+    //     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> neighboring_vertices_copy = neighboring_vertices;
+    //     for (const std::shared_ptr<Vertex>& vertex : neighboring_vertices_copy)
+    //     {
+    //         // some sibling vertex may be expired during previous review 
+    //         if (vertex->is_expired()) continue;
 
-            vertex->review_surfaces();
-        }
+    //         vertex->review_surfaces();
+    //     }
 
-        // recompute neighboring vertices
-        neighboring_vertices.clear();
-        for (std::shared_ptr<Vertex> vertex : neighboring_vertices_copy)
-        {
-            // skip if the vertex is expired
-            if (vertex->is_expired()) continue;
+    //     // recompute neighboring vertices
+    //     neighboring_vertices.clear();
+    //     for (std::shared_ptr<Vertex> vertex : neighboring_vertices_copy)
+    //     {
+    //         // skip if the vertex is expired
+    //         if (vertex->is_expired()) continue;
 
-            neighboring_vertices.insert(vertex);
-        }
-    }
+    //         neighboring_vertices.insert(vertex);
+    //     }
+    // }
 
     // get neighboring surfaces
     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> neighboring_surfaces; 
@@ -258,88 +258,89 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
     }
     std::cout << ">> grouped into " << neighboring_surfaces.size() << " neighboring surfaces" << std::endl;
 
-    // delete abnormal surfaces
-    bool delete_abnormal_surfaces = false;
-    for (const std::shared_ptr<Surface>& surface : neighboring_surfaces)
-    {
-        if (surface->is_abnormal())
-        {
-            // delete
-            std::cout << ">> removing abnormal surface during intersection search" << surface->get_id() << std::endl; // log
-            storage_->delete_surface(surface);
-            delete_abnormal_surfaces = true;
-        }
-    }
+    // // delete abnormal surfaces
+    // bool delete_abnormal_surfaces = false;
+    // for (const std::shared_ptr<Surface>& surface : neighboring_surfaces)
+    // {
+    //     if (surface->is_abnormal())
+    //     {
+    //         // delete
+    //         std::cout << ">> removing abnormal surface during intersection search" << surface->get_id() << std::endl; // log
+    //         storage_->delete_surface(surface);
+    //         delete_abnormal_surfaces = true;
+    //     }
+    // }
 
-    if (delete_abnormal_surfaces)
-    {
-        // recompute neighboring vertices
-        std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> neighboring_vertices_copy = neighboring_vertices;
-        neighboring_vertices.clear();
-        for (std::shared_ptr<Vertex> vertex : neighboring_vertices_copy)
-        {
-            // skip if the vertex is expired
-            if (vertex->is_expired()) continue;
+    // if (delete_abnormal_surfaces)
+    // {
+    //     // recompute neighboring vertices
+    //     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> neighboring_vertices_copy = neighboring_vertices;
+    //     neighboring_vertices.clear();
+    //     for (std::shared_ptr<Vertex> vertex : neighboring_vertices_copy)
+    //     {
+    //         // skip if the vertex is expired
+    //         if (vertex->is_expired()) continue;
 
-            neighboring_vertices.insert(vertex);
-        }
+    //         neighboring_vertices.insert(vertex);
+    //     }
         
-        // recompute neighboring surfaces
-        neighboring_surfaces.clear();
-        for (std::shared_ptr<Vertex> vertex : neighboring_vertices)
-        {
-            // only add to neighboring surface if the vertex is boundary in that surface
-            if (vertex->is_boundary())
-            {
-                neighboring_surfaces.insert(vertex->get_surface());
-            }
-        }
-        std::cout << ">> grouped into " << neighboring_surfaces.size() << " neighboring surfaces" << std::endl;
-    }
+    //     // recompute neighboring surfaces
+    //     neighboring_surfaces.clear();
+    //     for (std::shared_ptr<Vertex> vertex : neighboring_vertices)
+    //     {
+    //         // only add to neighboring surface if the vertex is boundary in that surface
+    //         if (vertex->is_boundary())
+    //         {
+    //             neighboring_surfaces.insert(vertex->get_surface());
+    //         }
+    //     }
+    //     std::cout << ">> grouped into " << neighboring_surfaces.size() << " neighboring surfaces" << std::endl;
+    // }
 
     // remove unmatched points in the surfaces
-    bool removed_unmatched_points = false;
-    for (const std::shared_ptr<Surface>& surface : neighboring_surfaces)
-    {
-        // the remove unmatched point creates generic points that are not added back
-        if (surface->remove_unmatched_points())
-        {
-            removed_unmatched_points = true;
-            bool remove_singular_components = false;
-            if (remove_singular_components)
-            {
-                // remove singular components
-                surface->remove_singular_components();
-            }
-            surface->split_surface_by_connected_components();
-        }
-    }
+    // bool removed_unmatched_points = false;
+    // for (const std::shared_ptr<Surface>& surface : neighboring_surfaces)
+    // {
+    //     // the remove unmatched point creates generic points that are not added back
+    //     if (surface->remove_unmatched_points())
+    //     {
+    //         removed_unmatched_points = true;
+    //         // remove singular components
+    //         bool remove_singular_components = true;
+    //         if (remove_singular_components)
+    //         {
+    //             // remove singular components
+    //             surface->remove_singular_components();
+    //         }
+    //         surface->split_surface_by_connected_components();
+    //     }
+    // }
 
-    if (removed_unmatched_points)
-    {
-        // recompute neighboring vertices
-        std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> neighboring_vertices_copy = neighboring_vertices;
-        neighboring_vertices.clear();
-        for (std::shared_ptr<Vertex> vertex : neighboring_vertices_copy)
-        {
-            // skip if the vertex is expired
-            if (vertex->is_expired()) continue;
+    // if (removed_unmatched_points)
+    // {
+    //     // recompute neighboring vertices
+    //     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> neighboring_vertices_copy = neighboring_vertices;
+    //     neighboring_vertices.clear();
+    //     for (std::shared_ptr<Vertex> vertex : neighboring_vertices_copy)
+    //     {
+    //         // skip if the vertex is expired
+    //         if (vertex->is_expired()) continue;
 
-            neighboring_vertices.insert(vertex);
-        }
+    //         neighboring_vertices.insert(vertex);
+    //     }
         
-        // recompute neighboring surfaces
-        neighboring_surfaces.clear();
-        for (std::shared_ptr<Vertex> vertex : neighboring_vertices)
-        {
-            // only add to neighboring surface if the vertex is boundary in that surface
-            if (vertex->is_boundary())
-            {
-                neighboring_surfaces.insert(vertex->get_surface());
-            }
-        }
-        std::cout << ">> grouped into " << neighboring_surfaces.size() << " neighboring surfaces" << std::endl;
-    }
+    //     // recompute neighboring surfaces
+    //     neighboring_surfaces.clear();
+    //     for (std::shared_ptr<Vertex> vertex : neighboring_vertices)
+    //     {
+    //         // only add to neighboring surface if the vertex is boundary in that surface
+    //         if (vertex->is_boundary())
+    //         {
+    //             neighboring_surfaces.insert(vertex->get_surface());
+    //         }
+    //     }
+    //     std::cout << ">> grouped into " << neighboring_surfaces.size() << " neighboring surfaces" << std::endl;
+    // }
 
     // for each surface, check if confidence surface, then check if new point is within
     std::set<std::shared_ptr<Surface>> surfaces_with_low_confidence;
@@ -435,28 +436,29 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
         current_surface->connect_by_edges_and_faces(current_vertex, neighboring_vertices);
         current_surface->connect(current_vertex);
         
-        // connect and merge to next surface if possible
-        for (std::size_t i = 1; i < sorted_surfaces_with_point_within.size(); i++)
-        {
-            std::shared_ptr<Surface> next_surface = sorted_surfaces_with_point_within[i];
+        // // connect and merge to next surface if possible
+        // for (std::size_t i = 1; i < sorted_surfaces_with_point_within.size(); i++)
+        // {
+        //     std::shared_ptr<Surface> next_surface = sorted_surfaces_with_point_within[i];
             
-            // check if mergable
-            bool can_merge = current_surface->can_merge(next_surface);
-            if (can_merge)
-            {
-                // add to surface
-                std::shared_ptr<Vertex> next_vertex = storage_->add_vertex(generic_point);
-                next_vertex->reduce_reverse_radius_search_radius(smallest_distance);
-                next_surface->connect_by_edges_and_faces(next_vertex, neighboring_vertices);
-                next_surface->connect(next_vertex);
-                // merge surfaces
-                current_vertex->absorbs(next_vertex);
-                DeletedPointStorage original_name = storage_->get_deleted_points_storage_name();
-                storage_->set_deleted_points_storage_name(DeletedPointStorage::NONE);
-                storage_->delete_vertex(next_vertex);
-                storage_->set_deleted_points_storage_name(original_name);
-            }
-        }
+        //     // check if mergable
+        //     // merge happened between overlapped surfaces causes error!!!
+        //     bool can_merge = current_surface->can_merge(next_surface);
+        //     if (can_merge)
+        //     {
+        //         // add to surface
+        //         std::shared_ptr<Vertex> next_vertex = storage_->add_vertex(generic_point);
+        //         next_vertex->reduce_reverse_radius_search_radius(smallest_distance);
+        //         next_surface->connect_by_edges_and_faces(next_vertex, neighboring_vertices);
+        //         next_surface->connect(next_vertex);
+        //         // merge surfaces
+        //         current_vertex->absorbs(next_vertex);
+        //         DeletedPointStorage original_name = storage_->get_deleted_points_storage_name();
+        //         storage_->set_deleted_points_storage_name(DeletedPointStorage::NONE);
+        //         storage_->delete_vertex(next_vertex);
+        //         storage_->set_deleted_points_storage_name(original_name);
+        //     }
+        // }
     }
     else if (surfaces_with_low_confidence.size() > 0)
     {
@@ -597,41 +599,41 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
         searched_surface_to_searched_faces[face->get_surface()].insert(face);    
     }
 
-    // delete abnormal surfaces
-    bool delete_abnormal_surfaces = false;
-    for (const auto& pair : searched_surface_to_searched_faces)
-    {
-        const std::shared_ptr<Surface>& surface = pair.first;
+    // // delete abnormal surfaces
+    // bool delete_abnormal_surfaces = false;
+    // for (const auto& pair : searched_surface_to_searched_faces)
+    // {
+    //     const std::shared_ptr<Surface>& surface = pair.first;
 
-        if (surface->is_abnormal())
-        {
-            // delete
-            std::cout << ">> removing abnormal surface during intersection search" << surface->get_id() << std::endl; // log
-            storage_->delete_surface(surface);
-            delete_abnormal_surfaces = true;
-        }
-    }
+    //     if (surface->is_abnormal())
+    //     {
+    //         // delete
+    //         std::cout << ">> removing abnormal surface during intersection search" << surface->get_id() << std::endl; // log
+    //         storage_->delete_surface(surface);
+    //         delete_abnormal_surfaces = true;
+    //     }
+    // }
 
-    if (delete_abnormal_surfaces)
-    {
-        // recompute searched faces
-        std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> searched_faces_copy = searched_faces;
-        searched_faces.clear();
-        for (const std::shared_ptr<Face>& face : searched_faces_copy)
-        {
-            // skip if the face is expired
-            if (face->is_expired()) continue;
+    // if (delete_abnormal_surfaces)
+    // {
+    //     // recompute searched faces
+    //     std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> searched_faces_copy = searched_faces;
+    //     searched_faces.clear();
+    //     for (const std::shared_ptr<Face>& face : searched_faces_copy)
+    //     {
+    //         // skip if the face is expired
+    //         if (face->is_expired()) continue;
 
-            searched_faces.insert(face);
-        }
+    //         searched_faces.insert(face);
+    //     }
 
-        // recompute searched surfaces to searched faces map
-        searched_surface_to_searched_faces.clear();
-        for (const std::shared_ptr<Face>& face : searched_faces)
-        {
-            searched_surface_to_searched_faces[face->get_surface()].insert(face);   
-        }
-    }
+    //     // recompute searched surfaces to searched faces map
+    //     searched_surface_to_searched_faces.clear();
+    //     for (const std::shared_ptr<Face>& face : searched_faces)
+    //     {
+    //         searched_surface_to_searched_faces[face->get_surface()].insert(face);   
+    //     }
+    // }
     
     // log
     std::cout << ">> found " << searched_faces.size() << " searched faces grouped into " << searched_surface_to_searched_faces.size() << " searched surfaces" << std::endl;

@@ -26,6 +26,8 @@ struct Settings
     double abnormal_size; // number of std
     double envelope_size; // number of std
 
+    // double min_face_angle;
+
     // interactive viewer settings
     bool show_generic_points;
     bool show_interior_points;

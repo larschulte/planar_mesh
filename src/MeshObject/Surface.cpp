@@ -606,6 +606,15 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
             }
             if (triangle_contains_nearby_vertices) continue;
 
+            // don't remove silver triangle, need better ways
+
+            // // skip if face is too thin (silver triangle)
+            // Eigen::Vector3d edge1 = nearby_vertex0->get_position() - vertex->get_position();
+            // Eigen::Vector3d edge2 = nearby_vertex1->get_position() - vertex->get_position();
+            // double angle = std::acos(edge1.normalized().dot(edge2.normalized())) * 180 / M_PI;
+            // if (angle < settings_.min_face_angle) continue;
+            // if (angle > (180 - 2.0*settings_.min_face_angle)) continue;
+
 
             // // check if face already exists
             // bool face_exist = false;
