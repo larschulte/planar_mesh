@@ -470,7 +470,7 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
         std::sort(sorted_surfaces_with_low_confidence.begin(), sorted_surfaces_with_low_confidence.end(), 
             [](const std::shared_ptr<Surface>& a, const std::shared_ptr<Surface>& b) -> bool
             {
-                return a->get_total_point_size() < b->get_total_point_size();
+                return a->get_total_point_size() > b->get_total_point_size();
             });
 
         // add to the smallest uncertainty surface
