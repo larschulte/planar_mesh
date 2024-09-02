@@ -410,7 +410,19 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
         process_point(radius_point);
     }
     
-    // there are some overlapping points -> perhaps due to points added to multiple uncertain surface and not merged
+    // reset search radius if surface changes
+    // the search radius is a function of, 
+        // 1. the point location
+        // 2. the surface normal we are basing of
+        // 3. the point that do not belong to the surface we are basing of
+    // thus, the search radius should reset if any of the above is changed
+        // the point location is unchanged
+        // the surface normal we are basing of could change if that point location is no longer considered in the surface
+        // the point that are not in the surface we are basing of is irrelevant
+
+    // the reverse search radius should be a function of location and surface at that location
+    // if the deleted point is added to a different surface than the original one, reset the search radius of the vertex
+    // however, as the new point is also not within some surfaces regardless of the new surface added, the new radius should reduce as well
 
 
     // if there is surface with points within, add to these surfaces then do a review
@@ -433,6 +445,7 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
         std::shared_ptr<Vertex> current_vertex = storage_->add_vertex(generic_point);
 
         current_vertex->reduce_reverse_radius_search_radius(smallest_distance);
+        current_vertex->reduce_previous_radius(smallest_distance);
         current_surface->connect_by_edges_and_faces(current_vertex, neighboring_vertices);
         current_surface->connect(current_vertex);
         
@@ -477,6 +490,7 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
         std::shared_ptr<Surface> smallest_surface = sorted_surfaces_with_low_confidence[0];
         std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(generic_point);
         new_vertex->reduce_reverse_radius_search_radius(smallest_distance);
+        new_vertex->reduce_previous_radius(smallest_distance);
         smallest_surface->connect_by_edges_and_faces(new_vertex, neighboring_vertices);
         smallest_surface->connect(new_vertex);
     }
@@ -485,6 +499,7 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
         std::shared_ptr<Surface> new_surface = storage_->add_surface();
         std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(generic_point);
         new_vertex->reduce_reverse_radius_search_radius(smallest_distance);
+        new_vertex->reduce_previous_radius(smallest_distance);
         new_surface->connect(new_vertex);
     }
 

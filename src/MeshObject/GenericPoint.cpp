@@ -41,7 +41,8 @@ void GenericPoint::initialize_(const std::shared_ptr<Storage>& storage, const Ei
 void GenericPoint::initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<Vertex>& vertex)
 {
     initialize_(storage, vertex->get_position(), vertex->get_origin());
-    radius_ = vertex->get_radius();
+    previous_surface_ = vertex->get_surface();
+    previous_radius_ = vertex->get_radius();
 
     num_deletes_ = vertex->get_num_deletes();
 }
@@ -49,7 +50,8 @@ void GenericPoint::initialize_(const std::shared_ptr<Storage>& storage, const st
 void GenericPoint::initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<InteriorPoint>& interior_point)
 {
     initialize_(storage, interior_point->get_position(), interior_point->get_origin());
-    radius_ = interior_point->get_radius();
+    previous_surface_ = interior_point->get_surface();
+    previous_radius_ = interior_point->get_radius();
 
     num_deletes_ = interior_point->get_num_deletes();
 }
@@ -92,6 +94,16 @@ const Eigen::Vector3d& GenericPoint::get_direction() const
 const double& GenericPoint::get_radius() const
 {
     return radius_;
+}
+
+const double& GenericPoint::get_previous_radius() const
+{
+    return previous_radius_;
+}
+
+const std::shared_ptr<Surface>& GenericPoint::get_previous_surface() const
+{
+    return previous_surface_;
 }
 
 bool GenericPoint::is_expired() const

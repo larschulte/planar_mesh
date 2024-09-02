@@ -73,6 +73,8 @@ private:
 
     std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces_;
     std::shared_ptr<Surface> surface_;
+    std::shared_ptr<Surface> previous_surface_;
+    double previous_radius_;
 
     std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> sibling_interior_points_;
 

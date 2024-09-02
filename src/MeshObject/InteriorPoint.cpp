@@ -43,6 +43,8 @@ void InteriorPoint::initialize_(const std::shared_ptr<Storage>& storage, const E
 void InteriorPoint::initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<GenericPoint>& generic_point)
 {
     initialize_(storage, generic_point->get_position(), generic_point->get_origin(), generic_point->get_radius());
+    previous_surface_ = generic_point->get_previous_surface();
+    previous_radius_ = generic_point->get_previous_radius();
     num_deletes_ = generic_point->get_num_deletes();
 }
 
@@ -189,6 +191,17 @@ void InteriorPoint::connect(const std::shared_ptr<Surface>& surface)
     // connect
     bool inserted = surface_ != surface;
     if (inserted) surface_ = surface;
+    if (inserted) 
+    {
+        // if new surface is the same as the previous surface, set the radius to the updated previous radius
+        if (surface == previous_surface_) 
+        {
+            reduce_reverse_radius_search_radius(previous_radius_);
+        }
+
+        previous_surface_ = nullptr;
+        previous_radius_ = 0;
+    }
     if (inserted) surface->connect(shared_from_this());    
 }
 

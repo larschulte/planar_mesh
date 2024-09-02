@@ -45,6 +45,8 @@ void Vertex::initialize_(const std::shared_ptr<Storage>& storage, const Eigen::V
 void Vertex::initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<GenericPoint>& generic_point)
 {
     initialize_(storage, generic_point->get_position(), generic_point->get_origin(), generic_point->get_radius());
+    previous_surface_ = generic_point->get_previous_surface();
+    previous_radius_ = generic_point->get_previous_radius();
     num_deletes_ = generic_point->get_num_deletes();
 }
 
@@ -364,6 +366,18 @@ void Vertex::connect(const std::shared_ptr<Surface>& surface)
     // connect
     bool inserted = surface_ != surface;
     if (inserted) surface_ = surface;
+    if (inserted) 
+    {
+        // if new surface is the same as the previous surface, set the radius to the updated previous radius
+        if (surface == previous_surface_) 
+        {
+            // set radius to the previous radius
+            reduce_reverse_radius_search_radius(previous_radius_);
+        }
+
+        previous_surface_ = nullptr;
+        previous_radius_ = 0;
+    }
     if (inserted) surface->connect(shared_from_this());
     if (inserted) is_boundary_ = false;
     if (inserted) update_boundary_state();
@@ -772,18 +786,24 @@ void Vertex::can_create_generic_point(bool state)
 void Vertex::set_reverse_radius_search_radius(double radius)
 {
     // set radius
+    double previous_radius = reverse_search_radius_;
     reverse_search_radius_ = radius;
 
     // update min and max
     min_ = position_ - Eigen::Vector3d(radius, radius, radius);
     max_ = position_ + Eigen::Vector3d(radius, radius, radius);
 
-    // should update search tree if expand radius
+    // should update search tree if expand radius (if new radius is larger than old one, delete then re-add the searchable vertex if it is searchable)
+    if (reverse_search_radius_ > previous_radius && is_searchable_)
+    {
+        storage_->remove_searchable_vertex(shared_from_this());
+        storage_->add_searchable_vertex(shared_from_this());
+    }
 }
 
 void Vertex::reduce_reverse_radius_search_radius(double radius)
 {
-    if (radius > reverse_search_radius_) return;
+    if (radius >= reverse_search_radius_) return;
 
     // update radius
     set_reverse_radius_search_radius(radius);
@@ -802,6 +822,14 @@ void Vertex::reduce_reverse_radius_search_radius(double radius)
     }
 }
 
+void Vertex::reduce_previous_radius(double radius)
+{
+    if (radius >= previous_radius_) return;
+
+    // update radius
+    previous_radius_ = radius;
+}
+
 Eigen::Vector3d Vertex::get_min() const
 {
     return min_;
@@ -812,9 +840,22 @@ Eigen::Vector3d Vertex::get_max() const
     return max_;
 }
 
-double Vertex::get_radius() const
+const double& Vertex::get_radius() const
 {
     return reverse_search_radius_;
+}
+
+const double& Vertex::get_radius(const std::shared_ptr<Surface>& surface) const
+{
+    // only used when being connected to a surface by edge and faces
+    if (surface == previous_surface_)
+    {
+        return previous_radius_;
+    }
+    else
+    {
+        return reverse_search_radius_;
+    }
 }
 
 bool Vertex::contains(const Eigen::Vector3d& point) const
