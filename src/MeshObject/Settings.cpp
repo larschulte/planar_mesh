@@ -62,17 +62,36 @@ Settings::Settings()
     // min_face_angle = 20;
 
     // log settings
-    log.add_point_by_radius_search = false;
-    log.load_point_cloud = true;
-    log.step = true;
-    log.refine_surfaces = false;
-    log.process_point = false;
-    log.initialize = false;
-    log.deletion = false;
-    log.review_surfaces = false;
-    log.connect_by_edges_and_faces = false;
-    log.can_merge = false;
-    log.merge_surface = false;
+    bool show_all = false;
+    if (show_all)
+    {
+        log.add_point_by_radius_search = true;
+        log.load_point_cloud = true;
+        log.step = true;
+        log.refine_surfaces = true;
+        log.process_point = true;
+        log.initialize = true;
+        log.deletion = true;
+        log.review_surfaces = true;
+        log.connect_by_edges_and_faces = true;
+        log.can_merge = true;
+        log.merge_surface = true;    
+    }
+    else
+    {
+        log.add_point_by_radius_search = false;
+        log.load_point_cloud = true;
+        log.step = true;
+        log.refine_surfaces = false;
+        log.process_point = false;
+        log.initialize = false;
+        log.deletion = false;
+        log.review_surfaces = false;
+        log.connect_by_edges_and_faces = false;
+        log.can_merge = false;
+        log.merge_surface = false;
+    }
+    
 
     // interactive viewer settings
     show_generic_points = true;
