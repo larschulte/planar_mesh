@@ -35,7 +35,7 @@ void GenericPoint::initialize_(const std::shared_ptr<Storage>& storage, const Ei
     num_deletes_ = 0;
 
     // log
-    std::cout << "GenericPoint " << id_ << " created.\n";
+    if (settings_.log.initialize) std::cout << "GenericPoint " << id_ << " created.\n";
 }
 
 void GenericPoint::initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<Vertex>& vertex)
@@ -57,13 +57,13 @@ void GenericPoint::initialize_(const std::shared_ptr<Storage>& storage, const st
 void GenericPoint::delete_()
 {
     // log
-    std::cout << "Destroying GenericPoint " << id_ << std::endl;
+    if (settings_.log.deletion) std::cout << "Destroying GenericPoint " << id_ << std::endl;
 
     // set deletion flag
     deleting_ = true;
 
     // log
-    std::cout << "---------- GenericPoint " << id_ << " destroyed" << std::endl;
+    if (settings_.log.deletion) std::cout << "---------- GenericPoint " << id_ << " destroyed" << std::endl;
 
     // set expired
     is_expired_ = true;

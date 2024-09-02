@@ -7,6 +7,8 @@
 
 #include "MeshObject/InteriorPoint.hpp"
 
+Settings Face::settings_;
+
 void Face::initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<Surface> surface, const std::shared_ptr<Vertex>& vertex0, const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2)
 {
     // set expired
@@ -81,13 +83,13 @@ void Face::initialize_(const std::shared_ptr<Storage>& storage, const std::share
     }
 
     // log
-    std::cout << "Face " << id_ << " created between vertex " << vertex0->get_id() << ", vertex " << vertex1->get_id() << " and vertex " << vertex2->get_id() << std::endl;
+    if (settings_.log.initialize) std::cout << "Face " << id_ << " created between vertex " << vertex0->get_id() << ", vertex " << vertex1->get_id() << " and vertex " << vertex2->get_id() << std::endl;
 }
 
 void Face::delete_()
 {
     // log
-    std::cout << "Destroying face " << id_ << std::endl;
+    if (settings_.log.deletion) std::cout << "Destroying face " << id_ << std::endl;
 
     // set deletion flag
     deleting_ = true;
@@ -127,7 +129,7 @@ void Face::delete_()
     }
 
     // log
-    std::cout << "---------- face " << id_ << " destroyed" << std::endl;
+    if (settings_.log.deletion) std::cout << "---------- face " << id_ << " destroyed" << std::endl;
 
     // set expired
     is_expired_ = true;

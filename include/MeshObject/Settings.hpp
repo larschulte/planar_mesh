@@ -2,6 +2,21 @@
 
 #include <string>
 
+struct LOG
+{
+    bool add_point_by_radius_search;
+    bool load_point_cloud;
+    bool step;
+    bool refine_surfaces;
+    bool process_point;
+    bool initialize;
+    bool deletion;
+    bool review_surfaces;
+    bool connect_by_edges_and_faces;
+    bool can_merge;
+    bool merge_surface;
+};
+
 struct Settings 
 {
     Settings();
@@ -27,6 +42,9 @@ struct Settings
     double envelope_size; // number of std
 
     // double min_face_angle;
+
+    // log settings
+    LOG log;
 
     // interactive viewer settings
     bool show_generic_points;

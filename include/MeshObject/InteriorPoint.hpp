@@ -6,6 +6,7 @@
 
 #include "MeshObject/MeshObject.hpp"
 #include "Cache/FIFOCache.hpp"
+#include "MeshObject/Settings.hpp"
 
 // Forward declarations
 class Storage;
@@ -55,6 +56,8 @@ public:
     void swap(const std::shared_ptr<Surface>& surface1, const std::shared_ptr<Surface>& surface2);
 
 private:
+    static Settings settings_;
+
     bool deleting_ = false;
     bool is_expired_ = true;
 

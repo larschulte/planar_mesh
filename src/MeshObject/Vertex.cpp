@@ -39,7 +39,7 @@ void Vertex::initialize_(const std::shared_ptr<Storage>& storage, const Eigen::V
     update_boundary_state();
 
     // log
-    std::cout << "Vertex " << id_ << " created.\n";
+    if (settings_.log.initialize) std::cout << "Vertex " << id_ << " created.\n";
 }
 
 void Vertex::initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<GenericPoint>& generic_point)
@@ -58,7 +58,7 @@ void Vertex::initialize_(const std::shared_ptr<Storage>& storage, const Eigen::V
 void Vertex::delete_()
 {
     // log
-    std::cout << "Destroying vertex " << id_ << std::endl;
+    if (settings_.log.deletion) std::cout << "Destroying vertex " << id_ << std::endl;
 
     // set deletion flag
     deleting_ = true;
@@ -99,7 +99,7 @@ void Vertex::delete_()
     for (const auto& sibling_vertex : sibling_vertices) disconnect(sibling_vertex);
 
     // log
-    std::cout << "---------- vertex " << id_ << " destroyed" << std::endl;
+    if (settings_.log.deletion) std::cout << "---------- vertex " << id_ << " destroyed" << std::endl;
 
     // set expired
     is_expired_ = true;
@@ -465,7 +465,7 @@ void Vertex::review_surfaces()
     if (under_review_) return;
     under_review_ = true;
 
-    std::cout << "reviewing vertex " << id_ << std::endl;
+    if (settings_.log.review_surfaces) std::cout << "reviewing vertex " << id_ << std::endl;
 
     // delete if surface is high confidence and mismatched
     std::shared_ptr<Surface> surface = get_surface();
@@ -504,7 +504,7 @@ void Vertex::review_surfaces()
                 double distance = (vertex->get_position() - get_position()).norm();
                 
                 // reduce the search radius of the searched vertex
-                std::cout << ">>   reducing search radius of vertex " << vertex->get_id() << std::endl;
+                if (settings_.log.review_surfaces) std::cout << ">>   reducing search radius of vertex " << vertex->get_id() << std::endl;
                 vertex->reduce_reverse_radius_search_radius(distance);
             }
 
@@ -515,7 +515,7 @@ void Vertex::review_surfaces()
                 double distance = (interior_point->get_position() - get_position()).norm();
                 
                 // reduce the search radius of the searched interior point
-                std::cout << ">>   reducing search radius of interior point " << interior_point->get_id() << std::endl;
+                if (settings_.log.review_surfaces) std::cout << ">>   reducing search radius of interior point " << interior_point->get_id() << std::endl;
                 interior_point->reduce_reverse_radius_search_radius(distance);
             }
 
@@ -533,7 +533,7 @@ void Vertex::review_surfaces()
 
     // ask siblings to review themselves
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> sibling_vertices_copy = sibling_vertices_;
-    std::cout << ">> Reviewing sibling vertices" << std::endl;
+    if (settings_.log.review_surfaces) std::cout << ">> Reviewing sibling vertices" << std::endl;
     for (const std::shared_ptr<Vertex>& sibling : sibling_vertices_copy)
     {
         // skip if expired
@@ -547,7 +547,7 @@ void Vertex::review_surfaces()
         sibling->review_surfaces();
         sibling->can_create_generic_point(true);
     }
-    std::cout << ">> Finished reviewing sibling vertices" << std::endl;
+    if (settings_.log.review_surfaces) std::cout << ">> Finished reviewing sibling vertices" << std::endl;
 
     // skip if current one is expired during sibling review
     if (is_expired()) return;
@@ -608,7 +608,7 @@ void Vertex::review_surfaces()
         // merging
         if (can_merge) 
         {
-            std::cout << ">> Merging between current vertex " << id_ << " with surface " << surface->get_id() << " and sibling vertex " << sibling_vertex->get_id() << " with surface " << sibling_surface->get_id() << std::endl;
+            if (settings_.log.review_surfaces) std::cout << ">> Merging between current vertex " << id_ << " with surface " << surface->get_id() << " and sibling vertex " << sibling_vertex->get_id() << " with surface " << sibling_surface->get_id() << std::endl;
 
             // flag
             merge_happened = true;

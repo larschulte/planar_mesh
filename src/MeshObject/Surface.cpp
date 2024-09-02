@@ -44,13 +44,13 @@ void Surface::initialize_(const std::shared_ptr<Storage>& storage)
     edge_bvh_.set_surface(shared_from_this());
     
     // log
-    std::cout << "Surface " << id_ << " created.\n";
+    if (settings_.log.initialize) std::cout << "Surface " << id_ << " created.\n";
 }
 
 void Surface::delete_()
 {
     // log
-    std::cout << "Destroying surface " << id_ << std::endl;
+    if (settings_.log.deletion) std::cout << "Destroying surface " << id_ << std::endl;
 
     // set deletion flag
     deleting_ = true;
@@ -66,7 +66,7 @@ void Surface::delete_()
     for (const auto& interior_point : interior_points) disconnect(interior_point);
 
     // log
-    std::cout << "---------- surface " << id_ << " destroyed" << std::endl;
+    if (settings_.log.deletion) std::cout << "---------- surface " << id_ << " destroyed" << std::endl;
 
     // set expired
     is_expired_ = true;
@@ -243,7 +243,7 @@ void Surface::merge_surface(const std::shared_ptr<Surface>& surface)
     for (const auto& vertex : surface_valid->vertices_) connect(vertex);
 
     // log
-    std::cout << "Surface " << surface_valid->get_id() << " merged into surface " << id_ << std::endl;
+    if (settings_.log.merge_surface) std::cout << "Surface " << surface_valid->get_id() << " merged into surface " << id_ << std::endl;
 
     // delete
     storage_->delete_surface(surface);
@@ -467,8 +467,8 @@ bool Surface::can_merge(const std::shared_ptr<Surface>& surface) const
     bool mergeable = new_projective_std <= settings_.range_precision;
     if (!mergeable)
     {
-        std::cout << "Surface " << id_ << " with " << get_total_point_size() << " points and surface " << surface->get_id() << " with " << surface->get_total_point_size() << " points are not mergable." << std::endl;
-        std::cout << "New projective std: " << new_projective_std << std::endl;
+        if (settings_.log.can_merge) std::cout << "Surface " << id_ << " with " << get_total_point_size() << " points and surface " << surface->get_id() << " with " << surface->get_total_point_size() << " points are not mergable." << std::endl;
+        if (settings_.log.can_merge) std::cout << "New projective std: " << new_projective_std << std::endl;
     }
 
     // return
@@ -525,7 +525,7 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
         if (edge_bvh_.tree_intersect_edge(vertex, nearby_vertex)) 
         {   
             // log
-            std::cout << "Try to create edge between " << vertex->get_id() << " and " << nearby_vertex->get_id() << " but is intersected." << std::endl;
+            if (settings_.log.connect_by_edges_and_faces) std::cout << "Try to create edge between " << vertex->get_id() << " and " << nearby_vertex->get_id() << " but is intersected." << std::endl;
 
             // should not reduce search radius!!!
             // radius represents extends of flat surface -> edge intersection within the same plane is still flat surface!

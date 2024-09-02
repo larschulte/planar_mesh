@@ -5,6 +5,8 @@
 #include "MeshObject/GenericPoint.hpp"
 #include "utilities/covariance_math.hpp"
 
+Settings InteriorPoint::settings_;
+
 void InteriorPoint::initialize_(const std::shared_ptr<Storage>& storage, const Eigen::Vector3d& position, const Eigen::Vector3d& origin, const double& radius)
 {
     // set expired
@@ -28,7 +30,7 @@ void InteriorPoint::initialize_(const std::shared_ptr<Storage>& storage, const E
     num_deletes_ = 0;
 
     // log
-    std::cout << "InteriorPoint " << id_ << " created.\n";
+    if (settings_.log.initialize) std::cout << "InteriorPoint " << id_ << " created.\n";
 }
 
 void InteriorPoint::initialize_(const std::shared_ptr<Storage>& storage, const Eigen::Vector3d& position, const Eigen::Vector3d& origin)
@@ -47,7 +49,7 @@ void InteriorPoint::initialize_(const std::shared_ptr<Storage>& storage, const s
 void InteriorPoint::delete_()
 {
     // log
-    std::cout << "Destroying InteriorPoint " << id_ << std::endl;
+    if (settings_.log.deletion) std::cout << "Destroying InteriorPoint " << id_ << std::endl;
 
     // set deletion flag
     deleting_ = true;
@@ -76,7 +78,7 @@ void InteriorPoint::delete_()
     for (const auto& sibling_interior_point : sibling_interior_points) disconnect(sibling_interior_point);
 
     // log
-    std::cout << "---------- InteriorPoint " << id_ << " destroyed" << std::endl;
+    if (settings_.log.deletion) std::cout << "---------- InteriorPoint " << id_ << " destroyed" << std::endl;
 
     // set expired
     is_expired_ = true;

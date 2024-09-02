@@ -5,6 +5,7 @@
 #include <Eigen/Dense>
 
 #include "MeshObject/MeshObject.hpp"
+#include "MeshObject/Settings.hpp"
 
 // Forward declarations
 class Vertex;
@@ -53,6 +54,8 @@ public:
     void swap(const std::shared_ptr<Surface>& surface1, const std::shared_ptr<Surface>& surface2);
 
 private:
+    static Settings settings_;
+
     Eigen::Vector3d center_;
 
     bool deleting_ = false;

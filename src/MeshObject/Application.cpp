@@ -190,7 +190,7 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
     // when can not search
     if (!storage_->can_reverse_radius_search())
     {
-        std::cout << ">> no points to search, adding new surface" << std::endl;
+        if (settings_.log.add_point_by_radius_search) std::cout << ">> no points to search, adding new surface" << std::endl;
         std::shared_ptr<Surface> new_surface = storage_->add_surface();
         std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(generic_point);
         new_surface->connect(new_vertex);
@@ -200,12 +200,12 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
     // get neighboring vertices
     std::map<int, double> point_to_radius_map;
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> neighboring_vertices = storage_->reverse_radius_search(generic_point);
-    std::cout << ">> found " << neighboring_vertices.size() << " neighboring vertices" << std::endl;
+    if (settings_.log.add_point_by_radius_search) std::cout << ">> found " << neighboring_vertices.size() << " neighboring vertices" << std::endl;
 
     // when no search results
     if (neighboring_vertices.size() == 0)
     {
-        std::cout << ">> no search results, adding new surface" << std::endl;
+        if (settings_.log.add_point_by_radius_search) std::cout << ">> no search results, adding new surface" << std::endl;
         std::shared_ptr<Surface> new_surface = storage_->add_surface();
         std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(generic_point);
         new_surface->connect(new_vertex);
@@ -256,7 +256,7 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
             neighboring_surfaces.insert(vertex->get_surface());
         }
     }
-    std::cout << ">> grouped into " << neighboring_surfaces.size() << " neighboring surfaces" << std::endl;
+    if (settings_.log.add_point_by_radius_search) std::cout << ">> grouped into " << neighboring_surfaces.size() << " neighboring surfaces" << std::endl;
 
     // // delete abnormal surfaces
     // bool delete_abnormal_surfaces = false;
@@ -265,7 +265,7 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
     //     if (surface->is_abnormal())
     //     {
     //         // delete
-    //         std::cout << ">> removing abnormal surface during intersection search" << surface->get_id() << std::endl; // log
+    //         if (settings_.log.add_point_by_radius_search) std::cout << ">> removing abnormal surface during intersection search" << surface->get_id() << std::endl; // log
     //         storage_->delete_surface(surface);
     //         delete_abnormal_surfaces = true;
     //     }
@@ -294,7 +294,7 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
     //             neighboring_surfaces.insert(vertex->get_surface());
     //         }
     //     }
-    //     std::cout << ">> grouped into " << neighboring_surfaces.size() << " neighboring surfaces" << std::endl;
+    //     if (settings_.log.add_point_by_radius_search) std::cout << ">> grouped into " << neighboring_surfaces.size() << " neighboring surfaces" << std::endl;
     // }
 
     // remove unmatched points in the surfaces
@@ -339,7 +339,7 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
     //             neighboring_surfaces.insert(vertex->get_surface());
     //         }
     //     }
-    //     std::cout << ">> grouped into " << neighboring_surfaces.size() << " neighboring surfaces" << std::endl;
+    //     if (settings_.log.add_point_by_radius_search) std::cout << ">> grouped into " << neighboring_surfaces.size() << " neighboring surfaces" << std::endl;
     // }
 
     // for each surface, check if confidence surface, then check if new point is within
@@ -404,7 +404,7 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
     for (const std::shared_ptr<GenericPoint>& radius_point : copy_of_radius_points)
     {
         // log
-        std::cout << ">> adding back radius point" << std::endl;
+        if (settings_.log.add_point_by_radius_search) std::cout << ">> adding back radius point" << std::endl;
 
         // process
         process_point(radius_point);
@@ -541,7 +541,7 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
     //     bool more_than_n_points = surface->get_total_point_size() > settings_.remove_low_confidence_threshold;
     //     if (still_low_confidence && more_than_n_points)
     //     {
-    //         std::cout << ">> removing low confidence surface " << surface->get_id() << std::endl;
+    //         if (settings_.log.add_point_by_radius_search) std::cout << ">> removing low confidence surface " << surface->get_id() << std::endl;
     //         storage_->delete_surface(surface);
     //     }
     // }
@@ -552,12 +552,12 @@ void Application<PointT>::load_point_cloud()
 {
     if (ith_cloud < 0)
     {
-        std::cout << "reached the first pointcloud" << std::endl;
+        if (settings_.log.load_point_cloud) std::cout << "reached the first pointcloud" << std::endl;
         ith_cloud = 0;
     }
     if (ith_cloud >= data_loader.size())
     {
-        std::cout << "reached the last pointcloud" << std::endl;
+        if (settings_.log.load_point_cloud) std::cout << "reached the last pointcloud" << std::endl;
         ith_cloud = data_loader.size() - 1;
     }
     
@@ -567,7 +567,7 @@ void Application<PointT>::load_point_cloud()
     origin = pose.translation();
     ith_size = pointcloud->size() * settings_.pointcloud_fraction;
 
-    std::cout << "loaded pointcloud " << ith_cloud << " with " << pointcloud->size() << " points" << std::endl;
+    if (settings_.log.load_point_cloud) std::cout << "loaded pointcloud " << ith_cloud << " with " << pointcloud->size() << " points" << std::endl;
 
     if (settings_.shuffle_pointcloud) 
     {
@@ -656,13 +656,13 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
     // }
     
     // log
-    std::cout << ">> found " << searched_faces.size() << " searched faces grouped into " << searched_surfaces.size() << " searched surfaces" << std::endl;
+    if (settings_.log.process_point) std::cout << ">> found " << searched_faces.size() << " searched faces grouped into " << searched_surfaces.size() << " searched surfaces" << std::endl;
 
     // process point behind surface
     for (const std::shared_ptr<Surface>& surface : surfaces_with_point_behind)
     {
         // log
-        std::cout << "========================== behind surface " << surface->get_id() << std::endl;
+        if (settings_.log.process_point) std::cout << "========================== behind surface " << surface->get_id() << std::endl;
 
         // delete penetrated faces
         DeletedPointStorage original_name = storage_->get_deleted_points_storage_name();
@@ -676,7 +676,7 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
             if (face->is_expired()) continue;
 
             // log
-            std::cout << ">> disconnect penetrated face " << face->get_id() << " from surface " << surface->get_id() << std::endl;
+            if (settings_.log.process_point) std::cout << ">> disconnect penetrated face " << face->get_id() << " from surface " << surface->get_id() << std::endl;
 
             storage_->delete_face(face);
         }
@@ -688,7 +688,7 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
         for (const std::shared_ptr<GenericPoint>& penetrated_point : copy_of_penetrated_points)
         {
             // log
-            std::cout << ">> adding back penetrated point as vertex" << std::endl;
+            if (settings_.log.process_point) std::cout << ">> adding back penetrated point as vertex" << std::endl;
 
             // process
             process_point(penetrated_point);
@@ -718,7 +718,7 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
     if (largest_surface != nullptr)
     {
         // log
-        std::cout << "========================== within surface " << largest_surface->get_id() << std::endl;
+        if (settings_.log.process_point) std::cout << "========================== within surface " << largest_surface->get_id() << std::endl;
 
         // add as interior point
         const std::shared_ptr<InteriorPoint>& temp_interior_point = storage_->add_interior_point(generic_point);
@@ -742,7 +742,7 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
         for (const std::shared_ptr<Face>& face : faces_with_points_within)
         {
             // log
-            std::cout << ">> adding interior point to face " << face->get_id() << std::endl;
+            if (settings_.log.process_point) std::cout << ">> adding interior point to face " << face->get_id() << std::endl;
 
             // connect
             temp_interior_point->connect(face);
@@ -759,7 +759,7 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
     if (!added_as_interior_point)
     {
         // log
-        std::cout << ">> adding point as vertex" << std::endl;
+        if (settings_.log.process_point) std::cout << ">> adding point as vertex" << std::endl;
 
         // add point as vertex
         add_point_by_radius_search(generic_point);
@@ -769,7 +769,7 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
         // for (const std::shared_ptr<GenericPoint>& generic_point : copy_of_generic_points)
         // {
         //     // log
-        //     std::cout << ">> adding back generic points (deleted points)" << std::endl;
+        //     if (settings_.log.process_point) std::cout << ">> adding back generic points (deleted points)" << std::endl;
 
         //     add_point_by_radius_search(generic_point);
         // }
@@ -815,7 +815,7 @@ void Application<PointT>::step()
     }
 
     // log
-    std::cout << "==================================================================== Processing point " << ith_point << " of cloud " << ith_cloud << std::endl;
+    if (settings_.log.step) std::cout << "==================================================================== Processing point " << ith_point << " of cloud " << ith_cloud << std::endl;
 
     std::shared_ptr<GenericPoint> generic_point = std::make_shared<GenericPoint>();
     generic_point->initialize_(storage_, thisPointVEC, thisPointOriginVEC);
@@ -985,7 +985,7 @@ void Application<PointT>::refine_surfaces()
         surface->remove_singular_components();
         surface->split_surface_by_connected_components();
     }
-    std::cout << "number of generic points after refine: " << storage_->get_generic_points().size() << std::endl;
+    if (settings_.log.refine_surfaces) std::cout << "number of generic points after refine: " << storage_->get_generic_points().size() << std::endl;
     storage_->set_deleted_points_storage_name(original_name);
 }
 

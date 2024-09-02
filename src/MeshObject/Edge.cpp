@@ -49,13 +49,13 @@ void Edge::initialize_(const std::shared_ptr<Storage>& storage, const std::share
     update_boundary_state();
 
     // log
-    std::cout << "Edge " << id_ << " created between vertex " << vertex1_valid->get_id() << " and vertex " << vertex2_valid->get_id() << std::endl;
+    if (settings_.log.initialize) std::cout << "Edge " << id_ << " created between vertex " << vertex1_valid->get_id() << " and vertex " << vertex2_valid->get_id() << std::endl;
 }
 
 void Edge::delete_()
 {
     // log
-    std::cout << "Destroying edge " << id_ << std::endl;
+    if (settings_.log.deletion) std::cout << "Destroying edge " << id_ << std::endl;
     
 
     // set deletion flag
@@ -72,7 +72,7 @@ void Edge::delete_()
     for (const auto& sibling_edge : sibling_edges) disconnect(sibling_edge);
 
     // log
-    std::cout << "---------- edge " << id_ << " destroyed" << std::endl;
+    if (settings_.log.deletion) std::cout << "---------- edge " << id_ << " destroyed" << std::endl;
 
     // set expired
     is_expired_ = true;
