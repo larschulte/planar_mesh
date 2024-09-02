@@ -44,7 +44,7 @@ Settings::Settings()
     {
         range_precision = 0.02;
         range_accuracy = 0.03; 
-        radius_ratio = tan(4 * M_PI / 180);
+        radius_ratio = tan(6 * M_PI / 180);
     }
     process_every_n_points = 10;
     
