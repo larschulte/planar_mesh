@@ -46,7 +46,7 @@ Settings::Settings()
         range_accuracy = 0.03; 
         radius_ratio = tan(6 * M_PI / 180);
     }
-    process_every_n_points = 10;
+    process_every_n_points = 1;
     
     start_cloud = 50;
     start_point = 0;
@@ -81,7 +81,7 @@ Settings::Settings()
     {
         log.add_point_by_radius_search = false;
         log.load_point_cloud = true;
-        log.step = true;
+        log.step = false;
         log.refine_surfaces = false;
         log.process_point = false;
         log.initialize = false;
