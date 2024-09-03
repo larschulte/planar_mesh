@@ -103,17 +103,17 @@ void TriangleBVH::node_intersection_search(const std::shared_ptr<Node>& node, co
     bool intersected = node->box.intersect(orig, dir);
     if (!intersected) return;
     
-    if (node->isLeaf())
+    if (!node->isLeaf())
+    {
+        node_intersection_search(node->left, orig, dir, faces_intersected);
+        node_intersection_search(node->right, orig, dir, faces_intersected);
+    }
+    else
     {
         for (const std::shared_ptr<Face>& face : node->faces)
         {
             if (face->intersects_point(orig, dir)) faces_intersected.insert(face);
         }
-    }
-    else
-    {
-        node_intersection_search(node->left, orig, dir, faces_intersected);
-        node_intersection_search(node->right, orig, dir, faces_intersected);
     }
 }
 
@@ -155,13 +155,8 @@ void TriangleBVH::node_add_face(const std::shared_ptr<Node>& node, const std::sh
 {
     expand_node_box(node, face);
 
-    if (node->isLeaf())
+    if (!node->isLeaf())
     {    
-        node->faces.push_back(face);
-        if (node->faces.size() > 4) convert_leaf_to_branch(node);
-    }
-    else
-    {
         if (face->get_center()[node->split_axis] < node->split_value)
         {
             node_add_face(node->left, face);
@@ -171,24 +166,16 @@ void TriangleBVH::node_add_face(const std::shared_ptr<Node>& node, const std::sh
             node_add_face(node->right, face);
         }
     }
+    else
+    {
+        node->faces.push_back(face);
+        if (node->faces.size() > 4) convert_leaf_to_branch(node);
+    }
 }
 
 bool TriangleBVH::node_delete_face(const std::shared_ptr<Node>& node, const std::shared_ptr<Face>& face)
 {
-    if (node->isLeaf())
-    {
-        auto it = std::remove(node->faces.begin(), node->faces.end(), face);
-        if (it != node->faces.end())
-        {
-            node->faces.erase(it, node->faces.end());
-            return true;
-        }
-        else
-        {
-            return false;
-        }
-    }
-    else
+    if (!node->isLeaf())
     {
         if (face->get_center()[node->split_axis] < node->split_value)
         {
@@ -203,11 +190,29 @@ bool TriangleBVH::node_delete_face(const std::shared_ptr<Node>& node, const std:
             return node_delete_face(node->left, face) || node_delete_face(node->right, face);
         }
     }
+    else
+    {
+        auto it = std::remove(node->faces.begin(), node->faces.end(), face);
+        if (it != node->faces.end())
+        {
+            node->faces.erase(it, node->faces.end());
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
 }
 
 void TriangleBVH::node_print(const std::shared_ptr<Node> &node, int level) const
 {
-    if (node->isLeaf())
+    if (!node->isLeaf())
+    {
+        node_print(node->left, level+1);
+        node_print(node->right, level+1);
+    }
+    else
     {
         for (const std::shared_ptr<Face>& face : node->faces)
         {
@@ -215,23 +220,18 @@ void TriangleBVH::node_print(const std::shared_ptr<Node> &node, int level) const
         }
         std::cout << std::endl;
     }
-    else
-    {
-        node_print(node->left, level+1);
-        node_print(node->right, level+1);
-    }
 }
 
 void TriangleBVH::node_flatten(const std::shared_ptr<TriangleBVH::Node>& node, std::vector<std::shared_ptr<Face>>& face_list) const
 {
-    if (node->isLeaf())
-    {
-        face_list.insert(face_list.end(), node->faces.begin(), node->faces.end());
-    }
-    else
+    if (!node->isLeaf())
     {
         node_flatten(node->left, face_list);
         node_flatten(node->right, face_list);
+    }
+    else
+    {
+        face_list.insert(face_list.end(), node->faces.begin(), node->faces.end());
     }
 }
 
