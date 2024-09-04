@@ -551,4 +551,5 @@ void Storage::print_bvh() const
 void Storage::rebuild_tree()
 {
     rrs_tree_.rebuild();
+    triangle_bvh_.rebuild();
 }

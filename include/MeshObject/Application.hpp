@@ -42,6 +42,7 @@ public:
     void step();
     void loop();
     void restart();
+    void rebuild_tree();
 
     // getter
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr compute_vertex_point_pointcloud(const Settings& settings);

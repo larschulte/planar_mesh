@@ -867,6 +867,12 @@ void Application<PointT>::restart()
 }
 
 template <typename PointT>
+void Application<PointT>::rebuild_tree()
+{
+    storage_->rebuild_tree();
+}
+
+template <typename PointT>
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_generic_point_pointcloud()
 {
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
