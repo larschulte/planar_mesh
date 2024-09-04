@@ -55,6 +55,7 @@ Settings::Settings()
     use_radius_value = true;
     pointcloud_fraction = 1;
     radius_value = 3;
+    duplicated_point_distance_threshold = 0.001; // if two points are closer than this distance, they are considered the same point
 
     abnormal_size = 1.5;
     envelope_size = 3.5;
@@ -76,12 +77,13 @@ Settings::Settings()
         log.connect_by_edges_and_faces = true;
         log.can_merge = true;
         log.merge_surface = true;    
+        log.duplicated_point = true;
     }
     else
     {
         log.add_point_by_radius_search = false;
         log.load_point_cloud = true;
-        log.step = false;
+        log.step = true;
         log.refine_surfaces = false;
         log.process_point = false;
         log.initialize = false;
@@ -90,6 +92,7 @@ Settings::Settings()
         log.connect_by_edges_and_faces = false;
         log.can_merge = false;
         log.merge_surface = false;
+        log.duplicated_point = false;
     }
     
 

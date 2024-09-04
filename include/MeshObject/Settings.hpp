@@ -15,6 +15,7 @@ struct LOG
     bool connect_by_edges_and_faces;
     bool can_merge;
     bool merge_surface;
+    bool duplicated_point;
 };
 
 struct Settings 
@@ -37,6 +38,7 @@ struct Settings
     double radius_value;
     double radius_ratio; // distance to radius ratio
     std::size_t process_every_n_points;
+    double duplicated_point_distance_threshold;
 
     double abnormal_size; // number of std
     double envelope_size; // number of std

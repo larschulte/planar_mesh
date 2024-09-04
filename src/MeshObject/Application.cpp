@@ -212,6 +212,26 @@ void Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
         return;
     }
 
+    // if there is search result, check if the current point is too close to existing point
+    // if too close, then the new point will not add any information to the surface
+    // thus we should not add the point
+    for (const std::shared_ptr<Vertex>& vertex : neighboring_vertices)
+    {
+        // skip if the vertex is expired
+        if (vertex->is_expired()) continue;
+
+        // compute distance
+        double distance = (vertex->get_position() - generic_point->get_position()).norm();
+
+        // update closest distance
+        if (distance < settings_.duplicated_point_distance_threshold)
+        {
+            // don't add the point
+            if (settings_.log.duplicated_point) std::cout << ">> point too close to existing point, not adding" << std::endl;
+            return;
+        }
+    }
+
     // add point logic
         // add to matched surfaces
         // if no matched surfaces, add to all low confidence surfaces
@@ -606,6 +626,20 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
 
     // searched faces
     std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> searched_faces = storage_->face_intersection_search(generic_point);
+
+    // skip if too close to any vertices of any faces
+    for (const std::shared_ptr<Face>& face : searched_faces)
+    {
+        for (const std::shared_ptr<Vertex>& vertex : face->get_vertices())
+        {
+            double distance = (vertex->get_position() - generic_point->get_position()).norm();
+            if (distance < settings_.duplicated_point_distance_threshold)
+            {
+                if (settings_.log.duplicated_point) std::cout << ">> point too close to existing vertex of face, not adding" << std::endl;
+                return;
+            }
+        }
+    }
 
     // searched surfaces
     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> searched_surfaces;
