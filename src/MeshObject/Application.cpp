@@ -716,6 +716,7 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
         // delete penetrated faces
         DeletedPointStorage original_name = storage_->get_deleted_points_storage_name();
         storage_->set_deleted_points_storage_name(DeletedPointStorage::PENETRATED);
+        storage_->set_penetrating_point(generic_point);
         for (const std::shared_ptr<Face>& face : searched_faces)
         {
             // skip if face is not from the surface
