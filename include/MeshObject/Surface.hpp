@@ -50,6 +50,8 @@ public:
     const int& get_id() const;
     const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& get_vertices() const;
     const std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash>& get_interior_points() const;
+    const std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& get_edges() const;
+    const std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& get_faces() const;
     const Eigen::Vector3d& get_mean() const;
     const Eigen::Matrix3d& get_covariance() const;
     const Eigen::Matrix3d& get_eigenvectors() const;
@@ -87,7 +89,9 @@ public:
     double get_surface_position_std_in_normal_direction();
 
     void optimize_surface_normal();
-    void refine_surface();
+    bool remove_unmatched_points();
+    void remove_singular_components();
+    void split_surface_by_connected_components();
 
     void add_searchable_edge(const std::shared_ptr<Edge>& edge);
     void remove_searchable_edge(const std::shared_ptr<Edge>& edge);

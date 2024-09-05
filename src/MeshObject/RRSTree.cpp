@@ -13,7 +13,9 @@ void RRSTree::BoundingBox::expand(const Eigen::Vector3d& point)
 
 bool RRSTree::BoundingBox::contains(const Eigen::Vector3d& point)
 {
-    return (point.array() >= min.array()).all() && (point.array() <= max.array()).all();
+    return (point[0] >= min[0] && point[0] <= max[0] &&
+            point[1] >= min[1] && point[1] <= max[1] &&
+            point[2] >= min[2] && point[2] <= max[2]);
 }
 
 int RRSTree::BoundingBox::get_longest_axis()
@@ -75,7 +77,7 @@ std::shared_ptr<RRSTree::Node> RRSTree::build_node(const std::vector<std::shared
     node->boundary_vertices = std::vector<std::shared_ptr<Vertex>>(boundary_vertex_list.begin() + start, boundary_vertex_list.begin() + end);
 
     // convert to branch
-    if (node->boundary_vertices.size() > 4) convert_leaf_to_branch(node);
+    if (node->boundary_vertices.size() > leaf_size) convert_leaf_to_branch(node);
 
     return node;
 }
@@ -84,13 +86,8 @@ void RRSTree::node_add_vertex(const std::shared_ptr<Node>& node, const std::shar
 {
     expand_node_box(node, boundary_vertex);
 
-    if (node->isLeaf())
+    if (!node->isLeaf())
     {    
-        node->boundary_vertices.push_back(boundary_vertex);
-        if (node->boundary_vertices.size() > 4) convert_leaf_to_branch(node);
-    }
-    else
-    {
         if (boundary_vertex->get_position()[node->split_axis] < node->split_value)
         {
             node_add_vertex(node->left, boundary_vertex);
@@ -99,6 +96,11 @@ void RRSTree::node_add_vertex(const std::shared_ptr<Node>& node, const std::shar
         {
             node_add_vertex(node->right, boundary_vertex);
         }
+    }
+    else
+    {
+        node->boundary_vertices.push_back(boundary_vertex);
+        if (node->boundary_vertices.size() > leaf_size) convert_leaf_to_branch(node);
     }
 }
 
@@ -121,20 +123,7 @@ void RRSTree::node_increase_radius(const std::shared_ptr<Node>& node, const std:
 
 bool RRSTree::node_delete_vertex(const std::shared_ptr<Node>& node, const std::shared_ptr<Vertex>& boundary_vertex)
 {
-    if (node->isLeaf())
-    {
-        auto it = std::remove(node->boundary_vertices.begin(), node->boundary_vertices.end(), boundary_vertex);
-        if (it != node->boundary_vertices.end())
-        {
-            node->boundary_vertices.erase(it, node->boundary_vertices.end());
-            return true;
-        }
-        else
-        {
-            return false;
-        }
-    }
-    else
+    if (!node->isLeaf())
     {
         if (boundary_vertex->get_position()[node->split_axis] < node->split_value)
         {
@@ -148,7 +137,19 @@ bool RRSTree::node_delete_vertex(const std::shared_ptr<Node>& node, const std::s
         {
             return node_delete_vertex(node->left, boundary_vertex) || node_delete_vertex(node->right, boundary_vertex);
         }
-
+    }
+    else
+    {
+        auto it = std::remove(node->boundary_vertices.begin(), node->boundary_vertices.end(), boundary_vertex);
+        if (it != node->boundary_vertices.end())
+        {
+            node->boundary_vertices.erase(it, node->boundary_vertices.end());
+            return true;
+        }
+        else
+        {
+            return false;
+        }
     }
 }
 
@@ -157,17 +158,7 @@ void RRSTree::node_reverse_radius_search(const std::shared_ptr<Node>& node, cons
     bool contained = node->box.contains(point);
     if (!contained) return;
     
-    if (node->isLeaf())
-    {
-        for (const std::shared_ptr<Vertex>& boundary_vertex : node->boundary_vertices)
-        {
-            if (boundary_vertex->approx_contains(point)) 
-            {
-                search_results.insert(boundary_vertex);
-            }
-        }
-    }
-    else
+    if (!node->isLeaf())
     {
         if (node->left->box.contains(point))
         {
@@ -178,18 +169,28 @@ void RRSTree::node_reverse_radius_search(const std::shared_ptr<Node>& node, cons
             node_reverse_radius_search(node->right, point, search_results);
         }
     }
+    else
+    {
+        for (const std::shared_ptr<Vertex>& boundary_vertex : node->boundary_vertices)
+        {
+            if (boundary_vertex->approx_contains(point)) 
+            {
+                search_results.insert(boundary_vertex);
+            }
+        }
+    }
 }
 
 void RRSTree::node_flattern(const std::shared_ptr<Node>& node, std::vector<std::shared_ptr<Vertex>>& flatten_list)
 {
-    if (node->isLeaf())
-    {
-        flatten_list.insert(flatten_list.end(), node->boundary_vertices.begin(), node->boundary_vertices.end());
-    }
-    else
+    if (!node->isLeaf())
     {
         node_flattern(node->left, flatten_list);
         node_flattern(node->right, flatten_list);
+    }
+    else
+    {
+        flatten_list.insert(flatten_list.end(), node->boundary_vertices.begin(), node->boundary_vertices.end());
     }
 }
 
@@ -202,7 +203,12 @@ std::vector<std::shared_ptr<Vertex>> RRSTree::compute_vertices_list()
 
 void RRSTree::node_print(const std::shared_ptr<Node>& node, int level) const
 {
-    if (node->isLeaf())
+    if (!node->isLeaf())
+    {
+        node_print(node->left, level+1);
+        node_print(node->right, level+1);
+    }
+    else
     {
         for (const std::shared_ptr<Vertex>& boundary_vertex : node->boundary_vertices)
         {
@@ -210,14 +216,9 @@ void RRSTree::node_print(const std::shared_ptr<Node>& node, int level) const
         }
         std::cout << std::endl;
     }
-    else
-    {
-        node_print(node->left, level+1);
-        node_print(node->right, level+1);
-    }
 }
 
-RRSTree::RRSTree() : rebuild_threshold(2), size_at_last_rebuild(0), tree_size(0)
+RRSTree::RRSTree() : rebuild_threshold(5), size_at_last_rebuild(0), tree_size(0), leaf_size(64)
 {
     rebuild();
 }

@@ -6,6 +6,7 @@
 
 #include "MeshObject/MeshObject.hpp"
 #include "MeshObject/Settings.hpp"
+#include "MeshObject/Surface.hpp"
 // Forward declarations
 class Storage;
 
@@ -26,6 +27,8 @@ public:
     const Eigen::Vector3d& get_origin() const;
     const Eigen::Vector3d& get_direction() const;
     const double& get_radius() const;
+    const double& get_previous_radius() const;
+    const std::shared_ptr<Surface>& get_previous_surface() const;
     bool is_expired() const;
 
     std::size_t get_num_deletes() const;
@@ -44,6 +47,8 @@ private:
     Eigen::Vector3d origin_;
     Eigen::Vector3d direction_;
     double radius_;
+    double previous_radius_;
+    std::shared_ptr<Surface> previous_surface_;
 };
 
 bool operator<(const std::shared_ptr<Vertex>& lhs, const std::shared_ptr<Vertex>& rhs);

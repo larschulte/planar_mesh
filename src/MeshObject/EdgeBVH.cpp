@@ -85,17 +85,17 @@ bool EdgeBVH::node_intersect_edge(const std::shared_ptr<Node>& node, const std::
     bool intersected = node->box.intersect(vertex0->get_position(), vertex1->get_position());
     if (!intersected) return false;
     
-    if (node->isLeaf())
+    if (!node->isLeaf())
+    {
+        if (node_intersect_edge(node->left, vertex0, vertex1)) return true;
+        if (node_intersect_edge(node->right, vertex0, vertex1)) return true;   
+    }
+    else
     {
         for (const std::shared_ptr<Edge>& edge : node->edges)
         {
             if (edge->intersects_edge(surface_, vertex0, vertex1)) return true;
         }
-    }
-    else
-    {
-        if (node_intersect_edge(node->left, vertex0, vertex1)) return true;
-        if (node_intersect_edge(node->right, vertex0, vertex1)) return true;
     }
 
     return false;
@@ -140,13 +140,8 @@ void EdgeBVH::node_add_edge(const std::shared_ptr<Node>& node, const std::shared
 {
     expand_node_box(node, edge);
 
-    if (node->isLeaf())
+    if (!node->isLeaf())
     {   
-        node->edges.push_back(edge);
-        if (node->edges.size() > 4) convert_leaf_to_branch(node);
-    }
-    else
-    {
         if (edge->get_center()[node->split_axis] < node->split_value)
         {
             node_add_edge(node->left, edge);
@@ -156,24 +151,16 @@ void EdgeBVH::node_add_edge(const std::shared_ptr<Node>& node, const std::shared
             node_add_edge(node->right, edge);
         }
     }
+    else
+    {
+        node->edges.push_back(edge);
+        if (node->edges.size() > 4) convert_leaf_to_branch(node);
+    }
 }
 
 bool EdgeBVH::node_delete_edge(const std::shared_ptr<Node>& node, const std::shared_ptr<Edge>& edge)
 {
-    if (node->isLeaf())
-    {
-        auto it = std::remove(node->edges.begin(), node->edges.end(), edge);
-        if (it != node->edges.end())
-        {
-            node->edges.erase(it, node->edges.end());
-            return true;
-        }
-        else
-        {
-            return false;
-        }
-    }
-    else
+    if (!node->isLeaf())
     {
         if (edge->get_center()[node->split_axis] < node->split_value)
         {
@@ -188,11 +175,29 @@ bool EdgeBVH::node_delete_edge(const std::shared_ptr<Node>& node, const std::sha
             return node_delete_edge(node->left, edge) || node_delete_edge(node->right, edge);
         }
     }
+    else
+    {
+        auto it = std::remove(node->edges.begin(), node->edges.end(), edge);
+        if (it != node->edges.end())
+        {
+            node->edges.erase(it, node->edges.end());
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
 }
 
 void EdgeBVH::node_print(const std::shared_ptr<Node>& node, int level) const
 {
-    if (node->isLeaf())
+    if (!node->isLeaf())
+    {
+        node_print(node->left, level+1);
+        node_print(node->right, level+1);
+    }
+    else
     {
         for (const std::shared_ptr<Edge>& edge : node->edges)
         {
@@ -200,23 +205,18 @@ void EdgeBVH::node_print(const std::shared_ptr<Node>& node, int level) const
         }
         std::cout << std::endl;
     }
-    else
-    {
-        node_print(node->left, level+1);
-        node_print(node->right, level+1);
-    }
 }
 
 void EdgeBVH::node_flatten(const std::shared_ptr<EdgeBVH::Node>& node, std::vector<std::shared_ptr<Edge>>& edge_list) const
 {
-    if (node->isLeaf())
-    {
-        edge_list.insert(edge_list.end(), node->edges.begin(), node->edges.end());
-    }
-    else
+    if (!node->isLeaf())
     {
         node_flatten(node->left, edge_list);
         node_flatten(node->right, edge_list);
+    }
+    else
+    {
+        edge_list.insert(edge_list.end(), node->edges.begin(), node->edges.end());
     }
 }
 

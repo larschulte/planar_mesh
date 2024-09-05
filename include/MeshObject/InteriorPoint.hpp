@@ -6,6 +6,7 @@
 
 #include "MeshObject/MeshObject.hpp"
 #include "Cache/FIFOCache.hpp"
+#include "MeshObject/Settings.hpp"
 
 // Forward declarations
 class Storage;
@@ -28,7 +29,6 @@ public:
     const Eigen::Vector3d& get_origin() const;
     const Eigen::Vector3d& get_direction() const;
     const std::shared_ptr<Surface>& get_surface() const;
-    const std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash>& get_surfaces() const;
     const std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash>& get_sibling_interior_points() const;
     const double& get_radius() const;
     bool is_expired() const;
@@ -56,6 +56,8 @@ public:
     void swap(const std::shared_ptr<Surface>& surface1, const std::shared_ptr<Surface>& surface2);
 
 private:
+    static Settings settings_;
+
     bool deleting_ = false;
     bool is_expired_ = true;
 
@@ -70,7 +72,9 @@ private:
     std::shared_ptr<Storage> storage_;
 
     std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces_;
-    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_;
+    std::shared_ptr<Surface> surface_;
+    std::shared_ptr<Surface> previous_surface_;
+    double previous_radius_;
 
     std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> sibling_interior_points_;
 

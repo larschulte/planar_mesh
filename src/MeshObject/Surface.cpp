@@ -44,13 +44,13 @@ void Surface::initialize_(const std::shared_ptr<Storage>& storage)
     edge_bvh_.set_surface(shared_from_this());
     
     // log
-    std::cout << "Surface " << id_ << " created.\n";
+    if (settings_.log.initialize) std::cout << "Surface " << id_ << " created.\n";
 }
 
 void Surface::delete_()
 {
     // log
-    std::cout << "Destroying surface " << id_ << std::endl;
+    if (settings_.log.deletion) std::cout << "Destroying surface " << id_ << std::endl;
 
     // set deletion flag
     deleting_ = true;
@@ -66,7 +66,7 @@ void Surface::delete_()
     for (const auto& interior_point : interior_points) disconnect(interior_point);
 
     // log
-    std::cout << "---------- surface " << id_ << " destroyed" << std::endl;
+    if (settings_.log.deletion) std::cout << "---------- surface " << id_ << " destroyed" << std::endl;
 
     // set expired
     is_expired_ = true;
@@ -147,8 +147,19 @@ RelativePosition Surface::check_relative_position(const Eigen::Vector3d& origin,
     double surface_position_std = get_surface_position_std_in_normal_direction();
     double surface_projective_std = surface_position_std / std::fabs(normal_.dot(direction));
 
-    bool points_in_front_of_surface = projective_distance > 3 * (settings_.range_noise_std + surface_projective_std);
-    bool points_behind_surface = projective_distance < - 3 * (settings_.range_noise_std + surface_projective_std);
+    // given projective_distance and surface_projective_std and range_precision and range_accuracy
+    double new_std = std::sqrt(surface_projective_std * surface_projective_std + settings_.range_precision * settings_.range_precision);
+
+    // distance is positive when in front of the surface
+    // modify projective_distance
+    projective_distance = sign(projective_distance) * std::max(0.0, std::fabs(projective_distance) - settings_.range_accuracy);
+
+    double threshold_in_front = settings_.envelope_size * new_std;
+    double threshold_behind = - settings_.envelope_size * new_std;
+
+    // check
+    bool points_in_front_of_surface = projective_distance > threshold_in_front;
+    bool points_behind_surface = projective_distance < threshold_behind;
     bool points_within_surface = !points_in_front_of_surface && !points_behind_surface;
 
     // return
@@ -165,41 +176,62 @@ RelativePosition Surface::check_relative_position(const std::shared_ptr<GenericP
 
 RelativePosition Surface::check_relative_position(const std::shared_ptr<Vertex>& vertex)
 {
-    // compute
-    double projective_distance = vertex->buffer_compute_projected_distance(shared_from_this());
-
-    double surface_position_std = get_surface_position_std_in_normal_direction();
-    double surface_projective_std = surface_position_std / std::fabs(normal_.dot(vertex->get_direction()));
-
-    bool points_in_front_of_surface = projective_distance > 3 * (settings_.range_noise_std + surface_projective_std);
-    bool points_behind_surface = projective_distance < - 3 * (settings_.range_noise_std + surface_projective_std);
-    bool points_within_surface = !points_in_front_of_surface && !points_behind_surface;
-
-    // return
-    if (points_in_front_of_surface) return RelativePosition::IN_FRONT;
-    else if (points_behind_surface) return RelativePosition::BEHIND;
-    else if (points_within_surface) return RelativePosition::WITHIN;
-    else throw std::runtime_error("Invalid relative position.");
+    return check_relative_position(vertex->get_origin(), vertex->get_position(), vertex->get_direction());
 }
+
+// RelativePosition Surface::check_relative_position(const std::shared_ptr<Vertex>& vertex)
+// {
+//     // compute
+//     // double projective_distance = vertex->buffer_compute_projected_distance(shared_from_this());
+//     double projective_distance = compute_point_projective_distance(vertex);
+
+//     double surface_position_std = get_surface_position_std_in_normal_direction();
+//     double surface_projective_std = surface_position_std / std::fabs(normal_.dot(vertex->get_direction()));
+
+//     // given projective_distance and surface_projective_std and range_precision and range_accuracy
+//     double new_std = surface_projective_std + settings_.range_precision;
+
+//     // distance is positive when in front of the surface
+//     double threshold_in_front = 3.0 * new_std + settings_.range_accuracy;
+//     double threshold_behind = - 3.0 * new_std - settings_.range_accuracy;
+//     std::cout << "threshold_in_front: " << threshold_in_front << std::endl;
+//     std::cout << "threshold_behind: " << threshold_behind << std::endl;
+
+//     // check
+//     bool points_in_front_of_surface = projective_distance > threshold_in_front;
+//     bool points_behind_surface = projective_distance < threshold_behind;
+//     bool points_within_surface = !points_in_front_of_surface && !points_behind_surface;
+
+//     // return
+//     if (points_in_front_of_surface) return RelativePosition::IN_FRONT;
+//     else if (points_behind_surface) return RelativePosition::BEHIND;
+//     else if (points_within_surface) return RelativePosition::WITHIN;
+//     else throw std::runtime_error("Invalid relative position.");
+// }
 
 RelativePosition Surface::check_relative_position(const std::shared_ptr<InteriorPoint>& interior_point)
 {
-    // compute
-    double projective_distance = interior_point->buffer_compute_projected_distance(shared_from_this());
-
-    double surface_position_std = get_surface_position_std_in_normal_direction();
-    double surface_projective_std = surface_position_std / std::fabs(normal_.dot(interior_point->get_direction()));
-
-    bool points_in_front_of_surface = projective_distance > 3 * (settings_.range_noise_std + surface_projective_std);
-    bool points_behind_surface = projective_distance < - 3 * (settings_.range_noise_std + surface_projective_std);
-    bool points_within_surface = !points_in_front_of_surface && !points_behind_surface;
-
-    // return
-    if (points_in_front_of_surface) return RelativePosition::IN_FRONT;
-    else if (points_behind_surface) return RelativePosition::BEHIND;
-    else if (points_within_surface) return RelativePosition::WITHIN;
-    else throw std::runtime_error("Invalid relative position.");
+    return check_relative_position(interior_point->get_origin(), interior_point->get_position(), interior_point->get_direction());
 }
+
+// RelativePosition Surface::check_relative_position(const std::shared_ptr<InteriorPoint>& interior_point)
+// {
+//     // compute
+//     double projective_distance = interior_point->buffer_compute_projected_distance(shared_from_this());
+
+//     double surface_position_std = get_surface_position_std_in_normal_direction();
+//     double surface_projective_std = surface_position_std / std::fabs(normal_.dot(interior_point->get_direction()));
+
+//     bool points_in_front_of_surface = projective_distance > 3 * (settings_.range_precision + surface_projective_std);
+//     bool points_behind_surface = projective_distance < - 3 * (settings_.range_precision + surface_projective_std);
+//     bool points_within_surface = !points_in_front_of_surface && !points_behind_surface;
+
+//     // return
+//     if (points_in_front_of_surface) return RelativePosition::IN_FRONT;
+//     else if (points_behind_surface) return RelativePosition::BEHIND;
+//     else if (points_within_surface) return RelativePosition::WITHIN;
+//     else throw std::runtime_error("Invalid relative position.");
+// }
 
 void Surface::merge_surface(const std::shared_ptr<Surface>& surface)
 {
@@ -211,7 +243,7 @@ void Surface::merge_surface(const std::shared_ptr<Surface>& surface)
     for (const auto& vertex : surface_valid->vertices_) connect(vertex);
 
     // log
-    std::cout << "Surface " << surface_valid->get_id() << " merged into surface " << id_ << std::endl;
+    if (settings_.log.merge_surface) std::cout << "Surface " << surface_valid->get_id() << " merged into surface " << id_ << std::endl;
 
     // delete
     storage_->delete_surface(surface);
@@ -225,6 +257,16 @@ const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& Surface::get_
 const std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash>& Surface::get_interior_points() const
 {
     return interior_points_;
+}
+
+const std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& Surface::get_edges() const
+{
+    return edges_;
+}
+
+const std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& Surface::get_faces() const
+{
+    return faces_;
 }
 
 const Eigen::Vector3d& Surface::get_mean() const
@@ -350,16 +392,29 @@ bool Surface::is_expired() const
     return is_expired_;
 }
 
+// decide wheather to remove this surface completely
 bool Surface::is_abnormal()
 {
+    bool do_abnormal_check = false;
+    if (!do_abnormal_check) return false;
+    
     // not abnormal if low confidence surface
     if (get_total_point_size() < settings_.fit_plane_threshold) return false;
 
     // not abnormal if within range
-    if (compute_std(get_projective_distance_stats()) < 1.5*settings_.range_noise_std) return false;
-        
-    // return
-    return true;
+    std::vector <double> projective_distance_stats = get_projective_distance_stats();
+    // subtract accuracy from each distance
+    std::vector<double> projective_distance_stats_modified = projective_distance_stats;
+    for (double& distance : projective_distance_stats_modified) 
+    {
+        distance = sign(distance) * std::max(0.0, std::fabs(distance) - settings_.range_accuracy);
+    }
+
+    double new_projective_std = compute_std(projective_distance_stats_modified);
+
+    // check if abnormal
+    bool abnormal = new_projective_std > settings_.abnormal_size * settings_.range_precision;
+    return abnormal;
 }
 
 bool Surface::can_merge(const std::shared_ptr<Surface>& surface) const
@@ -398,10 +453,23 @@ bool Surface::can_merge(const std::shared_ptr<Surface>& surface) const
     for (const auto& interior_point : interior_points_)             projective_distance_list.push_back((new_mean - interior_point->get_position()).dot(new_normal) / interior_point->get_direction().dot(new_normal));
     for (const auto& vertex : surface->vertices_)                   projective_distance_list.push_back((new_mean - vertex->get_position()).dot(new_normal) / vertex->get_direction().dot(new_normal));
     for (const auto& interior_point : surface->interior_points_)    projective_distance_list.push_back((new_mean - interior_point->get_position()).dot(new_normal) / interior_point->get_direction().dot(new_normal));
-    double new_projective_std = compute_std(projective_distance_list);
+
+    // subtract accuracy from each distance
+    std::vector<double> projective_distance_list_modified = projective_distance_list;
+    for (double& distance : projective_distance_list_modified) 
+    {
+        distance = sign(distance) * std::max(0.0, std::fabs(distance) - settings_.range_accuracy);
+    }
+
+    double new_projective_std = compute_std(projective_distance_list_modified);
 
     // check if mergable
-    bool mergeable = new_projective_std < 1.0*settings_.range_noise_std;
+    bool mergeable = new_projective_std <= settings_.range_precision;
+    if (!mergeable)
+    {
+        if (settings_.log.can_merge) std::cout << "Surface " << id_ << " with " << get_total_point_size() << " points and surface " << surface->get_id() << " with " << surface->get_total_point_size() << " points are not mergable." << std::endl;
+        if (settings_.log.can_merge) std::cout << "New projective std: " << new_projective_std << std::endl;
+    }
 
     // return
     return mergeable;
@@ -430,13 +498,13 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
     for (const auto& nearby_vertex : all_nearby_vertices)
     {
         // check input
-        if (nearby_vertex->is_expired()) throw std::runtime_error("Attempts to connect surface with invalid nearby vertex.");
+        if (nearby_vertex->is_expired()) continue;
 
         // skip if same vertex
         if (nearby_vertex == vertex) continue;
 
         // skip if does not belong to the same surface
-        if (nearby_vertex->get_surfaces().find(shared_from_this()) == nearby_vertex->get_surfaces().end()) continue;
+        if (nearby_vertex->get_surface() != shared_from_this()) continue;
 
         // add to nearby vertices
         nearby_vertices.insert(nearby_vertex);
@@ -444,13 +512,23 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
 
     // create edges
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> used_vertices;
+    std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> new_edges;
     for (const auto& nearby_vertex : nearby_vertices)
     {
+        // skip if edge is longer than any of the radius of vertices
+        double distance = (vertex->get_position() - nearby_vertex->get_position()).norm();
+        
+        // skip if edge is longer than either vertices radius
+        if (distance > vertex->get_radius(shared_from_this()) || distance > nearby_vertex->get_radius()) continue;
+
         // if edge intersects
         if (edge_bvh_.tree_intersect_edge(vertex, nearby_vertex)) 
         {   
             // log
-            std::cout << "Try to create edge between " << vertex->get_id() << " and " << nearby_vertex->get_id() << " but is intersected." << std::endl;
+            if (settings_.log.connect_by_edges_and_faces) std::cout << "Try to create edge between " << vertex->get_id() << " and " << nearby_vertex->get_id() << " but is intersected." << std::endl;
+
+            // should not reduce search radius!!!
+            // radius represents extends of flat surface -> edge intersection within the same plane is still flat surface!
 
             // // that means the nearby_vertex have too large of search radius
             // // so we should reduce it
@@ -464,6 +542,7 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
             connect(new_edge);
             connect(vertex);
             used_vertices.insert(nearby_vertex);
+            new_edges.insert(new_edge);
 
             connected = true;
 
@@ -482,6 +561,7 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
     }
 
     // create faces
+    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> new_faces;
     for (const std::shared_ptr<Vertex>& nearby_vertex0 : used_vertices)
     {
         for (const std::shared_ptr<Vertex>& nearby_vertex1 : used_vertices)
@@ -494,7 +574,7 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
             std::shared_ptr<Edge> existing_edge;
             for (const std::shared_ptr<Edge>& edge : nearby_vertex0->get_edges())
             {
-                if (edge->get_surfaces().find(shared_from_this()) == edge->get_surfaces().end()) continue;
+                if (edge->get_surface() != shared_from_this()) continue;
                 if (edge->has_vertex(nearby_vertex1))
                 {
                     edge_exist = true;
@@ -505,7 +585,7 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
             if (!edge_exist) continue;
 
             // skip if edge is not boundary
-            if (!existing_edge->is_boundary(shared_from_this())) continue;
+            if (!existing_edge->is_boundary()) continue;
 
             // skip if face contains nearby vertices
             // get surface coordinate of the vertices
@@ -525,6 +605,15 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
                 }
             }
             if (triangle_contains_nearby_vertices) continue;
+
+            // don't remove silver triangle, need better ways
+
+            // // skip if face is too thin (silver triangle)
+            // Eigen::Vector3d edge1 = nearby_vertex0->get_position() - vertex->get_position();
+            // Eigen::Vector3d edge2 = nearby_vertex1->get_position() - vertex->get_position();
+            // double angle = std::acos(edge1.normalized().dot(edge2.normalized())) * 180 / M_PI;
+            // if (angle < settings_.min_face_angle) continue;
+            // if (angle > (180 - 2.0*settings_.min_face_angle)) continue;
 
 
             // // check if face already exists
@@ -550,6 +639,7 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
 
             // if face not already exists, create face
             std::shared_ptr<Face> new_face = storage_->add_face(shared_from_this(), vertex, nearby_vertex0, nearby_vertex1);
+            new_faces.insert(new_face);
 
             // connnect new face to its sibling faces
             for (const auto& sibling_edge : existing_edge->get_sibling_edges())
@@ -583,7 +673,7 @@ void Surface::compute_surface_position_std_in_normal_direction()
 
         // mean and informaiton
         double mean = ratio * vertex->buffer_compute_projected_distance(shared_from_this());
-        double std = ratio * settings_.range_noise_std;
+        double std = ratio * settings_.range_precision;
         double information = 1.0 / (std * std);
         
         // store
@@ -597,7 +687,7 @@ void Surface::compute_surface_position_std_in_normal_direction()
 
         // mean and informaiton
         double mean = ratio * interior_point->buffer_compute_projected_distance(shared_from_this());
-        double std = ratio * settings_.range_noise_std;
+        double std = ratio * settings_.range_precision;
         double information = 1.0 / (std * std);
         
         // store
@@ -617,8 +707,8 @@ void Surface::compute_surface_position_std_in_normal_direction()
     weighted_mean /= weighted_information;
     weighted_std = 1.0 / std::sqrt(weighted_information);
     
-    // log
-    std::cout << "computed surface position with Bayesian mean: " << weighted_mean << ", Bayesian std: " << weighted_std << std::endl;
+    // // log
+    // std::cout << "computed surface position with Bayesian mean: " << weighted_mean << ", Bayesian std: " << weighted_std << std::endl;
     
     // store
     previous_normal_distance_ = weighted_mean;
@@ -815,7 +905,7 @@ void Surface::add_point_to_surface_fitting(const Eigen::Vector3d& position, cons
         double old_information = 1.0 / (old_std * old_std);
 
         double new_distance = compute_point_projective_distance(origin, position);
-        double new_std = settings_.range_noise_std;
+        double new_std = settings_.range_precision;
         double new_information = 1.0 / (new_std * new_std);
 
         double combined_distance = merge_information_weighted_mean(old_distance, new_distance, old_information, new_information);
@@ -880,7 +970,7 @@ void Surface::remove_point_from_surface_fitting(const Eigen::Vector3d& position,
         double combined_information = 1.0 / (combined_std * combined_std);
 
         double new_distance = compute_point_projective_distance(origin, position);
-        double new_std = settings_.range_noise_std;
+        double new_std = settings_.range_precision;
         double new_information = 1.0 / (new_std * new_std);
 
         double old_distance = remove_information_weighted_mean(combined_distance, new_distance, combined_information, new_information);
@@ -918,65 +1008,89 @@ void Surface::optimize_surface_normal()
     fit_plane_to_points(dataset, mean_, normal_, bearing_noise, range_noise);
 }
 
-void Surface::refine_surface()
+bool Surface::remove_unmatched_points()
 {
     // skip if less than 3 points   
-    if (get_total_point_size() < 3) return;
+    if (get_total_point_size() < 3) return false;
 
-    // optimize normal
-    optimize_surface_normal();
+    // collect vertices to delete
+    std::vector<std::shared_ptr<Vertex>> vertices_to_delete;
+    for (const auto& vertex : vertices_)
+    {
+        // check input
+        if (vertex->is_expired()) throw std::runtime_error("Surface contains expired vertex.");
 
-    // // collect vertices to delete
-    // std::vector<std::shared_ptr<Vertex>> vertices_to_delete;
-    // for (const auto& vertex : vertices_)
-    // {
-    //     // check input
-    //     if (vertex->is_expired()) throw std::runtime_error("Surface contains expired vertex.");
+        // if vertex is not within the surface, add to remove list
+        if (check_relative_position(vertex) != RelativePosition::WITHIN) vertices_to_delete.push_back(vertex);
+    }
 
-    //     // if vertex is not within the surface, add to remove list
-    //     if (check_relative_position(vertex) != RelativePosition::WITHIN) vertices_to_delete.push_back(vertex);
-    // }
+    // collect interior points to delete
+    std::vector<std::shared_ptr<InteriorPoint>> interior_points_to_delete;
+    for (const auto& interior_point : interior_points_)
+    {
+        // check input
+        if (interior_point->is_expired()) throw std::runtime_error("Surface contains expired interior point.");
 
-    // // collect interior points to delete
-    // std::vector<std::shared_ptr<InteriorPoint>> interior_points_to_delete;
-    // for (const auto& interior_point : interior_points_)
-    // {
-    //     // check input
-    //     if (interior_point->is_expired()) throw std::runtime_error("Surface contains expired interior point.");
+        // if interior point is not within the surface, add to remove list
+        if (check_relative_position(interior_point) != RelativePosition::WITHIN) interior_points_to_delete.push_back(interior_point);
+    }
 
-    //     // if interior point is not within the surface, add to remove list
-    //     if (check_relative_position(interior_point) != RelativePosition::WITHIN) interior_points_to_delete.push_back(interior_point);
-    // }
+    // delete points
+    for (const auto& vertex : vertices_to_delete)
+    {
+        if (vertex->is_expired()) continue;
+        storage_->delete_vertex(vertex);
+    }
 
-    // // delete points
-    // for (const auto& vertex : vertices_to_delete)
-    // {
-    //     if (vertex->is_expired()) continue;
-    //     storage_->delete_vertex(vertex);
-    // }
+    for (const auto& interior_point : interior_points_to_delete)
+    {
+        if (interior_point->is_expired()) continue;
+        storage_->delete_interior_point(interior_point);
+    }
 
-    // for (const auto& interior_point : interior_points_to_delete)
-    // {
-    //     if (interior_point->is_expired()) continue;
-    //     storage_->delete_interior_point(interior_point);
-    // }
+    // return
+    return !vertices_to_delete.empty();
+}
 
-    // // split surface
-    // UnionFind uf;
-    // uf.add_vertices(vertices_);
-    // uf.add_edges(edges_);
-    // std::vector<std::pair<std::shared_ptr<Vertex>, std::vector<std::shared_ptr<Vertex>>>> sorted_grouped_vertices = uf.compute_sorted_grouped_vertices();
+void Surface::remove_singular_components()
+{
+    // get singular components
+    std::vector<std::shared_ptr<Vertex>> singular_vertices;
+    std::vector<std::shared_ptr<Edge>> singular_edges;
+    for (const auto& vertex : vertices_) if (vertex->is_singular()) singular_vertices.push_back(vertex);
+    for (const auto& edge : edges_) if (edge->is_singular()) singular_edges.push_back(edge);
 
-    // // create new surfaces from the second group onwards
-    // for (std::size_t i = 1; i < sorted_grouped_vertices.size(); i++)
-    // {
-    //     // get root vertex
-    //     const auto& root_vertex = sorted_grouped_vertices[i].first;
+    // delete singular components
+    for (const auto& vertex : singular_vertices)
+    {
+        if (vertex->is_expired()) continue;
+        storage_->delete_vertex(vertex);
+    }
+    for (const auto& edge : singular_edges)
+    {
+        if (edge->is_expired()) continue;
+        storage_->delete_edge(edge);
+    }
+}
 
-    //     // connect to new surface
-    //     std::shared_ptr<Surface> new_surface = storage_->add_surface();
-    //     root_vertex->swap(shared_from_this(), new_surface);
-    // }
+void Surface::split_surface_by_connected_components()
+{
+    // split surface
+    UnionFind uf;
+    uf.add_vertices(vertices_);
+    uf.add_edges(edges_);
+    std::vector<std::pair<std::shared_ptr<Vertex>, std::vector<std::shared_ptr<Vertex>>>> sorted_grouped_vertices = uf.compute_sorted_grouped_vertices();
+
+    // create new surfaces from the second group onwards
+    for (std::size_t i = 1; i < sorted_grouped_vertices.size(); i++)
+    {
+        // get root vertex
+        const auto& root_vertex = sorted_grouped_vertices[i].first;
+
+        // connect to new surface
+        std::shared_ptr<Surface> new_surface = storage_->add_surface();
+        root_vertex->swap(shared_from_this(), new_surface);
+    }
 }
 
 bool operator<(const std::shared_ptr<Surface> &lhs, const std::shared_ptr<Surface> &rhs)
@@ -1005,6 +1119,8 @@ bool operator>= (const std::shared_ptr<Surface>& lhs, const std::shared_ptr<Surf
 bool operator!= (const std::shared_ptr<Surface>& lhs, const std::shared_ptr<Surface>& rhs)
 {
     // check pointer validity
+    if (!lhs && !rhs) return false; // false if both are nullptr
+    if (!lhs || !rhs) return true; // true if either is nullptr
     if (lhs->is_expired() || rhs->is_expired()) throw std::runtime_error("Comparing expired surfaces");
     return lhs->get_id() != rhs->get_id();
 }

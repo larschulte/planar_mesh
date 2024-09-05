@@ -11,9 +11,10 @@ void Simulation::set_object(int id)
     id_ = id;
 }
 
-void Simulation::set_noise(double noise_std)
+void Simulation::set_noise(double range_precision, double range_accuracy)
 {
-    noise_std_ = noise_std;
+    range_precision_ = range_precision;
+    range_accuracy_ = range_accuracy;
 }
 
 void Simulation::get_data_pair(Eigen::Vector3d& origin, Eigen::Vector3d& position)
@@ -43,16 +44,23 @@ void Simulation::get_data_pair(Eigen::Vector3d& origin, Eigen::Vector3d& positio
 
     // gaussian noise with mean and variance
     double mean = 0.0; // mean of the Gaussian distribution
-    double std = noise_std_; // variance of the Gaussian distribution
+    double std = range_precision_; // variance of the Gaussian distribution
 
     // generate random noise value from Gaussian distribution
     std::random_device rd;
     std::mt19937 gen(rd());
     std::normal_distribution<double> distribution(mean, std);
-    double noise_value = distribution(gen);
+    double precision_value = distribution(gen);
+
+    // generate accuracy noise (uniform distribution)
+    double accuracy = range_accuracy_;
+    std::uniform_real_distribution<double> distribution_acc(-accuracy, accuracy);
+    double accuracy_value = distribution_acc(gen);
+
+    std::cout << "precision value: " << precision_value << ", accuracy value: " << accuracy_value << std::endl;
 
     // convert to noise vector and add to position
-    Eigen::Vector3d noise_vector = (position - origin).normalized() * noise_value;
+    Eigen::Vector3d noise_vector = (position - origin).normalized() * (precision_value+accuracy_value);
     position += noise_vector;
 }
 

@@ -39,12 +39,14 @@ void Vertex::initialize_(const std::shared_ptr<Storage>& storage, const Eigen::V
     update_boundary_state();
 
     // log
-    std::cout << "Vertex " << id_ << " created.\n";
+    if (settings_.log.initialize) std::cout << "Vertex " << id_ << " created.\n";
 }
 
 void Vertex::initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<GenericPoint>& generic_point)
 {
     initialize_(storage, generic_point->get_position(), generic_point->get_origin(), generic_point->get_radius());
+    previous_surface_ = generic_point->get_previous_surface();
+    previous_radius_ = generic_point->get_previous_radius();
     num_deletes_ = generic_point->get_num_deletes();
 }
 
@@ -58,7 +60,7 @@ void Vertex::initialize_(const std::shared_ptr<Storage>& storage, const Eigen::V
 void Vertex::delete_()
 {
     // log
-    std::cout << "Destroying vertex " << id_ << std::endl;
+    if (settings_.log.deletion) std::cout << "Destroying vertex " << id_ << std::endl;
 
     // set deletion flag
     deleting_ = true;
@@ -66,10 +68,9 @@ void Vertex::delete_()
     // disconnect
     std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges = edges_;
     std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces = faces_;
-    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces = surfaces_;
     for (const auto& edge : edges) disconnect(edge);
     for (const auto& face : faces) disconnect(face);
-    for (const auto& surface : surfaces) disconnect(surface);
+    if (surface_) disconnect(surface_);
 
     // remove from search tree
     if (is_searchable_)
@@ -82,22 +83,17 @@ void Vertex::delete_()
     num_deletes_++;
 
     // only create penetrated point / generic point if sibling is empty
-    if (sibling_vertices_.empty() && storage_->can_create_generic_point())
+    if (sibling_vertices_.empty() && can_create_generic_point_)
     {
-        if (storage_->has_penetrating_point())
+        // update radius if there is penetrating point
+        if (storage_->get_deleted_points_storage_name() == DeletedPointStorage::PENETRATED)
         {
             // compute radius from storage
             double radius = (storage_->get_penetrating_point() - get_position()).norm();
-            if (radius < reverse_search_radius_) reverse_search_radius_ = radius;
+            if (radius < get_radius()) set_reverse_radius_search_radius(radius);
+        }
 
-            // add to storage as penetrated point
-            storage_->add_penetrated_point(shared_from_this());
-        }
-        else
-        {
-            // add to storage as generic point
-            storage_->add_generic_point(shared_from_this());
-        }
+        storage_->add_deleted_point(shared_from_this());
     }
 
     // disconnect from sibling vertices
@@ -105,7 +101,7 @@ void Vertex::delete_()
     for (const auto& sibling_vertex : sibling_vertices) disconnect(sibling_vertex);
 
     // log
-    std::cout << "---------- vertex " << id_ << " destroyed" << std::endl;
+    if (settings_.log.deletion) std::cout << "---------- vertex " << id_ << " destroyed" << std::endl;
 
     // set expired
     is_expired_ = true;
@@ -172,28 +168,22 @@ const Eigen::Vector3d& Vertex::get_direction() const
 
 const std::shared_ptr<Surface>& Vertex::get_surface() const
 {    
-    if (surfaces_.empty()) throw std::runtime_error("Vertex has no surface.");
-
-    // if more than one surface, throw error
-    if (surfaces_.size() > 1) throw std::runtime_error("Interior point connected to more than one surface.");
-
-    // return the first surface
-    return *surfaces_.begin();
-}
-
-const std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash>& Vertex::get_surfaces() const 
-{ 
-    return surfaces_; 
+    return surface_;
 }
 
 bool Vertex::has_surface() const
 {
-    return !surfaces_.empty();
+    return surface_ != nullptr;
 }
 
 const std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& Vertex::get_edges() const 
 { 
     return edges_; 
+}
+
+const std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& Vertex::get_faces() const 
+{ 
+    return faces_; 
 }
 
 const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& Vertex::get_sibling_vertices() const 
@@ -277,7 +267,7 @@ double Vertex::get_current_surface_uncertainty() const
     // }
 // }
 
-const Eigen::Vector2d& Vertex::get_surface_coordinate(const std::shared_ptr<Surface> surface)
+const Eigen::Vector2d& Vertex::get_surface_coordinate(const std::shared_ptr<Surface>& surface)
 {
     const Eigen::Matrix3d& eigenvectors = surface->get_eigenvectors();
     if (eigenvectors_used_ == eigenvectors)
@@ -289,7 +279,7 @@ const Eigen::Vector2d& Vertex::get_surface_coordinate(const std::shared_ptr<Surf
     {
         // compute new coordinate
         Eigen::Matrix<double, 3, 2> projection_matrix = eigenvectors.rightCols<2>();
-        Eigen::Vector3d projected_position = buffer_compute_projected_position(surface);
+        Eigen::Vector3d projected_position = surface->compute_point_projective_position(get_origin(), get_position());
         surface_coordinate_ = (projection_matrix.transpose() * projected_position).head<2>();
         eigenvectors_used_ = eigenvectors;
         return surface_coordinate_;
@@ -336,18 +326,9 @@ bool Vertex::is_expired() const
     return is_expired_;
 }
 
-bool Vertex::is_boundary(const std::shared_ptr<Surface>& surface) const
-{
-    return is_boundary_map_.at(surface);
-}
-
 bool Vertex::is_boundary() const
 {
-    for (const auto& pair : is_boundary_map_)
-    {
-        if (pair.second) return true;
-    }
-    return false;
+    return is_boundary_;
 }
 
 void Vertex::connect(const std::shared_ptr<Edge>& edge)
@@ -383,12 +364,25 @@ void Vertex::connect(const std::shared_ptr<Surface>& surface)
     if (surface->is_expired()) throw std::runtime_error("Attempts to connect vertex with invalid surface.");
 
     // connect
-    bool inserted = surfaces_.insert(surface).second;
+    bool inserted = surface_ != surface;
+    if (inserted) surface_ = surface;
+    if (inserted) 
+    {
+        // if new surface is the same as the previous surface, set the radius to the updated previous radius
+        if (surface == previous_surface_) 
+        {
+            // set radius to the previous radius
+            reduce_reverse_radius_search_radius(previous_radius_);
+        }
+
+        previous_surface_ = nullptr;
+        previous_radius_ = 0;
+    }
     if (inserted) surface->connect(shared_from_this());
-    if (inserted) is_boundary_map_[surface] = false;
-    if (inserted) update_boundary_state(surface);
-    if (inserted) is_singular_map_[surface] = true;
-    if (inserted) update_singular_state(surface);
+    if (inserted) is_boundary_ = false;
+    if (inserted) update_boundary_state();
+    if (inserted) is_singular_ = true;
+    if (inserted) update_singular_state();
 }
 
 void Vertex::connect(const std::shared_ptr<Vertex>& sibling_vertex)
@@ -424,8 +418,8 @@ void Vertex::disconnect(const std::shared_ptr<Edge>& edge)
     // update boundary state
     update_boundary_state();
 
-    // // check self destruct
-    // if (!deleting_ && edges_.empty()) storage_->delete_vertex(shared_from_this());
+    // check self destruct
+    if (!deleting_ && edges_.empty()) storage_->delete_vertex(shared_from_this());
 }
 
 void Vertex::disconnect(const std::shared_ptr<Face>& face)
@@ -441,8 +435,9 @@ void Vertex::disconnect(const std::shared_ptr<Face>& face)
     if (erased) update_confirmed_status();
     if (erased) update_singular_state();
 
-    // // check self destruct
-    // if (!deleting_ && faces_.empty()) storage_->delete_vertex(shared_from_this());
+    // do not self destruct when have no face
+    // check self destruct
+    if (!deleting_ && faces_.empty() && can_self_destruct_) storage_->delete_vertex(shared_from_this());
 }
 
 void Vertex::disconnect(const std::shared_ptr<Surface>& surface)
@@ -451,13 +446,14 @@ void Vertex::disconnect(const std::shared_ptr<Surface>& surface)
     if (surface->is_expired()) return;
 
     // disconnect
-    bool erased = surfaces_.erase(surface);
+    bool erased = surface_ == surface;
     if (erased) surface->disconnect(shared_from_this());
-    if (erased) is_boundary_map_.erase(surface);
-    if (erased) is_singular_map_.erase(surface);
+    if (erased) is_boundary_ = false;
+    if (erased) is_singular_ = false;
+    if (erased) surface_ = nullptr;
 
     // check self destruct
-    if (!deleting_ && surfaces_.empty() && can_self_destruct_) storage_->delete_vertex(shared_from_this());
+    if (!deleting_ && erased && can_self_destruct_) storage_->delete_vertex(shared_from_this());
 }
 
 void Vertex::disconnect(const std::shared_ptr<Vertex>& sibling_vertex)
@@ -482,6 +478,8 @@ void Vertex::review_surfaces()
     // skip if already under review
     if (under_review_) return;
     under_review_ = true;
+
+    if (settings_.log.review_surfaces) std::cout << "reviewing vertex " << id_ << std::endl;
 
     // delete if surface is high confidence and mismatched
     std::shared_ptr<Surface> surface = get_surface();
@@ -520,7 +518,7 @@ void Vertex::review_surfaces()
                 double distance = (vertex->get_position() - get_position()).norm();
                 
                 // reduce the search radius of the searched vertex
-                std::cout << ">>   reducing search radius of vertex " << vertex->get_id() << std::endl;
+                if (settings_.log.review_surfaces) std::cout << ">>   reducing search radius of vertex " << vertex->get_id() << std::endl;
                 vertex->reduce_reverse_radius_search_radius(distance);
             }
 
@@ -531,7 +529,7 @@ void Vertex::review_surfaces()
                 double distance = (interior_point->get_position() - get_position()).norm();
                 
                 // reduce the search radius of the searched interior point
-                std::cout << ">>   reducing search radius of interior point " << interior_point->get_id() << std::endl;
+                if (settings_.log.review_surfaces) std::cout << ">>   reducing search radius of interior point " << interior_point->get_id() << std::endl;
                 interior_point->reduce_reverse_radius_search_radius(distance);
             }
 
@@ -549,6 +547,7 @@ void Vertex::review_surfaces()
 
     // ask siblings to review themselves
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> sibling_vertices_copy = sibling_vertices_;
+    if (settings_.log.review_surfaces) std::cout << ">> Reviewing sibling vertices" << std::endl;
     for (const std::shared_ptr<Vertex>& sibling : sibling_vertices_copy)
     {
         // skip if expired
@@ -558,8 +557,14 @@ void Vertex::review_surfaces()
         if (sibling->is_under_review()) continue;
 
         // review
+        sibling->can_create_generic_point(false);
         sibling->review_surfaces();
+        sibling->can_create_generic_point(true);
     }
+    if (settings_.log.review_surfaces) std::cout << ">> Finished reviewing sibling vertices" << std::endl;
+
+    // skip if current one is expired during sibling review
+    if (is_expired()) return;
 
     // given correct uncertainty envelope computation, can assume no surface will overlap each other
     // a point will only be connected to a surface if there is edge connecting to the surface
@@ -617,28 +622,24 @@ void Vertex::review_surfaces()
         // merging
         if (can_merge) 
         {
+            if (settings_.log.review_surfaces) std::cout << ">> Merging between current vertex " << id_ << " with surface " << surface->get_id() << " and sibling vertex " << sibling_vertex->get_id() << " with surface " << sibling_surface->get_id() << std::endl;
+
             // flag
             merge_happened = true;
 
-            // ask edges to swap this vertex to the sibling
-            std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges_copy = edges_; // make a copy as the list will be modified during the swap
-            for (const std::shared_ptr<Edge>& edge : edges_copy) edge->swap(shared_from_this(), sibling_vertex);
+            // merge (the smaller one is absorbed by the larger one)
+            if (sibling_surface->get_total_point_size() <= surface_->get_total_point_size())
+            {
+                absorbs(sibling_vertex);
+                storage_->delete_vertex(sibling_vertex);
+            }
+            else
+            {
+                sibling_vertex->absorbs(shared_from_this());
+                storage_->delete_vertex(shared_from_this());
+            }
 
-            // ask faces to swap this vertex to the sibling
-            std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces_copy = faces_; // make a copy as the list will be modified during the swap
-            for (const std::shared_ptr<Face>& face : faces_copy) face->swap(shared_from_this(), sibling_vertex);
-
-            // ask the sibling to swap surface to this surface
-            sibling_surface->pause_normal_std_update();
-            surface->pause_normal_std_update();
-            sibling_vertex->swap(sibling_surface, surface); // sibling_surface here is not a reference so no copy needed
-            sibling_surface->resume_normal_std_update();
-            surface->resume_normal_std_update();
-
-            // delete this vertex
-            storage_->delete_vertex(shared_from_this());
-
-            // break        
+            // break
             break;
         }
     }
@@ -672,26 +673,14 @@ void Vertex::update_confirmed_status()
     else is_confirmed_ = false;
 }
 
-void Vertex::update_singular_state(const std::shared_ptr<Surface>& surface)
-{
-    // count number of faces in this surface
-    int num_faces_in_surface = 0;
-    for (const std::shared_ptr<Face>& face : faces_)
-    {
-        if (face->get_surfaces().find(surface) != face->get_surfaces().end()) num_faces_in_surface++;
-    }
-
-    // update singular state
-    if (num_faces_in_surface == 0) is_singular_map_.at(surface) = true;
-    else is_singular_map_.at(surface) = false;
-}
-
 void Vertex::update_singular_state()
 {
-    for (const std::shared_ptr<Surface>& surface : surfaces_)
-    {
-        update_singular_state(surface);
-    }
+    // count number of faces in this surface
+    int num_faces_in_surface = faces_.size();
+
+    // update singular state
+    if (num_faces_in_surface == 0) is_singular_ = true;
+    else is_singular_ = false;
 }
 
 bool Vertex::is_confirmed() const
@@ -699,31 +688,19 @@ bool Vertex::is_confirmed() const
     return is_confirmed_;
 }
 
-bool Vertex::is_singular(const std::shared_ptr<Surface>& surface) const
-{
-    return is_singular_map_.at(surface);
-}
-
 bool Vertex::is_singular() const
 {
-    // not singular if connected to face
-    if (!faces_.empty()) return false;
-    return true;
-
-    // // singular if all singular
-    // for (const auto& pair : is_singular_map_)
-    // {
-    //     if (!pair.second) return false;
-    // }
-    // return true;
+    return is_singular_;
 }
 
 // swap surface1 with surface2
 void Vertex::swap(const std::shared_ptr<Surface>& surface1, const std::shared_ptr<Surface>& surface2)
 {
     // if contains surface1
-    if (surfaces_.find(surface1) != surfaces_.end())
+    if (surface_ == surface1)
     {
+        // std::cout << "Swapping vertex " << id_ << " surface " << surface1->get_id() << " with surface " << surface2->get_id() << std::endl;
+
         can_self_destruct_ = false;
         disconnect(surface1);
         connect(surface2);
@@ -741,44 +718,39 @@ void Vertex::swap(const std::shared_ptr<Surface>& surface1, const std::shared_pt
     }
 }
 
-void Vertex::update_boundary_state(const std::shared_ptr<Surface>& surface)
+// replace this vertex with the input vertex
+void Vertex::absorbs(const std::shared_ptr<Vertex>& input_vertex)
 {
-    if (deleting_) return;
+    // change input_vertex's surface to this vertex's surface
+    std::shared_ptr<Surface> current_surface = input_vertex->get_surface();
+    std::shared_ptr<Surface> new_surface = surface_;
+    input_vertex->swap(current_surface, new_surface);
 
-    // skip if surface not yet in surfaces_ list
-    if (surfaces_.find(surface) == surfaces_.end()) return;
-
-    // becomes boundary when one of the connected edges is boundary, or when the point is alone
-    is_boundary_map_.at(surface) = false;
-    int num_edge_in_same_surface = 0;
-    for (const std::shared_ptr<Edge>& edge : edges_)
-    {
-        // skip if edge is not in the same surface
-        if (edge->get_surfaces().find(surface) == edge->get_surfaces().end()) continue;
-
-        num_edge_in_same_surface++;
-
-        if (edge->is_boundary(surface))
-        {
-            is_boundary_map_.at(surface) = true;
-            break;
-        }
-    }
-    if (num_edge_in_same_surface == 0)
-    {
-        is_boundary_map_.at(surface) = true;
-    }
-
-    // update searchable state
-    update_searchable_state();
+    // make input_vertex's edges and faces connect to this vertex
+    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces_copy = input_vertex->get_faces();
+    std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges_copy = input_vertex->get_edges();
+    for (const std::shared_ptr<Face>& face : faces_copy) face->swap(input_vertex, shared_from_this());            
+    for (const std::shared_ptr<Edge>& edge : edges_copy) edge->swap(input_vertex, shared_from_this());
 }
 
 void Vertex::update_boundary_state()
 {
-    for (const std::shared_ptr<Surface>& surface : surfaces_)
+    if (deleting_) return;
+
+    // becomes boundary when one of the connected edges is boundary, or when the point is alone
+    is_boundary_ = false;
+    for (const std::shared_ptr<Edge>& edge : edges_)
     {
-        update_boundary_state(surface);
+        if (edge->is_boundary())
+        {
+            is_boundary_ = true;
+            break;
+        }
     }
+    if (edges_.empty()) is_boundary_ = true;
+
+    // update searchable state
+    update_searchable_state();
 }
 
 void Vertex::update_searchable_state()
@@ -799,38 +771,63 @@ void Vertex::update_searchable_state()
 void Vertex::print_info()
 {
     std::cout << "Vertex " << id_ << " at " << position_.transpose() << std::endl;
-    std::cout << "Connected to " << edges_.size() << " edges, " << faces_.size() << " faces, " << surfaces_.size() << " surfaces, " << sibling_vertices_.size() << " sibling vertices." << std::endl;
-    std::cout << "Boundary state: ";
-    for (const auto& pair : is_boundary_map_)
-    {
-        std::cout << pair.first->get_id() << " " << pair.second << ", ";
-    }
-    std::cout << std::endl;
-    std::cout << "Singular state: ";
-    for (const auto& pair : is_singular_map_)
-    {
-        std::cout << pair.first->get_id() << " " << pair.second << ", ";
-    }
-    std::cout << std::endl;
+    std::cout << "Connected to " << edges_.size() << " edges, " << faces_.size() << " faces, 1 surface, " << sibling_vertices_.size() << " sibling vertices." << std::endl;
+    std::cout << "Boundary state: " << is_boundary_ << std::endl;
+    std::cout << "Singular state: " << is_singular_ << std::endl;
     std::cout << "Searchable state: " << is_searchable_ << std::endl;
     std::cout << "Expired: " << is_expired_ << std::endl;
+}
+
+void Vertex::can_create_generic_point(bool state)
+{
+    can_create_generic_point_ = state;
 }
 
 void Vertex::set_reverse_radius_search_radius(double radius)
 {
     // set radius
+    double previous_radius = reverse_search_radius_;
     reverse_search_radius_ = radius;
 
     // update min and max
     min_ = position_ - Eigen::Vector3d(radius, radius, radius);
     max_ = position_ + Eigen::Vector3d(radius, radius, radius);
 
-    // should update search tree if expand radius
+    // should update search tree if expand radius (if new radius is larger than old one, delete then re-add the searchable vertex if it is searchable)
+    if (reverse_search_radius_ > previous_radius && is_searchable_)
+    {
+        storage_->remove_searchable_vertex(shared_from_this());
+        storage_->add_searchable_vertex(shared_from_this());
+    }
 }
 
 void Vertex::reduce_reverse_radius_search_radius(double radius)
 {
-    if (radius < reverse_search_radius_) set_reverse_radius_search_radius(radius);
+    if (radius >= reverse_search_radius_) return;
+
+    // update radius
+    set_reverse_radius_search_radius(radius);
+
+    // if for an edge, both vertices have smaller radius than the length of the edge, delete the edge
+    std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges_copy = edges_;
+    for (const std::shared_ptr<Edge>& edge : edges_copy)
+    {
+        if (edge->is_expired()) continue; // could turn expired if below deletes an edge which then deletes a face
+        if (edge->is_deleting()) continue; // could be deleting
+
+        if (edge->get_length() > edge->get_vertex(0)->get_radius() || edge->get_length() > edge->get_vertex(1)->get_radius())
+        {
+            storage_->delete_edge(edge);
+        }
+    }
+}
+
+void Vertex::reduce_previous_radius(double radius)
+{
+    if (radius >= previous_radius_) return;
+
+    // update radius
+    previous_radius_ = radius;
 }
 
 Eigen::Vector3d Vertex::get_min() const
@@ -843,9 +840,22 @@ Eigen::Vector3d Vertex::get_max() const
     return max_;
 }
 
-double Vertex::get_radius() const
+const double& Vertex::get_radius() const
 {
     return reverse_search_radius_;
+}
+
+const double& Vertex::get_radius(const std::shared_ptr<Surface>& surface) const
+{
+    // only used when being connected to a surface by edge and faces
+    if (surface == previous_surface_)
+    {
+        return previous_radius_;
+    }
+    else
+    {
+        return reverse_search_radius_;
+    }
 }
 
 bool Vertex::contains(const Eigen::Vector3d& point) const
@@ -879,6 +889,6 @@ bool operator==(const std::shared_ptr<Vertex>& lhs, const std::shared_ptr<Vertex
 {
     if (!lhs && !rhs) return true; // true if both are nullptr
     if (!lhs || !rhs) return false; // false if either is nullptr
-    if (lhs->is_expired() || rhs->is_expired()) throw std::runtime_error("Comparing expired edges");
+    if (lhs->is_expired() || rhs->is_expired()) throw std::runtime_error("Comparing expired vertices");
     return lhs->get_id() == rhs->get_id();
 }

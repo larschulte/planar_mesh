@@ -2,6 +2,22 @@
 
 #include <string>
 
+struct LOG
+{
+    bool add_point_by_radius_search;
+    bool load_point_cloud;
+    bool step;
+    bool refine_surfaces;
+    bool process_point;
+    bool initialize;
+    bool deletion;
+    bool review_surfaces;
+    bool connect_by_edges_and_faces;
+    bool can_merge;
+    bool merge_surface;
+    bool duplicated_point;
+};
+
 struct Settings 
 {
     Settings();
@@ -9,7 +25,8 @@ struct Settings
     // application settings
     bool use_sim_data;
     int sim_object;
-    double noise_std;
+    double range_precision;
+    double range_accuracy;
     std::string cloud_path;
     std::string pose_path;
     int start_cloud;
@@ -20,7 +37,16 @@ struct Settings
     double pointcloud_fraction;
     double radius_value;
     double radius_ratio; // distance to radius ratio
-    double range_noise_std;
+    std::size_t process_every_n_points;
+    double duplicated_point_distance_threshold;
+
+    double abnormal_size; // number of std
+    double envelope_size; // number of std
+
+    // double min_face_angle;
+
+    // log settings
+    LOG log;
 
     // interactive viewer settings
     bool show_generic_points;

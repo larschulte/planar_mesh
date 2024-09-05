@@ -33,9 +33,9 @@ public:
     const Eigen::Vector3d& get_origin() const;
     const Eigen::Vector3d& get_direction() const;
     const std::shared_ptr<Surface>& get_surface() const;
-    const std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash>& get_surfaces() const;
     bool has_surface() const;
     const std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& get_edges() const;
+    const std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& get_faces() const;
     const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& get_sibling_vertices() const;
     std::size_t get_num_deletes() const;
     double get_current_surface_uncertainty() const;
@@ -46,14 +46,13 @@ public:
     const Eigen::Vector3d& buffer_compute_projected_position();
     const double& buffer_compute_projected_distance(const std::shared_ptr<Surface> surface);
     const double& buffer_compute_projected_distance();
-    const Eigen::Vector2d& get_surface_coordinate(const std::shared_ptr<Surface> surface);
+    const Eigen::Vector2d& get_surface_coordinate(const std::shared_ptr<Surface>& surface);
     const Eigen::Vector2d& get_surface_coordinate();
 
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> compute_connected_vertices();
     std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> compute_connected_interior_points();
 
     bool is_expired() const;
-    bool is_boundary(const std::shared_ptr<Surface>& surface) const;
     bool is_boundary() const;
 
     void connect(const std::shared_ptr<Edge>& edge);
@@ -69,26 +68,28 @@ public:
     bool is_under_review() const;
 
     void update_confirmed_status();
-    void update_singular_state(const std::shared_ptr<Surface>& surface);
     void update_singular_state();
     bool is_confirmed() const;
-    bool is_singular(const std::shared_ptr<Surface>& surface) const;
     bool is_singular() const;
     
     void swap(const std::shared_ptr<Surface>& surface1, const std::shared_ptr<Surface>& surface2);
+    void absorbs(const std::shared_ptr<Vertex>& input_vertex);
 
-    void update_boundary_state(const std::shared_ptr<Surface>& surface);
     void update_boundary_state();
     void update_searchable_state();
 
     void print_info();
 
+    void can_create_generic_point(bool can_create);
+
 public: // for reverse radius search
     void set_reverse_radius_search_radius(double radius);
     void reduce_reverse_radius_search_radius(double radius);
+    void reduce_previous_radius(double radius);
     Eigen::Vector3d get_min() const;
     Eigen::Vector3d get_max() const;
-    double get_radius() const;
+    const double& get_radius() const;
+    const double& get_radius(const std::shared_ptr<Surface>& surface) const;
     bool contains(const Eigen::Vector3d& point) const;
     bool approx_contains(const Eigen::Vector3d& point) const;
 
@@ -102,11 +103,12 @@ private:
 
     bool deleting_ = false;
     bool under_review_ = false;
-    std::map<std::shared_ptr<Surface>, bool> is_boundary_map_;
+    bool is_boundary_;
     bool is_searchable_ = false;
     bool is_expired_ = true;
-    std::map<std::shared_ptr<Surface>, bool> is_singular_map_;
+    bool is_singular_;
     bool can_self_destruct_ = true;
+    bool can_create_generic_point_ = true;
     double current_surface_uncertainty_;
 
     std::size_t num_deletes_;
@@ -119,7 +121,9 @@ private:
 
     std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges_;
     std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces_;
-    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_;
+    std::shared_ptr<Surface> surface_;
+    std::shared_ptr<Surface> previous_surface_;
+    double previous_radius_;
 
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> sibling_vertices_;
 

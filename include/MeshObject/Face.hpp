@@ -5,6 +5,7 @@
 #include <Eigen/Dense>
 
 #include "MeshObject/MeshObject.hpp"
+#include "MeshObject/Settings.hpp"
 
 // Forward declarations
 class Vertex;
@@ -26,7 +27,7 @@ public:
     const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& get_vertices() const;
     const std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash>& get_interior_points() const;
     const std::shared_ptr<Vertex>& get_vertex(int index) const;
-    const std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash>& get_surfaces() const;
+    const std::shared_ptr<Surface>& get_surface() const;
     const std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& get_sibling_faces() const;
     bool is_expired() const;
     bool has_vertex(const std::shared_ptr<Vertex>& vertex) const;
@@ -53,6 +54,8 @@ public:
     void swap(const std::shared_ptr<Surface>& surface1, const std::shared_ptr<Surface>& surface2);
 
 private:
+    static Settings settings_;
+
     Eigen::Vector3d center_;
 
     bool deleting_ = false;
@@ -68,7 +71,7 @@ private:
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertices_;
     std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges_;
     std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> interior_points_;
-    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_;
+    std::shared_ptr<Surface> surface_;
 
     std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> sibling_faces_;
 };

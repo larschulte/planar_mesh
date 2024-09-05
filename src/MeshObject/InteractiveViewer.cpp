@@ -370,4 +370,12 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
         // log
         std::cout << "restarted" << std::endl;
     }
+    if (event.getKeySym() == "t" && event.keyDown())
+    {
+        // restart
+        app_.rebuild_tree();
+
+        // log
+        std::cout << "rebuild tree" << std::endl;
+    }
 }
