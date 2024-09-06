@@ -319,34 +319,34 @@ bool Storage::can_reverse_radius_search()
 }
 
 // reverse radius search
-std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> Storage::reverse_radius_search(const Eigen::Vector3d& point) 
+std::vector<std::shared_ptr<Vertex>> Storage::reverse_radius_search(const Eigen::Vector3d& point) 
 {
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> result;
+    std::vector<std::shared_ptr<Vertex>> result;
     rrs_tree_.tree_reverse_radius_search(point, result);
     return result;
 }
 
-std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> Storage::reverse_radius_search(const std::shared_ptr<GenericPoint>& generic_point) 
+std::vector<std::shared_ptr<Vertex>> Storage::reverse_radius_search(const std::shared_ptr<GenericPoint>& generic_point) 
 {
     return reverse_radius_search(generic_point->get_position());
 }
 
-std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> Storage::reverse_radius_search(const std::shared_ptr<Vertex>& vertex)
+std::vector<std::shared_ptr<Vertex>> Storage::reverse_radius_search(const std::shared_ptr<Vertex>& vertex)
 {
     return reverse_radius_search(vertex->get_position());
 }
 
 // face intersection search
-std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> Storage::face_intersection_search(const Eigen::Vector3d& origin, const Eigen::Vector3d& point) 
+std::vector<std::shared_ptr<Face>> Storage::face_intersection_search(const Eigen::Vector3d& origin, const Eigen::Vector3d& point) 
 {
-    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> result;
+    std::vector<std::shared_ptr<Face>> result;
     triangle_bvh_.tree_intersection_search(origin, point, result);
     return result;
 }
 
-std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> Storage::face_intersection_search(const std::shared_ptr<GenericPoint>& generic_point) 
+std::vector<std::shared_ptr<Face>> Storage::face_intersection_search(const std::shared_ptr<GenericPoint>& generic_point) 
 {
-    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> result;
+    std::vector<std::shared_ptr<Face>> result;
     triangle_bvh_.tree_intersection_search(generic_point->get_origin(), generic_point->get_position(), result);
     return result;
 }

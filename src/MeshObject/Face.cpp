@@ -215,6 +215,11 @@ bool Face::intersects_point(const Eigen::Vector3d& origin, const Eigen::Vector3d
     return true;
 }   
 
+bool Face::intersects_point(const std::shared_ptr<GenericPoint>& generic_point)
+{
+    return intersects_point(generic_point->get_origin(), generic_point->get_direction());
+}
+
 Eigen::Vector3d Face::compute_intersection_point(const Eigen::Vector3d& origin, const Eigen::Vector3d& direction)
 {
     // get first Vertex in vertices_

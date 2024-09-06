@@ -92,6 +92,7 @@ public: // for reverse radius search
     const double& get_radius(const std::shared_ptr<Surface>& surface) const;
     bool contains(const Eigen::Vector3d& point) const;
     bool approx_contains(const Eigen::Vector3d& point) const;
+    bool approx_contains(const std::shared_ptr<GenericPoint>& generic_point) const;
 
 private: // for reverse radius search
     double reverse_search_radius_;

@@ -144,7 +144,15 @@ bool Application<PointT>::add_point_by_intersection_search(const std::shared_ptr
     // by adding a point to a surface, we are essentially refining the surface's plane estimate
 
     // searched faces
-    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> searched_faces = storage_->face_intersection_search(generic_point);
+    std::vector<std::shared_ptr<Face>> all_faces = storage_->face_intersection_search(generic_point);
+    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> searched_faces;
+    for (const std::shared_ptr<Face>& face : all_faces)
+    {
+        if (face->intersects_point(generic_point)) 
+        {
+            searched_faces.insert(face);
+        }
+    }
 
     // skip if too close to any vertices of any faces
     for (const std::shared_ptr<Face>& face : searched_faces)
@@ -455,7 +463,16 @@ bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
 
     // get neighboring vertices
     std::map<int, double> point_to_radius_map;
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> neighboring_vertices = storage_->reverse_radius_search(generic_point);
+    std::vector<std::shared_ptr<Vertex>> all_vertices = storage_->reverse_radius_search(generic_point);
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> neighboring_vertices;
+    for (const std::shared_ptr<Vertex>& boundary_vertex : all_vertices)
+    {
+        if (boundary_vertex->approx_contains(generic_point)) 
+        {
+            neighboring_vertices.insert(boundary_vertex);
+        }
+    }
+
     if (settings_.log.add_point_by_radius_search) std::cout << ">> found " << neighboring_vertices.size() << " neighboring vertices" << std::endl;
 
     // when no search results

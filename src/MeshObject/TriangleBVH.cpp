@@ -98,7 +98,7 @@ void TriangleBVH::expand_node_box(const std::shared_ptr<Node>& node, const std::
     node->box.expand(face->get_vertex(2)->get_position());
 }
 
-void TriangleBVH::node_intersection_search(const std::shared_ptr<Node>& node, const Eigen::Vector3d& orig, const Eigen::Vector3d& dir, std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& faces_intersected) const
+void TriangleBVH::node_intersection_search(const std::shared_ptr<Node>& node, const Eigen::Vector3d& orig, const Eigen::Vector3d& dir, std::vector<std::shared_ptr<Face>>& faces_intersected) const
 {
     bool intersected = node->box.intersect(orig, dir);
     if (!intersected) return;
@@ -110,10 +110,7 @@ void TriangleBVH::node_intersection_search(const std::shared_ptr<Node>& node, co
     }
     else
     {
-        for (const std::shared_ptr<Face>& face : node->faces)
-        {
-            if (face->intersects_point(orig, dir)) faces_intersected.insert(face);
-        }
+        faces_intersected.insert(faces_intersected.end(), node->faces.begin(), node->faces.end());
     }
 }
 
@@ -297,7 +294,7 @@ void TriangleBVH::tree_add_face(std::shared_ptr<Face> face)
     node_add_face(root, face);
 }
 
-void TriangleBVH::tree_intersection_search(Eigen::Vector3d origin, Eigen::Vector3d endPoint, std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> &faces_intersected) const
+void TriangleBVH::tree_intersection_search(Eigen::Vector3d origin, Eigen::Vector3d endPoint, std::vector<std::shared_ptr<Face>>& faces_intersected) const
 {
     Eigen::Vector3d dir = (endPoint - origin).normalized();
     node_intersection_search(root, origin, dir, faces_intersected);

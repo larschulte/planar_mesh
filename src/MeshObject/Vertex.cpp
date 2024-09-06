@@ -891,6 +891,11 @@ bool Vertex::approx_contains(const Eigen::Vector3d& point) const
             point.z() > min_.z() && point.z() < max_.z());
 }
 
+bool Vertex::approx_contains(const std::shared_ptr<GenericPoint>& generic_point) const
+{
+    return approx_contains(generic_point->get_position());
+}
+
 bool operator<(const std::shared_ptr<Vertex>& lhs, const std::shared_ptr<Vertex>& rhs)
 {
     // when updating the third point's boundary state (due to first point deleted), the first point is already deleted. 

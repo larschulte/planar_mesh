@@ -53,11 +53,11 @@ public: // to user
     unsigned int get_repeated_queue_size() const;
 
     bool can_reverse_radius_search();
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> reverse_radius_search(const Eigen::Vector3d& point);
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> reverse_radius_search(const std::shared_ptr<GenericPoint>& generic_point);
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> reverse_radius_search(const std::shared_ptr<Vertex>& vertex);
-    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> face_intersection_search(const Eigen::Vector3d& origin, const Eigen::Vector3d& point);
-    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> face_intersection_search(const std::shared_ptr<GenericPoint>& generic_point);
+    std::vector<std::shared_ptr<Vertex>> reverse_radius_search(const Eigen::Vector3d& point);
+    std::vector<std::shared_ptr<Vertex>> reverse_radius_search(const std::shared_ptr<GenericPoint>& generic_point);
+    std::vector<std::shared_ptr<Vertex>> reverse_radius_search(const std::shared_ptr<Vertex>& vertex);
+    std::vector<std::shared_ptr<Face>> face_intersection_search(const Eigen::Vector3d& origin, const Eigen::Vector3d& point);
+    std::vector<std::shared_ptr<Face>> face_intersection_search(const std::shared_ptr<GenericPoint>& generic_point);
 
     const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& get_vertices() const;
     const std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& get_edges() const;

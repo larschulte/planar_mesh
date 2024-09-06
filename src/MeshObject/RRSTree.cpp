@@ -153,7 +153,7 @@ bool RRSTree::node_delete_vertex(const std::shared_ptr<Node>& node, const std::s
     }
 }
 
-void RRSTree::node_reverse_radius_search(const std::shared_ptr<Node>& node, const Eigen::Vector3d& point, std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& search_results)
+void RRSTree::node_reverse_radius_search(const std::shared_ptr<Node>& node, const Eigen::Vector3d& point, std::vector<std::shared_ptr<Vertex>>& search_results)
 {
     bool contained = node->box.contains(point);
     if (!contained) return;
@@ -171,13 +171,7 @@ void RRSTree::node_reverse_radius_search(const std::shared_ptr<Node>& node, cons
     }
     else
     {
-        for (const std::shared_ptr<Vertex>& boundary_vertex : node->boundary_vertices)
-        {
-            if (boundary_vertex->approx_contains(point)) 
-            {
-                search_results.insert(boundary_vertex);
-            }
-        }
+        search_results.insert(search_results.end(), node->boundary_vertices.begin(), node->boundary_vertices.end());
     }
 }
 
@@ -275,7 +269,7 @@ void RRSTree::tree_delete_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
     if (!node_delete_vertex(root, boundary_vertex)) throw std::invalid_argument("Vertex not found in BVH.");
 }
 
-void RRSTree::tree_reverse_radius_search(const Eigen::Vector3d& point, std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& search_results)
+void RRSTree::tree_reverse_radius_search(const Eigen::Vector3d& point, std::vector<std::shared_ptr<Vertex>>& search_results)
 {
     node_reverse_radius_search(root, point, search_results);
 }

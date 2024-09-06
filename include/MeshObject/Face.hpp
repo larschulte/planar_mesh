@@ -34,6 +34,7 @@ public:
     bool has_vertex(const std::shared_ptr<Vertex>& vertex) const;
 
     bool intersects_point(const Eigen::Vector3d& origin, const Eigen::Vector3d& direction);
+    bool intersects_point(const std::shared_ptr<GenericPoint>& generic_point);
     Eigen::Vector3d compute_intersection_point(const Eigen::Vector3d& origin, const Eigen::Vector3d& direction);
 
     void connect(const std::shared_ptr<Vertex>& vertex);
