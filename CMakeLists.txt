@@ -54,6 +54,7 @@ set(MeshObject_SOURCE
   src/utilities/utilities.cpp
   src/MeshObject/Simulation.cpp
   src/utilities/gtsam_plane.cpp
+  src/utilities/omp_utilities.cpp
 )
 
 # add executable
