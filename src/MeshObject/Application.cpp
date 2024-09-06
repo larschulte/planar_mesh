@@ -16,6 +16,8 @@
 #include "MeshObject/MeshObject.hpp"
 #include "MeshObject/Simulation.hpp"
 
+#include "utilities/omp_utilities.hpp"
+
 template class Application<VilensPointT>;
 
 template <typename PointT>
@@ -145,6 +147,25 @@ bool Application<PointT>::add_point_by_intersection_search(const std::shared_ptr
 
     // searched faces
     std::vector<std::shared_ptr<Face>> all_faces = storage_->face_intersection_search(generic_point);
+
+    // lock the surfaces
+    // get the surfaces of the faces
+    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> all_surfaces;
+    for (const std::shared_ptr<Face>& face : all_faces)
+    {
+        all_surfaces.insert(face->get_surface());
+    }
+    // sort the surfaces by id
+    std::vector<std::shared_ptr<Surface>> sorted_surfaces(all_surfaces.begin(), all_surfaces.end());
+    std::sort(sorted_surfaces.begin(), sorted_surfaces.end(), [](const std::shared_ptr<Surface>& surface1, const std::shared_ptr<Surface>& surface2) { return surface1->get_id() < surface2->get_id(); });
+    // lock the surfaces
+    std::unordered_map<std::shared_ptr<Surface>, std::unique_ptr<OmpLockGuard>> surface_locks;
+    for (const std::shared_ptr<Surface>& surface : sorted_surfaces)
+    {
+        surface_locks[surface] = std::make_unique<OmpLockGuard>(surface->lock_, "surface " + std::to_string(surface->get_id()) + " lock");
+    }
+
+    // get intersected faces
     std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> searched_faces;
     for (const std::shared_ptr<Face>& face : all_faces)
     {
@@ -464,6 +485,25 @@ bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
     // get neighboring vertices
     std::map<int, double> point_to_radius_map;
     std::vector<std::shared_ptr<Vertex>> all_vertices = storage_->reverse_radius_search(generic_point);
+
+    // lock the surfaces
+    // get the surfaces of the faces
+    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> all_surfaces;
+    for (const std::shared_ptr<Vertex>& vertex : all_vertices)
+    {
+        all_surfaces.insert(vertex->get_surface());
+    }
+    // sort the surfaces by id
+    std::vector<std::shared_ptr<Surface>> sorted_surfaces(all_surfaces.begin(), all_surfaces.end());
+    std::sort(sorted_surfaces.begin(), sorted_surfaces.end(), [](const std::shared_ptr<Surface>& surface1, const std::shared_ptr<Surface>& surface2) { return surface1->get_id() < surface2->get_id(); });
+    // lock the surfaces
+    std::unordered_map<std::shared_ptr<Surface>, std::unique_ptr<OmpLockGuard>> surface_locks;
+    for (const std::shared_ptr<Surface>& surface : sorted_surfaces)
+    {
+        surface_locks[surface] = std::make_unique<OmpLockGuard>(surface->lock_, "surface " + std::to_string(surface->get_id()) + " lock");
+    }
+
+    // get neighboring vertices
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> neighboring_vertices;
     for (const std::shared_ptr<Vertex>& boundary_vertex : all_vertices)
     {
@@ -907,13 +947,30 @@ void Application<PointT>::loop()
     storage_->add_points_in_repeated_queue_to_queue();
 
     // process all points in the queue
-    while (storage_->get_queue_size() > 0)
+    #pragma omp parallel
     {
-        unsigned int total_points_in_queue = storage_->get_queue_size();
-        if (settings_.log.step) std::cout << "==================================================================== Processing 1 / " << total_points_in_queue << " in queue of " << ith_cloud << " cloud" << std::endl;
+        while (true)
+        {
+            std::shared_ptr<GenericPoint> generic_point = nullptr;
+            unsigned int total_points_in_queue = 0;
 
-        std::shared_ptr<GenericPoint> generic_point = storage_->pop_from_queue();
-        process_point(generic_point);
+            // Thread-safe access to pop points from the queue
+            #pragma omp critical
+            {
+                total_points_in_queue = storage_->get_queue_size();
+                if (total_points_in_queue > 0)
+                {
+                    generic_point = storage_->pop_from_queue();
+                    if (settings_.log.step) std::cout << "Processing 1 / " << total_points_in_queue << " in queue of cloud " << ith_cloud << " by thread " << omp_get_thread_num() << std::endl;
+                }
+            }
+
+            // If the queue is empty, break the loop
+            if (!generic_point) break;
+
+            // Process the point (outside the critical section)
+            process_point(generic_point);
+        }
     }
 
     // print repeated queue size
