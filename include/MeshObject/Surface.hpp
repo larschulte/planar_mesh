@@ -19,6 +19,8 @@ class InteriorPoint;
 class Storage;
 class GenericPoint;
 
+#include <omp.h>
+
 enum class RelativePosition
 {
     IN_FRONT,
@@ -34,6 +36,11 @@ protected:
     void delete_();
 
 public:
+    Surface();
+    ~Surface();
+
+    omp_lock_t lock_;
+
     double compute_point_projective_distance(const Eigen::Vector3d& origin, const Eigen::Vector3d& point) const;
     double compute_point_projective_distance(const std::shared_ptr<GenericPoint>& generic_point) const;
     double compute_point_projective_distance(const std::shared_ptr<Vertex>& vertex) const;

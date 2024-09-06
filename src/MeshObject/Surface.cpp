@@ -15,6 +15,16 @@
 
 Settings Surface::settings_;
 
+Surface::Surface()
+{
+    omp_init_lock(&lock_);
+}
+
+Surface::~Surface()
+{
+    omp_destroy_lock(&lock_);
+}
+
 void Surface::initialize_(const std::shared_ptr<Storage>& storage)
 {
     // set expired
