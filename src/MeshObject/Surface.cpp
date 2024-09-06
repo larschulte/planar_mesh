@@ -510,6 +510,13 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
         nearby_vertices.insert(nearby_vertex);
     }
 
+    // update search radius of the vertex
+    for (const auto& nearby_vertex : nearby_vertices)
+    {
+        double distance = (vertex->get_position() - nearby_vertex->get_position()).norm();
+        vertex->reduce_reverse_radius_search_radius(distance + nearby_vertex->get_radius());
+    }
+
     // create edges
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> used_vertices;
     std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> new_edges;
