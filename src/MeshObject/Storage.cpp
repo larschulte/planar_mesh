@@ -133,46 +133,6 @@ const std::shared_ptr<InteriorPoint>& Storage::add_interior_point(const std::sha
     return *interior_points_.insert(interior_point).first;
 }
 
-const std::shared_ptr<GenericPoint>& Storage::add_penetrated_point(const std::shared_ptr<Vertex>& vertex) 
-{
-    // create
-    std::shared_ptr<GenericPoint> genertic_point = std::make_shared<GenericPoint>();
-    genertic_point->initialize_(shared_from_this(), vertex);
-
-    // store
-    return *penetrated_points_.insert(genertic_point).first;
-}
-
-const std::shared_ptr<GenericPoint>& Storage::add_penetrated_point(const std::shared_ptr<InteriorPoint>& interior_point) 
-{
-    // create
-    std::shared_ptr<GenericPoint> genertic_point = std::make_shared<GenericPoint>();
-    genertic_point->initialize_(shared_from_this(), interior_point);
-
-    // store
-    return *penetrated_points_.insert(genertic_point).first;
-}
-
-const std::shared_ptr<GenericPoint>& Storage::add_radius_point(const std::shared_ptr<Vertex>& vertex) 
-{
-    // create
-    std::shared_ptr<GenericPoint> genertic_point = std::make_shared<GenericPoint>();
-    genertic_point->initialize_(shared_from_this(), vertex);
-
-    // store
-    return *radius_points_.insert(genertic_point).first;
-}
-
-const std::shared_ptr<GenericPoint>& Storage::add_radius_point(const std::shared_ptr<InteriorPoint>& interior_point) 
-{
-    // create
-    std::shared_ptr<GenericPoint> genertic_point = std::make_shared<GenericPoint>();
-    genertic_point->initialize_(shared_from_this(), interior_point);
-
-    // store
-    return *radius_points_.insert(genertic_point).first;
-}
-
 // need to ensure the vertex/edge/face are only stored using shared_ptr here and nowhere else
 void Storage::delete_vertex(const std::shared_ptr<Vertex>& vertex) 
 {
@@ -247,66 +207,6 @@ void Storage::delete_interior_point(const std::shared_ptr<InteriorPoint>& interi
     
     // member delete
     interior_point->delete_();
-}
-
-void Storage::delete_penetrated_point(const std::shared_ptr<GenericPoint>& penetrated_point) 
-{
-    // check input
-    if (penetrated_point->is_expired()) throw std::runtime_error("Attempts to delete expired penetrated point.");
-
-    // storage delete
-    penetrated_points_.erase(penetrated_point);
-
-    // member delete
-    penetrated_point->delete_();
-}
-
-void Storage::delete_radius_point(const std::shared_ptr<GenericPoint>& radius_point) 
-{
-    // check input
-    if (radius_point->is_expired()) throw std::runtime_error("Attempts to delete expired radius point.");
-
-    // storage delete
-    radius_points_.erase(radius_point);
-
-    // member delete
-    radius_point->delete_();
-}
-
-std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash> Storage::pop_generic_points()
-{
-    // copy
-    std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash> generic_points = genertic_points_;
-
-    // clear
-    genertic_points_.clear();
-
-    // return
-    return generic_points;
-}
-
-std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash> Storage::pop_penetrated_points()
-{
-    // copy
-    std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash> penetrated_points = penetrated_points_;
-
-    // clear
-    penetrated_points_.clear();
-
-    // return
-    return penetrated_points;
-}
-
-std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash> Storage::pop_radius_points()
-{
-    // copy
-    std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash> radius_points = radius_points_;
-
-    // clear
-    radius_points_.clear();
-
-    // return
-    return radius_points;
 }
 
 void Storage::add_to_queue(const Eigen::Vector3d& position, const Eigen::Vector3d& origin) 
@@ -476,24 +376,9 @@ const std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash>& Storage
     return genertic_points_;
 }
 
-void Storage::clear_generic_points()
-{
-    genertic_points_.clear();
-}
-
 const std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash>& Storage::get_interior_points() const
 {
     return interior_points_;
-}
-
-const std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash>& Storage::get_penetrated_points() const
-{
-    return penetrated_points_;
-}
-
-void Storage::clear_penetrated_points()
-{
-    penetrated_points_.clear();
 }
 
 std::vector<std::shared_ptr<Vertex>> Storage::get_rrs_vertices()

@@ -873,16 +873,6 @@ void Application<PointT>::step()
 }
 
 template <typename PointT>
-void Application<PointT>::add_back_generic_points()
-{
-    std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash> copy_of_generic_points = storage_->pop_generic_points();
-    for (const std::shared_ptr<GenericPoint>& generic_point : copy_of_generic_points)
-    {
-        process_point(generic_point);
-    }
-}
-
-template <typename PointT>
 void Application<PointT>::loop()
 {
     // add all points from the cloud to the storage's processing queue

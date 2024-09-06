@@ -335,14 +335,6 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
         // log
         std::cout << "refined surfaces" << std::endl;
     }
-    if (event.getKeySym() == "n" && event.keyDown())
-    {
-        app_.add_back_generic_points();
-        update_display();
-
-        // log
-        std::cout << "added back generic points" << std::endl;
-    }
     if (event.getKeySym() == "k" && event.keyDown())
     {
         // toggle generic points
