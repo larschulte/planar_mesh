@@ -31,7 +31,9 @@ public:
     
     // algorithm
     void process_point(const std::shared_ptr<GenericPoint>& generic_point);
-    void add_point_by_radius_search(const std::shared_ptr<GenericPoint>& generic_point);
+    bool add_point_by_intersection_search(const std::shared_ptr<GenericPoint>& generic_point, double& radius);
+    bool add_point_by_radius_search(const std::shared_ptr<GenericPoint>& generic_point, double& radius);
+    void add_point_by_new_surface(const std::shared_ptr<GenericPoint>& generic_point, double& radius);
     
     // interaction
     void refine_surfaces();
