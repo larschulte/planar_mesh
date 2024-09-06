@@ -32,6 +32,7 @@ public:
     bool is_expired() const;
 
     std::size_t get_num_deletes() const;
+    void reset_num_deletes();
     
 private:
     static Settings settings_;

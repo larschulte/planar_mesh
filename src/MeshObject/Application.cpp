@@ -249,8 +249,6 @@ bool Application<PointT>::add_point_by_intersection_search(const std::shared_ptr
         if (settings_.log.process_point) std::cout << "========================== behind surface " << surface->get_id() << std::endl;
 
         // delete penetrated faces
-        DeletedPointStorage original_name = storage_->get_deleted_points_storage_name();
-        storage_->set_deleted_points_storage_name(DeletedPointStorage::PENETRATED);
         storage_->set_penetrating_point(generic_point);
         for (const std::shared_ptr<Face>& face : searched_faces)
         {
@@ -265,19 +263,7 @@ bool Application<PointT>::add_point_by_intersection_search(const std::shared_ptr
 
             storage_->delete_face(face);
         }
-        storage_->set_deleted_points_storage_name(original_name);
         storage_->clear_penetrating_point();
-
-        // add back penetrated points
-        std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash> copy_of_penetrated_points = storage_->pop_penetrated_points();
-        for (const std::shared_ptr<GenericPoint>& penetrated_point : copy_of_penetrated_points)
-        {
-            // log
-            if (settings_.log.process_point) std::cout << ">> adding back penetrated point as vertex" << std::endl;
-
-            // process
-            process_point(penetrated_point);
-        }
     }
 
     // process points within surface
@@ -659,8 +645,6 @@ bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
     }
 
     // for points belong to surface_with_point_not_within, update reverse search radius
-    DeletedPointStorage original_name = storage_->get_deleted_points_storage_name();
-    storage_->set_deleted_points_storage_name(DeletedPointStorage::RADIUS_CHANGE);
     for (std::shared_ptr<Vertex> vertex : neighboring_vertices)
     {
         // skip if the vertex is expired
@@ -680,18 +664,6 @@ bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
         {
             radius = distance;
         }
-    }
-    storage_->set_deleted_points_storage_name(original_name);
-
-    // add back points deleted due to reduction of radius
-    std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash> copy_of_radius_points = storage_->pop_radius_points();
-    for (const std::shared_ptr<GenericPoint>& radius_point : copy_of_radius_points)
-    {
-        // log
-        if (settings_.log.add_point_by_radius_search) std::cout << ">> adding back radius point" << std::endl;
-
-        // process
-        process_point(radius_point);
     }
     
     // reset search radius if surface changes
@@ -913,11 +885,34 @@ void Application<PointT>::add_back_generic_points()
 template <typename PointT>
 void Application<PointT>::loop()
 {
-    step();
-    while (ith_point != 0)
+    // add all points from the cloud to the storage's processing queue
+    for (std::size_t i = 0; i < ith_size; i++)
     {
-        step();
+        Eigen::Vector3d thisPointVEC = pointcloud->points[i].getVector3fMap().cast<double>();
+        Eigen::Vector3d thisPointOriginVEC = this->origin;
+
+        storage_->add_to_queue(thisPointVEC, thisPointOriginVEC);
     }
+
+    // add points from repeated queue to queue
+    storage_->add_points_in_repeated_queue_to_queue();
+
+    // process all points in the queue
+    while (storage_->get_queue_size() > 0)
+    {
+        unsigned int total_points_in_queue = storage_->get_queue_size();
+        if (settings_.log.step) std::cout << "==================================================================== Processing 1 / " << total_points_in_queue << " in queue of " << ith_cloud << " cloud" << std::endl;
+
+        std::shared_ptr<GenericPoint> generic_point = storage_->pop_from_queue();
+        process_point(generic_point);
+    }
+
+    // print repeated queue size
+    if (settings_.log.step) std::cout << "==================================================================== repeated queue size: " << storage_->get_repeated_queue_size() << std::endl;
+
+    // load next cloud
+    ith_cloud += 1;
+    load_point_cloud();
 }
 
 template <typename PointT>
@@ -1060,8 +1055,6 @@ std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> Application<PointT>::g
 template <typename PointT>
 void Application<PointT>::refine_surfaces()
 {
-    DeletedPointStorage original_name = storage_->get_deleted_points_storage_name();
-    storage_->set_deleted_points_storage_name(DeletedPointStorage::GENERIC);
     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> copy_of_surfaces = storage_->get_surfaces();
     for (const std::shared_ptr<Surface>& surface : copy_of_surfaces)
     {
@@ -1070,7 +1063,6 @@ void Application<PointT>::refine_surfaces()
         surface->split_surface_by_connected_components();
     }
     if (settings_.log.refine_surfaces) std::cout << "number of generic points after refine: " << storage_->get_generic_points().size() << std::endl;
-    storage_->set_deleted_points_storage_name(original_name);
 }
 
 template <typename PointT>

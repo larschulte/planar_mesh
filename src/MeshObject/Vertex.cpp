@@ -86,14 +86,14 @@ void Vertex::delete_()
     if (sibling_vertices_.empty() && can_create_generic_point_)
     {
         // update radius if there is penetrating point
-        if (storage_->get_deleted_points_storage_name() == DeletedPointStorage::PENETRATED)
+        if (storage_->has_penetrating_point())
         {
             // compute radius from storage
             double radius = (storage_->get_penetrating_point() - get_position()).norm();
             if (radius < get_radius()) set_reverse_radius_search_radius(radius);
         }
 
-        storage_->add_deleted_point(shared_from_this());
+        storage_->add_to_queue(shared_from_this());
     }
 
     // disconnect from sibling vertices

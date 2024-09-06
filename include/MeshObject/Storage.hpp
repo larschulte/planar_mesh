@@ -7,6 +7,10 @@
 #include "MeshObject/RRSTree.hpp"
 #include "MeshObject/TriangleBVH.hpp"
 
+#include <queue>
+
+#include "MeshObject/Settings.hpp"
+
 // forward declarations
 class Vertex;
 class Edge;
@@ -14,14 +18,6 @@ class Face;
 class Surface;
 class GenericPoint;
 class InteriorPoint;
-
-enum class DeletedPointStorage
-{
-    NONE,
-    GENERIC,
-    PENETRATED,
-    RADIUS_CHANGE
-};
 
 class Storage : public std::enable_shared_from_this<Storage> 
 {
@@ -45,10 +41,6 @@ public: // to user
     void delete_surface(const std::shared_ptr<Surface>& surface);
     void delete_interior_point(const std::shared_ptr<InteriorPoint>& interior_point);
 
-    void set_deleted_points_storage_name(const DeletedPointStorage& storage_name);
-    DeletedPointStorage get_deleted_points_storage_name() const;
-    void add_deleted_point(const std::shared_ptr<Vertex>& vertex);
-    void add_deleted_point(const std::shared_ptr<InteriorPoint>& interior_point);
     const std::shared_ptr<GenericPoint>& add_generic_point(const std::shared_ptr<Vertex>& vertex);
     const std::shared_ptr<GenericPoint>& add_generic_point(const std::shared_ptr<InteriorPoint>& interior_point);
     const std::shared_ptr<GenericPoint>& add_penetrated_point(const std::shared_ptr<Vertex>& vertex);
@@ -61,6 +53,14 @@ public: // to user
     std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash> pop_generic_points();
     std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash> pop_penetrated_points();
     std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash> pop_radius_points();
+
+    void add_to_queue(const Eigen::Vector3d& position, const Eigen::Vector3d& origin);
+    void add_to_queue(const std::shared_ptr<InteriorPoint>& interior_point);
+    void add_to_queue(const std::shared_ptr<Vertex>& vertex);
+    void add_points_in_repeated_queue_to_queue();
+    std::shared_ptr<GenericPoint> pop_from_queue();
+    unsigned int get_queue_size() const;
+    unsigned int get_repeated_queue_size() const;
 
     bool can_reverse_radius_search();
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> reverse_radius_search(const Eigen::Vector3d& point);
@@ -111,6 +111,8 @@ public: // to MeshObject class
     int get_next_interior_point_id();
 
 private:
+    static Settings settings_;
+
     bool is_expired_ = true;
 
     Eigen::Vector3d penetrating_point_;
@@ -118,6 +120,10 @@ private:
 
     RRSTree rrs_tree_;
     TriangleBVH triangle_bvh_;
+
+    std::queue<std::shared_ptr<GenericPoint>> queue_;
+    std::queue<std::shared_ptr<GenericPoint>> repeated_queue_;
+    unsigned int num_delete_before_put_to_repeated_queue_ = 2;
 
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertices_;
     std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges_;
@@ -128,8 +134,6 @@ private:
     std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash> genertic_points_;
     std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash> penetrated_points_;
     std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash> radius_points_;
-
-    DeletedPointStorage deleted_points_storage_name_ = DeletedPointStorage::GENERIC;
 
     int next_vertex_id_ = 0;
     int next_edge_id_ = 0;

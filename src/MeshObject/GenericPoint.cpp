@@ -116,6 +116,11 @@ std::size_t GenericPoint::get_num_deletes() const
     return num_deletes_;
 }
 
+void GenericPoint::reset_num_deletes()
+{
+    num_deletes_ = 0;
+}
+
 bool operator<(const std::shared_ptr<GenericPoint>& lhs, const std::shared_ptr<GenericPoint>& rhs)
 {
     if (lhs->is_expired() || rhs->is_expired()) throw std::runtime_error("Comparing expired GenericPoints");

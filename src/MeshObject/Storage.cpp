@@ -9,6 +9,10 @@
 #include "MeshObject/RRSTree.hpp"
 #include "MeshObject/TriangleBVH.hpp"
 
+#include <queue>
+
+Settings Storage::settings_;
+
 Storage::Storage()
 {
     is_expired_ = false;
@@ -305,58 +309,76 @@ std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash> Storage::pop_r
     return radius_points;
 }
 
-void Storage::set_deleted_points_storage_name(const DeletedPointStorage& name)
+void Storage::add_to_queue(const Eigen::Vector3d& position, const Eigen::Vector3d& origin) 
 {
-    deleted_points_storage_name_ = name;
+    std::shared_ptr<GenericPoint> queue_point = std::make_shared<GenericPoint>();
+    queue_point->initialize_(shared_from_this(), position, origin);
+
+    queue_.push(queue_point);
 }
 
-DeletedPointStorage Storage::get_deleted_points_storage_name() const
+void Storage::add_to_queue(const std::shared_ptr<InteriorPoint>& interior_point) 
 {
-    return deleted_points_storage_name_;
+    std::shared_ptr<GenericPoint> queue_point = std::make_shared<GenericPoint>();
+    queue_point->initialize_(shared_from_this(), interior_point);
+
+    if (queue_point->get_num_deletes() <= settings_.num_of_delete_before_put_to_repeated_queue)
+    {
+        queue_.push(queue_point);
+    }
+    else
+    {
+        // if queue_point number of delete exceeds 5, 
+        // reset number of delete and add to repeated_queue_
+        queue_point->reset_num_deletes();
+        repeated_queue_.push(queue_point);
+    }
 }
 
-void Storage::add_deleted_point(const std::shared_ptr<Vertex>& vertex)
+void Storage::add_to_queue(const std::shared_ptr<Vertex>& vertex) 
 {
-    if (deleted_points_storage_name_ == DeletedPointStorage::NONE)
+    std::shared_ptr<GenericPoint> queue_point = std::make_shared<GenericPoint>();
+    queue_point->initialize_(shared_from_this(), vertex);
+
+    if (queue_point->get_num_deletes() <= settings_.num_of_delete_before_put_to_repeated_queue)
     {
-        // not allowed to create deleted points
+        queue_.push(queue_point);
     }
-    else if (deleted_points_storage_name_ == DeletedPointStorage::PENETRATED)
+    else
     {
-        // add to storage as penetrated point
-        add_penetrated_point(vertex);
+        // if queue_point number of delete exceeds 5, 
+        // reset number of delete and add to repeated_queue_
+        queue_point->reset_num_deletes();
+        repeated_queue_.push(queue_point);
     }
-    else if (deleted_points_storage_name_ == DeletedPointStorage::RADIUS_CHANGE)
-    {
-        add_radius_point(vertex);
-    }
-    else if (deleted_points_storage_name_ == DeletedPointStorage::GENERIC)
-    {
-        // add to storage as generic point
-        add_generic_point(vertex);
-    }   
 }
 
-void Storage::add_deleted_point(const std::shared_ptr<InteriorPoint>& interior_point)
+void Storage::add_points_in_repeated_queue_to_queue()
 {
-    if (deleted_points_storage_name_ == DeletedPointStorage::NONE)
+    while (!repeated_queue_.empty())
     {
-        // not allowed to create deleted points
+        queue_.push(repeated_queue_.front());
+        repeated_queue_.pop();
     }
-    else if (deleted_points_storage_name_ == DeletedPointStorage::PENETRATED)
-    {
-        // add to storage as penetrated point
-        add_penetrated_point(interior_point);
-    }
-    else if (deleted_points_storage_name_ == DeletedPointStorage::RADIUS_CHANGE)
-    {
-        add_radius_point(interior_point);
-    }
-    else if (deleted_points_storage_name_ == DeletedPointStorage::GENERIC)
-    {
-        // add to storage as generic point
-        add_generic_point(interior_point);
-    }
+}
+
+std::shared_ptr<GenericPoint> Storage::pop_from_queue()
+{
+    if (queue_.empty()) return nullptr;
+
+    std::shared_ptr<GenericPoint> queue_point = queue_.front();
+    queue_.pop();
+    return queue_point;
+}
+
+unsigned int Storage::get_queue_size() const
+{
+    return queue_.size();
+}
+
+unsigned int Storage::get_repeated_queue_size() const
+{
+    return repeated_queue_.size();
 }
 
 void Storage::add_searchable_vertex(const std::shared_ptr<Vertex>& vertex)

@@ -43,6 +43,8 @@ struct Settings
     double abnormal_size; // number of std
     double envelope_size; // number of std
 
+    unsigned int num_of_delete_before_put_to_repeated_queue;
+
     // double min_face_angle;
 
     // log settings
