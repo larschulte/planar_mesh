@@ -73,6 +73,7 @@ public: // to user
 
     void print_rrs() const;
     void print_bvh() const;
+    void check_tree_rebuild();
     void rebuild_tree();
 
 private: // to Vertex and Face class

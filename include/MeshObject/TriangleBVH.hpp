@@ -59,6 +59,7 @@ private:
 
 public:
     TriangleBVH();
+    void check_rebuild();
     void rebuild();
     std::vector<std::shared_ptr<Face>> get_face_list() const;
 

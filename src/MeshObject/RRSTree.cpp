@@ -223,6 +223,17 @@ RRSTree::RRSTree() : rebuild_threshold(5), size_at_last_rebuild(0), tree_size(0)
     rebuild();
 }
 
+void RRSTree::check_rebuild()
+{
+    if (tree_size > size_at_last_rebuild * rebuild_threshold)
+    {
+        std::cout << "Rebuilding RRS tree ...." << std::endl;
+        rebuild();
+        std::cout << "Rebuilding RRS tree done" << std::endl;
+        size_at_last_rebuild = tree_size;
+    }
+}
+
 void RRSTree::rebuild()
 {
     if (tree_size == 0)
@@ -250,13 +261,6 @@ void RRSTree::tree_add_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
     tree_size++;
 
     node_add_vertex(root, boundary_vertex);
-
-    // add to tree
-    if (tree_size > size_at_last_rebuild * rebuild_threshold)
-    {    
-        rebuild();
-        size_at_last_rebuild = tree_size;
-    }
 }
 
 void RRSTree::tree_delete_vertex(const std::shared_ptr<Vertex>& boundary_vertex)

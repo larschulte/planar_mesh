@@ -58,7 +58,7 @@ private:
 
 public:
     RRSTree();
-
+    void check_rebuild();
     void rebuild();
     bool can_reverse_radius_search();
     std::vector<std::shared_ptr<Vertex>> compute_vertices_list();

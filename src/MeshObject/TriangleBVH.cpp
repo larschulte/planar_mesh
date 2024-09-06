@@ -262,6 +262,17 @@ TriangleBVH::TriangleBVH()
     rebuild();
 }
 
+void TriangleBVH::check_rebuild()
+{
+    if (face_size > size_at_last_rebuild * rebuild_threshold)
+    {
+        std::cout << "Rebuilding BVH ...." << std::endl;
+        rebuild();
+        std::cout << "Rebuilding BVH done" << std::endl;
+        size_at_last_rebuild = face_size;
+    }
+}
+
 void TriangleBVH::rebuild()
 {
     if (face_size == 0)
@@ -284,12 +295,6 @@ void TriangleBVH::tree_add_face(std::shared_ptr<Face> face)
     face_size++;
 
     node_add_face(root, face);
-
-    if (face_size > size_at_last_rebuild * rebuild_threshold)
-    {   
-        rebuild();
-        size_at_last_rebuild = face_size;
-    }
 }
 
 void TriangleBVH::tree_intersection_search(Eigen::Vector3d origin, Eigen::Vector3d endPoint, std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> &faces_intersected) const
