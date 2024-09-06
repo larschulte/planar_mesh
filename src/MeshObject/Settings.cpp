@@ -110,7 +110,7 @@ Settings::Settings()
     color_mode = 0;
     surface_denominator = 10.0;
     siblings_denominator = 3.0;
-    radius_denominator = 0.5;
+    radius_denominator = radius_value;
     positional_uncertainty_denominator = 0.002;
     show_wireframe = true;
     show_sphere = false;
