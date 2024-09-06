@@ -13,6 +13,7 @@ class Edge;
 class Storage;
 class Surface;
 class InteriorPoint;
+class GenericPoint;
 
 class Face : public std::enable_shared_from_this<Face>, public MeshObject
 {
@@ -52,6 +53,8 @@ public:
     bool is_confirmed() const;
 
     void swap(const std::shared_ptr<Surface>& surface1, const std::shared_ptr<Surface>& surface2);
+
+    void update_radius(const std::shared_ptr<GenericPoint>& generic_point);
 
 private:
     static Settings settings_;

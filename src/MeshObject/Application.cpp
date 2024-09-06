@@ -249,7 +249,6 @@ bool Application<PointT>::add_point_by_intersection_search(const std::shared_ptr
         if (settings_.log.process_point) std::cout << "========================== behind surface " << surface->get_id() << std::endl;
 
         // delete penetrated faces
-        storage_->set_penetrating_point(generic_point);
         for (const std::shared_ptr<Face>& face : searched_faces)
         {
             // skip if face is not from the surface
@@ -260,10 +259,13 @@ bool Application<PointT>::add_point_by_intersection_search(const std::shared_ptr
 
             // log
             if (settings_.log.process_point) std::cout << ">> disconnect penetrated face " << face->get_id() << " from surface " << surface->get_id() << std::endl;
+            
+            // update radius of points in the face
+            face->update_radius(generic_point);
 
+            // delete face
             storage_->delete_face(face);
         }
-        storage_->clear_penetrating_point();
     }
 
     // process points within surface

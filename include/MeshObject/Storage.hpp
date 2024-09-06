@@ -71,11 +71,6 @@ public: // to user
     std::map<std::shared_ptr<Vertex>, int> get_vertex_to_cloud_indices_map() const;
     bool is_expired() const;
 
-    void set_penetrating_point(const std::shared_ptr<GenericPoint>& generic_point);
-    const Eigen::Vector3d& get_penetrating_point();
-    void clear_penetrating_point();
-    bool has_penetrating_point() const;
-
     void print_rrs() const;
     void print_bvh() const;
     void rebuild_tree();
@@ -101,9 +96,6 @@ private:
     static Settings settings_;
 
     bool is_expired_ = true;
-
-    Eigen::Vector3d penetrating_point_;
-    bool has_penetrating_point_ = false;
 
     RRSTree rrs_tree_;
     TriangleBVH triangle_bvh_;

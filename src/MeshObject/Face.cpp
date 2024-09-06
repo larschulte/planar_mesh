@@ -6,6 +6,7 @@
 #include <iostream>
 
 #include "MeshObject/InteriorPoint.hpp"
+#include "MeshObject/GenericPoint.hpp"
 
 Settings Face::settings_;
 
@@ -86,6 +87,22 @@ void Face::initialize_(const std::shared_ptr<Storage>& storage, const std::share
     if (settings_.log.initialize) std::cout << "Face " << id_ << " created between vertex " << vertex0->get_id() << ", vertex " << vertex1->get_id() << " and vertex " << vertex2->get_id() << std::endl;
 }
 
+void Face::update_radius(const std::shared_ptr<GenericPoint>& generic_point)
+{
+    // update radius of interior points
+    for (const auto& interior_point : interior_points_)
+    {
+        interior_point->reduce_reverse_radius_search_radius((interior_point->get_position() - generic_point->get_position()).norm());
+    }
+
+    // update radius of vertices
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> copy_vertices = vertices_; // copy as reduce_reverse_radius_search_radius will modify the set
+    for (const auto& vertex : copy_vertices)
+    {
+        vertex->reduce_reverse_radius_search_radius((vertex->get_position() - generic_point->get_position()).norm());
+    }
+}
+
 void Face::delete_()
 {
     // log
@@ -93,21 +110,6 @@ void Face::delete_()
 
     // set deletion flag
     deleting_ = true;
-
-    // if there is penetrating point, update the radius of face vertices
-    if (storage_->has_penetrating_point())
-    {
-        // make a copy of vertices, as reduce_reverse_radius_search_radius will modify the set
-        std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> copy_vertices = vertices_;
-        for (const auto& vertex : copy_vertices)
-        {
-            // compute distance
-            const Eigen::Vector3d& vertex_position = vertex->get_position();
-            const Eigen::Vector3d& penetrating_point_position = storage_->get_penetrating_point();
-            double distance = (vertex_position - penetrating_point_position).norm();
-            vertex->reduce_reverse_radius_search_radius(distance);
-        }
-    }
 
     // disconnect
     // make a copy of the set to avoid iterator invalidation

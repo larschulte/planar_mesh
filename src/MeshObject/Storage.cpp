@@ -161,7 +161,7 @@ void Storage::delete_edge(const std::shared_ptr<Edge>& edge)
 void Storage::delete_face(const std::shared_ptr<Face>& face) 
 {
     // check input
-    if (face->is_expired()) throw std::runtime_error("Attempts to delete expired face.");
+    if (face->is_expired()) return; // face might be already deleted due to reducion in radius
 
     // storage delete
     faces_.erase(face);
@@ -406,27 +406,6 @@ std::map<std::shared_ptr<Vertex>, int> Storage::get_vertex_to_cloud_indices_map(
 bool Storage::is_expired() const
 {
     return is_expired_;
-}
-
-void Storage::set_penetrating_point(const std::shared_ptr<GenericPoint>& generic_point)
-{
-    penetrating_point_ = generic_point->get_position();
-    has_penetrating_point_ = true;
-}
-
-const Eigen::Vector3d& Storage::get_penetrating_point()
-{
-    return penetrating_point_;
-}
-
-void Storage::clear_penetrating_point()
-{
-    has_penetrating_point_ = false;
-}
-
-bool Storage::has_penetrating_point() const
-{
-    return has_penetrating_point_;
 }
 
 // get edge

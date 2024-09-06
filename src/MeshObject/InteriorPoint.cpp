@@ -66,14 +66,6 @@ void InteriorPoint::delete_()
     // only create penetrated point / generic point if sibling is empty
     if (sibling_interior_points_.empty())
     {
-        // update radius if there is penetrating point
-        if (storage_->has_penetrating_point())
-        {
-            // compute radius from storage
-            double radius = (storage_->get_penetrating_point() - get_position()).norm();
-            if (radius < get_radius()) set_reverse_radius_search_radius(radius);
-        }
-
         storage_->add_to_queue(shared_from_this());
     }
     
