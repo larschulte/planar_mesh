@@ -5,6 +5,8 @@
 #include "MeshObject/GenericPoint.hpp"
 #include "utilities/covariance_math.hpp"
 
+#include "MeshObject/Vertex.hpp"
+
 Settings InteriorPoint::settings_;
 
 void InteriorPoint::initialize_(const std::shared_ptr<Storage>& storage, const Eigen::Vector3d& position, const Eigen::Vector3d& origin, const double& radius)
@@ -178,6 +180,15 @@ void InteriorPoint::connect(const std::shared_ptr<Face>& face)
     // connect
     bool inserted = faces_.insert(face).second;
     if (inserted) face->connect(shared_from_this());
+    if (inserted)
+    {
+        // reduce radius to be consistent with vertices of the face
+        for (const std::shared_ptr<Vertex>& vertex : face->get_vertices())
+        {
+            double distance = (vertex->get_position() - get_position()).norm();
+            reduce_reverse_radius_search_radius(distance + vertex->get_radius());
+        }
+    }
 
     // update confirmed status
     if (inserted) update_confirmed_status();

@@ -308,7 +308,7 @@ bool Application<PointT>::add_point_by_intersection_search(const std::shared_ptr
         // add as interior point
         const std::shared_ptr<InteriorPoint>& temp_interior_point = storage_->add_interior_point(generic_point);
         temp_interior_point->connect(largest_surface);
-        temp_interior_point->set_reverse_radius_search_radius(radius);
+        temp_interior_point->reduce_reverse_radius_search_radius(radius);
 
         // get faces with points within
         std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces_with_points_within;
