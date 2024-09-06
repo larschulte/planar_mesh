@@ -297,6 +297,9 @@ std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> Vertex::compute_conn
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> connected_vertices;
     for (const std::shared_ptr<Edge>& edge : edges_)
     {
+        // skip if edge is deleting
+        if (edge->is_deleting()) continue;
+        
         connected_vertices.insert(edge->get_vertex(0));
         connected_vertices.insert(edge->get_vertex(1));
     }
