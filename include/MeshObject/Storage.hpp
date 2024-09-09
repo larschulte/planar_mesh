@@ -45,6 +45,7 @@ public: // to user
     void delete_interior_point(const std::shared_ptr<InteriorPoint>& interior_point);
 
     void add_to_queue(const Eigen::Vector3d& position, const Eigen::Vector3d& origin);
+    void add_to_queue(const std::shared_ptr<GenericPoint>& generic_point);
     void add_to_queue(const std::shared_ptr<InteriorPoint>& interior_point);
     void add_to_queue(const std::shared_ptr<Vertex>& vertex);
     void add_points_in_repeated_queue_to_queue();
@@ -56,8 +57,8 @@ public: // to user
     std::vector<std::shared_ptr<Vertex>> reverse_radius_search(const Eigen::Vector3d& point);
     std::vector<std::shared_ptr<Vertex>> reverse_radius_search(const std::shared_ptr<GenericPoint>& generic_point);
     std::vector<std::shared_ptr<Vertex>> reverse_radius_search(const std::shared_ptr<Vertex>& vertex);
-    std::vector<std::shared_ptr<Face>> face_intersection_search(const Eigen::Vector3d& origin, const Eigen::Vector3d& point);
-    std::vector<std::shared_ptr<Face>> face_intersection_search(const std::shared_ptr<GenericPoint>& generic_point);
+    BVHReturnType face_intersection_search(const Eigen::Vector3d& origin, const Eigen::Vector3d& point, std::vector<std::shared_ptr<Face>>& result); 
+    BVHReturnType face_intersection_search(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Face>>& result);
 
     const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& get_vertices() const;
     const std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& get_edges() const;

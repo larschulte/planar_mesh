@@ -18,6 +18,8 @@
 
 #include "utilities/omp_utilities.hpp"
 
+#include "MeshObject/TriangleBVH.hpp"
+
 template class Application<VilensPointT>;
 
 template <typename PointT>
@@ -146,33 +148,26 @@ bool Application<PointT>::add_point_by_intersection_search(const std::shared_ptr
     // by adding a point to a surface, we are essentially refining the surface's plane estimate
 
     // searched faces
-    std::vector<std::shared_ptr<Face>> all_faces = storage_->face_intersection_search(generic_point);
-
-    // lock the surfaces
-    // get the surfaces of the faces
-    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> all_surfaces;
-    for (const std::shared_ptr<Face>& face : all_faces)
+    // each return face corresponds to a lock in the leaf node and lock in the surface
+    std::vector<std::shared_ptr<Face>> searched_faces;
+    BVHReturnType return_type = storage_->face_intersection_search(generic_point, searched_faces);
+    if (return_type == BVHReturnType::ABORT)
     {
-        all_surfaces.insert(face->get_surface());
+        std::cout << ">> aborting intersection search, push to back of queue" << std::endl;
+        storage_->add_to_queue(generic_point);
+        return true;
     }
-    // sort the surfaces by id
-    std::vector<std::shared_ptr<Surface>> sorted_surfaces(all_surfaces.begin(), all_surfaces.end());
-    std::sort(sorted_surfaces.begin(), sorted_surfaces.end(), [](const std::shared_ptr<Surface>& surface1, const std::shared_ptr<Surface>& surface2) { return surface1->get_id() < surface2->get_id(); });
-    // lock the surfaces
-    std::unordered_map<std::shared_ptr<Surface>, std::unique_ptr<OmpLockGuard>> surface_locks;
-    for (const std::shared_ptr<Surface>& surface : sorted_surfaces)
+    else if (return_type == BVHReturnType::SKIP)
     {
-        surface_locks[surface] = std::make_unique<OmpLockGuard>(surface->lock_, "surface " + std::to_string(surface->get_id()) + " lock");
+        return false;
     }
 
-    // get intersected faces
-    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> searched_faces;
-    for (const std::shared_ptr<Face>& face : all_faces)
+    // lock the surface's faces' nodes
+    // unlock locks on node and surface
+    for (const std::shared_ptr<Face>& face : searched_faces)
     {
-        if (face->intersects_point(generic_point)) 
-        {
-            searched_faces.insert(face);
-        }
+        omp_unset_lock_with_log(face->node->lock, "face's node");
+        omp_unset_nested_lock_with_log(face->get_surface()->lock, "unlock face's surface");
     }
 
     // skip if too close to any vertices of any faces

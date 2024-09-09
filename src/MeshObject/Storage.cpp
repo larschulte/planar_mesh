@@ -217,6 +217,11 @@ void Storage::add_to_queue(const Eigen::Vector3d& position, const Eigen::Vector3
     queue_.push(queue_point);
 }
 
+void Storage::add_to_queue(const std::shared_ptr<GenericPoint>& generic_point) 
+{
+    queue_.push(generic_point);
+}
+
 void Storage::add_to_queue(const std::shared_ptr<InteriorPoint>& interior_point) 
 {
     std::shared_ptr<GenericPoint> queue_point = std::make_shared<GenericPoint>();
@@ -337,18 +342,14 @@ std::vector<std::shared_ptr<Vertex>> Storage::reverse_radius_search(const std::s
 }
 
 // face intersection search
-std::vector<std::shared_ptr<Face>> Storage::face_intersection_search(const Eigen::Vector3d& origin, const Eigen::Vector3d& point) 
+BVHReturnType Storage::face_intersection_search(const Eigen::Vector3d& origin, const Eigen::Vector3d& point, std::vector<std::shared_ptr<Face>>& result) 
 {
-    std::vector<std::shared_ptr<Face>> result;
-    triangle_bvh_.tree_intersection_search(origin, point, result);
-    return result;
+    return triangle_bvh_.tree_intersection_search(origin, point, result);
 }
 
-std::vector<std::shared_ptr<Face>> Storage::face_intersection_search(const std::shared_ptr<GenericPoint>& generic_point) 
+BVHReturnType Storage::face_intersection_search(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Face>>& result) 
 {
-    std::vector<std::shared_ptr<Face>> result;
-    triangle_bvh_.tree_intersection_search(generic_point->get_origin(), generic_point->get_position(), result);
-    return result;
+    return face_intersection_search(generic_point->get_origin(), generic_point->get_position(), result);
 }
 
 const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& Storage::get_vertices() const

@@ -40,6 +40,11 @@ struct Node
     omp_lock_t lock;
 };
 
+enum class BVHReturnType
+{
+    INTERSECTED,
+    SKIP,
+    ABORT
 };
 
 class TriangleBVH
@@ -58,7 +63,7 @@ private:
     std::shared_ptr<Node> build_node(const std::vector<std::shared_ptr<Face>>& face_list, const int& start, const int& end);
     void convert_leaf_to_branch(const std::shared_ptr<Node>& node);
 
-    void node_intersection_search(const std::shared_ptr<Node>& node, const Eigen::Vector3d& orig, const Eigen::Vector3d& dir, std::vector<std::shared_ptr<Face>>& faces_intersected) const;
+    BVHReturnType node_intersection_search(const std::shared_ptr<Node>& node, const Eigen::Vector3d& orig, const Eigen::Vector3d& dir, std::vector<std::shared_ptr<Face>>& faces_intersected) const;
     void node_add_face(const std::shared_ptr<Node>& node, const std::shared_ptr<Face>& face);
     bool node_delete_face(const std::shared_ptr<Node>& node, const std::shared_ptr<Face>& face);
     void node_print(const std::shared_ptr<Node>& node, int level) const;
@@ -72,6 +77,6 @@ public:
 
     void tree_add_face(std::shared_ptr<Face> face);
     void tree_delete_face(std::shared_ptr<Face> face);
-    void tree_intersection_search(Eigen::Vector3d origin, Eigen::Vector3d endPoint, std::vector<std::shared_ptr<Face>>& faces_intersected) const;
+    BVHReturnType tree_intersection_search(Eigen::Vector3d origin, Eigen::Vector3d endPoint, std::vector<std::shared_ptr<Face>>& faces_intersected) const;
     void tree_print() const;
 };

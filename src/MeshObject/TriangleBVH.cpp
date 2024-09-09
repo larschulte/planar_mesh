@@ -1,6 +1,7 @@
 #include "MeshObject/TriangleBVH.hpp"
 #include "MeshObject/Face.hpp"
 #include "MeshObject/Vertex.hpp"
+#include "MeshObject/Surface.hpp" // Include the header file for the 'Surface' class
 #include <iostream>
 
 bool ray_triangle_intersect(const Eigen::Vector3d& orig, const Eigen::Vector3d& dir,
@@ -98,19 +99,69 @@ void TriangleBVH::expand_node_box(const std::shared_ptr<Node>& node, const std::
     node->box.expand(face->get_vertex(2)->get_position());
 }
 
-void TriangleBVH::node_intersection_search(const std::shared_ptr<Node>& node, const Eigen::Vector3d& orig, const Eigen::Vector3d& dir, std::vector<std::shared_ptr<Face>>& faces_intersected) const
-{
-    bool intersected = node->box.intersect(orig, dir);
-    if (!intersected) return;
+BVHReturnType TriangleBVH::node_intersection_search(const std::shared_ptr<Node>& node, const Eigen::Vector3d& orig, const Eigen::Vector3d& dir, std::vector<std::shared_ptr<Face>>& faces_intersected) const
+{    
+    // abort if can't lock node
+    if (!omp_test_lock_with_log(node->lock, "node lock")) 
+    {
+        // abort message
+        std::cout << "Can't lock node" << std::endl;
+        return BVHReturnType::ABORT;
+    }
+
+    // skip if not intersected
+    if (!node->box.intersect(orig, dir))
+    {
+        omp_unset_lock_with_log(node->lock, "node lock (node not intersected)");
+        return BVHReturnType::SKIP;
+    }
     
+    // branch if not leaf
     if (!node->isLeaf())
     {
-        node_intersection_search(node->left, orig, dir, faces_intersected);
-        node_intersection_search(node->right, orig, dir, faces_intersected);
+        // release lock if not leaf
+        omp_unset_lock_with_log(node->lock, "node lock (node not leaf)");
+
+        // search left and right
+        BVHReturnType left_return = node_intersection_search(node->left, orig, dir, faces_intersected);
+        BVHReturnType right_return = node_intersection_search(node->right, orig, dir, faces_intersected);
+
+        // abort if any is abort
+        if (left_return == BVHReturnType::ABORT || right_return == BVHReturnType::ABORT) return BVHReturnType::ABORT;
+        // skip if both is skip
+        if (left_return == BVHReturnType::SKIP && right_return == BVHReturnType::SKIP) return BVHReturnType::SKIP;
+        // intersected if any is intersected
+        return BVHReturnType::INTERSECTED;
     }
     else
     {
-        faces_intersected.insert(faces_intersected.end(), node->faces.begin(), node->faces.end());
+        // skip if no faces
+        if (node->faces.size() == 0)
+        {
+            omp_unset_lock_with_log(node->lock, "node lock (no faces)");
+            return BVHReturnType::SKIP;
+        }
+
+        // skip if not intersected
+        if (!node->faces[0]->intersects_point(orig, dir))
+        {
+            omp_unset_lock_with_log(node->lock, "node lock (face not intersected)");
+            return BVHReturnType::SKIP;
+        }
+
+        // abort if can't lock face's surface
+        if (!omp_test_nested_lock_with_log(node->faces[0]->get_surface()->lock, "face's surface lock")) // nest lock here since a ray could intersect two faces of the same surface in two nodes
+        {
+            omp_unset_lock_with_log(node->lock, "node lock (can't lock face's surface)");
+
+            // abort message
+            std::cout << "Can't lock face's surface" << std::endl;
+            return BVHReturnType::ABORT;
+        }
+        
+        // hold both the node lock and the face's surface lock
+        faces_intersected.push_back(node->faces[0]);
+        return BVHReturnType::INTERSECTED;
     }
 }
 
@@ -305,10 +356,10 @@ void TriangleBVH::tree_add_face(std::shared_ptr<Face> face)
     node_add_face(root, face);
 }
 
-void TriangleBVH::tree_intersection_search(Eigen::Vector3d origin, Eigen::Vector3d endPoint, std::vector<std::shared_ptr<Face>>& faces_intersected) const
+BVHReturnType TriangleBVH::tree_intersection_search(Eigen::Vector3d origin, Eigen::Vector3d endPoint, std::vector<std::shared_ptr<Face>>& faces_intersected) const
 {
     Eigen::Vector3d dir = (endPoint - origin).normalized();
-    node_intersection_search(root, origin, dir, faces_intersected);
+    return node_intersection_search(root, origin, dir, faces_intersected);
 }
 
 void TriangleBVH::tree_print() const
