@@ -34,17 +34,17 @@ bool ray_triangle_intersect(const Eigen::Vector3d& orig, const Eigen::Vector3d& 
     return true;
 }
 
-TriangleBVH::BoundingBox::BoundingBox()
+BoundingBox::BoundingBox()
     : min(Eigen::Vector3d::Constant(std::numeric_limits<double>::infinity())),
       max(Eigen::Vector3d::Constant(-std::numeric_limits<double>::infinity())) {}
 
-void TriangleBVH::BoundingBox::expand(const Eigen::Vector3d& point) 
+void BoundingBox::expand(const Eigen::Vector3d& point) 
 {
     min = min.cwiseMin(point);
     max = max.cwiseMax(point);
 }
 
-bool TriangleBVH::BoundingBox::intersect(const Eigen::Vector3d& orig, const Eigen::Vector3d& dir, double& tMin, double& tMax) const 
+bool BoundingBox::intersect(const Eigen::Vector3d& orig, const Eigen::Vector3d& dir, double& tMin, double& tMax) const 
 {
     for (int i = 0; i < 3; ++i) 
     {
@@ -59,14 +59,14 @@ bool TriangleBVH::BoundingBox::intersect(const Eigen::Vector3d& orig, const Eige
     return true;
 }
 
-bool TriangleBVH::BoundingBox::intersect(const Eigen::Vector3d& orig, const Eigen::Vector3d& dir) const 
+bool BoundingBox::intersect(const Eigen::Vector3d& orig, const Eigen::Vector3d& dir) const 
 {
     double tMin = -std::numeric_limits<double>::infinity();
     double tMax = std::numeric_limits<double>::infinity();
     return intersect(orig, dir, tMin, tMax);
 }
 
-int TriangleBVH::BoundingBox::get_longest_axis()
+int BoundingBox::get_longest_axis()
 {
     Eigen::Vector3d diagonal_line = max - min;
     int axis = 0;
@@ -75,7 +75,7 @@ int TriangleBVH::BoundingBox::get_longest_axis()
     return axis;
 }
 
-bool TriangleBVH::Node::isLeaf() const 
+bool Node::isLeaf() const 
 {
     return !left && !right;
 }
@@ -129,7 +129,7 @@ void TriangleBVH::convert_leaf_to_branch(const std::shared_ptr<Node>& node)
     node->faces.clear();
 }
 
-std::shared_ptr<TriangleBVH::Node> TriangleBVH::build_node(const std::vector<std::shared_ptr<Face>>& face_list, const int& start, const int& end)
+std::shared_ptr<Node> TriangleBVH::build_node(const std::vector<std::shared_ptr<Face>>& face_list, const int& start, const int& end)
 {
     auto node = std::make_shared<Node>();
 
@@ -219,7 +219,7 @@ void TriangleBVH::node_print(const std::shared_ptr<Node> &node, int level) const
     }
 }
 
-void TriangleBVH::node_flatten(const std::shared_ptr<TriangleBVH::Node>& node, std::vector<std::shared_ptr<Face>>& face_list) const
+void TriangleBVH::node_flatten(const std::shared_ptr<Node>& node, std::vector<std::shared_ptr<Face>>& face_list) const
 {
     if (!node->isLeaf())
     {
