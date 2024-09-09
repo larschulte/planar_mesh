@@ -9,6 +9,8 @@
 #include <memory>
 #include <array>
 
+#include "utilities/omp_utilities.hpp"
+
 class Face;
 class Vertex;
 
@@ -34,6 +36,9 @@ struct Node
     std::shared_ptr<Node> right;
     bool isLeaf() const;
     std::vector<std::shared_ptr<Face>> faces;
+
+    omp_lock_t lock;
+};
 
 };
 
