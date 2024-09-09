@@ -47,6 +47,9 @@ enum class BVHReturnType
     ABORT
 };
 
+// overload <<
+std::ostream& operator<<(std::ostream& os, const BVHReturnType& type);
+
 class TriangleBVH
 {
 

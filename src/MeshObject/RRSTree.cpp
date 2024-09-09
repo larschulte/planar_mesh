@@ -3,6 +3,26 @@
 
 #include "MeshObject/Surface.hpp"
 
+std::ostream& operator<<(std::ostream& os, const RRSReturnType& type)
+{
+    switch (type)
+    {
+        case RRSReturnType::INTERSECTED:
+            os << "_";
+            break;
+        case RRSReturnType::SKIP:
+            os << "-";
+            break;
+        case RRSReturnType::ABORT:
+            os << "X";
+            break;
+        default:
+            os << "?";
+            break;
+    }
+    return os;
+}
+
 RRSBoundingBox::RRSBoundingBox() : 
     min(Eigen::Vector3d::Constant(std::numeric_limits<double>::infinity())),
     max(Eigen::Vector3d::Constant(-std::numeric_limits<double>::infinity())) {}

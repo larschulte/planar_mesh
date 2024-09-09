@@ -4,6 +4,26 @@
 #include "MeshObject/Surface.hpp" // Include the header file for the 'Surface' class
 #include <iostream>
 
+std::ostream& operator<<(std::ostream& os, const BVHReturnType& type)
+{
+    switch (type)
+    {
+        case BVHReturnType::INTERSECTED:
+            os << "_";
+            break;
+        case BVHReturnType::SKIP:
+            os << "-";
+            break;
+        case BVHReturnType::ABORT:
+            os << "X";
+            break;
+        default:
+            os << "?";
+            break;
+    }
+    return os;
+}
+
 bool ray_triangle_intersect(const Eigen::Vector3d& orig, const Eigen::Vector3d& dir,
     const Eigen::Vector3d& v0, const Eigen::Vector3d& v1, const Eigen::Vector3d& v2,
     Eigen::Vector3d& outIntersection)

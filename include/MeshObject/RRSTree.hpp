@@ -44,6 +44,9 @@ enum class RRSReturnType
     ABORT
 };
 
+// Overload the << operator for RRSReturnType
+std::ostream& operator<<(std::ostream& os, const RRSReturnType& type);
+
 class RRSTree
 {    
 private:
