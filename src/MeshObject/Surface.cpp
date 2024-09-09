@@ -17,12 +17,12 @@ Settings Surface::settings_;
 
 Surface::Surface()
 {
-    omp_init_lock(&lock_);
+    omp_init_nest_lock(&lock);
 }
 
 Surface::~Surface()
 {
-    omp_destroy_lock(&lock_);
+    omp_destroy_nest_lock(&lock);
 }
 
 void Surface::initialize_(const std::shared_ptr<Storage>& storage)
