@@ -76,6 +76,12 @@ std::shared_ptr<RRSNode> RRSTree::build_node(const std::vector<std::shared_ptr<V
     // store vertices
     node->boundary_vertices = std::vector<std::shared_ptr<Vertex>>(boundary_vertex_list.begin() + start, boundary_vertex_list.begin() + end);
 
+    // store node pointer in vertices
+    for (const std::shared_ptr<Vertex>& vertex : node->boundary_vertices)
+    {
+        vertex->node = node;
+    }
+
     // convert to branch
     if (node->boundary_vertices.size() > leaf_size) convert_leaf_to_branch(node);
 
@@ -100,6 +106,10 @@ void RRSTree::node_add_vertex(const std::shared_ptr<RRSNode>& node, const std::s
     else
     {
         node->boundary_vertices.push_back(boundary_vertex);
+
+        // add node pointer to vertex
+        boundary_vertex->node = node;
+
         if (node->boundary_vertices.size() > leaf_size) convert_leaf_to_branch(node);
     }
 }
