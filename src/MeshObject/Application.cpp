@@ -120,27 +120,35 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
     
     // current issues
     // 1. if we do the radius search before the result of add by intersection, boundary point created by deletion of face will not be included in the radius search
-    // 2. need to lock the potential node that new triangle or vertex will be added to
+
+    // find new storage leaf node
+    std::vector<std::shared_ptr<Node>> bvh_storage_leaf_nodes;
+    std::vector<std::shared_ptr<RRSNode>> rrs_storage_leaf_nodes;
+    BVHReturnType BVH_storage_return = storage_->face_intersection_search_find_node(generic_point->get_origin(), generic_point->get_position(), bvh_storage_leaf_nodes);    
+    RRSReturnType RRS_storage_return = storage_->reverse_radius_search_find_node(generic_point->get_position(), rrs_storage_leaf_nodes);
 
     // get searched faces and searched vertices
     std::vector<std::shared_ptr<Face>> searched_faces;
     std::vector<std::shared_ptr<Vertex>> neighboring_vertices_vector;
     BVHReturnType BVH_return = storage_->face_intersection_search(generic_point, searched_faces);
-    RRSReturnType RRS_return = storage_->reverse_radius_search(generic_point, neighboring_vertices_vector);
+    RRSReturnType RRS_return = storage_->reverse_radius_search(generic_point, neighboring_vertices_vector);    
 
     // get list of locked nodes and locked surfaces
-    std::vector<std::shared_ptr<Node>> initial_locked_bvh_nodes;
-    std::vector<std::shared_ptr<RRSNode>> initial_locked_rrs_nodes;
+    std::vector<std::shared_ptr<Node>> initial_locked_bvh_nodes = bvh_storage_leaf_nodes;
+    std::vector<std::shared_ptr<RRSNode>> initial_locked_rrs_nodes = rrs_storage_leaf_nodes;
     std::vector<std::shared_ptr<Surface>> initial_locked_surfaces;
+    // bvh
     for (const std::shared_ptr<Face>& face : searched_faces) initial_locked_bvh_nodes.emplace_back(face->node);
+    // rrs
     for (const std::shared_ptr<Vertex>& vertex : neighboring_vertices_vector) initial_locked_rrs_nodes.emplace_back(vertex->node);
+    // surface
     for (const std::shared_ptr<Face>& face : searched_faces) initial_locked_surfaces.emplace_back(face->get_surface());
     for (const std::shared_ptr<Vertex>& vertex : neighboring_vertices_vector) initial_locked_surfaces.emplace_back(vertex->get_surface());
 
     // abort if any is abort    
-    if (BVH_return == BVHReturnType::ABORT || RRS_return == RRSReturnType::ABORT)
+    if (BVH_return == BVHReturnType::ABORT || RRS_return == RRSReturnType::ABORT || BVH_storage_return == BVHReturnType::ABORT || RRS_storage_return == RRSReturnType::ABORT)
     {
-        std::cout << ">> aborting intersection search, push to back of queue" << std::endl;
+        std::cout << "                                                        " << "Thread " << omp_get_thread_num() << " " << BVH_return << " " << RRS_return << " " << BVH_storage_return << " " << RRS_storage_return << std::endl;
         storage_->add_to_queue(generic_point);
         
         // 
@@ -153,6 +161,7 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
         for (const std::shared_ptr<Node>& node : initial_locked_bvh_nodes) omp_unset_nested_lock_with_log(node->lock, "unlock bvh node");
         // unlock rrs nodes
         for (const std::shared_ptr<RRSNode>& node : initial_locked_rrs_nodes) omp_unset_nested_lock_with_log(node->lock, "unlock rrs node");
+
         return;
     }
 
