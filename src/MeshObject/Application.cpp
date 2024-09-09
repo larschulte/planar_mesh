@@ -469,14 +469,6 @@ bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
     // only update surface close to new observation, such that the update time will be consistant
     // otherwise the update time will be proportional to number of surface added
     
-
-    // when can not search
-    if (!storage_->can_reverse_radius_search())
-    {
-        if (settings_.log.add_point_by_radius_search) std::cout << ">> no points to search, adding new surface" << std::endl;
-        return false;
-    }
-
     // get neighboring vertices
     std::vector<std::shared_ptr<Vertex>> neighboring_vertices_vector;
     RRSReturnType return_type = storage_->reverse_radius_search(generic_point, neighboring_vertices_vector);
