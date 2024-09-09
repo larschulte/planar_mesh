@@ -251,6 +251,38 @@ RRSReturnType RRSTree::node_reverse_radius_search(const std::shared_ptr<RRSNode>
     }
 }
 
+RRSReturnType RRSTree::node_find_leaf_node(const std::shared_ptr<RRSNode>& node, const Eigen::Vector3d& point, std::vector<std::shared_ptr<RRSNode>>& nodes)
+{
+    // abort if can't lock node
+    if (!omp_test_nested_lock_with_log(node->lock, "node lock"))
+    {
+        // abort message
+        // std::cout << "Can't lock node" << std::endl;
+        return RRSReturnType::ABORT;
+    }
+    
+    // branch if not leaf
+    if (!node->isLeaf())
+    {
+        // release lock if not leaf
+        omp_unset_nested_lock_with_log(node->lock, "node lock (node not leaf)");
+
+        if (point[node->split_axis] < node->split_value)
+        {
+            return node_find_leaf_node(node->left, point, nodes);
+        }
+        else
+        {
+            return node_find_leaf_node(node->right, point, nodes);
+        }
+    }
+    else
+    {
+        nodes.push_back(node);
+        return RRSReturnType::INTERSECTED;
+    }
+}
+
 void RRSTree::node_flattern(const std::shared_ptr<RRSNode>& node, std::vector<std::shared_ptr<Vertex>>& flatten_list)
 {
     if (!node->isLeaf())
@@ -348,6 +380,11 @@ void RRSTree::tree_delete_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
 RRSReturnType RRSTree::tree_reverse_radius_search(const Eigen::Vector3d& point, std::vector<std::shared_ptr<Vertex>>& search_results)
 {
     return node_reverse_radius_search(root, point, search_results);
+}
+
+RRSReturnType RRSTree::tree_find_leaf_node(const Eigen::Vector3d& point, std::vector<std::shared_ptr<RRSNode>>& nodes)
+{
+    return node_find_leaf_node(root, point, nodes);
 }
 
 void RRSTree::tree_increase_radius(std::shared_ptr<Vertex> boundary_vertex)

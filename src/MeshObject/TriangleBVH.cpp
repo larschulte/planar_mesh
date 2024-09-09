@@ -185,6 +185,39 @@ BVHReturnType TriangleBVH::node_intersection_search(const std::shared_ptr<Node>&
     }
 }
 
+BVHReturnType TriangleBVH::node_find_leaf_node(const std::shared_ptr<Node>& node, const Eigen::Vector3d& orig, const Eigen::Vector3d& endPoint, std::vector<std::shared_ptr<Node>>& nodes) const
+{
+    // abort if can't lock node
+    if (!omp_test_nested_lock_with_log(node->lock, "node lock"))
+    {
+        // abort message
+        // std::cout << "Can't lock node" << std::endl;
+        return BVHReturnType::ABORT;
+    }
+
+    // branch if not leaf
+    if (!node->isLeaf())
+    {   
+        // release lock if not leaf
+        omp_unset_nested_lock_with_log(node->lock, "node lock (node not leaf)");
+
+        if (endPoint[node->split_axis] < node->split_value)
+        {
+            return node_find_leaf_node(node->left, orig, endPoint, nodes);
+        }
+        else 
+        {
+            return node_find_leaf_node(node->right, orig, endPoint, nodes);
+        }
+    }
+    else
+    {
+        // hold the node lock
+        nodes.push_back(node);
+        return BVHReturnType::INTERSECTED;
+    }
+}
+
 void TriangleBVH::convert_leaf_to_branch(const std::shared_ptr<Node>& node)
 {
     int start = 0;
@@ -380,6 +413,11 @@ BVHReturnType TriangleBVH::tree_intersection_search(Eigen::Vector3d origin, Eige
 {
     Eigen::Vector3d dir = (endPoint - origin).normalized();
     return node_intersection_search(root, origin, dir, faces_intersected);
+}
+
+BVHReturnType TriangleBVH::tree_find_leaf_node(const Eigen::Vector3d& origin, const Eigen::Vector3d& endPoint, std::vector<std::shared_ptr<Node>>& nodes) const
+{
+    return node_find_leaf_node(root, origin, endPoint, nodes);
 }
 
 void TriangleBVH::tree_print() const
