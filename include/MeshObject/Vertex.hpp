@@ -10,6 +10,8 @@
 
 #include "Cache/FIFOCache.hpp"
 
+#include "MeshObject/RRSTree.hpp"
+
 // Forward declarations
 class Edge;
 class Face;
@@ -28,6 +30,8 @@ protected:
     void delete_();
 
 public:
+    std::shared_ptr<RRSNode> node;
+
     const int& get_id() const;
     const Eigen::Vector3d& get_position() const;
     const Eigen::Vector3d& get_origin() const;
