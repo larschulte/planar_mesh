@@ -44,6 +44,7 @@ private:
     double rebuild_threshold;
     int size_at_last_rebuild;
     int face_size;
+    unsigned int leaf_size;
 
     double sort_face_list_in_axis(std::vector<std::shared_ptr<Face>>& face_list, int axis, int start, int mid, int end);
     void expand_node_box(const std::shared_ptr<Node>& node, const std::shared_ptr<Face>& face);

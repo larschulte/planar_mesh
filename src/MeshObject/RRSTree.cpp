@@ -212,7 +212,7 @@ void RRSTree::node_print(const std::shared_ptr<Node>& node, int level) const
     }
 }
 
-RRSTree::RRSTree() : rebuild_threshold(5), size_at_last_rebuild(0), tree_size(0), leaf_size(64)
+RRSTree::RRSTree() : rebuild_threshold(5), size_at_last_rebuild(0), tree_size(0), leaf_size(1)
 {
     rebuild();
 }

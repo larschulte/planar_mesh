@@ -143,7 +143,7 @@ std::shared_ptr<TriangleBVH::Node> TriangleBVH::build_node(const std::vector<std
     node->faces = std::vector<std::shared_ptr<Face>>(face_list.begin() + start, face_list.begin() + end);
 
     // convert to branch
-    if (node->faces.size() > 4) convert_leaf_to_branch(node);
+    if (node->faces.size() > leaf_size) convert_leaf_to_branch(node);
 
     return node;
 }
@@ -166,7 +166,7 @@ void TriangleBVH::node_add_face(const std::shared_ptr<Node>& node, const std::sh
     else
     {
         node->faces.push_back(face);
-        if (node->faces.size() > 4) convert_leaf_to_branch(node);
+        if (node->faces.size() > leaf_size) convert_leaf_to_branch(node);
     }
 }
 
@@ -252,9 +252,10 @@ void TriangleBVH::tree_delete_face(std::shared_ptr<Face> face)
 }
 
 TriangleBVH::TriangleBVH()
-    : rebuild_threshold(2),
-      size_at_last_rebuild(0),
-      face_size(0)
+        :rebuild_threshold(2),
+        size_at_last_rebuild(0),
+        face_size(0),
+        leaf_size(1)
 {
     rebuild();
 }
