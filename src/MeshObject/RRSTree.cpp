@@ -1,24 +1,24 @@
 #include "MeshObject/RRSTree.hpp"
 #include "MeshObject/Vertex.hpp"
 
-RRSTree::BoundingBox::BoundingBox() : 
+RRSBoundingBox::RRSBoundingBox() : 
     min(Eigen::Vector3d::Constant(std::numeric_limits<double>::infinity())),
     max(Eigen::Vector3d::Constant(-std::numeric_limits<double>::infinity())) {}
 
-void RRSTree::BoundingBox::expand(const Eigen::Vector3d& point)
+void RRSBoundingBox::expand(const Eigen::Vector3d& point)
 {
     min = min.cwiseMin(point);
     max = max.cwiseMax(point);
 }
 
-bool RRSTree::BoundingBox::contains(const Eigen::Vector3d& point)
+bool RRSBoundingBox::contains(const Eigen::Vector3d& point)
 {
     return (point[0] >= min[0] && point[0] <= max[0] &&
             point[1] >= min[1] && point[1] <= max[1] &&
             point[2] >= min[2] && point[2] <= max[2]);
 }
 
-int RRSTree::BoundingBox::get_longest_axis()
+int RRSBoundingBox::get_longest_axis()
 {
     Eigen::Vector3d diagonal_line = max - min;
     int axis = 0;
@@ -27,7 +27,7 @@ int RRSTree::BoundingBox::get_longest_axis()
     return axis;
 }
 
-bool RRSTree::Node::isLeaf() const
+bool RRSNode::isLeaf() const
 {
     return !left && !right;
 }
@@ -42,13 +42,13 @@ double RRSTree::sort_boundary_vertex_list_in_axis(std::vector<std::shared_ptr<Ve
     return boundary_vertex_list[mid]->get_position()[axis];
 }
 
-void RRSTree::expand_node_box(const std::shared_ptr<Node>& node, const std::shared_ptr<Vertex>& boundary_vertex)
+void RRSTree::expand_node_box(const std::shared_ptr<RRSNode>& node, const std::shared_ptr<Vertex>& boundary_vertex)
 {
     node->box.expand(boundary_vertex->get_min());
     node->box.expand(boundary_vertex->get_max());
 }
 
-void RRSTree::convert_leaf_to_branch(const std::shared_ptr<Node>& node)
+void RRSTree::convert_leaf_to_branch(const std::shared_ptr<RRSNode>& node)
 {
     int start = 0;
     int end = node->boundary_vertices.size();
@@ -63,9 +63,9 @@ void RRSTree::convert_leaf_to_branch(const std::shared_ptr<Node>& node)
     node->boundary_vertices.clear();
 }
 
-std::shared_ptr<RRSTree::Node> RRSTree::build_node(const std::vector<std::shared_ptr<Vertex>>& boundary_vertex_list, const int& start, const int& end)
+std::shared_ptr<RRSNode> RRSTree::build_node(const std::vector<std::shared_ptr<Vertex>>& boundary_vertex_list, const int& start, const int& end)
 {
-    auto node = std::make_shared<Node>();
+    auto node = std::make_shared<RRSNode>();
 
     // expand box
     for (int i = start; i < end; i++)
@@ -82,7 +82,7 @@ std::shared_ptr<RRSTree::Node> RRSTree::build_node(const std::vector<std::shared
     return node;
 }
 
-void RRSTree::node_add_vertex(const std::shared_ptr<Node>& node, const std::shared_ptr<Vertex>& boundary_vertex)
+void RRSTree::node_add_vertex(const std::shared_ptr<RRSNode>& node, const std::shared_ptr<Vertex>& boundary_vertex)
 {
     expand_node_box(node, boundary_vertex);
 
@@ -104,7 +104,7 @@ void RRSTree::node_add_vertex(const std::shared_ptr<Node>& node, const std::shar
     }
 }
 
-void RRSTree::node_increase_radius(const std::shared_ptr<Node>& node, const std::shared_ptr<Vertex>& boundary_vertex)
+void RRSTree::node_increase_radius(const std::shared_ptr<RRSNode>& node, const std::shared_ptr<Vertex>& boundary_vertex)
 {
     expand_node_box(node, boundary_vertex);
 
@@ -121,7 +121,7 @@ void RRSTree::node_increase_radius(const std::shared_ptr<Node>& node, const std:
     }
 }
 
-bool RRSTree::node_delete_vertex(const std::shared_ptr<Node>& node, const std::shared_ptr<Vertex>& boundary_vertex)
+bool RRSTree::node_delete_vertex(const std::shared_ptr<RRSNode>& node, const std::shared_ptr<Vertex>& boundary_vertex)
 {
     if (!node->isLeaf())
     {
@@ -153,7 +153,7 @@ bool RRSTree::node_delete_vertex(const std::shared_ptr<Node>& node, const std::s
     }
 }
 
-void RRSTree::node_reverse_radius_search(const std::shared_ptr<Node>& node, const Eigen::Vector3d& point, std::vector<std::shared_ptr<Vertex>>& search_results)
+void RRSTree::node_reverse_radius_search(const std::shared_ptr<RRSNode>& node, const Eigen::Vector3d& point, std::vector<std::shared_ptr<Vertex>>& search_results)
 {
     bool contained = node->box.contains(point);
     if (!contained) return;
@@ -175,7 +175,7 @@ void RRSTree::node_reverse_radius_search(const std::shared_ptr<Node>& node, cons
     }
 }
 
-void RRSTree::node_flattern(const std::shared_ptr<Node>& node, std::vector<std::shared_ptr<Vertex>>& flatten_list)
+void RRSTree::node_flattern(const std::shared_ptr<RRSNode>& node, std::vector<std::shared_ptr<Vertex>>& flatten_list)
 {
     if (!node->isLeaf())
     {
@@ -195,7 +195,7 @@ std::vector<std::shared_ptr<Vertex>> RRSTree::compute_vertices_list()
     return flatten_list;
 }
 
-void RRSTree::node_print(const std::shared_ptr<Node>& node, int level) const
+void RRSTree::node_print(const std::shared_ptr<RRSNode>& node, int level) const
 {
     if (!node->isLeaf())
     {

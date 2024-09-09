@@ -12,49 +12,48 @@
 
 class Vertex;
 
-class RRSTree
+struct RRSBoundingBox 
 {
-private:
-    struct BoundingBox 
-    {
-        Eigen::Vector3d min;
-        Eigen::Vector3d max;
-        BoundingBox();
-        void expand(const Eigen::Vector3d& point);
-        bool contains(const Eigen::Vector3d& point);
-        int get_longest_axis();
-    };
+    Eigen::Vector3d min;
+    Eigen::Vector3d max;
+    RRSBoundingBox();
+    void expand(const Eigen::Vector3d& point);
+    bool contains(const Eigen::Vector3d& point);
+    int get_longest_axis();
+};
 
-    struct Node 
-    {
-        BoundingBox box;
-        double split_value;
-        int split_axis;
-        std::shared_ptr<Node> left;
-        std::shared_ptr<Node> right;
-        bool isLeaf() const;
-        std::vector<std::shared_ptr<Vertex>> boundary_vertices;
-    };
+struct RRSNode 
+{
+    RRSBoundingBox box;
+    double split_value;
+    int split_axis;
+    std::shared_ptr<RRSNode> left;
+    std::shared_ptr<RRSNode> right;
+    bool isLeaf() const;
+    std::vector<std::shared_ptr<Vertex>> boundary_vertices;
+};
 
+class RRSTree
+{    
 private:
-    std::shared_ptr<Node> root;
+    std::shared_ptr<RRSNode> root;
     double rebuild_threshold;
     int size_at_last_rebuild;
     int tree_size;
     std::size_t leaf_size;
 
     double sort_boundary_vertex_list_in_axis(std::vector<std::shared_ptr<Vertex>>& boundary_vertex_list, int axis, int start, int mid, int end);
-    void expand_node_box(const std::shared_ptr<Node>& node, const std::shared_ptr<Vertex>& boundary_vertex);
+    void expand_node_box(const std::shared_ptr<RRSNode>& node, const std::shared_ptr<Vertex>& boundary_vertex);
 
-    std::shared_ptr<Node> build_node(const std::vector<std::shared_ptr<Vertex>>& boundary_vertex_list, const int& start, const int& end);
-    void convert_leaf_to_branch(const std::shared_ptr<Node>& node);
+    std::shared_ptr<RRSNode> build_node(const std::vector<std::shared_ptr<Vertex>>& boundary_vertex_list, const int& start, const int& end);
+    void convert_leaf_to_branch(const std::shared_ptr<RRSNode>& node);
 
-    void node_add_vertex(const std::shared_ptr<Node>& node, const std::shared_ptr<Vertex>& boundary_vertex);
-    void node_increase_radius(const std::shared_ptr<Node>& node, const std::shared_ptr<Vertex>& boundary_vertex);
-    bool node_delete_vertex(const std::shared_ptr<Node>& node, const std::shared_ptr<Vertex>& boundary_vertex);
-    void node_reverse_radius_search(const std::shared_ptr<Node>& node, const Eigen::Vector3d& point, std::vector<std::shared_ptr<Vertex>>& search_results);
-    void node_print(const std::shared_ptr<Node>& node, int level) const;
-    void node_flattern(const std::shared_ptr<Node>& node, std::vector<std::shared_ptr<Vertex>>& flatten_list);
+    void node_add_vertex(const std::shared_ptr<RRSNode>& node, const std::shared_ptr<Vertex>& boundary_vertex);
+    void node_increase_radius(const std::shared_ptr<RRSNode>& node, const std::shared_ptr<Vertex>& boundary_vertex);
+    bool node_delete_vertex(const std::shared_ptr<RRSNode>& node, const std::shared_ptr<Vertex>& boundary_vertex);
+    void node_reverse_radius_search(const std::shared_ptr<RRSNode>& node, const Eigen::Vector3d& point, std::vector<std::shared_ptr<Vertex>>& search_results);
+    void node_print(const std::shared_ptr<RRSNode>& node, int level) const;
+    void node_flattern(const std::shared_ptr<RRSNode>& node, std::vector<std::shared_ptr<Vertex>>& flatten_list);
 
 public:
     RRSTree();
