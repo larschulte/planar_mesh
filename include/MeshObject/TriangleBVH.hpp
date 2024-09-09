@@ -37,7 +37,7 @@ struct Node
     bool isLeaf() const;
     std::vector<std::shared_ptr<Face>> faces;
 
-    omp_lock_t lock;
+    omp_nest_lock_t lock;
 };
 
 enum class BVHReturnType

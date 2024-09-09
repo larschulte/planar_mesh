@@ -168,7 +168,7 @@ bool RRSTree::node_delete_vertex(const std::shared_ptr<RRSNode>& node, const std
 RRSReturnType RRSTree::node_reverse_radius_search(const std::shared_ptr<RRSNode>& node, const Eigen::Vector3d& point, std::vector<std::shared_ptr<Vertex>>& search_results)
 {
     // abort if can't lock node
-    if (!omp_test_lock_with_log(node->lock, "node lock")) 
+    if (!omp_test_nested_lock_with_log(node->lock, "node lock")) 
     {
         // abort message
         std::cout << "Can't lock node" << std::endl;
@@ -178,7 +178,7 @@ RRSReturnType RRSTree::node_reverse_radius_search(const std::shared_ptr<RRSNode>
     // skip if not contained
     if (!node->box.contains(point))
     {
-        omp_unset_lock_with_log(node->lock, "node lock (node not contained)");
+        omp_unset_nested_lock_with_log(node->lock, "node lock (node not contained)");
         return RRSReturnType::SKIP;
     }
 
@@ -186,7 +186,7 @@ RRSReturnType RRSTree::node_reverse_radius_search(const std::shared_ptr<RRSNode>
     if (!node->isLeaf())
     {
         // release lock if not leaf
-        omp_unset_lock_with_log(node->lock, "node lock (node not leaf)");
+        omp_unset_nested_lock_with_log(node->lock, "node lock (node not leaf)");
 
         // search left and right
         RRSReturnType left_return = node_reverse_radius_search(node->left, point, search_results);
@@ -204,21 +204,21 @@ RRSReturnType RRSTree::node_reverse_radius_search(const std::shared_ptr<RRSNode>
         // skip if no vertices
         if (node->boundary_vertices.size() == 0)
         {
-            omp_unset_lock_with_log(node->lock, "node lock (no vertices)");
+            omp_unset_nested_lock_with_log(node->lock, "node lock (no vertices)");
             return RRSReturnType::SKIP;
         }
 
         // skip if not contained
         if (!node->boundary_vertices[0]->approx_contains(point))
         {
-            omp_unset_lock_with_log(node->lock, "node lock (point not contained)");
+            omp_unset_nested_lock_with_log(node->lock, "node lock (point not contained)");
             return RRSReturnType::SKIP;
         }
 
         // abort if can't lock vertex's surface
         if (!omp_test_nested_lock_with_log(node->boundary_vertices[0]->get_surface()->lock, "vertex's surface lock")) 
         {
-            omp_unset_lock_with_log(node->lock, "node lock (can't lock vertex's surface)");
+            omp_unset_nested_lock_with_log(node->lock, "node lock (can't lock vertex's surface)");
             
             // abort message
             std::cout << "Can't lock vertex's surface" << std::endl;
