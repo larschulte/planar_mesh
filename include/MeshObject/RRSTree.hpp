@@ -10,6 +10,8 @@
 #include <array>
 #include <iostream> 
 
+#include "utilities/omp_utilities.hpp"
+
 class Vertex;
 
 struct RRSBoundingBox 
@@ -31,6 +33,8 @@ struct RRSNode
     std::shared_ptr<RRSNode> right;
     bool isLeaf() const;
     std::vector<std::shared_ptr<Vertex>> boundary_vertices;
+
+    omp_lock_t lock;
 };
 
 class RRSTree
