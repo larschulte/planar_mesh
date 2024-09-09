@@ -31,6 +31,7 @@ public:
     const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& get_vertices() const;
     const std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash>& get_interior_points() const;
     const std::shared_ptr<Vertex>& get_vertex(int index) const;
+    const std::shared_ptr<Vertex>& get_first_vertex() const;
     const std::shared_ptr<Surface>& get_surface() const;
     const std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& get_sibling_faces() const;
     bool is_expired() const;
@@ -81,6 +82,8 @@ private:
     std::shared_ptr<Surface> surface_;
 
     std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> sibling_faces_;
+
+    std::shared_ptr<Vertex> first_vertex_;
 };
 
 bool operator<(const std::shared_ptr<Face>& lhs, const std::shared_ptr<Face>& rhs);

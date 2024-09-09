@@ -107,9 +107,9 @@ double TriangleBVH::sort_face_list_in_axis(std::vector<std::shared_ptr<Face>>& f
     std::sort(face_list.begin() + start, face_list.begin() + end, 
         [&](const std::shared_ptr<Face>& triangle_a, const std::shared_ptr<Face>& triangle_b) 
         {
-            return triangle_a->get_center()[axis] < triangle_b->get_center()[axis];
+            return triangle_a->get_first_vertex()->get_position()[axis] < triangle_b->get_first_vertex()->get_position()[axis];
         });
-    return face_list[mid]->get_center()[axis];
+    return face_list[mid]->get_first_vertex()->get_position()[axis];
 }
 
 void TriangleBVH::expand_node_box(const std::shared_ptr<Node>& node, const std::shared_ptr<Face>& face)
@@ -231,7 +231,7 @@ void TriangleBVH::node_add_face(const std::shared_ptr<Node>& node, const std::sh
 
     if (!node->isLeaf())
     {    
-        if (face->get_center()[node->split_axis] < node->split_value)
+        if (face->get_first_vertex()->get_position()[node->split_axis] < node->split_value)
         {
             node_add_face(node->left, face);
         }
@@ -255,11 +255,11 @@ bool TriangleBVH::node_delete_face(const std::shared_ptr<Node>& node, const std:
 {
     if (!node->isLeaf())
     {
-        if (face->get_center()[node->split_axis] < node->split_value)
+        if (face->get_first_vertex()->get_position()[node->split_axis] < node->split_value)
         {
             return node_delete_face(node->left, face);
         }
-        else if (face->get_center()[node->split_axis] > node->split_value)
+        else if (face->get_first_vertex()->get_position()[node->split_axis] > node->split_value)
         {
             return node_delete_face(node->right, face);
         }

@@ -35,6 +35,9 @@ void Face::initialize_(const std::shared_ptr<Storage>& storage, const std::share
     connect(vertex1);
     connect(vertex2);
 
+    // first vertex
+    first_vertex_ = vertex0;
+
     // get edges
     std::shared_ptr<Edge> edge0;
     std::shared_ptr<Edge> edge1;
@@ -163,6 +166,11 @@ const std::shared_ptr<Vertex>& Face::get_vertex(int index) const
     auto it = vertices_.begin();
     for (int i = 0; i < index; i++) it++;
     return *it;
+}
+
+const std::shared_ptr<Vertex>& Face::get_first_vertex() const
+{
+    return first_vertex_;
 }
 
 const std::shared_ptr<Surface>& Face::get_surface() const
