@@ -6,6 +6,7 @@
 
 #include "MeshObject/MeshObject.hpp"
 #include "MeshObject/Settings.hpp"
+#include "MeshObject/TriangleBVH.hpp"
 
 // Forward declarations
 class Vertex;
@@ -23,6 +24,8 @@ protected:
     void delete_();
 
 public:
+    std::shared_ptr<Node> node;
+
     const int& get_id() const;
     const Eigen::Vector3d& get_center() const;
     const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& get_vertices() const;
