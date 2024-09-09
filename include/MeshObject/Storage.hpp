@@ -11,6 +11,9 @@
 
 #include "MeshObject/Settings.hpp"
 
+#include <omp.h>
+#include <mutex>
+
 // forward declarations
 class Vertex;
 class Edge;
@@ -50,8 +53,8 @@ public: // to user
     void add_to_queue(const std::shared_ptr<Vertex>& vertex);
     void add_points_in_repeated_queue_to_queue();
     std::shared_ptr<GenericPoint> pop_from_queue();
-    unsigned int get_queue_size() const;
-    unsigned int get_repeated_queue_size() const;
+    unsigned int get_queue_size();
+    unsigned int get_repeated_queue_size();
 
     bool can_reverse_radius_search();
     RRSReturnType reverse_radius_search(const Eigen::Vector3d& point, std::vector<std::shared_ptr<Vertex>>& result);
@@ -113,10 +116,19 @@ private:
     std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> interior_points_;
     std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash> genertic_points_;
 
-    int next_vertex_id_ = 0;
-    int next_edge_id_ = 0;
-    int next_face_id_ = 0;
-    int next_surface_id_ = 0;
-    int next_genertic_point_id_ = 0;
-    int next_interior_point_id_ = 0;
+    std::mutex queue_mutex_;
+    std::mutex repeated_queue_mutex_;
+    std::mutex vertices_mutex_;
+    std::mutex edges_mutex_;
+    std::mutex faces_mutex_;
+    std::mutex surfaces_mutex_;
+    std::mutex interior_points_mutex_;
+    std::mutex genertic_points_mutex_;
+
+    std::atomic<int> next_vertex_id_{0};
+    std::atomic<int> next_edge_id_{0};
+    std::atomic<int> next_face_id_{0};
+    std::atomic<int> next_surface_id_{0};
+    std::atomic<int> next_genertic_point_id_{0};
+    std::atomic<int> next_interior_point_id_{0};
 };

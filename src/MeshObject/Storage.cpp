@@ -11,6 +11,8 @@
 
 #include <queue>
 
+#include <omp.h>
+
 Settings Storage::settings_;
 
 Storage::Storage()
@@ -29,6 +31,9 @@ const std::shared_ptr<Vertex>& Storage::add_vertex(const Eigen::Vector3d& origin
     std::shared_ptr<Vertex> vertex = std::make_shared<Vertex>();
     vertex->initialize_(shared_from_this(), position, origin);
 
+    // lock
+    std::lock_guard<std::mutex> lock(vertices_mutex_);
+
     // store
     return *vertices_.insert(vertex).first;
 }
@@ -38,6 +43,9 @@ const std::shared_ptr<Vertex>& Storage::add_vertex(const Eigen::Vector3d& origin
     // create
     std::shared_ptr<Vertex> vertex = std::make_shared<Vertex>();
     vertex->initialize_(shared_from_this(), position, origin, radius);
+
+    // lock
+    std::lock_guard<std::mutex> lock(vertices_mutex_);
 
     // store
     return *vertices_.insert(vertex).first;
@@ -49,6 +57,9 @@ const std::shared_ptr<Vertex>& Storage::add_vertex(const std::shared_ptr<Generic
     std::shared_ptr<Vertex> vertex = std::make_shared<Vertex>();
     vertex->initialize_(shared_from_this(), generic_point);
 
+    // lock
+    std::lock_guard<std::mutex> lock(vertices_mutex_);
+
     // store
     return *vertices_.insert(vertex).first;
 }
@@ -58,6 +69,9 @@ const std::shared_ptr<Edge>& Storage::add_edge(const std::shared_ptr<Vertex>& ve
     // create
     std::shared_ptr<Edge> edge = std::make_shared<Edge>();
     edge->initialize_(shared_from_this(), vertex1, vertex2);
+
+    // lock
+    std::lock_guard<std::mutex> lock(edges_mutex_);
 
     // store
     return *edges_.insert(edge).first;
@@ -69,6 +83,9 @@ const std::shared_ptr<Face>& Storage::add_face(const std::shared_ptr<Surface>& s
     std::shared_ptr<Face> face = std::make_shared<Face>();
     face->initialize_(shared_from_this(), surface, vertex1, vertex2, vertex3);
 
+    // lock 
+    std::lock_guard<std::mutex> lock(faces_mutex_);
+
     // store
     return *faces_.insert(face).first;
 }
@@ -78,6 +95,9 @@ const std::shared_ptr<Surface>& Storage::add_surface()
     // create
     std::shared_ptr<Surface> surface = std::make_shared<Surface>();
     surface->initialize_(shared_from_this());
+
+    // lock
+    std::lock_guard<std::mutex> lock(surfaces_mutex_);
 
     // store
     return *surfaces_.insert(surface).first;
@@ -89,6 +109,9 @@ const std::shared_ptr<GenericPoint>& Storage::add_generic_point(const Eigen::Vec
     std::shared_ptr<GenericPoint> genertic_point = std::make_shared<GenericPoint>();
     genertic_point->initialize_(shared_from_this(), position, origin);
 
+    // lock
+    std::lock_guard<std::mutex> lock(genertic_points_mutex_);
+
     // store
     return *genertic_points_.insert(genertic_point).first;
 }
@@ -98,6 +121,9 @@ const std::shared_ptr<GenericPoint>& Storage::add_generic_point(const std::share
     // create
     std::shared_ptr<GenericPoint> genertic_point = std::make_shared<GenericPoint>();
     genertic_point->initialize_(shared_from_this(), vertex);
+
+    // lock
+    std::lock_guard<std::mutex> lock(genertic_points_mutex_);
 
     // store
     return *genertic_points_.insert(genertic_point).first;
@@ -109,6 +135,9 @@ const std::shared_ptr<GenericPoint>& Storage::add_generic_point(const std::share
     std::shared_ptr<GenericPoint> genertic_point = std::make_shared<GenericPoint>();
     genertic_point->initialize_(shared_from_this(), interiror_point);
 
+    // lock
+    std::lock_guard<std::mutex> lock(genertic_points_mutex_);
+
     // store
     return *genertic_points_.insert(genertic_point).first;
 }
@@ -118,6 +147,9 @@ const std::shared_ptr<InteriorPoint>& Storage::add_interior_point(const Eigen::V
     // create
     std::shared_ptr<InteriorPoint> interior_point = std::make_shared<InteriorPoint>();
     interior_point->initialize_(shared_from_this(), position, origin);
+
+    // lock
+    std::lock_guard<std::mutex> lock(interior_points_mutex_);
 
     // store
     return *interior_points_.insert(interior_point).first;
@@ -129,6 +161,9 @@ const std::shared_ptr<InteriorPoint>& Storage::add_interior_point(const std::sha
     std::shared_ptr<InteriorPoint> interior_point = std::make_shared<InteriorPoint>();
     interior_point->initialize_(shared_from_this(), generic_point);
 
+    // lock
+    std::lock_guard<std::mutex> lock(interior_points_mutex_);
+
     // store
     return *interior_points_.insert(interior_point).first;
 }
@@ -139,9 +174,14 @@ void Storage::delete_vertex(const std::shared_ptr<Vertex>& vertex)
     // check input
     if (vertex->is_expired()) throw std::runtime_error("Attempts to delete expired vertex.");
 
-    // storage delete
-    vertices_.erase(vertex);
-
+    {
+        // lock
+        std::lock_guard<std::mutex> lock(vertices_mutex_);
+        
+        // storage delete
+        vertices_.erase(vertex);
+    }
+    
     // member delete
     vertex->delete_();    
 }
@@ -151,8 +191,13 @@ void Storage::delete_edge(const std::shared_ptr<Edge>& edge)
     // check input
     if (edge->is_expired()) throw std::runtime_error("Attempts to delete expired edge.");
 
-    // storage delete
-    edges_.erase(edge);
+    {
+        // lock
+        std::lock_guard<std::mutex> lock(edges_mutex_);
+
+        // storage delete
+        edges_.erase(edge);
+    }
     
     // member delete
     edge->delete_();
@@ -163,8 +208,13 @@ void Storage::delete_face(const std::shared_ptr<Face>& face)
     // check input
     if (face->is_expired()) return; // face might be already deleted due to reducion in radius
 
-    // storage delete
-    faces_.erase(face);
+    {
+        // lock 
+        std::lock_guard<std::mutex> lock(faces_mutex_);
+
+        // storage delete
+        faces_.erase(face);
+    }
 
     // member delete
     face->delete_();
@@ -175,8 +225,13 @@ void Storage::delete_surface(const std::shared_ptr<Surface>& surface)
     // check input
     if (surface->is_expired()) throw std::runtime_error("Attempts to delete expired surface.");
 
-    // storage delete
-    surfaces_.erase(surface);
+    {    
+        // lock
+        std::lock_guard<std::mutex> lock(surfaces_mutex_);
+        
+        // storage delete
+        surfaces_.erase(surface);
+    }
 
     // member delete
     surface->delete_();
@@ -190,8 +245,13 @@ void Storage::delete_generic_point(const std::shared_ptr<GenericPoint>& genertic
     // make a copy of the generic point
     std::shared_ptr<GenericPoint> genertic_point_copy = genertic_point;
 
-    // storage delete
-    genertic_points_.erase(genertic_point);
+    {
+        // lock
+        std::lock_guard<std::mutex> lock(genertic_points_mutex_);
+
+        // storage delete
+        genertic_points_.erase(genertic_point);
+    }
 
     // member delete
     genertic_point_copy->delete_();
@@ -202,8 +262,13 @@ void Storage::delete_interior_point(const std::shared_ptr<InteriorPoint>& interi
     // check input
     if (interior_point->is_expired()) throw std::runtime_error("Attempts to delete expired interior point.");
 
-    // storage delete
-    interior_points_.erase(interior_point);
+    {
+        // lock
+        std::lock_guard<std::mutex> lock(interior_points_mutex_);
+
+        // storage delete
+        interior_points_.erase(interior_point);
+    }
     
     // member delete
     interior_point->delete_();
@@ -214,11 +279,17 @@ void Storage::add_to_queue(const Eigen::Vector3d& position, const Eigen::Vector3
     std::shared_ptr<GenericPoint> queue_point = std::make_shared<GenericPoint>();
     queue_point->initialize_(shared_from_this(), position, origin);
 
+    // lock
+    std::lock_guard<std::mutex> lock(queue_mutex_);
+
     queue_.push(queue_point);
 }
 
 void Storage::add_to_queue(const std::shared_ptr<GenericPoint>& generic_point) 
 {
+    // lock
+    std::lock_guard<std::mutex> lock(queue_mutex_);
+
     queue_.push(generic_point);
 }
 
@@ -229,6 +300,9 @@ void Storage::add_to_queue(const std::shared_ptr<InteriorPoint>& interior_point)
 
     if (queue_point->get_num_deletes() <= settings_.num_of_delete_before_put_to_repeated_queue)
     {
+        // lock
+        std::lock_guard<std::mutex> lock(queue_mutex_);
+
         queue_.push(queue_point);
     }
     else
@@ -236,6 +310,10 @@ void Storage::add_to_queue(const std::shared_ptr<InteriorPoint>& interior_point)
         // if queue_point number of delete exceeds 5, 
         // reset number of delete and add to repeated_queue_
         queue_point->reset_num_deletes();
+
+        // lock
+        std::lock_guard<std::mutex> lock(repeated_queue_mutex_);
+
         repeated_queue_.push(queue_point);
     }
 }
@@ -247,6 +325,9 @@ void Storage::add_to_queue(const std::shared_ptr<Vertex>& vertex)
 
     if (queue_point->get_num_deletes() <= settings_.num_of_delete_before_put_to_repeated_queue)
     {
+        // lock
+        std::lock_guard<std::mutex> lock(queue_mutex_);
+
         queue_.push(queue_point);
     }
     else
@@ -254,12 +335,20 @@ void Storage::add_to_queue(const std::shared_ptr<Vertex>& vertex)
         // if queue_point number of delete exceeds 5, 
         // reset number of delete and add to repeated_queue_
         queue_point->reset_num_deletes();
+
+        // lock
+        std::lock_guard<std::mutex> lock(repeated_queue_mutex_);
+
         repeated_queue_.push(queue_point);
     }
 }
 
 void Storage::add_points_in_repeated_queue_to_queue()
 {
+    // lock
+    std::lock_guard<std::mutex> lock(queue_mutex_);
+    std::lock_guard<std::mutex> lock_repeated(repeated_queue_mutex_);
+
     while (!repeated_queue_.empty())
     {
         queue_.push(repeated_queue_.front());
@@ -269,6 +358,9 @@ void Storage::add_points_in_repeated_queue_to_queue()
 
 std::shared_ptr<GenericPoint> Storage::pop_from_queue()
 {
+    // lock
+    std::lock_guard<std::mutex> lock(queue_mutex_);
+
     if (queue_.empty()) return nullptr;
 
     std::shared_ptr<GenericPoint> queue_point = queue_.front();
@@ -276,13 +368,19 @@ std::shared_ptr<GenericPoint> Storage::pop_from_queue()
     return queue_point;
 }
 
-unsigned int Storage::get_queue_size() const
+unsigned int Storage::get_queue_size()
 {
+    // lock
+    std::lock_guard<std::mutex> lock(queue_mutex_);
+
     return queue_.size();
 }
 
-unsigned int Storage::get_repeated_queue_size() const
+unsigned int Storage::get_repeated_queue_size()
 {
+    // lock
+    std::lock_guard<std::mutex> lock(repeated_queue_mutex_);
+    
     return repeated_queue_.size();
 }
 
