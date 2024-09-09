@@ -1,6 +1,8 @@
 #include "MeshObject/RRSTree.hpp"
 #include "MeshObject/Vertex.hpp"
 
+#include "MeshObject/Surface.hpp"
+
 RRSBoundingBox::RRSBoundingBox() : 
     min(Eigen::Vector3d::Constant(std::numeric_limits<double>::infinity())),
     max(Eigen::Vector3d::Constant(-std::numeric_limits<double>::infinity())) {}
@@ -163,25 +165,69 @@ bool RRSTree::node_delete_vertex(const std::shared_ptr<RRSNode>& node, const std
     }
 }
 
-void RRSTree::node_reverse_radius_search(const std::shared_ptr<RRSNode>& node, const Eigen::Vector3d& point, std::vector<std::shared_ptr<Vertex>>& search_results)
+RRSReturnType RRSTree::node_reverse_radius_search(const std::shared_ptr<RRSNode>& node, const Eigen::Vector3d& point, std::vector<std::shared_ptr<Vertex>>& search_results)
 {
-    bool contained = node->box.contains(point);
-    if (!contained) return;
-    
+    // abort if can't lock node
+    if (!omp_test_lock_with_log(node->lock, "node lock")) 
+    {
+        // abort message
+        std::cout << "Can't lock node" << std::endl;
+        return RRSReturnType::ABORT;
+    }
+
+    // skip if not contained
+    if (!node->box.contains(point))
+    {
+        omp_unset_lock_with_log(node->lock, "node lock (node not contained)");
+        return RRSReturnType::SKIP;
+    }
+
+    // branch if not leaf
     if (!node->isLeaf())
     {
-        if (node->left->box.contains(point))
-        {
-            node_reverse_radius_search(node->left, point, search_results);
-        }
-        if (node->right->box.contains(point))
-        {
-            node_reverse_radius_search(node->right, point, search_results);
-        }
+        // release lock if not leaf
+        omp_unset_lock_with_log(node->lock, "node lock (node not leaf)");
+
+        // search left and right
+        RRSReturnType left_return = node_reverse_radius_search(node->left, point, search_results);
+        RRSReturnType right_return = node_reverse_radius_search(node->right, point, search_results);
+
+        // abort if any is abort
+        if (left_return == RRSReturnType::ABORT || right_return == RRSReturnType::ABORT) return RRSReturnType::ABORT;
+        // skip if both is skip
+        if (left_return == RRSReturnType::SKIP && right_return == RRSReturnType::SKIP) return RRSReturnType::SKIP;
+        // intersected if any is intersected
+        return RRSReturnType::INTERSECTED;
     }
     else
     {
-        search_results.insert(search_results.end(), node->boundary_vertices.begin(), node->boundary_vertices.end());
+        // skip if no vertices
+        if (node->boundary_vertices.size() == 0)
+        {
+            omp_unset_lock_with_log(node->lock, "node lock (no vertices)");
+            return RRSReturnType::SKIP;
+        }
+
+        // skip if not contained
+        if (!node->boundary_vertices[0]->approx_contains(point))
+        {
+            omp_unset_lock_with_log(node->lock, "node lock (point not contained)");
+            return RRSReturnType::SKIP;
+        }
+
+        // abort if can't lock vertex's surface
+        if (!omp_test_nested_lock_with_log(node->boundary_vertices[0]->get_surface()->lock, "vertex's surface lock")) 
+        {
+            omp_unset_lock_with_log(node->lock, "node lock (can't lock vertex's surface)");
+            
+            // abort message
+            std::cout << "Can't lock vertex's surface" << std::endl;
+            return RRSReturnType::ABORT;
+        }
+
+        // hold both the node lock and the vertex's surface lock
+        search_results.push_back(node->boundary_vertices[0]);
+        return RRSReturnType::INTERSECTED;
     }
 }
 
@@ -279,9 +325,9 @@ void RRSTree::tree_delete_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
     if (!node_delete_vertex(root, boundary_vertex)) throw std::invalid_argument("Vertex not found in BVH.");
 }
 
-void RRSTree::tree_reverse_radius_search(const Eigen::Vector3d& point, std::vector<std::shared_ptr<Vertex>>& search_results)
+RRSReturnType RRSTree::tree_reverse_radius_search(const Eigen::Vector3d& point, std::vector<std::shared_ptr<Vertex>>& search_results)
 {
-    node_reverse_radius_search(root, point, search_results);
+    return node_reverse_radius_search(root, point, search_results);
 }
 
 void RRSTree::tree_increase_radius(std::shared_ptr<Vertex> boundary_vertex)

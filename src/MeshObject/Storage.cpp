@@ -324,21 +324,19 @@ bool Storage::can_reverse_radius_search()
 }
 
 // reverse radius search
-std::vector<std::shared_ptr<Vertex>> Storage::reverse_radius_search(const Eigen::Vector3d& point) 
+RRSReturnType Storage::reverse_radius_search(const Eigen::Vector3d& point, std::vector<std::shared_ptr<Vertex>>& result) 
 {
-    std::vector<std::shared_ptr<Vertex>> result;
-    rrs_tree_.tree_reverse_radius_search(point, result);
-    return result;
+    return rrs_tree_.tree_reverse_radius_search(point, result);
 }
 
-std::vector<std::shared_ptr<Vertex>> Storage::reverse_radius_search(const std::shared_ptr<GenericPoint>& generic_point) 
+RRSReturnType Storage::reverse_radius_search(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Vertex>>& result) 
 {
-    return reverse_radius_search(generic_point->get_position());
+    return reverse_radius_search(generic_point->get_position(), result);
 }
 
-std::vector<std::shared_ptr<Vertex>> Storage::reverse_radius_search(const std::shared_ptr<Vertex>& vertex)
+RRSReturnType Storage::reverse_radius_search(const std::shared_ptr<Vertex>& vertex, std::vector<std::shared_ptr<Vertex>>& result)
 {
-    return reverse_radius_search(vertex->get_position());
+    return reverse_radius_search(vertex->get_position(), result);
 }
 
 // face intersection search

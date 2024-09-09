@@ -478,34 +478,27 @@ bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
     }
 
     // get neighboring vertices
-    std::map<int, double> point_to_radius_map;
-    std::vector<std::shared_ptr<Vertex>> all_vertices = storage_->reverse_radius_search(generic_point);
-
-    // lock the surfaces
-    // get the surfaces of the faces
-    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> all_surfaces;
-    for (const std::shared_ptr<Vertex>& vertex : all_vertices)
+    std::vector<std::shared_ptr<Vertex>> neighboring_vertices_vector;
+    RRSReturnType return_type = storage_->reverse_radius_search(generic_point, neighboring_vertices_vector);
+    if (return_type == RRSReturnType::ABORT)
     {
-        all_surfaces.insert(vertex->get_surface());
+        if (settings_.log.add_point_by_radius_search) std::cout << ">> aborting radius search, push to back of queue" << std::endl;
+        storage_->add_to_queue(generic_point);
+        return true;
     }
-    // sort the surfaces by id
-    std::vector<std::shared_ptr<Surface>> sorted_surfaces(all_surfaces.begin(), all_surfaces.end());
-    std::sort(sorted_surfaces.begin(), sorted_surfaces.end(), [](const std::shared_ptr<Surface>& surface1, const std::shared_ptr<Surface>& surface2) { return surface1->get_id() < surface2->get_id(); });
-    // lock the surfaces
-    std::unordered_map<std::shared_ptr<Surface>, std::unique_ptr<OmpLockGuard>> surface_locks;
-    for (const std::shared_ptr<Surface>& surface : sorted_surfaces)
+    else if (return_type == RRSReturnType::SKIP)
     {
-        surface_locks[surface] = std::make_unique<OmpLockGuard>(surface->lock_, "surface " + std::to_string(surface->get_id()) + " lock");
+        return false;
     }
+    
+    // convert to set
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> neighboring_vertices(neighboring_vertices_vector.begin(), neighboring_vertices_vector.end());
 
-    // get neighboring vertices
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> neighboring_vertices;
-    for (const std::shared_ptr<Vertex>& boundary_vertex : all_vertices)
+    // unlock locks on node and surface
+    for (const std::shared_ptr<Vertex>& vertex : neighboring_vertices)
     {
-        if (boundary_vertex->approx_contains(generic_point)) 
-        {
-            neighboring_vertices.insert(boundary_vertex);
-        }
+        omp_unset_lock_with_log(vertex->node->lock, "vertex's node");
+        omp_unset_nested_lock_with_log(vertex->get_surface()->lock, "unlock vertex's surface");
     }
 
     if (settings_.log.add_point_by_radius_search) std::cout << ">> found " << neighboring_vertices.size() << " neighboring vertices" << std::endl;
