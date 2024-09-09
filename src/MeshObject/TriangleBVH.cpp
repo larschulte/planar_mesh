@@ -125,7 +125,7 @@ BVHReturnType TriangleBVH::node_intersection_search(const std::shared_ptr<Node>&
     if (!omp_test_nested_lock_with_log(node->lock, "node lock")) 
     {
         // abort message
-        std::cout << "Can't lock node" << std::endl;
+        // std::cout << "Can't lock node" << std::endl;
         return BVHReturnType::ABORT;
     }
 
@@ -175,7 +175,7 @@ BVHReturnType TriangleBVH::node_intersection_search(const std::shared_ptr<Node>&
             omp_unset_nested_lock_with_log(node->lock, "node lock (can't lock face's surface)");
 
             // abort message
-            std::cout << "Can't lock face's surface" << std::endl;
+            // std::cout << "Can't lock face's surface" << std::endl;
             return BVHReturnType::ABORT;
         }
         

@@ -191,7 +191,7 @@ RRSReturnType RRSTree::node_reverse_radius_search(const std::shared_ptr<RRSNode>
     if (!omp_test_nested_lock_with_log(node->lock, "node lock")) 
     {
         // abort message
-        std::cout << "Can't lock node" << std::endl;
+        // std::cout << "Can't lock node" << std::endl;
         return RRSReturnType::ABORT;
     }
 
@@ -241,7 +241,7 @@ RRSReturnType RRSTree::node_reverse_radius_search(const std::shared_ptr<RRSNode>
             omp_unset_nested_lock_with_log(node->lock, "node lock (can't lock vertex's surface)");
             
             // abort message
-            std::cout << "Can't lock vertex's surface" << std::endl;
+            // std::cout << "Can't lock vertex's surface" << std::endl;
             return RRSReturnType::ABORT;
         }
 
