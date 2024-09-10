@@ -122,27 +122,26 @@ void TriangleBVH::expand_node_box(const std::shared_ptr<Node>& node, const std::
 BVHReturnType TriangleBVH::node_intersection_search(const std::shared_ptr<Node>& node, const Eigen::Vector3d& orig, const Eigen::Vector3d& dir, std::vector<std::shared_ptr<Face>>& faces_intersected) const
 {    
     // abort if can't lock node
-    if (!omp_test_nested_lock_with_log(node->lock, "node lock")) 
+    if (!node->custom_lock.set_read_lock())
     {
-        // abort message
-        // std::cout << "Can't lock node" << std::endl;
         return BVHReturnType::ABORT;
     }
 
     // skip if not intersected
     if (!node->box.intersect(orig, dir))
     {
-        omp_unset_nested_lock_with_log(node->lock, "node lock (node not intersected)");
+        node->custom_lock.unset_read_lock();
         return BVHReturnType::SKIP;
     }
     
     // branch if not leaf
     if (!node->isLeaf())
     {
-        // release lock if not leaf
-        omp_unset_nested_lock_with_log(node->lock, "node lock (node not leaf)");
+        std::shared_ptr<Node> left_node = node->left;
+        std::shared_ptr<Node> right_node = node->right;    
 
         // search left and right
+        node->custom_lock.unset_read_lock();
         BVHReturnType left_return = node_intersection_search(node->left, orig, dir, faces_intersected);
         BVHReturnType right_return = node_intersection_search(node->right, orig, dir, faces_intersected);
 
@@ -158,28 +157,31 @@ BVHReturnType TriangleBVH::node_intersection_search(const std::shared_ptr<Node>&
         // skip if no faces
         if (node->faces.size() == 0)
         {
-            omp_unset_nested_lock_with_log(node->lock, "node lock (no faces)");
+            node->custom_lock.unset_read_lock();
             return BVHReturnType::SKIP;
         }
 
         // skip if not intersected
         if (!node->faces[0]->intersects_point(orig, dir))
         {
-            omp_unset_nested_lock_with_log(node->lock, "node lock (face not intersected)");
+            node->custom_lock.unset_read_lock();
             return BVHReturnType::SKIP;
         }
 
         // abort if can't lock face's surface
         if (!omp_test_nested_lock_with_log(node->faces[0]->get_surface()->lock, "face's surface lock")) // nest lock here since a ray could intersect two faces of the same surface in two nodes
         {
-            omp_unset_nested_lock_with_log(node->lock, "node lock (can't lock face's surface)");
-
-            // abort message
-            // std::cout << "Can't lock face's surface" << std::endl;
+            node->custom_lock.unset_read_lock();
             return BVHReturnType::ABORT;
         }
         
-        // hold both the node lock and the face's surface lock
+        node->custom_lock.unset_read_lock();
+        if (!node->custom_lock.set_write_lock())
+        {
+            throw std::runtime_error("this should be impossible since i've lock the surface");
+        }
+
+        // return
         faces_intersected.push_back(node->faces[0]);
         return BVHReturnType::INTERSECTED;
     }
@@ -188,10 +190,8 @@ BVHReturnType TriangleBVH::node_intersection_search(const std::shared_ptr<Node>&
 BVHReturnType TriangleBVH::node_find_leaf_node(const std::shared_ptr<Node>& node, const Eigen::Vector3d& orig, const Eigen::Vector3d& endPoint, std::vector<std::shared_ptr<Node>>& nodes) const
 {
     // abort if can't lock node
-    if (!omp_test_nested_lock_with_log(node->lock, "node lock"))
+    if (!node->custom_lock.set_read_lock())
     {
-        // abort message
-        // std::cout << "Can't lock node" << std::endl;
         return BVHReturnType::ABORT;
     }
 
@@ -199,19 +199,40 @@ BVHReturnType TriangleBVH::node_find_leaf_node(const std::shared_ptr<Node>& node
     if (!node->isLeaf())
     {   
         // release lock if not leaf
-        omp_unset_nested_lock_with_log(node->lock, "node lock (node not leaf)");
-
         if (endPoint[node->split_axis] < node->split_value)
         {
+            std::shared_ptr<Node> left_node = node->left;
+            node->custom_lock.unset_read_lock();
             return node_find_leaf_node(node->left, orig, endPoint, nodes);
         }
         else 
         {
+            std::shared_ptr<Node> right_node = node->right;
+            node->custom_lock.unset_read_lock();
             return node_find_leaf_node(node->right, orig, endPoint, nodes);
         }
     }
     else
     {
+        // if there is face, lock the surface of the vertex
+        // abort if can't lock vertex's surface
+        if (node->faces.size() > 0)
+        {
+            
+            if (!omp_test_nested_lock_with_log(node->faces[0]->get_surface()->lock, "face's surface lock")) 
+            {
+                node->custom_lock.unset_read_lock();
+                return BVHReturnType::ABORT;
+            }
+
+        }
+
+        node->custom_lock.unset_read_lock();
+        if (!node->custom_lock.set_write_lock())
+        {
+            throw std::runtime_error("other thread has locked the node right after this thread unlocks the read lock");
+        }
+
         // hold the node lock
         nodes.push_back(node);
         return BVHReturnType::INTERSECTED;
