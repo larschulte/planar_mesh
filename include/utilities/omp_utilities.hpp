@@ -4,6 +4,8 @@
 #include <iostream>
 #include <thread>  // for std::this_thread::sleep_for
 #include <chrono>  // for std::chrono::milliseconds
+#include <shared_mutex>
+#include <mutex>
 
 // Global flag to control logging at runtime
 extern bool enable_logging;
@@ -36,3 +38,33 @@ private:
     omp_lock_t &lock_;      // Reference to the OpenMP lock
     std::string lock_name_; // Name of the lock (for logging)
 };
+
+
+namespace custom
+{
+    class custom_lock
+    {
+    public:
+        custom_lock();
+
+        bool become_write_lock_candidate();
+
+        bool set_read_lock();
+        void unset_read_lock();
+        bool set_write_lock();
+        void unset_write_lock();
+
+    private:
+        bool write_locked() const;
+        bool locked_by_current_thread() const;
+
+        mutable std::mutex mtx;
+
+        std::shared_mutex shared_mtx;
+        std::thread::id writer_thread_id;
+        int write_lock_count;
+
+        std::thread::id write_lock_candidate_id;
+    };
+
+} // namespace custom

@@ -141,3 +141,161 @@ OmpLockGuard::~OmpLockGuard()
 {
     omp_unset_lock_with_log(lock_, lock_name_.c_str());
 }
+
+
+namespace custom
+{
+    custom_lock::custom_lock() : writer_thread_id(), write_lock_count(0) {}
+
+    bool custom_lock::write_locked() const 
+    {
+        return writer_thread_id != std::thread::id(); 
+    }
+
+    bool custom_lock::locked_by_current_thread() const 
+    { 
+        return writer_thread_id == std::this_thread::get_id(); 
+    }
+
+    bool custom_lock::become_write_lock_candidate()
+    {
+        std::lock_guard<std::mutex> lock_guard(mtx);
+
+        // locked 
+        if (write_locked())
+        {
+            // if locked by current thread, return true
+            if (locked_by_current_thread())
+            {
+                return true;
+            }
+            // if locked by other thread, return false
+            else
+            {
+                return false;
+            }
+        }
+        else // if not locked
+        {
+            const bool no_candidate = write_lock_candidate_id == std::thread::id();
+            if (no_candidate)
+            {
+                write_lock_candidate_id = std::this_thread::get_id();
+                return true;
+            }
+            else
+            {
+                const bool candidate_is_current_thread = write_lock_candidate_id == std::this_thread::get_id();
+                if (candidate_is_current_thread)
+                {
+                    return true;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+        }
+    }
+
+    bool custom_lock::set_read_lock()
+    {
+        std::lock_guard<std::mutex> lock_guard(mtx);
+
+        if (!write_locked())
+        {
+            // lock shared
+            shared_mtx.lock_shared();
+            return true;
+        }
+        else
+        {
+            if (locked_by_current_thread())
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+    }
+
+    void custom_lock::unset_read_lock()
+    {    
+        // std::lock_guard<std::mutex> lock_guard(mtx);
+
+        if (!write_locked())
+        {
+            // lock shared
+            shared_mtx.unlock_shared();
+            return;
+        }
+        else
+        {
+            if (locked_by_current_thread())
+            {
+                return;
+            }
+            else
+            {
+                throw std::runtime_error("Thread tried to release a read lock it doesn't own!");
+            }
+        }
+    }
+
+    bool custom_lock::set_write_lock()
+    {
+        std::lock_guard<std::mutex> lock_guard(mtx);
+
+        if (!write_locked())
+        {
+            shared_mtx.lock();
+            writer_thread_id = std::this_thread::get_id();
+            write_lock_count = 1;
+            return true;
+        }
+        else
+        {
+            if (locked_by_current_thread())
+            {
+                write_lock_count++;
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+    }
+
+    void custom_lock::unset_write_lock()
+    {
+        std::lock_guard<std::mutex> lock_guard(mtx);
+
+        if (!write_locked())
+        {
+            throw std::runtime_error("Thread tried to release a write lock that is not locked");
+        }
+        else
+        {
+            if (locked_by_current_thread())
+            {
+                write_lock_count--;
+                if (write_lock_count == 0)
+                {
+                    writer_thread_id = std::thread::id();
+                    write_lock_candidate_id = std::thread::id();
+                    shared_mtx.unlock();
+                }
+            }
+            else
+            {
+                std::cout << "Thread " << std::this_thread::get_id() << " tried to release a write lock it doesn't own!" << std::endl;
+                std::cout << "Thread " << writer_thread_id << " is the owner of the write lock." << std::endl;
+                std::cout << "Thread " << write_lock_candidate_id << " is the write lock candidate." << std::endl;
+                throw std::runtime_error("Thread tried to release a write lock it doesn't own!");
+            }
+        }
+    }
+} // namespace custom
