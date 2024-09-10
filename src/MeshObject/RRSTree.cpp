@@ -176,6 +176,7 @@ bool RRSTree::node_delete_vertex(const std::shared_ptr<RRSNode>& node, const std
         if (it != node->boundary_vertices.end())
         {
             node->boundary_vertices.erase(it, node->boundary_vertices.end());
+            boundary_vertex->node = nullptr;
             return true;
         }
         else
