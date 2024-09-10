@@ -158,9 +158,9 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
         // unlock surface
         for (const std::shared_ptr<Surface>& surface : initial_locked_surfaces) omp_unset_nested_lock_with_log(surface->lock, "unlock surface");
         // unlock bvh nodes
-        for (const std::shared_ptr<Node>& node : initial_locked_bvh_nodes) omp_unset_nested_lock_with_log(node->lock, "unlock bvh node");
+        for (const std::shared_ptr<Node>& node : initial_locked_bvh_nodes) node->custom_lock.unset_write_lock();
         // unlock rrs nodes
-        for (const std::shared_ptr<RRSNode>& node : initial_locked_rrs_nodes) omp_unset_nested_lock_with_log(node->lock, "unlock rrs node");
+        for (const std::shared_ptr<RRSNode>& node : initial_locked_rrs_nodes) node->custom_lock.unset_write_lock();
 
         return;
     }
@@ -182,7 +182,13 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
             // get node
             std::shared_ptr<Node>& node = face->node;
             // lock node
-            omp_set_nest_lock(&node->lock);
+            if (!node->custom_lock.set_write_lock())
+            {
+                std::cout << "size = "<< node->faces.size() << std::endl;
+                // check if the vertex->node is uninitialized
+                std::cout << node->box.min[0] << " " << node->box.min[1] << " " << node->box.min[2] << std::endl;
+                throw std::runtime_error("write locked by other thread's find storage node function");
+            }
             // store node
             locked_bvh_nodes.emplace_back(node);
         }
@@ -192,7 +198,13 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
             // get node
             std::shared_ptr<RRSNode>& node = vertex->node;
             // lock node
-            omp_set_nest_lock(&node->lock);
+            if (!node->custom_lock.set_write_lock())
+            {
+                std::cout << "size = "<< node->boundary_vertices.size() << std::endl;
+                // check if the vertex->node is uninitialized
+                std::cout << node->box.min[0] << " " << node->box.min[1] << " " << node->box.min[2] << std::endl;
+                throw std::runtime_error("write locked by other thread's find storage node function");
+            }
             // store node
             locked_rrs_nodes.emplace_back(node);
         }
@@ -218,16 +230,16 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
     // they all lead to return, thus unlock all locks
     //
 
-    // unlock surface
-    for (const std::shared_ptr<Surface>& surface : initial_locked_surfaces) omp_unset_nested_lock_with_log(surface->lock, "unlock surface");
-
     // unlock bvh nodes
-    for (const std::shared_ptr<Node>& node : initial_locked_bvh_nodes) omp_unset_nested_lock_with_log(node->lock, "unlock bvh node");
-    for (const std::shared_ptr<Node>& node : locked_bvh_nodes) omp_unset_nested_lock_with_log(node->lock, "unlock node");
+    for (const std::shared_ptr<Node>& node : initial_locked_bvh_nodes) node->custom_lock.unset_write_lock();
+    for (const std::shared_ptr<Node>& node : locked_bvh_nodes) node->custom_lock.unset_write_lock();
 
     // unlock rrs nodes
-    for (const std::shared_ptr<RRSNode>& node : initial_locked_rrs_nodes) omp_unset_nested_lock_with_log(node->lock, "unlock rrs node");
-    for (const std::shared_ptr<RRSNode>& node : locked_rrs_nodes) omp_unset_nested_lock_with_log(node->lock, "unlock node");
+    for (const std::shared_ptr<RRSNode>& node : initial_locked_rrs_nodes) node->custom_lock.unset_write_lock();
+    for (const std::shared_ptr<RRSNode>& node : locked_rrs_nodes) node->custom_lock.unset_write_lock();
+
+    // unlock surface
+    for (const std::shared_ptr<Surface>& surface : initial_locked_surfaces) omp_unset_nested_lock_with_log(surface->lock, "unlock surface");
 }
 
 template <typename PointT>
