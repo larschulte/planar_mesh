@@ -188,29 +188,28 @@ bool RRSTree::node_delete_vertex(const std::shared_ptr<RRSNode>& node, const std
 RRSReturnType RRSTree::node_reverse_radius_search(const std::shared_ptr<RRSNode>& node, const Eigen::Vector3d& point, std::vector<std::shared_ptr<Vertex>>& search_results)
 {
     // abort if can't lock node
-    if (!omp_test_nested_lock_with_log(node->lock, "node lock")) 
+    if (!node->custom_lock.set_read_lock())
     {
-        // abort message
-        // std::cout << "Can't lock node" << std::endl;
         return RRSReturnType::ABORT;
     }
-
+    
     // skip if not contained
     if (!node->box.contains(point))
     {
-        omp_unset_nested_lock_with_log(node->lock, "node lock (node not contained)");
+        node->custom_lock.unset_read_lock();
         return RRSReturnType::SKIP;
     }
 
     // branch if not leaf
     if (!node->isLeaf())
     {
-        // release lock if not leaf
-        omp_unset_nested_lock_with_log(node->lock, "node lock (node not leaf)");
+        std::shared_ptr<RRSNode> left_node = node->left;
+        std::shared_ptr<RRSNode> right_node = node->right;
 
         // search left and right
-        RRSReturnType left_return = node_reverse_radius_search(node->left, point, search_results);
-        RRSReturnType right_return = node_reverse_radius_search(node->right, point, search_results);
+        node->custom_lock.unset_read_lock();
+        RRSReturnType left_return = node_reverse_radius_search(left_node, point, search_results);
+        RRSReturnType right_return = node_reverse_radius_search(right_node, point, search_results);
 
         // abort if any is abort
         if (left_return == RRSReturnType::ABORT || right_return == RRSReturnType::ABORT) return RRSReturnType::ABORT;
@@ -224,28 +223,31 @@ RRSReturnType RRSTree::node_reverse_radius_search(const std::shared_ptr<RRSNode>
         // skip if no vertices
         if (node->boundary_vertices.size() == 0)
         {
-            omp_unset_nested_lock_with_log(node->lock, "node lock (no vertices)");
+            node->custom_lock.unset_read_lock();
             return RRSReturnType::SKIP;
         }
 
         // skip if not contained
         if (!node->boundary_vertices[0]->approx_contains(point))
         {
-            omp_unset_nested_lock_with_log(node->lock, "node lock (point not contained)");
+            node->custom_lock.unset_read_lock();
             return RRSReturnType::SKIP;
         }
 
         // abort if can't lock vertex's surface
         if (!omp_test_nested_lock_with_log(node->boundary_vertices[0]->get_surface()->lock, "vertex's surface lock")) 
         {
-            omp_unset_nested_lock_with_log(node->lock, "node lock (can't lock vertex's surface)");
-            
-            // abort message
-            // std::cout << "Can't lock vertex's surface" << std::endl;
+            node->custom_lock.unset_read_lock();
             return RRSReturnType::ABORT;
         }
 
-        // hold both the node lock and the vertex's surface lock
+        node->custom_lock.unset_read_lock();
+        if (!node->custom_lock.set_write_lock())
+        {
+            throw std::runtime_error("this should be impossible since i've lock the surface");
+        }
+
+        // return
         search_results.push_back(node->boundary_vertices[0]);
         return RRSReturnType::INTERSECTED;
     }
@@ -253,31 +255,51 @@ RRSReturnType RRSTree::node_reverse_radius_search(const std::shared_ptr<RRSNode>
 
 RRSReturnType RRSTree::node_find_leaf_node(const std::shared_ptr<RRSNode>& node, const Eigen::Vector3d& point, std::vector<std::shared_ptr<RRSNode>>& nodes)
 {
-    // abort if can't lock node
-    if (!omp_test_nested_lock_with_log(node->lock, "node lock"))
+    if (!node->custom_lock.set_read_lock())
     {
-        // abort message
-        // std::cout << "Can't lock node" << std::endl;
         return RRSReturnType::ABORT;
     }
     
     // branch if not leaf
     if (!node->isLeaf())
     {
-        // release lock if not leaf
-        omp_unset_nested_lock_with_log(node->lock, "node lock (node not leaf)");
-
         if (point[node->split_axis] < node->split_value)
         {
-            return node_find_leaf_node(node->left, point, nodes);
+            std::shared_ptr<RRSNode> left_node = node->left;
+            node->custom_lock.unset_read_lock();
+            return node_find_leaf_node(left_node, point, nodes);
         }
         else
         {
-            return node_find_leaf_node(node->right, point, nodes);
+            std::shared_ptr<RRSNode> right_node = node->right;
+            node->custom_lock.unset_read_lock();
+            return node_find_leaf_node(right_node, point, nodes);
         }
     }
     else
     {
+        // lock the surface of this node as well for now.
+
+        // if there is vertex, lock the surface of the vertex
+        // abort if can't lock vertex's surface
+        if (node->boundary_vertices.size() > 0)
+        {
+            
+            if (!omp_test_nested_lock_with_log(node->boundary_vertices[0]->get_surface()->lock, "vertex's surface lock")) 
+            {
+                node->custom_lock.unset_read_lock();
+                return RRSReturnType::ABORT;
+            }
+
+        }
+
+        node->custom_lock.unset_read_lock();
+        if (!node->custom_lock.set_write_lock())
+        {
+            throw std::runtime_error("other thread has locked the node right after this thread unlocks the read lock");
+        }
+
+        // return
         nodes.push_back(node);
         return RRSReturnType::INTERSECTED;
     }

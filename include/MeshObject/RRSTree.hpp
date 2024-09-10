@@ -34,7 +34,7 @@ struct RRSNode
     bool isLeaf() const;
     std::vector<std::shared_ptr<Vertex>> boundary_vertices;
 
-    omp_nest_lock_t lock;
+    mutable custom::custom_lock custom_lock;
 };
 
 enum class RRSReturnType
