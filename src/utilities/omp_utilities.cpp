@@ -102,6 +102,33 @@ bool omp_test_nested_lock_with_log(omp_nest_lock_t &lock, const char *lock_name)
     }
 }
 
+bool omp_test_nested_lock_with_log(omp_nest_lock_t &lock, const char *lock_name, unsigned int max_attempts)
+{
+    unsigned int attempts = 0;
+
+    // First, try using omp_test_lock to see if we can acquire the lock immediately
+    while (!omp_test_nest_lock(&lock))
+    {
+        attempts++;
+
+        // Sleep to avoid busy-waiting
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        std::cout << "Thread " << omp_get_thread_num() << " sleep 100 ms for " << lock_name << " with attempts = " << attempts << std::endl;
+
+        // If max_attempts is exceeded, we can log that we're forcing a wait with omp_set_lock()
+        if (attempts >= max_attempts)
+        {
+            if (enable_logging) std::cout << "Thread " << omp_get_thread_num() << " (XXX) " << lock_name << std::endl;
+            return false;
+        }
+    }
+
+    // If we get here, omp_test_lock was successful
+    if (enable_logging) std::cout << "Thread " << omp_get_thread_num() << " <---> " << lock_name << std::endl;
+
+    return true;
+}
+
 // Constructor implementation
 OmpLockGuard::OmpLockGuard(omp_lock_t &lock, std::string lock_name)
     : lock_(lock), lock_name_(lock_name)

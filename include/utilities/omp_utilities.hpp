@@ -17,6 +17,8 @@ void omp_unset_nested_lock_with_log(omp_nest_lock_t &lock, const char* lock_name
 bool omp_test_lock_with_log(omp_lock_t &lock, const char* lock_name);
 bool omp_test_nested_lock_with_log(omp_nest_lock_t &lock, const char* lock_name);
 
+bool omp_test_nested_lock_with_log(omp_nest_lock_t &lock, const char* lock_name, unsigned int max_attempts);
+
 class OmpLockGuard
 {
 public:
