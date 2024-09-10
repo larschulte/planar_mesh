@@ -17,6 +17,7 @@
 #include "MeshObject/Simulation.hpp"
 
 #include "utilities/omp_utilities.hpp"
+#include "MeshObject/RRSTree.hpp"
 
 #include "MeshObject/TriangleBVH.hpp"
 
