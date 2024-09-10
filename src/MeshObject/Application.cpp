@@ -148,7 +148,7 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
     // abort if any is abort    
     if (BVH_return == BVHReturnType::ABORT || RRS_return == RRSReturnType::ABORT || BVH_storage_return == BVHReturnType::ABORT || RRS_storage_return == RRSReturnType::ABORT)
     {
-        std::cout << "                                                        " << "Thread " << omp_get_thread_num() << " " << BVH_return << " " << RRS_return << " " << BVH_storage_return << " " << RRS_storage_return << std::endl;
+        std::cout << "                                                         " << omp_get_thread_num() << ": " << BVH_return << " " << RRS_return << " " << BVH_storage_return << " " << RRS_storage_return << std::endl;
         storage_->add_to_queue(generic_point);
         
         // 
