@@ -37,6 +37,7 @@ public:
     const Eigen::Vector3d& get_origin() const;
     const Eigen::Vector3d& get_direction() const;
     const std::shared_ptr<Surface>& get_surface() const;
+    const std::shared_ptr<Surface>& get_surface_check() const;
     bool has_surface() const;
     const std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& get_edges() const;
     const std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& get_faces() const;

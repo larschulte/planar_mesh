@@ -163,6 +163,15 @@ const std::shared_ptr<Surface>& Vertex::get_surface() const
     return surface_;
 }
 
+const std::shared_ptr<Surface>& Vertex::get_surface_check() const
+{    
+    // check if have node lock
+    if (!omp_test_nest_lock(&node->omp_lock)) throw std::runtime_error("Can't lock node in BVH.");
+    // release
+    omp_unset_nest_lock(&node->omp_lock);
+    return surface_;
+}
+
 bool Vertex::has_surface() const
 {
     return surface_ != nullptr;
