@@ -139,7 +139,7 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
         // std::cout << "X _ _ _" << std::endl;
         for (const std::shared_ptr<Surface>& surface : locked_surfaces) omp_unset_nested_lock_with_log(surface->lock, "unlock surface");
         for (const std::shared_ptr<Node>& node : locked_bvh_nodes) omp_unset_nest_lock(&node->omp_lock);
-        for (const std::shared_ptr<RRSNode>& node : locked_rrs_nodes) node->custom_lock.unset_write_lock();
+        for (const std::shared_ptr<RRSNode>& node : locked_rrs_nodes) omp_unset_nest_lock(&node->omp_lock);
         storage_->add_to_queue(generic_point);
         return;
     }
@@ -154,7 +154,7 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
         // std::cout << "_ _ X _" << std::endl;
         for (const std::shared_ptr<Surface>& surface : locked_surfaces) omp_unset_nested_lock_with_log(surface->lock, "unlock surface");
         for (const std::shared_ptr<Node>& node : locked_bvh_nodes) omp_unset_nest_lock(&node->omp_lock);
-        for (const std::shared_ptr<RRSNode>& node : locked_rrs_nodes) node->custom_lock.unset_write_lock();
+        for (const std::shared_ptr<RRSNode>& node : locked_rrs_nodes) omp_unset_nest_lock(&node->omp_lock);
         storage_->add_to_queue(generic_point);
         return;
     }
@@ -169,7 +169,7 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
         // std::cout << "_ X _ _" << std::endl;
         for (const std::shared_ptr<Surface>& surface : locked_surfaces) omp_unset_nested_lock_with_log(surface->lock, "unlock surface");
         for (const std::shared_ptr<Node>& node : locked_bvh_nodes) omp_unset_nest_lock(&node->omp_lock);
-        for (const std::shared_ptr<RRSNode>& node : locked_rrs_nodes) node->custom_lock.unset_write_lock();
+        for (const std::shared_ptr<RRSNode>& node : locked_rrs_nodes) omp_unset_nest_lock(&node->omp_lock);
         storage_->add_to_queue(generic_point);
         return;
     }
@@ -184,7 +184,7 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
         // std::cout << "_ _ _ X" << std::endl;
         for (const std::shared_ptr<Surface>& surface : locked_surfaces) omp_unset_nested_lock_with_log(surface->lock, "unlock surface");
         for (const std::shared_ptr<Node>& node : locked_bvh_nodes) omp_unset_nest_lock(&node->omp_lock);
-        for (const std::shared_ptr<RRSNode>& node : locked_rrs_nodes) node->custom_lock.unset_write_lock();
+        for (const std::shared_ptr<RRSNode>& node : locked_rrs_nodes) omp_unset_nest_lock(&node->omp_lock);
         storage_->add_to_queue(generic_point);
         return;
     }
@@ -224,16 +224,9 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
             if (!vertex->is_boundary()) continue;
 
             // get node
-            std::shared_ptr<RRSNode>& node = vertex->node;
+            std::shared_ptr<RRSNode>& node = vertex->node;            
             // lock node
-            if (!node->custom_lock.set_write_lock())
-            {
-                std::cout << "size = "<< node->boundary_vertices.size() << std::endl;
-                // check if the vertex->node is uninitialized
-                std::cout << node->box.min[0] << " " << node->box.min[1] << " " << node->box.min[2] << std::endl;
-                std::cout << storage_->get_queue_size() << std::endl;
-                throw std::runtime_error("write locked by other thread's find rrs storage node function");
-            }
+            omp_set_nest_lock(&node->omp_lock);
             // store node
             locked_rrs_nodes.emplace_back(node);
         }
@@ -284,7 +277,8 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
     for (const std::shared_ptr<Node>& node : locked_bvh_nodes) omp_unset_nest_lock(&node->omp_lock);
 
     // unlock rrs nodes
-    for (const std::shared_ptr<RRSNode>& node : locked_rrs_nodes) node->custom_lock.unset_write_lock();
+    for (const std::shared_ptr<RRSNode>& node : locked_rrs_nodes) omp_unset_nest_lock(&node->omp_lock);
+
 }
 
 template <typename PointT>

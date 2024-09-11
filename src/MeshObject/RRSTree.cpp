@@ -210,7 +210,7 @@ RRSReturnType RRSTree::node_reverse_radius_search(const std::shared_ptr<RRSNode>
     else
     {
         // abort if can't lock node
-        if (!node->custom_lock.set_read_lock())
+        if (!omp_test_nest_lock(&node->omp_lock))
         {
             // std::cout << "_ _ _ _ X _ _ _" << std::endl;
             return RRSReturnType::ABORT;
@@ -219,29 +219,23 @@ RRSReturnType RRSTree::node_reverse_radius_search(const std::shared_ptr<RRSNode>
         // skip if no vertices
         if (node->boundary_vertices.size() == 0)
         {
-            node->custom_lock.unset_read_lock();
+            omp_unset_nest_lock(&node->omp_lock);
             return RRSReturnType::SKIP;
         }
 
         // skip if not contained
         if (!node->boundary_vertices[0]->approx_contains(point))
         {
-            node->custom_lock.unset_read_lock();
+            omp_unset_nest_lock(&node->omp_lock);
             return RRSReturnType::SKIP;
         }
 
         // abort if can't lock vertex's surface
-        if (!omp_test_nested_lock_with_log(node->boundary_vertices[0]->get_surface()->lock, "vertex's surface lock")) 
+        if (!omp_test_nest_lock(&node->boundary_vertices[0]->get_surface()->lock)) 
         {
-            node->custom_lock.unset_read_lock();
+            omp_unset_nest_lock(&node->omp_lock);
             // std::cout << "_ _ _ _ _ _ X _" << std::endl;
             return RRSReturnType::ABORT;
-        }
-
-        node->custom_lock.unset_read_lock();
-        if (!node->custom_lock.set_write_lock())
-        {
-            throw std::runtime_error("this should be impossible since i've lock the surface");
         }
 
         // return
@@ -268,7 +262,7 @@ RRSReturnType RRSTree::node_find_leaf_node(const std::shared_ptr<RRSNode>& node,
     }
     else
     {
-        if (!node->custom_lock.set_read_lock())
+        if (!omp_test_nest_lock(&node->omp_lock))
         {
             // std::cout << "_ _ _ _ _ X _ _" << std::endl;
             return RRSReturnType::ABORT;
@@ -277,31 +271,17 @@ RRSReturnType RRSTree::node_find_leaf_node(const std::shared_ptr<RRSNode>& node,
         const bool no_vertex = node->boundary_vertices.size() == 0;
         if (no_vertex)
         {
-            node->custom_lock.unset_read_lock();
-            if (!node->custom_lock.set_write_lock())
-            {
-                std::cout << "no vertex and taken by other thread " << std::endl;
-                // taken by other thread
-                return RRSReturnType::ABORT;
-            }
-
             nodes.push_back(node);
             return RRSReturnType::INTERSECTED;
         }
         else
         {
-            if (!omp_test_nested_lock_with_log(node->boundary_vertices[0]->get_surface()->lock, "vertex's surface lock")) 
-            {
-                node->custom_lock.unset_read_lock();
-                // std::cout << "_ _ _ _ _ _ _ X" << std::endl;
-                return RRSReturnType::ABORT;
-            }
+
             
-            node->custom_lock.unset_read_lock();
-            if (!node->custom_lock.set_write_lock())
+            if (!omp_test_nest_lock(&node->boundary_vertices[0]->get_surface()->lock)) 
             {
-                std::cout << "RRS taken by other thread " << std::endl;
-                // taken by other thread
+                omp_unset_nest_lock(&node->omp_lock);
+                // std::cout << "_ _ _ _ _ _ _ X" << std::endl;
                 return RRSReturnType::ABORT;
             }
 

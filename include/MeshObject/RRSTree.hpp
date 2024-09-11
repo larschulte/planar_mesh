@@ -35,6 +35,7 @@ struct RRSNode
     std::vector<std::shared_ptr<Vertex>> boundary_vertices;
 
     mutable custom::custom_lock custom_lock;
+    omp_nest_lock_t omp_lock;
 };
 
 enum class RRSReturnType
