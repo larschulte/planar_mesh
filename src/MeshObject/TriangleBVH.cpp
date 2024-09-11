@@ -344,6 +344,7 @@ bool TriangleBVH::node_delete_face(const std::shared_ptr<Node>& node, const std:
         if (it != node->faces.end())
         {
             node->faces.erase(it, node->faces.end());
+            face->node = nullptr;
             return true;
         }
         else
