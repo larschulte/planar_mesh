@@ -184,17 +184,9 @@ bool RRSTree::node_delete_vertex(const std::shared_ptr<RRSNode>& node, const std
 
 RRSReturnType RRSTree::node_reverse_radius_search(const std::shared_ptr<RRSNode>& node, const Eigen::Vector3d& point, std::vector<std::shared_ptr<Vertex>>& search_results)
 {
-    // abort if can't lock node
-    if (!node->custom_lock.set_read_lock())
-    {
-        // std::cout << "_ _ _ _ X _ _ _" << std::endl;
-        return RRSReturnType::ABORT;
-    }
-    
     // skip if not contained
     if (!node->box.contains(point))
     {
-        node->custom_lock.unset_read_lock();
         return RRSReturnType::SKIP;
     }
 
@@ -205,7 +197,6 @@ RRSReturnType RRSTree::node_reverse_radius_search(const std::shared_ptr<RRSNode>
         std::shared_ptr<RRSNode> right_node = node->right;
 
         // search left and right
-        node->custom_lock.unset_read_lock();
         RRSReturnType left_return = node_reverse_radius_search(left_node, point, search_results);
         RRSReturnType right_return = node_reverse_radius_search(right_node, point, search_results);
 
@@ -218,6 +209,13 @@ RRSReturnType RRSTree::node_reverse_radius_search(const std::shared_ptr<RRSNode>
     }
     else
     {
+        // abort if can't lock node
+        if (!node->custom_lock.set_read_lock())
+        {
+            // std::cout << "_ _ _ _ X _ _ _" << std::endl;
+            return RRSReturnType::ABORT;
+        }
+        
         // skip if no vertices
         if (node->boundary_vertices.size() == 0)
         {
@@ -253,31 +251,29 @@ RRSReturnType RRSTree::node_reverse_radius_search(const std::shared_ptr<RRSNode>
 }
 
 RRSReturnType RRSTree::node_find_leaf_node(const std::shared_ptr<RRSNode>& node, const Eigen::Vector3d& point, std::vector<std::shared_ptr<RRSNode>>& nodes)
-{
-    if (!node->custom_lock.set_read_lock())
-    {
-        // std::cout << "_ _ _ _ _ X _ _" << std::endl;
-        return RRSReturnType::ABORT;
-    }
-    
+{    
     // branch if not leaf
     if (!node->isLeaf)
     {
         if (point[node->split_axis] < node->split_value)
         {
             std::shared_ptr<RRSNode> left_node = node->left;
-            node->custom_lock.unset_read_lock();
             return node_find_leaf_node(left_node, point, nodes);
         }
         else
         {
             std::shared_ptr<RRSNode> right_node = node->right;
-            node->custom_lock.unset_read_lock();
             return node_find_leaf_node(right_node, point, nodes);
         }
     }
     else
     {
+        if (!node->custom_lock.set_read_lock())
+        {
+            // std::cout << "_ _ _ _ _ X _ _" << std::endl;
+            return RRSReturnType::ABORT;
+        }
+
         const bool no_vertex = node->boundary_vertices.size() == 0;
         if (no_vertex)
         {
