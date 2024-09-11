@@ -214,9 +214,6 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
         // all RRS nodes
         for (const std::shared_ptr<Vertex>& vertex : surface->get_vertices())
         {
-            // skip if not boundary
-            if (!vertex->is_boundary()) continue;
-
             // get node
             std::shared_ptr<RRSNode>& node = vertex->node;            
             // lock node
