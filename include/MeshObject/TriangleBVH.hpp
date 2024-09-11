@@ -39,6 +39,10 @@ struct Node
 
     custom::custom_lock custom_lock;
     omp_nest_lock_t omp_lock;
+
+    bool locked_children = false;
+
+    void recursive_unlock();
 };
 
 enum class BVHReturnType

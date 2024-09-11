@@ -96,6 +96,17 @@ int BoundingBox::get_longest_axis()
     return axis;
 }
 
+void Node::recursive_unlock()
+{
+    omp_unset_nest_lock(&omp_lock);
+    if (locked_children)
+    {
+        left->recursive_unlock();
+        right->recursive_unlock();
+        locked_children = false;
+    }
+}
+
 double TriangleBVH::sort_face_list_in_axis(std::vector<std::shared_ptr<Face>>& face_list, int axis, int start, int mid, int end)
 {
     std::sort(face_list.begin() + start, face_list.begin() + end, 
@@ -158,24 +169,8 @@ BVHReturnType TriangleBVH::node_intersection_search(const std::shared_ptr<Node>&
         }
 
         // abort if can't lock face's surface
-        const std::shared_ptr<Face> face = node->faces[0];
-
-        // abort if face is nullptr
-        if (face == nullptr)
-        {
-            omp_unset_nest_lock(&node->omp_lock);
-            return BVHReturnType::ABORT;
-        }
-        
-        const std::shared_ptr<Surface> surface = face->get_surface();
-
-        // abort if surface if nullptr
-        if (surface == nullptr)
-        {
-            omp_unset_nest_lock(&node->omp_lock);
-            return BVHReturnType::ABORT;
-        }
-        
+        const std::shared_ptr<Face>& face = node->faces[0];
+        const std::shared_ptr<Surface>& surface = face->get_surface();
         if (!omp_test_nest_lock(&surface->lock)) // nest lock here since a ray could intersect two faces of the same surface in two nodes
         {
             omp_unset_nest_lock(&node->omp_lock);
@@ -222,24 +217,8 @@ BVHReturnType TriangleBVH::node_find_leaf_node(const std::shared_ptr<Node>& node
         else
         {
             // abort if can't lock face's surface
-            const std::shared_ptr<Face> face = node->faces[0];
-
-            // abort if face is nullptr
-            if (face == nullptr)
-            {
-                omp_unset_nest_lock(&node->omp_lock);
-                return BVHReturnType::ABORT;
-            }
-
-            const std::shared_ptr<Surface> surface = face->get_surface();
-
-            // abort if surface if nullptr
-            if (surface == nullptr)
-            {
-                omp_unset_nest_lock(&node->omp_lock);
-                return BVHReturnType::ABORT;
-            }
-            
+            const std::shared_ptr<Face>& face = node->faces[0];
+            const std::shared_ptr<Surface>& surface = face->get_surface();
             if (!omp_test_nest_lock(&surface->lock)) 
             {
                 omp_unset_nest_lock(&node->omp_lock);
@@ -267,6 +246,13 @@ void TriangleBVH::convert_leaf_to_branch(const std::shared_ptr<Node>& node)
     node->left = build_node(node->faces, start, mid);
     node->right = build_node(node->faces, mid, end);
     node->faces.clear();
+
+    // set lock before setting isLeaf to false to prevent other threads from accessing the children node
+    omp_set_nest_lock(&node->left->omp_lock);
+    omp_set_nest_lock(&node->right->omp_lock);
+    node->locked_children = true;
+
+    // update isLeaf after locking the children
     node->isLeaf = false;
 }
 

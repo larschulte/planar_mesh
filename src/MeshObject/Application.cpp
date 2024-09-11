@@ -265,10 +265,10 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
     for (const std::shared_ptr<Surface>& surface : locked_surfaces) omp_unset_nested_lock_with_log(surface->lock, "unlock surface");
 
     // unlock bvh nodes
-    for (const std::shared_ptr<Node>& node : locked_bvh_nodes) omp_unset_nest_lock(&node->omp_lock);
+    for (const std::shared_ptr<Node>& node : locked_bvh_nodes) node->recursive_unlock();
 
     // unlock rrs nodes
-    for (const std::shared_ptr<RRSNode>& node : locked_rrs_nodes) omp_unset_nest_lock(&node->omp_lock);
+    for (const std::shared_ptr<RRSNode>& node : locked_rrs_nodes) node->recursive_unlock();
 
     // lock.unlock();
 }
