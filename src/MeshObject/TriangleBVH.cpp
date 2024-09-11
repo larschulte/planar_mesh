@@ -96,12 +96,6 @@ int BoundingBox::get_longest_axis()
     return axis;
 }
 
-bool Node::isLeaf() const 
-{
-    return !left && !right;
-}
-
-
 double TriangleBVH::sort_face_list_in_axis(std::vector<std::shared_ptr<Face>>& face_list, int axis, int start, int mid, int end)
 {
     std::sort(face_list.begin() + start, face_list.begin() + end, 
@@ -136,7 +130,7 @@ BVHReturnType TriangleBVH::node_intersection_search(const std::shared_ptr<Node>&
     }
     
     // branch if not leaf
-    if (!node->isLeaf())
+    if (!node->isLeaf)
     {
         std::shared_ptr<Node> left_node = node->left;
         std::shared_ptr<Node> right_node = node->right;    
@@ -199,7 +193,7 @@ BVHReturnType TriangleBVH::node_find_leaf_node(const std::shared_ptr<Node>& node
     }
 
     // branch if not leaf
-    if (!node->isLeaf())
+    if (!node->isLeaf)
     {   
         // release lock if not leaf
         if (endPoint[node->split_axis] < node->split_value)
@@ -268,6 +262,7 @@ void TriangleBVH::convert_leaf_to_branch(const std::shared_ptr<Node>& node)
     node->left = build_node(node->faces, start, mid);
     node->right = build_node(node->faces, mid, end);
     node->faces.clear();
+    node->isLeaf = false;
 }
 
 std::shared_ptr<Node> TriangleBVH::build_node(const std::vector<std::shared_ptr<Face>>& face_list, const int& start, const int& end)
@@ -299,7 +294,7 @@ void TriangleBVH::node_add_face(const std::shared_ptr<Node>& node, const std::sh
 {
     expand_node_box(node, face);
 
-    if (!node->isLeaf())
+    if (!node->isLeaf)
     {    
         if (face->get_first_vertex()->get_position()[node->split_axis] < node->split_value)
         {
@@ -323,7 +318,7 @@ void TriangleBVH::node_add_face(const std::shared_ptr<Node>& node, const std::sh
 
 bool TriangleBVH::node_delete_face(const std::shared_ptr<Node>& node, const std::shared_ptr<Face>& face)
 {
-    if (!node->isLeaf())
+    if (!node->isLeaf)
     {
         if (face->get_first_vertex()->get_position()[node->split_axis] < node->split_value)
         {
@@ -356,7 +351,7 @@ bool TriangleBVH::node_delete_face(const std::shared_ptr<Node>& node, const std:
 
 void TriangleBVH::node_print(const std::shared_ptr<Node> &node, int level) const
 {
-    if (!node->isLeaf())
+    if (!node->isLeaf)
     {
         node_print(node->left, level+1);
         node_print(node->right, level+1);
@@ -373,7 +368,7 @@ void TriangleBVH::node_print(const std::shared_ptr<Node> &node, int level) const
 
 void TriangleBVH::node_flatten(const std::shared_ptr<Node>& node, std::vector<std::shared_ptr<Face>>& face_list) const
 {
-    if (!node->isLeaf())
+    if (!node->isLeaf)
     {
         node_flatten(node->left, face_list);
         node_flatten(node->right, face_list);

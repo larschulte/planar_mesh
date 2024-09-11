@@ -34,7 +34,7 @@ struct Node
     int split_axis;
     std::shared_ptr<Node> left;
     std::shared_ptr<Node> right;
-    bool isLeaf() const;
+    std::atomic<bool> isLeaf = true;
     std::vector<std::shared_ptr<Face>> faces;
 
     custom::custom_lock custom_lock;
