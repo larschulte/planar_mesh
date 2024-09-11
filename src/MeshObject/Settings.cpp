@@ -88,7 +88,7 @@ Settings::Settings()
     {
         log.add_point_by_radius_search = false;
         log.load_point_cloud = true;
-        log.step = true;
+        log.step = false;
         log.refine_surfaces = false;
         log.process_point = false;
         log.initialize = false;
@@ -98,7 +98,7 @@ Settings::Settings()
         log.can_merge = false;
         log.merge_surface = false;
         log.duplicated_point = false;
-        log.num_of_concurrent_processes = false;
+        log.num_of_concurrent_processes = true;
     }
     
 
