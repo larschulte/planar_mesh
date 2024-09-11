@@ -279,30 +279,40 @@ RRSReturnType RRSTree::node_find_leaf_node(const std::shared_ptr<RRSNode>& node,
     }
     else
     {
-        // lock the surface of this node as well for now.
-
-        // if there is vertex, lock the surface of the vertex
-        // abort if can't lock vertex's surface
-        if (node->boundary_vertices.size() > 0)
+        const bool no_vertex = node->boundary_vertices.size() == 0;
+        if (no_vertex)
         {
-            
+            node->custom_lock.unset_read_lock();
+            if (!node->custom_lock.set_write_lock())
+            {
+                std::cout << "no vertex and taken by other thread " << std::endl;
+                // taken by other thread
+                return RRSReturnType::ABORT;
+            }
+
+            nodes.push_back(node);
+            return RRSReturnType::INTERSECTED;
+        }
+        else
+        {
             if (!omp_test_nested_lock_with_log(node->boundary_vertices[0]->get_surface()->lock, "vertex's surface lock")) 
             {
                 node->custom_lock.unset_read_lock();
                 return RRSReturnType::ABORT;
             }
+            
+            node->custom_lock.unset_read_lock();
+            if (!node->custom_lock.set_write_lock())
+            {
+                std::cout << "RRS taken by other thread " << std::endl;
+                // taken by other thread
+                return RRSReturnType::ABORT;
+            }
 
+            // return
+            nodes.push_back(node);
+            return RRSReturnType::INTERSECTED;
         }
-
-        node->custom_lock.unset_read_lock();
-        if (!node->custom_lock.set_write_lock())
-        {
-            throw std::runtime_error("other thread has locked the node right after this thread unlocks the read lock");
-        }
-
-        // return
-        nodes.push_back(node);
-        return RRSReturnType::INTERSECTED;
     }
 }
 

@@ -214,28 +214,40 @@ BVHReturnType TriangleBVH::node_find_leaf_node(const std::shared_ptr<Node>& node
     }
     else
     {
-        // if there is face, lock the surface of the vertex
-        // abort if can't lock vertex's surface
-        if (node->faces.size() > 0)
+        const bool no_face = node->faces.size() == 0;
+        if (no_face)
         {
-            
-            if (!omp_test_nested_lock_with_log(node->faces[0]->get_surface()->lock, "face's surface lock")) 
+            node->custom_lock.unset_read_lock();
+            if (!node->custom_lock.set_write_lock())
+            {
+                // std::cout << "no face and taken by other thread " << std::endl;
+                // taken by other thread
+                return BVHReturnType::ABORT;
+            }
+
+            nodes.push_back(node);
+            return BVHReturnType::INTERSECTED;
+        }
+        else
+        {
+            if (!omp_test_nested_lock_with_log(node->faces[0]->get_surface()->lock, "vertex's surface lock")) 
             {
                 node->custom_lock.unset_read_lock();
                 return BVHReturnType::ABORT;
             }
+            
+            node->custom_lock.unset_read_lock();
+            if (!node->custom_lock.set_write_lock())
+            {
+                std::cout << "BVH taken by other thread " << std::endl;
+                // taken by other thread
+                return BVHReturnType::ABORT;
+            }
 
+            // return
+            nodes.push_back(node);
+            return BVHReturnType::INTERSECTED;
         }
-
-        node->custom_lock.unset_read_lock();
-        if (!node->custom_lock.set_write_lock())
-        {
-            throw std::runtime_error("other thread has locked the node right after this thread unlocks the read lock");
-        }
-
-        // hold the node lock
-        nodes.push_back(node);
-        return BVHReturnType::INTERSECTED;
     }
 }
 
