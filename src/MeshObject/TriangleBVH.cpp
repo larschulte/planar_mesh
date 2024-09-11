@@ -132,9 +132,6 @@ BVHReturnType TriangleBVH::node_intersection_search(const std::shared_ptr<Node>&
     // branch if not leaf
     if (!node->isLeaf)
     {
-        std::shared_ptr<Node> left_node = node->left;
-        std::shared_ptr<Node> right_node = node->right;    
-
         // search left and right
         node->custom_lock.unset_read_lock();
         BVHReturnType left_return = node_intersection_search(node->left, orig, dir, faces_intersected);
@@ -198,13 +195,13 @@ BVHReturnType TriangleBVH::node_find_leaf_node(const std::shared_ptr<Node>& node
         // release lock if not leaf
         if (endPoint[node->split_axis] < node->split_value)
         {
-            std::shared_ptr<Node> left_node = node->left;
+            
             node->custom_lock.unset_read_lock();
             return node_find_leaf_node(node->left, orig, endPoint, nodes);
         }
         else 
         {
-            std::shared_ptr<Node> right_node = node->right;
+
             node->custom_lock.unset_read_lock();
             return node_find_leaf_node(node->right, orig, endPoint, nodes);
         }
