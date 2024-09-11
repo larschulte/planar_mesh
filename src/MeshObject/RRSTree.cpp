@@ -235,7 +235,17 @@ RRSReturnType RRSTree::node_reverse_radius_search(const std::shared_ptr<RRSNode>
         }
 
         // abort if can't lock vertex's surface
-        if (!omp_test_nest_lock(&node->boundary_vertices[0]->get_surface()->lock)) 
+        const std::shared_ptr<Vertex> boundary_vertex = node->boundary_vertices[0];
+        const std::shared_ptr<Surface> surface = boundary_vertex->get_surface_check();
+
+        // abort if surface is null
+        if (surface == nullptr)
+        {
+            omp_unset_nest_lock(&node->omp_lock);
+            return RRSReturnType::ABORT;
+        }
+
+        if (!omp_test_nest_lock(&surface->lock)) 
         {
             omp_unset_nest_lock(&node->omp_lock);
             // std::cout << "_ _ _ _ _ _ X _" << std::endl;
@@ -278,9 +288,17 @@ RRSReturnType RRSTree::node_find_leaf_node(const std::shared_ptr<RRSNode>& node,
         }
         else
         {
+            const std::shared_ptr<Vertex> boundary_vertex = node->boundary_vertices[0];
+            const std::shared_ptr<Surface> surface = boundary_vertex->get_surface_check();
 
+            // abort if surface is null
+            if (surface == nullptr)
+            {
+                omp_unset_nest_lock(&node->omp_lock);
+                return RRSReturnType::ABORT;
+            }
             
-            if (!omp_test_nest_lock(&node->boundary_vertices[0]->get_surface()->lock)) 
+            if (!omp_test_nest_lock(&surface->lock)) 
             {
                 omp_unset_nest_lock(&node->omp_lock);
                 // std::cout << "_ _ _ _ _ _ _ X" << std::endl;
