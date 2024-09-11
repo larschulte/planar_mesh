@@ -1011,7 +1011,7 @@ void Application<PointT>::loop()
     storage_->add_points_in_repeated_queue_to_queue();
 
     // process all points in the queue
-    #pragma omp parallel
+    #pragma omp parallel num_threads(settings_.num_threads)
     {
         while (true)
         {

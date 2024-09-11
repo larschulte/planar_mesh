@@ -45,6 +45,8 @@ struct Settings
 
     unsigned int num_of_delete_before_put_to_repeated_queue;
 
+    unsigned int num_threads;
+
     // double min_face_angle;
 
     // log settings
