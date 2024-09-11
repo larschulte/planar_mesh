@@ -552,3 +552,8 @@ void Storage::rebuild_tree()
     rrs_tree_.rebuild();
     triangle_bvh_.rebuild();
 }
+
+unsigned int Storage::get_bvh_size() const
+{
+    return triangle_bvh_.get_size();
+}

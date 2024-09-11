@@ -82,6 +82,8 @@ public: // to user
     void check_tree_rebuild();
     void rebuild_tree();
 
+    unsigned int get_bvh_size() const;
+
 private: // to Vertex and Face class
     friend class Vertex;
     friend class Face;
