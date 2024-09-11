@@ -223,6 +223,13 @@ RRSReturnType RRSTree::node_reverse_radius_search(const std::shared_ptr<RRSNode>
             return RRSReturnType::SKIP;
         }
 
+        // skip if boundary vertex is not searchable
+        if (!node->boundary_vertices[0]->is_searchable())
+        {
+            omp_unset_nest_lock(&node->omp_lock);
+            return RRSReturnType::SKIP;
+        }
+
         // skip if not contained
         if (!node->boundary_vertices[0]->approx_contains(point))
         {
@@ -382,8 +389,13 @@ void RRSTree::tree_delete_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
     // decrease size
     tree_size--;
 
-    // delete from BVH
-    if (!node_delete_vertex(root, boundary_vertex)) throw std::invalid_argument("Vertex not found in BVH.");
+    // get vertex's node reference
+    const std::shared_ptr<RRSNode>& node = boundary_vertex->node;
+    if (node == nullptr) throw std::invalid_argument("Vertex not found in BVH.");
+
+    // delete from node
+    node->boundary_vertices.erase(std::remove(node->boundary_vertices.begin(), node->boundary_vertices.end(), boundary_vertex), node->boundary_vertices.end());
+    boundary_vertex->node = nullptr;
 }
 
 RRSReturnType RRSTree::tree_reverse_radius_search(const Eigen::Vector3d& point, std::vector<std::shared_ptr<Vertex>>& search_results)

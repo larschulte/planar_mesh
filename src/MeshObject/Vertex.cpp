@@ -35,6 +35,9 @@ void Vertex::initialize_(const std::shared_ptr<Storage>& storage, const Eigen::V
     // set reverse search radius based on input parameter
     set_reverse_radius_search_radius(radius);
 
+    // add to rrs tree
+    storage_->add_searchable_vertex(shared_from_this());
+
     // update boundary state
     update_boundary_state();
 
@@ -72,12 +75,9 @@ void Vertex::delete_()
     for (const auto& face : faces) disconnect(face);
     if (surface_) disconnect(surface_);
 
-    // remove from search tree
-    if (is_searchable_)
-    {
-        storage_->remove_searchable_vertex(shared_from_this());
-        is_searchable_ = false;
-    }
+    // remove from rrs tree
+    storage_->remove_searchable_vertex(shared_from_this());
+    is_searchable_ = false;
     
     // update delete count
     num_deletes_++;
@@ -758,12 +758,10 @@ void Vertex::update_searchable_state()
     // check if is boundary
     if (is_boundary() && !is_searchable_)
     {
-        storage_->add_searchable_vertex(shared_from_this());
         is_searchable_ = true;
     }
     else if (!is_boundary() && is_searchable_)
     {
-        storage_->remove_searchable_vertex(shared_from_this());
         is_searchable_ = false;
     }
 }
