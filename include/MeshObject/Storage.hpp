@@ -47,11 +47,14 @@ public: // to user
     void delete_generic_point(const std::shared_ptr<GenericPoint>& genertic_point);
     void delete_interior_point(const std::shared_ptr<InteriorPoint>& interior_point);
 
+    void add_to_main_queue(const Eigen::Vector3d& position, const Eigen::Vector3d& origin);
+    void add_points_in_smaller_repeated_queues_to_main_queue();
+    void split_main_queue_into_smaller_queues();
+
     void add_to_queue(const Eigen::Vector3d& position, const Eigen::Vector3d& origin);
     void add_to_queue(const std::shared_ptr<GenericPoint>& generic_point);
     void add_to_queue(const std::shared_ptr<InteriorPoint>& interior_point);
     void add_to_queue(const std::shared_ptr<Vertex>& vertex);
-    void add_points_in_repeated_queue_to_queue();
     std::shared_ptr<GenericPoint> pop_from_queue();
     unsigned int get_queue_size();
     unsigned int get_repeated_queue_size();
@@ -109,8 +112,10 @@ private:
     RRSTree rrs_tree_;
     TriangleBVH triangle_bvh_;
 
-    std::queue<std::shared_ptr<GenericPoint>> queue_;
-    std::queue<std::shared_ptr<GenericPoint>> repeated_queue_;
+    std::queue<std::shared_ptr<GenericPoint>> main_queue_;
+    std::queue<std::shared_ptr<GenericPoint>> main_repeated_queue_;
+    std::vector<std::queue<std::shared_ptr<GenericPoint>>> smaller_queues_;
+    std::vector<std::queue<std::shared_ptr<GenericPoint>>> smaller_repeated_queues_;
     unsigned int num_delete_before_put_to_repeated_queue_ = 2;
 
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertices_;
@@ -120,8 +125,6 @@ private:
     std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> interior_points_;
     std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash> genertic_points_;
 
-    std::mutex queue_mutex_;
-    std::mutex repeated_queue_mutex_;
     std::mutex vertices_mutex_;
     std::mutex edges_mutex_;
     std::mutex faces_mutex_;

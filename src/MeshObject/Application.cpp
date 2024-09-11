@@ -1016,11 +1016,14 @@ void Application<PointT>::loop()
         Eigen::Vector3d thisPointVEC = pointcloud->points[i].getVector3fMap().cast<double>();
         Eigen::Vector3d thisPointOriginVEC = this->origin;
 
-        storage_->add_to_queue(thisPointVEC, thisPointOriginVEC);
+        storage_->add_to_main_queue(thisPointVEC, thisPointOriginVEC);
     }
 
     // add points from repeated queue to queue
-    storage_->add_points_in_repeated_queue_to_queue();
+    storage_->add_points_in_smaller_repeated_queues_to_main_queue();
+
+    // split the queue into smaller queues
+    storage_->split_main_queue_into_smaller_queues();
 
     // process all points in the queue
     #pragma omp parallel num_threads(settings_.num_threads)

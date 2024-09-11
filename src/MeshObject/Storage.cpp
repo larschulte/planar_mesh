@@ -274,23 +274,56 @@ void Storage::delete_interior_point(const std::shared_ptr<InteriorPoint>& interi
     interior_point->delete_();
 }
 
+void Storage::add_to_main_queue(const Eigen::Vector3d& position, const Eigen::Vector3d& origin) 
+{
+    std::shared_ptr<GenericPoint> queue_point = std::make_shared<GenericPoint>();
+    queue_point->initialize_(shared_from_this(), position, origin);
+
+    main_queue_.push(queue_point);
+}
+
+void Storage::add_points_in_smaller_repeated_queues_to_main_queue()
+{
+    // for each smaller repeated queue
+    for (std::queue<std::shared_ptr<GenericPoint>>& smaller_repeated_queue : smaller_repeated_queues_)
+    {
+        while (!smaller_repeated_queue.empty())
+        {
+            main_queue_.push(smaller_repeated_queue.front());
+            smaller_repeated_queue.pop();
+        }
+    }
+}
+
+void Storage::split_main_queue_into_smaller_queues()
+{
+    // resize to num_threads
+    smaller_queues_.resize(settings_.num_threads);
+    smaller_repeated_queues_.resize(settings_.num_threads);
+
+    // equally divide main queue into smaller queues
+    while (!main_queue_.empty())
+    {
+        for (std::queue<std::shared_ptr<GenericPoint>>& smaller_queue : smaller_queues_)
+        {
+            if (main_queue_.empty()) break;
+            smaller_queue.push(main_queue_.front());
+            main_queue_.pop();
+        }
+    }
+}
+
 void Storage::add_to_queue(const Eigen::Vector3d& position, const Eigen::Vector3d& origin) 
 {
     std::shared_ptr<GenericPoint> queue_point = std::make_shared<GenericPoint>();
     queue_point->initialize_(shared_from_this(), position, origin);
 
-    // lock
-    std::lock_guard<std::mutex> lock(queue_mutex_);
-
-    queue_.push(queue_point);
+    smaller_queues_[omp_get_thread_num()].push(queue_point);
 }
 
 void Storage::add_to_queue(const std::shared_ptr<GenericPoint>& generic_point) 
 {
-    // lock
-    std::lock_guard<std::mutex> lock(queue_mutex_);
-
-    queue_.push(generic_point);
+    smaller_queues_[omp_get_thread_num()].push(generic_point);
 }
 
 void Storage::add_to_queue(const std::shared_ptr<InteriorPoint>& interior_point) 
@@ -300,10 +333,7 @@ void Storage::add_to_queue(const std::shared_ptr<InteriorPoint>& interior_point)
 
     if (queue_point->get_num_deletes() <= settings_.num_of_delete_before_put_to_repeated_queue)
     {
-        // lock
-        std::lock_guard<std::mutex> lock(queue_mutex_);
-
-        queue_.push(queue_point);
+        smaller_queues_[omp_get_thread_num()].push(queue_point);
     }
     else
     {
@@ -311,10 +341,7 @@ void Storage::add_to_queue(const std::shared_ptr<InteriorPoint>& interior_point)
         // reset number of delete and add to repeated_queue_
         queue_point->reset_num_deletes();
 
-        // lock
-        std::lock_guard<std::mutex> lock(repeated_queue_mutex_);
-
-        repeated_queue_.push(queue_point);
+        smaller_repeated_queues_[omp_get_thread_num()].push(queue_point);
     }
 }
 
@@ -325,10 +352,7 @@ void Storage::add_to_queue(const std::shared_ptr<Vertex>& vertex)
 
     if (queue_point->get_num_deletes() <= settings_.num_of_delete_before_put_to_repeated_queue)
     {
-        // lock
-        std::lock_guard<std::mutex> lock(queue_mutex_);
-
-        queue_.push(queue_point);
+        smaller_queues_[omp_get_thread_num()].push(queue_point);
     }
     else
     {
@@ -336,52 +360,32 @@ void Storage::add_to_queue(const std::shared_ptr<Vertex>& vertex)
         // reset number of delete and add to repeated_queue_
         queue_point->reset_num_deletes();
 
-        // lock
-        std::lock_guard<std::mutex> lock(repeated_queue_mutex_);
-
-        repeated_queue_.push(queue_point);
-    }
-}
-
-void Storage::add_points_in_repeated_queue_to_queue()
-{
-    // lock
-    std::lock_guard<std::mutex> lock(queue_mutex_);
-    std::lock_guard<std::mutex> lock_repeated(repeated_queue_mutex_);
-
-    while (!repeated_queue_.empty())
-    {
-        queue_.push(repeated_queue_.front());
-        repeated_queue_.pop();
+        smaller_repeated_queues_[omp_get_thread_num()].push(queue_point);
     }
 }
 
 std::shared_ptr<GenericPoint> Storage::pop_from_queue()
 {
-    // lock
-    std::lock_guard<std::mutex> lock(queue_mutex_);
+    if (smaller_queues_[omp_get_thread_num()].empty()) return nullptr;
 
-    if (queue_.empty()) return nullptr;
-
-    std::shared_ptr<GenericPoint> queue_point = queue_.front();
-    queue_.pop();
+    std::shared_ptr<GenericPoint> queue_point = smaller_queues_[omp_get_thread_num()].front();
+    smaller_queues_[omp_get_thread_num()].pop();
     return queue_point;
 }
 
 unsigned int Storage::get_queue_size()
 {
-    // lock
-    std::lock_guard<std::mutex> lock(queue_mutex_);
-
-    return queue_.size();
+    return smaller_queues_[omp_get_thread_num()].size();
 }
 
 unsigned int Storage::get_repeated_queue_size()
-{
-    // lock
-    std::lock_guard<std::mutex> lock(repeated_queue_mutex_);
-    
-    return repeated_queue_.size();
+{    
+    unsigned int size = 0;
+    for (const std::queue<std::shared_ptr<GenericPoint>>& repeated_queue : smaller_repeated_queues_)
+    {
+        size += repeated_queue.size();
+    }
+    return size;
 }
 
 void Storage::add_searchable_vertex(const std::shared_ptr<Vertex>& vertex)
