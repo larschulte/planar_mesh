@@ -238,6 +238,22 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
         }
     }
 
+    num_of_concurrent_processes++;
+    
+    // // output number of concurrent threads that reaches this point
+    if (settings_.log.num_of_concurrent_processes)
+    {
+        std::stringstream ss;
+        ss  << " | number of concurrent processes = " << num_of_concurrent_processes
+            << " | processing point " << generic_point->get_id()
+            << " | by thread " << omp_get_thread_num()
+            << " | BVH tree size = " << storage_->get_bvh_size()
+            << std::endl;
+        std::cout << ss.str();
+    }
+    
+    // std::this_thread::sleep_for(std::chrono::milliseconds(10));
+
     // process
     double radius = settings_.radius_value;
     if (add_point_by_intersection_search(generic_point, radius, bvh_results))
@@ -253,6 +269,8 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
         add_point_by_new_surface(generic_point, radius);
         // if point added, go to end to unlock all locks
     }
+
+    num_of_concurrent_processes--;
     
     //
     // they all lead to return, thus unlock all locks

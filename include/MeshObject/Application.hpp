@@ -76,4 +76,6 @@ private:
 
     // viewer related
     std::map<std::shared_ptr<Vertex>, int> vertex_to_cloud_indices_map;
+
+    std::atomic<unsigned int> num_of_concurrent_processes = 0;
 };
