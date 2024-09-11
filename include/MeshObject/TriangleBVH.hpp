@@ -38,6 +38,7 @@ struct Node
     std::vector<std::shared_ptr<Face>> faces;
 
     custom::custom_lock custom_lock;
+    omp_nest_lock_t omp_lock;
 };
 
 enum class BVHReturnType
