@@ -115,17 +115,9 @@ void TriangleBVH::expand_node_box(const std::shared_ptr<Node>& node, const std::
 
 BVHReturnType TriangleBVH::node_intersection_search(const std::shared_ptr<Node>& node, const Eigen::Vector3d& orig, const Eigen::Vector3d& dir, std::vector<std::shared_ptr<Face>>& faces_intersected) const
 {    
-    // abort if can't lock node
-    if (!node->custom_lock.set_read_lock())
-    {
-        // std::cout << "X _ _ _ _ _ _ _" << std::endl;
-        return BVHReturnType::ABORT;
-    }
-
     // skip if not intersected
     if (!node->box.intersect(orig, dir))
     {
-        node->custom_lock.unset_read_lock();
         return BVHReturnType::SKIP;
     }
     
@@ -133,7 +125,6 @@ BVHReturnType TriangleBVH::node_intersection_search(const std::shared_ptr<Node>&
     if (!node->isLeaf)
     {
         // search left and right
-        node->custom_lock.unset_read_lock();
         BVHReturnType left_return = node_intersection_search(node->left, orig, dir, faces_intersected);
         BVHReturnType right_return = node_intersection_search(node->right, orig, dir, faces_intersected);
 
@@ -146,6 +137,13 @@ BVHReturnType TriangleBVH::node_intersection_search(const std::shared_ptr<Node>&
     }
     else
     {
+        // abort if can't lock node
+        if (!node->custom_lock.set_read_lock())
+        {
+            // std::cout << "X _ _ _ _ _ _ _" << std::endl;
+            return BVHReturnType::ABORT;
+        }
+
         // skip if no faces
         if (node->faces.size() == 0)
         {
@@ -182,32 +180,28 @@ BVHReturnType TriangleBVH::node_intersection_search(const std::shared_ptr<Node>&
 
 BVHReturnType TriangleBVH::node_find_leaf_node(const std::shared_ptr<Node>& node, const Eigen::Vector3d& orig, const Eigen::Vector3d& endPoint, std::vector<std::shared_ptr<Node>>& nodes) const
 {
-    // abort if can't lock node
-    if (!node->custom_lock.set_read_lock())
-    {
-        // std::cout << "_ X _ _ _ _ _ _" << std::endl;
-        return BVHReturnType::ABORT;
-    }
-
     // branch if not leaf
     if (!node->isLeaf)
     {   
         // release lock if not leaf
         if (endPoint[node->split_axis] < node->split_value)
         {
-            
-            node->custom_lock.unset_read_lock();
             return node_find_leaf_node(node->left, orig, endPoint, nodes);
         }
         else 
         {
-
-            node->custom_lock.unset_read_lock();
             return node_find_leaf_node(node->right, orig, endPoint, nodes);
         }
     }
     else
     {
+        // abort if can't lock node
+        if (!node->custom_lock.set_read_lock())
+        {
+            // std::cout << "_ X _ _ _ _ _ _" << std::endl;
+            return BVHReturnType::ABORT;
+        }
+        
         const bool no_face = node->faces.size() == 0;
         if (no_face)
         {
