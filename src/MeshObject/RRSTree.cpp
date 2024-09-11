@@ -193,12 +193,9 @@ RRSReturnType RRSTree::node_reverse_radius_search(const std::shared_ptr<RRSNode>
     // branch if not leaf
     if (!node->isLeaf)
     {
-        std::shared_ptr<RRSNode> left_node = node->left;
-        std::shared_ptr<RRSNode> right_node = node->right;
-
         // search left and right
-        RRSReturnType left_return = node_reverse_radius_search(left_node, point, search_results);
-        RRSReturnType right_return = node_reverse_radius_search(right_node, point, search_results);
+        RRSReturnType left_return = node_reverse_radius_search(node->left, point, search_results);
+        RRSReturnType right_return = node_reverse_radius_search(node->right, point, search_results);
 
         // abort if any is abort
         if (left_return == RRSReturnType::ABORT || right_return == RRSReturnType::ABORT) return RRSReturnType::ABORT;
@@ -258,13 +255,11 @@ RRSReturnType RRSTree::node_find_leaf_node(const std::shared_ptr<RRSNode>& node,
     {
         if (point[node->split_axis] < node->split_value)
         {
-            std::shared_ptr<RRSNode> left_node = node->left;
-            return node_find_leaf_node(left_node, point, nodes);
+            return node_find_leaf_node(node->left, point, nodes);
         }
         else
         {
-            std::shared_ptr<RRSNode> right_node = node->right;
-            return node_find_leaf_node(right_node, point, nodes);
+            return node_find_leaf_node(node->right, point, nodes);
         }
     }
     else
