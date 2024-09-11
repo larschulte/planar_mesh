@@ -208,14 +208,6 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
             std::shared_ptr<Node>& node = face->node;
             // lock node
             omp_set_nest_lock(&node->omp_lock);
-            // if (!omp_test_nested_lock_with_log(node->omp_lock, "lock node", 3))
-            // {
-            //     std::cout << "size = "<< node->faces.size() << std::endl;
-            //     // check if the vertex->node is uninitialized
-            //     std::cout << node->box.min[0] << " " << node->box.min[1] << " " << node->box.min[2] << std::endl;
-            //     std::cout << storage_->get_queue_size() << std::endl;
-            //     throw std::runtime_error("write locked by other thread's find face storage node function");
-            // }
             // store node
             locked_bvh_nodes.emplace_back(node);
         }
