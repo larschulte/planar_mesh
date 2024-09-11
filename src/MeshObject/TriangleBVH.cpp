@@ -124,6 +124,7 @@ BVHReturnType TriangleBVH::node_intersection_search(const std::shared_ptr<Node>&
     // abort if can't lock node
     if (!node->custom_lock.set_read_lock())
     {
+        // std::cout << "X _ _ _ _ _ _ _" << std::endl;
         return BVHReturnType::ABORT;
     }
 
@@ -172,6 +173,7 @@ BVHReturnType TriangleBVH::node_intersection_search(const std::shared_ptr<Node>&
         if (!omp_test_nested_lock_with_log(node->faces[0]->get_surface()->lock, "face's surface lock")) // nest lock here since a ray could intersect two faces of the same surface in two nodes
         {
             node->custom_lock.unset_read_lock();
+            // std::cout << "_ _ X _ _ _ _ _" << std::endl;
             return BVHReturnType::ABORT;
         }
         
@@ -192,6 +194,7 @@ BVHReturnType TriangleBVH::node_find_leaf_node(const std::shared_ptr<Node>& node
     // abort if can't lock node
     if (!node->custom_lock.set_read_lock())
     {
+        // std::cout << "_ X _ _ _ _ _ _" << std::endl;
         return BVHReturnType::ABORT;
     }
 
@@ -233,6 +236,7 @@ BVHReturnType TriangleBVH::node_find_leaf_node(const std::shared_ptr<Node>& node
             if (!omp_test_nested_lock_with_log(node->faces[0]->get_surface()->lock, "vertex's surface lock")) 
             {
                 node->custom_lock.unset_read_lock();
+                // std::cout << "_ _ _ X _ _ _ _" << std::endl;
                 return BVHReturnType::ABORT;
             }
             
