@@ -10,6 +10,8 @@
 #include "MeshObject/MeshObject.hpp"
 #include "MeshObject/Settings.hpp"
 
+#include <mutex>
+
 class Vertex;
 class Edge;
 class Face;
@@ -78,4 +80,5 @@ private:
     std::map<std::shared_ptr<Vertex>, int> vertex_to_cloud_indices_map;
 
     std::atomic<unsigned int> num_of_concurrent_processes = 0;
+    std::mutex process_point_mutex;
 };

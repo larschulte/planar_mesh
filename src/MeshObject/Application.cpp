@@ -122,6 +122,8 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
     // current issues
     // 1. if we do the radius search before the result of add by intersection, boundary point created by deletion of face will not be included in the radius search
 
+    // std::unique_lock<std::mutex> lock(process_point_mutex);
+
     //
     // find new storage leaf node
     //
@@ -279,6 +281,7 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
     // unlock rrs nodes
     for (const std::shared_ptr<RRSNode>& node : locked_rrs_nodes) omp_unset_nest_lock(&node->omp_lock);
 
+    // lock.unlock();
 }
 
 template <typename PointT>
