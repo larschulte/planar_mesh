@@ -1043,14 +1043,15 @@ void Application<PointT>::loop()
             std::shared_ptr<GenericPoint> generic_point = nullptr;
             unsigned int total_points_in_queue = 0;
 
-            // Thread-safe access to pop points from the queue
-            #pragma omp critical
+            total_points_in_queue = storage_->get_queue_size();
+            if (total_points_in_queue > 0)
             {
-                total_points_in_queue = storage_->get_queue_size();
-                if (total_points_in_queue > 0)
+                generic_point = storage_->pop_from_queue();
+                if (settings_.log.step) 
                 {
-                    generic_point = storage_->pop_from_queue();
-                    if (settings_.log.step) std::cout << "Processing 1 / " << total_points_in_queue << " in queue of cloud " << ith_cloud << " by thread " << omp_get_thread_num() << std::endl;
+                    std::stringstream ss;
+                    ss << " | remaining point " << total_points_in_queue << " | Processing point " << generic_point->get_id() << " | by thread " << omp_get_thread_num() << std::endl;
+                    std::cout << ss.str();
                 }
             }
 
