@@ -158,7 +158,25 @@ BVHReturnType TriangleBVH::node_intersection_search(const std::shared_ptr<Node>&
         }
 
         // abort if can't lock face's surface
-        if (!omp_test_nested_lock_with_log(node->faces[0]->get_surface()->lock, "face's surface lock")) // nest lock here since a ray could intersect two faces of the same surface in two nodes
+        const std::shared_ptr<Face> face = node->faces[0];
+
+        // abort if face is nullptr
+        if (face == nullptr)
+        {
+            omp_unset_nest_lock(&node->omp_lock);
+            return BVHReturnType::ABORT;
+        }
+        
+        const std::shared_ptr<Surface> surface = face->get_surface();
+
+        // abort if surface if nullptr
+        if (surface == nullptr)
+        {
+            omp_unset_nest_lock(&node->omp_lock);
+            return BVHReturnType::ABORT;
+        }
+        
+        if (!omp_test_nest_lock(&surface->lock)) // nest lock here since a ray could intersect two faces of the same surface in two nodes
         {
             omp_unset_nest_lock(&node->omp_lock);
             // std::cout << "_ _ X _ _ _ _ _" << std::endl;
@@ -203,7 +221,26 @@ BVHReturnType TriangleBVH::node_find_leaf_node(const std::shared_ptr<Node>& node
         }
         else
         {
-            if (!omp_test_nested_lock_with_log(node->faces[0]->get_surface()->lock, "vertex's surface lock")) 
+            // abort if can't lock face's surface
+            const std::shared_ptr<Face> face = node->faces[0];
+
+            // abort if face is nullptr
+            if (face == nullptr)
+            {
+                omp_unset_nest_lock(&node->omp_lock);
+                return BVHReturnType::ABORT;
+            }
+
+            const std::shared_ptr<Surface> surface = face->get_surface();
+
+            // abort if surface if nullptr
+            if (surface == nullptr)
+            {
+                omp_unset_nest_lock(&node->omp_lock);
+                return BVHReturnType::ABORT;
+            }
+            
+            if (!omp_test_nest_lock(&surface->lock)) 
             {
                 omp_unset_nest_lock(&node->omp_lock);
                 // std::cout << "_ _ _ X _ _ _ _" << std::endl;

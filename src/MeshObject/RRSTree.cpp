@@ -236,6 +236,14 @@ RRSReturnType RRSTree::node_reverse_radius_search(const std::shared_ptr<RRSNode>
 
         // abort if can't lock vertex's surface
         const std::shared_ptr<Vertex> boundary_vertex = node->boundary_vertices[0];
+
+        // abort if vertex is nullptr
+        if (boundary_vertex == nullptr)
+        {
+            omp_unset_nest_lock(&node->omp_lock);
+            return RRSReturnType::ABORT;
+        }
+
         const std::shared_ptr<Surface> surface = boundary_vertex->get_surface_check();
 
         // abort if surface is null
@@ -289,6 +297,14 @@ RRSReturnType RRSTree::node_find_leaf_node(const std::shared_ptr<RRSNode>& node,
         else
         {
             const std::shared_ptr<Vertex> boundary_vertex = node->boundary_vertices[0];
+
+            // abort if vertex is nullptr
+            if (boundary_vertex == nullptr)
+            {
+                omp_unset_nest_lock(&node->omp_lock);
+                return RRSReturnType::ABORT;
+            }
+
             const std::shared_ptr<Surface> surface = boundary_vertex->get_surface_check();
 
             // abort if surface is null
