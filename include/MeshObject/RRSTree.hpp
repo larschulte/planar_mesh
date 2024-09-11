@@ -31,7 +31,7 @@ struct RRSNode
     int split_axis;
     std::shared_ptr<RRSNode> left;
     std::shared_ptr<RRSNode> right;
-    bool isLeaf() const;
+    std::atomic<bool> isLeaf = true;
     std::vector<std::shared_ptr<Vertex>> boundary_vertices;
 
     mutable custom::custom_lock custom_lock;

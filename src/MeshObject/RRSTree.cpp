@@ -49,11 +49,6 @@ int RRSBoundingBox::get_longest_axis()
     return axis;
 }
 
-bool RRSNode::isLeaf() const
-{
-    return !left && !right;
-}
-
 double RRSTree::sort_boundary_vertex_list_in_axis(std::vector<std::shared_ptr<Vertex>>& boundary_vertex_list, int axis, int start, int mid, int end)
 {
     std::sort(boundary_vertex_list.begin() + start, boundary_vertex_list.begin() + end, 
@@ -83,6 +78,7 @@ void RRSTree::convert_leaf_to_branch(const std::shared_ptr<RRSNode>& node)
     node->left = build_node(node->boundary_vertices, start, mid);
     node->right = build_node(node->boundary_vertices, mid, end);
     node->boundary_vertices.clear();
+    node->isLeaf = false;
 }
 
 std::shared_ptr<RRSNode> RRSTree::build_node(const std::vector<std::shared_ptr<Vertex>>& boundary_vertex_list, const int& start, const int& end)
@@ -114,7 +110,7 @@ void RRSTree::node_add_vertex(const std::shared_ptr<RRSNode>& node, const std::s
 {
     expand_node_box(node, boundary_vertex);
 
-    if (!node->isLeaf())
+    if (!node->isLeaf)
     {    
         if (boundary_vertex->get_position()[node->split_axis] < node->split_value)
         {
@@ -140,7 +136,7 @@ void RRSTree::node_increase_radius(const std::shared_ptr<RRSNode>& node, const s
 {
     expand_node_box(node, boundary_vertex);
 
-    if (!node->isLeaf())
+    if (!node->isLeaf)
     {
         if (boundary_vertex->get_position()[node->split_axis] < node->split_value)
         {
@@ -155,7 +151,7 @@ void RRSTree::node_increase_radius(const std::shared_ptr<RRSNode>& node, const s
 
 bool RRSTree::node_delete_vertex(const std::shared_ptr<RRSNode>& node, const std::shared_ptr<Vertex>& boundary_vertex)
 {
-    if (!node->isLeaf())
+    if (!node->isLeaf)
     {
         if (boundary_vertex->get_position()[node->split_axis] < node->split_value)
         {
@@ -203,7 +199,7 @@ RRSReturnType RRSTree::node_reverse_radius_search(const std::shared_ptr<RRSNode>
     }
 
     // branch if not leaf
-    if (!node->isLeaf())
+    if (!node->isLeaf)
     {
         std::shared_ptr<RRSNode> left_node = node->left;
         std::shared_ptr<RRSNode> right_node = node->right;
@@ -265,7 +261,7 @@ RRSReturnType RRSTree::node_find_leaf_node(const std::shared_ptr<RRSNode>& node,
     }
     
     // branch if not leaf
-    if (!node->isLeaf())
+    if (!node->isLeaf)
     {
         if (point[node->split_axis] < node->split_value)
         {
@@ -322,7 +318,7 @@ RRSReturnType RRSTree::node_find_leaf_node(const std::shared_ptr<RRSNode>& node,
 
 void RRSTree::node_flattern(const std::shared_ptr<RRSNode>& node, std::vector<std::shared_ptr<Vertex>>& flatten_list)
 {
-    if (!node->isLeaf())
+    if (!node->isLeaf)
     {
         node_flattern(node->left, flatten_list);
         node_flattern(node->right, flatten_list);
@@ -342,7 +338,7 @@ std::vector<std::shared_ptr<Vertex>> RRSTree::compute_vertices_list()
 
 void RRSTree::node_print(const std::shared_ptr<RRSNode>& node, int level) const
 {
-    if (!node->isLeaf())
+    if (!node->isLeaf)
     {
         node_print(node->left, level+1);
         node_print(node->right, level+1);
