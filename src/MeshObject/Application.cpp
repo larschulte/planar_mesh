@@ -210,7 +210,8 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
                 std::cout << "size = "<< node->faces.size() << std::endl;
                 // check if the vertex->node is uninitialized
                 std::cout << node->box.min[0] << " " << node->box.min[1] << " " << node->box.min[2] << std::endl;
-                throw std::runtime_error("write locked by other thread's find storage node function");
+                std::cout << storage_->get_queue_size() << std::endl;
+                throw std::runtime_error("write locked by other thread's find face storage node function");
             }
             // store node
             locked_bvh_nodes.emplace_back(node);
@@ -229,7 +230,8 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
                 std::cout << "size = "<< node->boundary_vertices.size() << std::endl;
                 // check if the vertex->node is uninitialized
                 std::cout << node->box.min[0] << " " << node->box.min[1] << " " << node->box.min[2] << std::endl;
-                throw std::runtime_error("write locked by other thread's find storage node function");
+                std::cout << storage_->get_queue_size() << std::endl;
+                throw std::runtime_error("write locked by other thread's find rrs storage node function");
             }
             // store node
             locked_rrs_nodes.emplace_back(node);
