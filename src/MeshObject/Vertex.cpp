@@ -326,6 +326,11 @@ bool Vertex::is_boundary() const
     return is_boundary_;
 }
 
+bool Vertex::is_searchable() const
+{
+    return is_searchable_;
+}
+
 void Vertex::connect(const std::shared_ptr<Edge>& edge)
 {
     // check input

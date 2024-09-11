@@ -58,6 +58,7 @@ public:
 
     bool is_expired() const;
     bool is_boundary() const;
+    bool is_searchable() const;
 
     void connect(const std::shared_ptr<Edge>& edge);
     void connect(const std::shared_ptr<Face>& face);
