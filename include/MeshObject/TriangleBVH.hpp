@@ -84,4 +84,6 @@ public:
     BVHReturnType tree_intersection_search(Eigen::Vector3d origin, Eigen::Vector3d endPoint, std::vector<std::shared_ptr<Face>>& faces_intersected) const;
     BVHReturnType tree_find_leaf_node(const Eigen::Vector3d& origin, const Eigen::Vector3d& endPoint, std::vector<std::shared_ptr<Node>>& nodes) const;
     void tree_print() const;
+
+    unsigned int get_size() const;
 };

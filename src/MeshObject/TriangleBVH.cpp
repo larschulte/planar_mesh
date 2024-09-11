@@ -462,3 +462,8 @@ void TriangleBVH::tree_print() const
 {
     node_print(root, 0);
 }
+
+unsigned int TriangleBVH::get_size() const
+{
+    return face_size;
+}
