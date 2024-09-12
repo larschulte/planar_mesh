@@ -295,6 +295,30 @@ void Storage::add_points_in_smaller_repeated_queues_to_main_queue()
     }
 }
 
+void Storage::add_points_in_smaller_abort_queues_to_main_queue()
+{
+    bool any_non_empty = true;
+
+    // Keep looping until all queues are empty
+    while (any_non_empty)
+    {
+        any_non_empty = false; // Reset flag to check if any queue still has elements
+
+        // Iterate over each smaller abort queue
+        for (std::queue<std::shared_ptr<GenericPoint>> &smaller_abort_queue : smaller_abort_queues_)
+        {
+            // If the queue is not empty, process one element
+            if (!smaller_abort_queue.empty())
+            {
+                // Move the first element of the smaller queue to the main queue
+                main_queue_.push(smaller_abort_queue.front());
+                smaller_abort_queue.pop(); // Remove the processed element
+                any_non_empty = true;      // Indicate that there are still elements to process
+            }
+        }
+    }
+}
+
 void Storage::split_main_queue_into_smaller_queues()
 {
     // resize to num_threads
@@ -364,6 +388,11 @@ void Storage::add_to_queue(const std::shared_ptr<Vertex>& vertex)
     }
 }
 
+void Storage::add_to_abort_queue(const std::shared_ptr<GenericPoint>& generic_point) 
+{
+    smaller_abort_queues_[omp_get_thread_num()].push(generic_point);
+}
+
 std::shared_ptr<GenericPoint> Storage::pop_from_queue()
 {
     if (smaller_queues_[omp_get_thread_num()].empty()) return nullptr;
@@ -384,6 +413,16 @@ unsigned int Storage::get_repeated_queue_size()
     for (const std::queue<std::shared_ptr<GenericPoint>>& repeated_queue : smaller_repeated_queues_)
     {
         size += repeated_queue.size();
+    }
+    return size;
+}
+
+unsigned int Storage::get_abort_queue_size()
+{
+    unsigned int size = 0;
+    for (const std::queue<std::shared_ptr<GenericPoint>>& abort_queue : smaller_abort_queues_)
+    {
+        size += abort_queue.size();
     }
     return size;
 }

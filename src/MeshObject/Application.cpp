@@ -143,6 +143,7 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
         for (const std::shared_ptr<Node>& node : locked_bvh_nodes) omp_unset_nest_lock(&node->omp_lock);
         for (const std::shared_ptr<RRSNode>& node : locked_rrs_nodes) omp_unset_nest_lock(&node->omp_lock);
         storage_->add_to_queue(generic_point);
+        // storage_->add_to_abort_queue(generic_point);
         return;
     }
 
@@ -158,6 +159,7 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
         for (const std::shared_ptr<Node>& node : locked_bvh_nodes) omp_unset_nest_lock(&node->omp_lock);
         for (const std::shared_ptr<RRSNode>& node : locked_rrs_nodes) omp_unset_nest_lock(&node->omp_lock);
         storage_->add_to_queue(generic_point);
+        // storage_->add_to_abort_queue(generic_point);
         return;
     }
 
@@ -173,6 +175,7 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
         for (const std::shared_ptr<Node>& node : locked_bvh_nodes) omp_unset_nest_lock(&node->omp_lock);
         for (const std::shared_ptr<RRSNode>& node : locked_rrs_nodes) omp_unset_nest_lock(&node->omp_lock);
         storage_->add_to_queue(generic_point);
+        // storage_->add_to_abort_queue(generic_point);
         return;
     }
 
@@ -188,6 +191,7 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
         for (const std::shared_ptr<Node>& node : locked_bvh_nodes) omp_unset_nest_lock(&node->omp_lock);
         for (const std::shared_ptr<RRSNode>& node : locked_rrs_nodes) omp_unset_nest_lock(&node->omp_lock);
         storage_->add_to_queue(generic_point);
+        // storage_->add_to_abort_queue(generic_point);
         return;
     }
 
@@ -1035,6 +1039,8 @@ void Application<PointT>::loop()
     storage_->split_main_queue_into_smaller_queues();
 
     // process all points in the queue
+    // while (true)
+    // {
     #pragma omp parallel num_threads(settings_.num_threads)
     {
         while (true)
@@ -1061,6 +1067,16 @@ void Application<PointT>::loop()
             process_point(generic_point);
         }
     }
+
+    //     // check if abort queue is empty
+    //     if (storage_->get_abort_queue_size() == 0) break;
+
+    //     // add all points from the abort queue to the main queue
+    //     storage_->add_points_in_smaller_abort_queues_to_main_queue();
+
+    //     // split the queue into smaller queues
+    //     storage_->split_main_queue_into_smaller_queues();
+    // }
 
     // print repeated queue size
     if (settings_.log.step) std::cout << "==================================================================== repeated queue size: " << storage_->get_repeated_queue_size() << std::endl;

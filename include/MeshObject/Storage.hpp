@@ -48,16 +48,20 @@ public: // to user
     void delete_interior_point(const std::shared_ptr<InteriorPoint>& interior_point);
 
     void add_to_main_queue(const Eigen::Vector3d& position, const Eigen::Vector3d& origin);
-    void add_points_in_smaller_repeated_queues_to_main_queue();
     void split_main_queue_into_smaller_queues();
+
+    void add_points_in_smaller_repeated_queues_to_main_queue();
+    void add_points_in_smaller_abort_queues_to_main_queue();
 
     void add_to_queue(const Eigen::Vector3d& position, const Eigen::Vector3d& origin);
     void add_to_queue(const std::shared_ptr<GenericPoint>& generic_point);
     void add_to_queue(const std::shared_ptr<InteriorPoint>& interior_point);
     void add_to_queue(const std::shared_ptr<Vertex>& vertex);
+    void add_to_abort_queue(const std::shared_ptr<GenericPoint>& generic_point);
     std::shared_ptr<GenericPoint> pop_from_queue();
     unsigned int get_queue_size();
     unsigned int get_repeated_queue_size();
+    unsigned int get_abort_queue_size();
 
     bool can_reverse_radius_search();
     RRSReturnType reverse_radius_search(const Eigen::Vector3d& point, std::vector<std::shared_ptr<Vertex>>& result);
@@ -116,6 +120,7 @@ private:
     std::queue<std::shared_ptr<GenericPoint>> main_repeated_queue_;
     std::vector<std::queue<std::shared_ptr<GenericPoint>>> smaller_queues_;
     std::vector<std::queue<std::shared_ptr<GenericPoint>>> smaller_repeated_queues_;
+    std::vector<std::queue<std::shared_ptr<GenericPoint>>> smaller_abort_queues_;
     unsigned int num_delete_before_put_to_repeated_queue_ = 2;
 
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertices_;
