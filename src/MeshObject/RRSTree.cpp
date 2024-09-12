@@ -75,9 +75,17 @@ void RRSNode::recursive_expand_parent_box()
 {
     if (parent)
     {
-        parent->box.expand(box.min);
-        parent->box.expand(box.max);
-        parent->recursive_expand_parent_box();
+        // expanded
+        const bool expanded = parent->box.expand(box.min) || parent->box.expand(box.max);
+
+        // recursive update
+        if (expanded)
+        {
+            parent->recursive_expand_parent_box();
+        }
+    }
+}
+
     }
 }
 
