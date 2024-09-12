@@ -324,18 +324,27 @@ void Storage::split_main_queue_into_smaller_queues()
     // resize to num_threads
     smaller_queues_.resize(settings_.num_threads);
     smaller_repeated_queues_.resize(settings_.num_threads);
+    smaller_abort_queues_.resize(settings_.num_threads);
 
-    // equally divide main queue into smaller queues
-    while (!main_queue_.empty())
-    {
-        for (std::queue<std::shared_ptr<GenericPoint>>& smaller_queue : smaller_queues_)
-        {
-            if (main_queue_.empty()) break;
-            smaller_queue.push(main_queue_.front());
-            main_queue_.pop();
+    // Calculate base number of points per queue
+    unsigned int total_points = main_queue_.size();
+    unsigned int average = total_points / settings_.num_threads;  // Average points
+    unsigned int remainder = total_points % settings_.num_threads;        // Extra points to distribute
+
+    for (unsigned int i = 0; i < settings_.num_threads; ++i) {
+        // Calculate the number of points for this thread
+        unsigned int num_points = average + (i < remainder ? 1 : 0);
+
+        // Move points from main_queue_ to smaller_queues_[i]
+        for (unsigned int j = 0; j < num_points; ++j) {
+            if (!main_queue_.empty()) {
+                smaller_queues_[i].push(main_queue_.front());  // Move point to the smaller queue
+                main_queue_.pop();  // Remove the point from main_queue_
+            }
         }
     }
 }
+
 
 void Storage::add_to_queue(const Eigen::Vector3d& position, const Eigen::Vector3d& origin) 
 {
