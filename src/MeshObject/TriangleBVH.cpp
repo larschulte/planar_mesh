@@ -118,6 +118,53 @@ void Node::recursive_unlock()
     }
 }
 
+void Node::recursive_expand_parent_box()
+{
+    if (parent)
+    {
+        // expanded
+        const bool expanded = parent->box.expand(box.min) || parent->box.expand(box.max);
+
+        // recursive update
+        if (expanded)
+        {
+            parent->recursive_expand_parent_box();
+        }
+    }
+}
+
+void Node::recursive_shrink_parent_box()
+{
+    if (parent)
+    {
+        // old parent box
+        BoundingBox old_parent_box = parent->box;
+
+        // new parent box
+        BoundingBox new_parent_box = BoundingBox();
+        // expand if not nan
+        if (!std::isnan(parent->left->box.min[0])) new_parent_box.expand(parent->left->box.min);
+        if (!std::isnan(parent->left->box.max[0])) new_parent_box.expand(parent->left->box.max);
+        if (!std::isnan(parent->right->box.min[0])) new_parent_box.expand(parent->right->box.min);
+        if (!std::isnan(parent->right->box.max[0])) new_parent_box.expand(parent->right->box.max);
+                
+        // shrunk
+        const bool shrunk = new_parent_box.min[0] > old_parent_box.min[0] &&
+                            new_parent_box.min[1] > old_parent_box.min[1] &&
+                            new_parent_box.min[2] > old_parent_box.min[2] &&
+                            new_parent_box.max[0] < old_parent_box.max[0] &&
+                            new_parent_box.max[1] < old_parent_box.max[1] &&
+                            new_parent_box.max[2] < old_parent_box.max[2];
+
+        // recursive update
+        if (shrunk) 
+        {
+            parent->box = new_parent_box;
+            parent->recursive_shrink_parent_box();
+        }
+    }
+}
+
 double TriangleBVH::sort_face_list_in_axis(std::vector<std::shared_ptr<Face>>& face_list, int axis, int start, int mid, int end)
 {
     std::sort(face_list.begin() + start, face_list.begin() + end, 

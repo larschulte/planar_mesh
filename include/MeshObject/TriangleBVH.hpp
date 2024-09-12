@@ -46,6 +46,8 @@ struct Node
     bool locked_children = false;
 
     void recursive_unlock();
+    void recursive_expand_parent_box();
+    void recursive_shrink_parent_box();
 };
 
 enum class BVHReturnType
