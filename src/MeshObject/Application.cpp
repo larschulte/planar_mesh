@@ -224,6 +224,7 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
     }
 
     num_of_concurrent_processes++;
+    total_processed_points++;
     
     // // output number of concurrent threads that reaches this point
     if (settings_.log.num_of_concurrent_processes)
@@ -233,6 +234,14 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
             << " | processing point " << generic_point->get_id()
             << " | by thread " << omp_get_thread_num()
             << " | BVH tree size = " << storage_->get_bvh_size()
+            << std::endl;
+        std::cout << ss.str();
+    }
+
+    if (settings_.log.total_processed_points)
+    {
+        std::stringstream ss;
+        ss  << " | total processed points = " << total_processed_points
             << std::endl;
         std::cout << ss.str();
     }

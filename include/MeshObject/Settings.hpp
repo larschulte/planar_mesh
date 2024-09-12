@@ -17,6 +17,7 @@ struct LOG
     bool merge_surface;
     bool duplicated_point;
     bool num_of_concurrent_processes;
+    bool total_processed_points;
 };
 
 struct Settings 
