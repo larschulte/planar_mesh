@@ -76,6 +76,9 @@ void Vertex::delete_()
     for (const auto& face : faces) disconnect(face);
     if (surface_) disconnect(surface_);
 
+    // shrink bounding box
+    set_reverse_radius_search_radius(0);
+
     // remove from rrs tree
     storage_->remove_searchable_vertex(shared_from_this());
     is_searchable_ = false;
