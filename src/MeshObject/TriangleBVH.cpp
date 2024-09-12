@@ -385,8 +385,13 @@ void TriangleBVH::tree_delete_face(std::shared_ptr<Face> face)
     // decrement face size
     face_size--;
     
-    // delete from BVH
-    if (!node_delete_face(root, face)) throw std::runtime_error("Face not found in BVH.");
+    // get face's node reference
+    const std::shared_ptr<Node>& node = face->node;
+    if (node == nullptr) throw std::invalid_argument("Vertex not found in BVH.");
+
+    // delete from node
+    node->faces.erase(std::remove(node->faces.begin(), node->faces.end(), face), node->faces.end());
+    face->node = nullptr;
 }
 
 TriangleBVH::TriangleBVH()
