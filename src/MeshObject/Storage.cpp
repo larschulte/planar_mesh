@@ -489,9 +489,9 @@ RRSReturnType Storage::reverse_radius_search(const std::shared_ptr<Vertex>& vert
     return reverse_radius_search(vertex->get_position(), result);
 }
 
-RRSReturnType Storage::reverse_radius_search_find_node(const Eigen::Vector3d& point, std::vector<std::shared_ptr<RRSNode>>& nodes)
+RRSReturnType Storage::reverse_radius_search_find_node(const Eigen::Vector3d& point, std::shared_ptr<RRSNode>& return_node)
 {
-    return rrs_tree_.tree_find_leaf_node(point, nodes);
+    return rrs_tree_.tree_find_leaf_node(point, return_node);
 }
 
 // face intersection search
@@ -505,9 +505,9 @@ BVHReturnType Storage::face_intersection_search(const std::shared_ptr<GenericPoi
     return face_intersection_search(generic_point->get_origin(), generic_point->get_position(), result);
 }
 
-BVHReturnType Storage::face_intersection_search_find_node(const Eigen::Vector3d& origin, const Eigen::Vector3d& point, std::vector<std::shared_ptr<Node>>& nodes)
+BVHReturnType Storage::face_intersection_search_find_node(const Eigen::Vector3d& origin, const Eigen::Vector3d& point, std::shared_ptr<Node>& return_node)
 {
-    return triangle_bvh_.tree_find_leaf_node(origin, point, nodes);
+    return triangle_bvh_.tree_find_leaf_node(origin, point, return_node);
 }
 
 const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& Storage::get_vertices() const

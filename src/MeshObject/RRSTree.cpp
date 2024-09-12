@@ -268,49 +268,57 @@ RRSReturnType RRSTree::node_reverse_radius_search(const std::shared_ptr<RRSNode>
     }
 }
 
-RRSReturnType RRSTree::node_find_leaf_node(const std::shared_ptr<RRSNode>& node, const Eigen::Vector3d& point, std::vector<std::shared_ptr<RRSNode>>& nodes)
+RRSReturnType RRSTree::node_find_leaf_node(const std::shared_ptr<RRSNode>& node, const Eigen::Vector3d& point, std::shared_ptr<RRSNode>& return_node)
 {    
     // branch if not leaf
     if (!node->isLeaf)
     {
         if (point[node->split_axis] < node->split_value)
         {
-            return node_find_leaf_node(node->left, point, nodes);
+            return node_find_leaf_node(node->left, point, return_node);
         }
         else
         {
-            return node_find_leaf_node(node->right, point, nodes);
+            return node_find_leaf_node(node->right, point, return_node);
         }
     }
     else
     {
+        // abort if can't lock leaf node
         if (!omp_test_nest_lock(&node->omp_lock))
         {
             // std::cout << "_ _ _ _ _ X _ _" << std::endl;
             return RRSReturnType::ABORT;
         }
 
+        // return the leaf node locked if no vertex
         const bool no_vertex = node->boundary_vertices.size() == 0;
         if (no_vertex)
         {
-            nodes.push_back(node);
+            return_node = node;
             return RRSReturnType::INTERSECTED;
         }
-        else
-        {
-            const std::shared_ptr<Vertex>& boundary_vertex = node->boundary_vertices[0];
-            const std::shared_ptr<Surface>& surface = boundary_vertex->get_surface_check();
-            if (!omp_test_nest_lock(&surface->lock)) 
-            {
-                omp_unset_nest_lock(&node->omp_lock);
-                // std::cout << "_ _ _ _ _ _ _ X" << std::endl;
-                return RRSReturnType::ABORT;
-            }
+        
+        // if there is vertex, return new empty leaf node
+        
+        // temperary vertex
+        std::shared_ptr<Vertex> temp_vertex = std::make_shared<Vertex>(); 
+        temp_vertex->temp_initialize(point, 0);
 
-            // return
-            nodes.push_back(node);
-            return RRSReturnType::INTERSECTED;
-        }
+        //  add and branch
+        node->boundary_vertices.push_back(temp_vertex);
+        convert_leaf_to_branch(node); // this may cause error in Application when locking surface's node
+
+        // delete
+        return_node = point[node->split_axis] < node->split_value ? node->left : node->right;
+        return_node->boundary_vertices.pop_back();
+
+        // locks
+        omp_set_nest_lock(&return_node->omp_lock);
+        node->recursive_unlock();
+
+        // return
+        return RRSReturnType::INTERSECTED;
     }
 }
 
@@ -422,9 +430,9 @@ RRSReturnType RRSTree::tree_reverse_radius_search(const Eigen::Vector3d& point, 
     return node_reverse_radius_search(root, point, search_results);
 }
 
-RRSReturnType RRSTree::tree_find_leaf_node(const Eigen::Vector3d& point, std::vector<std::shared_ptr<RRSNode>>& nodes)
+RRSReturnType RRSTree::tree_find_leaf_node(const Eigen::Vector3d& point, std::shared_ptr<RRSNode>& return_node)
 {
-    return node_find_leaf_node(root, point, nodes);
+    return node_find_leaf_node(root, point, return_node);
 }
 
 void RRSTree::tree_increase_radius(std::shared_ptr<Vertex> boundary_vertex)

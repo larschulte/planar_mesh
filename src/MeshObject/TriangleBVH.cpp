@@ -184,7 +184,7 @@ BVHReturnType TriangleBVH::node_intersection_search(const std::shared_ptr<Node>&
     }
 }
 
-BVHReturnType TriangleBVH::node_find_leaf_node(const std::shared_ptr<Node>& node, const Eigen::Vector3d& orig, const Eigen::Vector3d& endPoint, std::vector<std::shared_ptr<Node>>& nodes) const
+BVHReturnType TriangleBVH::node_find_leaf_node(const std::shared_ptr<Node>& node, const Eigen::Vector3d& orig, const Eigen::Vector3d& endPoint, std::shared_ptr<Node>& return_node)
 {
     // branch if not leaf
     if (!node->isLeaf)
@@ -192,11 +192,11 @@ BVHReturnType TriangleBVH::node_find_leaf_node(const std::shared_ptr<Node>& node
         // release lock if not leaf
         if (endPoint[node->split_axis] < node->split_value)
         {
-            return node_find_leaf_node(node->left, orig, endPoint, nodes);
+            return node_find_leaf_node(node->left, orig, endPoint, return_node);
         }
         else 
         {
-            return node_find_leaf_node(node->right, orig, endPoint, nodes);
+            return node_find_leaf_node(node->right, orig, endPoint, return_node);
         }
     }
     else
@@ -208,28 +208,34 @@ BVHReturnType TriangleBVH::node_find_leaf_node(const std::shared_ptr<Node>& node
             return BVHReturnType::ABORT;
         }
         
+        // return the leaf node locked if no face
         const bool no_face = node->faces.size() == 0;
         if (no_face)
         {
-            nodes.push_back(node);
+            return_node = node;
             return BVHReturnType::INTERSECTED;
         }
-        else
-        {
-            // abort if can't lock face's surface
-            const std::shared_ptr<Face>& face = node->faces[0];
-            const std::shared_ptr<Surface>& surface = face->get_surface();
-            if (!omp_test_nest_lock(&surface->lock)) 
-            {
-                omp_unset_nest_lock(&node->omp_lock);
-                // std::cout << "_ _ _ X _ _ _ _" << std::endl;
-                return BVHReturnType::ABORT;
-            }
+        
+        // if there is face, return new empty leaf node
 
-            // return
-            nodes.push_back(node);
-            return BVHReturnType::INTERSECTED;
-        }
+        // temperary face
+        std::shared_ptr<Face> temp_face = std::make_shared<Face>(); 
+        temp_face->temp_initialize(endPoint);
+
+        //  add and branch
+        node->faces.push_back(temp_face);
+        convert_leaf_to_branch(node); // this may cause error in Application when locking surface's node
+
+        // delete
+        return_node = endPoint[node->split_axis] < node->split_value ? node->left : node->right;
+        return_node->faces.pop_back();
+
+        // locks
+        omp_set_nest_lock(&return_node->omp_lock);
+        node->recursive_unlock();
+
+        // return
+        return BVHReturnType::INTERSECTED;
     }
 }
 
@@ -448,9 +454,9 @@ BVHReturnType TriangleBVH::tree_intersection_search(Eigen::Vector3d origin, Eige
     return node_intersection_search(root, origin, dir, faces_intersected);
 }
 
-BVHReturnType TriangleBVH::tree_find_leaf_node(const Eigen::Vector3d& origin, const Eigen::Vector3d& endPoint, std::vector<std::shared_ptr<Node>>& nodes) const
+BVHReturnType TriangleBVH::tree_find_leaf_node(const Eigen::Vector3d& origin, const Eigen::Vector3d& endPoint, std::shared_ptr<Node>& return_node)
 {
-    return node_find_leaf_node(root, origin, endPoint, nodes);
+    return node_find_leaf_node(root, origin, endPoint, return_node);
 }
 
 void TriangleBVH::tree_print() const

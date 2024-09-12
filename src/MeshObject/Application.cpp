@@ -131,10 +131,9 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
     std::vector<std::shared_ptr<RRSNode>> locked_rrs_nodes;
     std::vector<std::shared_ptr<Surface>> locked_surfaces;
 
-    std::vector<std::shared_ptr<Node>> bvh_storage_node;
+    std::shared_ptr<Node> bvh_storage_node;
     BVHReturnType BVH_storage_return = storage_->face_intersection_search_find_node(generic_point->get_origin(), generic_point->get_position(), bvh_storage_node);    
-    locked_bvh_nodes.insert(locked_bvh_nodes.end(), bvh_storage_node.begin(), bvh_storage_node.end()); // store the locked nodes
-    for (const std::shared_ptr<Node>& node : bvh_storage_node) if (node->faces.size() > 0) locked_surfaces.emplace_back(node->faces[0]->get_surface()); // store the surface
+    if (BVH_storage_return == BVHReturnType::INTERSECTED) locked_bvh_nodes.push_back(bvh_storage_node); // store the locked nodes
 
     if (BVH_storage_return == BVHReturnType::ABORT)
     {
@@ -147,10 +146,9 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
         return;
     }
 
-    std::vector<std::shared_ptr<RRSNode>> rrs_storage_node;
+    std::shared_ptr<RRSNode> rrs_storage_node;
     RRSReturnType RRS_storage_return = storage_->reverse_radius_search_find_node(generic_point->get_position(), rrs_storage_node);
-    locked_rrs_nodes.insert(locked_rrs_nodes.end(), rrs_storage_node.begin(), rrs_storage_node.end()); // store the locked nodes
-    for (const std::shared_ptr<RRSNode>& node : rrs_storage_node) if (node->boundary_vertices.size() > 0) locked_surfaces.emplace_back(node->boundary_vertices[0]->get_surface()); // store the surface
+    if (RRS_storage_return == RRSReturnType::INTERSECTED) locked_rrs_nodes.push_back(rrs_storage_node); // store the locked nodes
 
     if (RRS_storage_return == RRSReturnType::ABORT)
     {
@@ -211,7 +209,7 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
             // get node
             std::shared_ptr<Node>& node = face->node;
             // lock node
-            omp_set_nest_lock(&node->omp_lock);
+            while (!omp_test_nest_lock(&node->omp_lock)){}; // wait until lock
             // store node
             locked_bvh_nodes.emplace_back(node);
         }
@@ -221,7 +219,7 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
             // get node
             std::shared_ptr<RRSNode>& node = vertex->node;            
             // lock node
-            omp_set_nest_lock(&node->omp_lock);
+            while (!omp_test_nest_lock(&node->omp_lock)){}; // wait until lock
             // store node
             locked_rrs_nodes.emplace_back(node);
         }
