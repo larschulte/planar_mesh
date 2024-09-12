@@ -86,6 +86,34 @@ void RRSNode::recursive_expand_parent_box()
     }
 }
 
+void RRSNode::recursive_shrink_parent_box()
+{
+    if (parent)
+    {
+        // old parent box
+        RRSBoundingBox old_parent_box = parent->box;
+
+        // new parent box
+        RRSBoundingBox new_parent_box = RRSBoundingBox();
+        new_parent_box.expand(parent->left->box.min);
+        new_parent_box.expand(parent->left->box.max);
+        new_parent_box.expand(parent->right->box.min);
+        new_parent_box.expand(parent->right->box.max);
+        
+        // shrunk
+        const bool shrunk = new_parent_box.min[0] > old_parent_box.min[0] &&
+                            new_parent_box.min[1] > old_parent_box.min[1] &&
+                            new_parent_box.min[2] > old_parent_box.min[2] &&
+                            new_parent_box.max[0] < old_parent_box.max[0] &&
+                            new_parent_box.max[1] < old_parent_box.max[1] &&
+                            new_parent_box.max[2] < old_parent_box.max[2];
+
+        // recursive update
+        if (shrunk) 
+        {
+            parent->box = new_parent_box;
+            parent->recursive_shrink_parent_box();
+        }
     }
 }
 
