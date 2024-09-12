@@ -95,10 +95,10 @@ void RRSNode::recursive_shrink_parent_box()
 
         // new parent box
         RRSBoundingBox new_parent_box = RRSBoundingBox();
-        new_parent_box.expand(parent->left->box.min);
-        new_parent_box.expand(parent->left->box.max);
-        new_parent_box.expand(parent->right->box.min);
-        new_parent_box.expand(parent->right->box.max);
+        if (!std::isnan(parent->left->box.min[0])) new_parent_box.expand(parent->left->box.min);
+        if (!std::isnan(parent->left->box.max[0])) new_parent_box.expand(parent->left->box.max);
+        if (!std::isnan(parent->right->box.min[0])) new_parent_box.expand(parent->right->box.min);
+        if (!std::isnan(parent->right->box.max[0])) new_parent_box.expand(parent->right->box.max);
         
         // shrunk
         const bool shrunk = new_parent_box.min[0] > old_parent_box.min[0] &&
