@@ -19,7 +19,7 @@ struct RRSBoundingBox
     Eigen::Vector3d min;
     Eigen::Vector3d max;
     RRSBoundingBox();
-    void expand(const Eigen::Vector3d& point);
+    bool expand(const Eigen::Vector3d& point);
     bool contains(const Eigen::Vector3d& point);
     int get_longest_axis();
 };

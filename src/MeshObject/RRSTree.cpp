@@ -27,10 +27,19 @@ RRSBoundingBox::RRSBoundingBox() :
     min(Eigen::Vector3d::Constant(std::numeric_limits<double>::infinity())),
     max(Eigen::Vector3d::Constant(-std::numeric_limits<double>::infinity())) {}
 
-void RRSBoundingBox::expand(const Eigen::Vector3d& point)
+bool RRSBoundingBox::expand(const Eigen::Vector3d& point)
 {
+    Eigen::Vector3d oldMin = min;
+    Eigen::Vector3d oldMax = max;
+
+    // Update min and max to include the new point
     min = min.cwiseMin(point);
     max = max.cwiseMax(point);
+
+    // Check if min or max changed
+    bool changed = (min != oldMin || max != oldMax);
+    
+    return changed;
 }
 
 bool RRSBoundingBox::contains(const Eigen::Vector3d& point)
