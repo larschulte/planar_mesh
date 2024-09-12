@@ -9,6 +9,7 @@
 #include "MeshObject/GenericPoint.hpp"
 #include <set>
 #include "utilities/covariance_math.hpp"
+#include "MeshObject/RRSTree.hpp"
 
 Settings Vertex::settings_;
 
@@ -812,11 +813,19 @@ void Vertex::set_reverse_radius_search_radius(double radius)
     min_ = position_ - Eigen::Vector3d(radius, radius, radius);
     max_ = position_ + Eigen::Vector3d(radius, radius, radius);
 
-    // should update search tree if expand radius (if new radius is larger than old one, delete then re-add the searchable vertex if it is searchable)
-    if (reverse_search_radius_ > previous_radius && is_searchable_)
+    // update if node exists
+    if (node) 
     {
-        storage_->remove_searchable_vertex(shared_from_this());
-        storage_->add_searchable_vertex(shared_from_this());
+        if (reverse_search_radius_ > previous_radius)
+        {
+            node->box = RRSBoundingBox(min_, max_);
+            node->recursive_expand_parent_box();
+        }
+        else if (reverse_search_radius_ < previous_radius)
+        {
+            node->box = RRSBoundingBox(min_, max_);
+            node->recursive_shrink_parent_box();
+        }
     }
 }
 
