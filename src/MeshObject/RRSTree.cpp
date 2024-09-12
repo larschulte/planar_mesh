@@ -60,6 +60,16 @@ void RRSNode::recursive_unlock()
     }
 }
 
+void RRSNode::recursive_expand_parent_box()
+{
+    if (parent)
+    {
+        parent->box.expand(box.min);
+        parent->box.expand(box.max);
+        parent->recursive_expand_parent_box();
+    }
+}
+
 double RRSTree::sort_boundary_vertex_list_in_axis(std::vector<std::shared_ptr<Vertex>>& boundary_vertex_list, int axis, int start, int mid, int end)
 {
     std::sort(boundary_vertex_list.begin() + start, boundary_vertex_list.begin() + end, 
@@ -88,6 +98,8 @@ void RRSTree::convert_leaf_to_branch(const std::shared_ptr<RRSNode>& node)
     node->split_value = split_value;
     node->left = build_node(node->boundary_vertices, start, mid);
     node->right = build_node(node->boundary_vertices, mid, end);
+    node->left->parent = node;
+    node->right->parent = node;
     node->boundary_vertices.clear();
 
     // set lock before setting isLeaf to false to prevent other threads from accessing the children node

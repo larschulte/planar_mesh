@@ -29,6 +29,7 @@ struct RRSNode
     RRSBoundingBox box;
     double split_value;
     int split_axis;
+    std::shared_ptr<RRSNode> parent;
     std::shared_ptr<RRSNode> left;
     std::shared_ptr<RRSNode> right;
     std::atomic<bool> isLeaf = true;
@@ -40,6 +41,7 @@ struct RRSNode
     bool locked_children = false;
 
     void recursive_unlock();
+    void recursive_expand_parent_box();
 };
 
 enum class RRSReturnType
