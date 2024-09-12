@@ -124,7 +124,7 @@ void Face::delete_()
     for (const auto& sibling_face : sibling_faces) disconnect(sibling_face);
 
     // set nan bounding box
-    node->box = BoundingBox(Eigen::Vector3d::Constant(std::numeric_limits<double>::quiet_NaN()), Eigen::Vector3d::Constant(std::numeric_limits<double>::quiet_NaN()));
+    node->box = BoundingBox();
     node->recursive_shrink_parent_box();
 
     // remove from search tree
