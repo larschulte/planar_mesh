@@ -227,8 +227,28 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
         }
     }
 
+    // update stats
     num_of_concurrent_processes++;
-    total_processed_points++;
+    accumulated_points++;
+    std::chrono::time_point<std::chrono::high_resolution_clock> t_now = std::chrono::high_resolution_clock::now();
+
+    // compute duration
+    std::chrono::duration<double> duration_accumulated = t_now - t_init;
+    std::chrono::duration<double> duration_instantaneous;
+    {
+        // lock
+        std::unique_lock<std::mutex> lock(t_last_mutex);
+
+        // compute duration    
+        duration_instantaneous = t_now - t_last;
+
+        // update timestamp
+        t_last = t_now;
+    }
+
+    // compute speed
+    double speed_accumulated = accumulated_points / duration_accumulated.count();
+    double speed_instantaneous = 1.0 / duration_instantaneous.count();
     
     // // output number of concurrent threads that reaches this point
     if (settings_.log.num_of_concurrent_processes)
@@ -245,7 +265,9 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
     if (settings_.log.total_processed_points)
     {
         std::stringstream ss;
-        ss  << " | total processed points = " << total_processed_points
+        ss  << " | total processed points = " << accumulated_points
+            << " | speed accumulated = " << speed_accumulated
+            << " | speed instantaneous = " << speed_instantaneous
             << std::endl;
         std::cout << ss.str();
     }
@@ -1037,6 +1059,10 @@ void Application<PointT>::loop()
 
     // split the queue into smaller queues
     storage_->split_main_queue_into_smaller_queues();
+
+    // reset stats
+    t_init = std::chrono::high_resolution_clock::now();
+    accumulated_points = 0;
 
     // process all points in the queue
     // while (true)
