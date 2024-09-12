@@ -44,6 +44,21 @@ bool RRSBoundingBox::expand(const Eigen::Vector3d& point)
     return changed;
 }
 
+bool RRSBoundingBox::expand_box(const RRSBoundingBox& box)
+{
+    Eigen::Vector3d oldMin = min;
+    Eigen::Vector3d oldMax = max;
+
+    // Update min and max to include the new box
+    min = min.cwiseMin(box.min);
+    max = max.cwiseMax(box.max);
+
+    // Check if min or max changed
+    bool changed = (min != oldMin || max != oldMax);
+
+    return changed;
+} 
+
 bool RRSBoundingBox::contains(const Eigen::Vector3d& point)
 {
     return (point[0] >= min[0] && point[0] <= max[0] &&
@@ -76,7 +91,7 @@ void RRSNode::recursive_expand_parent_box()
     if (parent)
     {
         // expanded
-        const bool expanded = parent->box.expand(box.min) || parent->box.expand(box.max);
+        const bool expanded = parent->box.expand_box(box);
 
         // recursive update
         if (expanded)
@@ -95,10 +110,8 @@ void RRSNode::recursive_shrink_parent_box()
 
         // new parent box
         RRSBoundingBox new_parent_box = RRSBoundingBox();
-        if (parent->left->box.min != Eigen::Vector3d::Constant(std::numeric_limits<double>::infinity())) new_parent_box.expand(parent->left->box.min);
-        if (parent->left->box.max != Eigen::Vector3d::Constant(-std::numeric_limits<double>::infinity())) new_parent_box.expand(parent->left->box.max);
-        if (parent->right->box.min != Eigen::Vector3d::Constant(std::numeric_limits<double>::infinity())) new_parent_box.expand(parent->right->box.min);
-        if (parent->right->box.max != Eigen::Vector3d::Constant(-std::numeric_limits<double>::infinity())) new_parent_box.expand(parent->right->box.max);
+        new_parent_box.expand_box(parent->left->box);
+        new_parent_box.expand_box(parent->right->box);
         
         // shrunk
         const bool shrunk = new_parent_box.min[0] > old_parent_box.min[0] &&

@@ -76,6 +76,21 @@ bool BoundingBox::expand(const Eigen::Vector3d& point)
     return changed;
 }
 
+bool BoundingBox::expand_box(const BoundingBox& box) 
+{
+    Eigen::Vector3d oldMin = min;
+    Eigen::Vector3d oldMax = max;
+
+    // Update min and max to include the new box
+    min = min.cwiseMin(box.min);
+    max = max.cwiseMax(box.max);
+
+    // Check if min or max changed
+    bool changed = (min != oldMin || max != oldMax);
+
+    return changed;
+}
+
 bool BoundingBox::intersect(const Eigen::Vector3d& orig, const Eigen::Vector3d& dir, double& tMin, double& tMax) const 
 {
     for (int i = 0; i < 3; ++i) 
@@ -123,7 +138,7 @@ void Node::recursive_expand_parent_box()
     if (parent)
     {
         // expanded
-        const bool expanded = parent->box.expand(box.min) || parent->box.expand(box.max);
+        const bool expanded = parent->box.expand_box(box);
 
         // recursive update
         if (expanded)
@@ -142,11 +157,8 @@ void Node::recursive_shrink_parent_box()
 
         // new parent box
         BoundingBox new_parent_box = BoundingBox();
-        // expand if not nan
-        if (parent->left->box.min != Eigen::Vector3d::Constant(std::numeric_limits<double>::infinity())) new_parent_box.expand(parent->left->box.min);
-        if (parent->left->box.max != Eigen::Vector3d::Constant(-std::numeric_limits<double>::infinity())) new_parent_box.expand(parent->left->box.max);
-        if (parent->right->box.min != Eigen::Vector3d::Constant(std::numeric_limits<double>::infinity())) new_parent_box.expand(parent->right->box.min);
-        if (parent->right->box.max != Eigen::Vector3d::Constant(-std::numeric_limits<double>::infinity())) new_parent_box.expand(parent->right->box.max);
+        new_parent_box.expand_box(parent->left->box);
+        new_parent_box.expand_box(parent->right->box);
                 
         // shrunk
         const bool shrunk = new_parent_box.min[0] > old_parent_box.min[0] &&

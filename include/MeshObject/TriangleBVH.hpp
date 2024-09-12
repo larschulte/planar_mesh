@@ -23,6 +23,7 @@ struct BoundingBox
     BoundingBox();
     BoundingBox(const Eigen::Vector3d& min, const Eigen::Vector3d& max);
     bool expand(const Eigen::Vector3d& point);
+    bool expand_box(const BoundingBox& box);
     bool intersect(const Eigen::Vector3d& orig, const Eigen::Vector3d& dir, double& tMin, double& tMax) const;
     bool intersect(const Eigen::Vector3d& orig, const Eigen::Vector3d& dir) const;
     int get_longest_axis();
