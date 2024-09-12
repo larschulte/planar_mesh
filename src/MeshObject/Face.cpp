@@ -123,6 +123,10 @@ void Face::delete_()
     if (surface_ != nullptr) disconnect(surface_);
     for (const auto& sibling_face : sibling_faces) disconnect(sibling_face);
 
+    // set nan bounding box
+    node->box = BoundingBox(Eigen::Vector3d::Constant(std::numeric_limits<double>::quiet_NaN()), Eigen::Vector3d::Constant(std::numeric_limits<double>::quiet_NaN()));
+    node->recursive_shrink_parent_box();
+
     // remove from search tree
     storage_->remove_searchable_face(shared_from_this());
     is_searchable_ = false;
