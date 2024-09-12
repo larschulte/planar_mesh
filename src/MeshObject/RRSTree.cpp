@@ -225,10 +225,10 @@ RRSReturnType RRSTree::node_reverse_radius_search(const std::shared_ptr<RRSNode>
     {
         // search left and right
         RRSReturnType left_return = node_reverse_radius_search(node->left, point, search_results);
+        if (left_return == RRSReturnType::ABORT) return RRSReturnType::ABORT;
         RRSReturnType right_return = node_reverse_radius_search(node->right, point, search_results);
+        if (right_return == RRSReturnType::ABORT) return RRSReturnType::ABORT;
 
-        // abort if any is abort
-        if (left_return == RRSReturnType::ABORT || right_return == RRSReturnType::ABORT) return RRSReturnType::ABORT;
         // skip if both is skip
         if (left_return == RRSReturnType::SKIP && right_return == RRSReturnType::SKIP) return RRSReturnType::SKIP;
         // intersected if any is intersected

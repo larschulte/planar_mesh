@@ -137,10 +137,10 @@ BVHReturnType TriangleBVH::node_intersection_search(const std::shared_ptr<Node>&
     {
         // search left and right
         BVHReturnType left_return = node_intersection_search(node->left, orig, dir, faces_intersected);
+        if (left_return == BVHReturnType::ABORT) return BVHReturnType::ABORT;
         BVHReturnType right_return = node_intersection_search(node->right, orig, dir, faces_intersected);
+        if (right_return == BVHReturnType::ABORT) return BVHReturnType::ABORT;
 
-        // abort if any is abort
-        if (left_return == BVHReturnType::ABORT || right_return == BVHReturnType::ABORT) return BVHReturnType::ABORT;
         // skip if both is skip
         if (left_return == BVHReturnType::SKIP && right_return == BVHReturnType::SKIP) return BVHReturnType::SKIP;
         // intersected if any is intersected
