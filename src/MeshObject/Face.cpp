@@ -80,11 +80,8 @@ void Face::initialize_(const std::shared_ptr<Storage>& storage, const std::share
     center_ = (pos0 + pos1 + pos2) / 3;
 
     // add to search
-    if (!is_searchable_)
-    {
-        storage_->add_searchable_face(shared_from_this());
-        is_searchable_ = true;
-    }
+    storage_->add_searchable_face(shared_from_this());
+    is_searchable_ = true;
 
     // log
     if (settings_.log.initialize) std::cout << "Face " << id_ << " created between vertex " << vertex0->get_id() << ", vertex " << vertex1->get_id() << " and vertex " << vertex2->get_id() << std::endl;
@@ -127,11 +124,8 @@ void Face::delete_()
     for (const auto& sibling_face : sibling_faces) disconnect(sibling_face);
 
     // remove from search tree
-    if (is_searchable_)
-    {
-        storage_->remove_searchable_face(shared_from_this());
-        is_searchable_ = false;
-    }
+    storage_->remove_searchable_face(shared_from_this());
+    is_searchable_ = false;
 
     // log
     if (settings_.log.deletion) std::cout << "---------- face " << id_ << " destroyed" << std::endl;
