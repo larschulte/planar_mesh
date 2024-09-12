@@ -100,6 +100,8 @@ void RRSTree::convert_leaf_to_branch(const std::shared_ptr<RRSNode>& node)
     node->right = build_node(node->boundary_vertices, mid, end);
     node->left->parent = node;
     node->right->parent = node;
+    node->left->sibling = node->right;
+    node->right->sibling = node->left;
     node->boundary_vertices.clear();
 
     // set lock before setting isLeaf to false to prevent other threads from accessing the children node

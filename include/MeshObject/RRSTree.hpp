@@ -32,6 +32,7 @@ struct RRSNode
     std::shared_ptr<RRSNode> parent;
     std::shared_ptr<RRSNode> left;
     std::shared_ptr<RRSNode> right;
+    std::shared_ptr<RRSNode> sibling;
     std::atomic<bool> isLeaf = true;
     std::vector<std::shared_ptr<Vertex>> boundary_vertices;
 
