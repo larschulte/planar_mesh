@@ -27,6 +27,8 @@ RRSBoundingBox::RRSBoundingBox() :
     min(Eigen::Vector3d::Constant(std::numeric_limits<double>::infinity())),
     max(Eigen::Vector3d::Constant(-std::numeric_limits<double>::infinity())) {}
 
+RRSBoundingBox::RRSBoundingBox(const Eigen::Vector3d& min, const Eigen::Vector3d& max) : min(min), max(max) {}
+
 bool RRSBoundingBox::expand(const Eigen::Vector3d& point)
 {
     Eigen::Vector3d oldMin = min;
