@@ -420,6 +420,10 @@ void TriangleBVH::rebuild()
         std::vector<std::shared_ptr<Face>> face_list = get_face_list();
         root = build_node(face_list, 0, face_list.size());
     }
+
+    // release lock
+    if (root->left) root->left->recursive_unlock();
+    if (root->right) root->right->recursive_unlock();
 }
 
 void TriangleBVH::tree_add_face(std::shared_ptr<Face> face)

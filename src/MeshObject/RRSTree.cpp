@@ -365,6 +365,10 @@ void RRSTree::check_rebuild()
         std::cout << "Rebuilding RRS tree done" << std::endl;
         size_at_last_rebuild = tree_size;
     }
+
+    // release lock
+    if (root->left) root->left->recursive_unlock();
+    if (root->right) root->right->recursive_unlock();
 }
 
 void RRSTree::rebuild()
