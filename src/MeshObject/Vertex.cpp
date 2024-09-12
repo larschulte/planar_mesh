@@ -99,6 +99,18 @@ void Vertex::delete_()
     is_expired_ = true;
 }
 
+void Vertex::temp_initialize(const Eigen::Vector3d& position, unsigned int id)
+{
+    // set expired
+    is_expired_ = false;
+
+    // set id
+    id_ = id;
+
+    // set position
+    position_ = position;
+}
+
 const int& Vertex::get_id() const 
 { 
     return id_; 

@@ -30,6 +30,7 @@ protected:
     void delete_();
 
 public:
+    void temp_initialize(const Eigen::Vector3d& position, unsigned int id);
     std::shared_ptr<RRSNode> node;
 
     const int& get_id() const;

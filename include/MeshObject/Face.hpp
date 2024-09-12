@@ -24,6 +24,8 @@ protected:
     void delete_();
 
 public:
+    void temp_initialize(const Eigen::Vector3d& end_point);
+
     std::shared_ptr<Node> node;
 
     const int& get_id() const;

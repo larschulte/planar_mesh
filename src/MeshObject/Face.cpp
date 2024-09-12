@@ -140,6 +140,23 @@ void Face::delete_()
     is_expired_ = true;
 }
 
+void Face::temp_initialize(const Eigen::Vector3d& end_point)
+{
+    // temp initialize a vertex
+    std::shared_ptr<Vertex> temp0 = std::make_shared<Vertex>();
+    std::shared_ptr<Vertex> temp1 = std::make_shared<Vertex>();
+    std::shared_ptr<Vertex> temp2 = std::make_shared<Vertex>();
+    temp0->temp_initialize(end_point, 0);
+    temp1->temp_initialize(end_point, 1);
+    temp2->temp_initialize(end_point, 2);
+
+    // set the vertex as the first vertex
+    first_vertex_ = temp0;
+    vertices_.insert(temp0);
+    vertices_.insert(temp1);
+    vertices_.insert(temp2);
+}
+
 const int& Face::get_id() const
 {
     return id_;
