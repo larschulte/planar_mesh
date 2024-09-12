@@ -251,6 +251,10 @@ void TriangleBVH::convert_leaf_to_branch(const std::shared_ptr<Node>& node)
     node->split_value = split_value;
     node->left = build_node(node->faces, start, mid);
     node->right = build_node(node->faces, mid, end);
+    node->left->parent = node;
+    node->right->parent = node;
+    node->left->sibling = node->right;
+    node->right->sibling = node->left;
     node->faces.clear();
 
     // set lock before setting isLeaf to false to prevent other threads from accessing the children node

@@ -32,8 +32,10 @@ struct Node
     BoundingBox box;
     double split_value;
     int split_axis;
+    std::shared_ptr<Node> parent;
     std::shared_ptr<Node> left;
     std::shared_ptr<Node> right;
+    std::shared_ptr<Node> sibling;
     std::atomic<bool> isLeaf = true;
     std::vector<std::shared_ptr<Face>> faces;
 
