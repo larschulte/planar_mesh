@@ -33,6 +33,8 @@ public:
 
     std::size_t get_num_deletes() const;
     void reset_num_deletes();
+
+    std::set<std::shared_ptr<Surface>, MeshObjectCompare> prelock_surface_candidates;
     
 private:
     static Settings settings_;

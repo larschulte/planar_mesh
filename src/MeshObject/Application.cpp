@@ -158,6 +158,24 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
     std::vector<std::shared_ptr<Node>> locked_bvh_nodes;
     std::vector<std::shared_ptr<RRSNode>> locked_rrs_nodes;
     std::vector<std::shared_ptr<Surface>> locked_surfaces;
+    std::set<std::shared_ptr<Surface>, MeshObjectCompare> prelocked_surfaces;
+
+    // prelock surfaces
+    for (const std::shared_ptr<Surface>& surface : generic_point->prelock_surface_candidates)
+    {
+        const bool can_lock = omp_test_nest_lock(&surface->lock);
+        if (can_lock)
+        {
+            prelocked_surfaces.insert(surface);
+        }
+        else
+        {
+            // abort
+            for (const std::shared_ptr<Surface>& surface : prelocked_surfaces) omp_unset_nested_lock_with_log(surface->lock, "unlock surface");
+            storage_->add_to_queue(generic_point);
+            return;
+        }
+    }
 
     std::shared_ptr<Node> bvh_storage_node;
     BVHReturnType BVH_storage_return = storage_->face_intersection_search_find_node(generic_point->get_origin(), generic_point->get_position(), bvh_storage_node);    
@@ -166,6 +184,7 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
     if (BVH_storage_return == BVHReturnType::ABORT)
     {
         // std::cout << "X _ _ _" << std::endl;
+        for (const std::shared_ptr<Surface>& surface : prelocked_surfaces) omp_unset_nested_lock_with_log(surface->lock, "unlock surface");
         for (const std::shared_ptr<Surface>& surface : locked_surfaces) omp_unset_nested_lock_with_log(surface->lock, "unlock surface");
         for (const std::shared_ptr<Node>& node : locked_bvh_nodes) omp_unset_nest_lock(&node->omp_lock);
         for (const std::shared_ptr<RRSNode>& node : locked_rrs_nodes) omp_unset_nest_lock(&node->omp_lock);
@@ -181,6 +200,7 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
     if (RRS_storage_return == RRSReturnType::ABORT)
     {
         // std::cout << "_ _ X _" << std::endl;
+        for (const std::shared_ptr<Surface>& surface : prelocked_surfaces) omp_unset_nested_lock_with_log(surface->lock, "unlock surface");
         for (const std::shared_ptr<Surface>& surface : locked_surfaces) omp_unset_nested_lock_with_log(surface->lock, "unlock surface");
         for (const std::shared_ptr<Node>& node : locked_bvh_nodes) omp_unset_nest_lock(&node->omp_lock);
         for (const std::shared_ptr<RRSNode>& node : locked_rrs_nodes) omp_unset_nest_lock(&node->omp_lock);
@@ -196,10 +216,12 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
     BVHReturnType BVH_return = storage_->face_intersection_search(generic_point, bvh_results, intersected_surfaces);
     for (const std::shared_ptr<Face>& face : bvh_results) locked_bvh_nodes.emplace_back(face->node); // store the locked nodes
     for (const std::shared_ptr<Face>& face : bvh_results) locked_surfaces.emplace_back(face->get_surface()); // store the surface
+    generic_point->prelock_surface_candidates.insert(intersected_surfaces.begin(), intersected_surfaces.end());
 
     if (BVH_return == BVHReturnType::ABORT)
     {
         // std::cout << "_ X _ _" << std::endl;
+        for (const std::shared_ptr<Surface>& surface : prelocked_surfaces) omp_unset_nested_lock_with_log(surface->lock, "unlock surface");
         for (const std::shared_ptr<Surface>& surface : locked_surfaces) omp_unset_nested_lock_with_log(surface->lock, "unlock surface");
         for (const std::shared_ptr<Node>& node : locked_bvh_nodes) omp_unset_nest_lock(&node->omp_lock);
         for (const std::shared_ptr<RRSNode>& node : locked_rrs_nodes) omp_unset_nest_lock(&node->omp_lock);
@@ -212,10 +234,12 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
     RRSReturnType RRS_return = storage_->reverse_radius_search(generic_point, rrs_results, intersected_surfaces);    
     for (const std::shared_ptr<Vertex>& vertex : rrs_results) locked_rrs_nodes.emplace_back(vertex->node);
     for (const std::shared_ptr<Vertex>& vertex : rrs_results) locked_surfaces.emplace_back(vertex->get_surface());
+    generic_point->prelock_surface_candidates.insert(intersected_surfaces.begin(), intersected_surfaces.end());
 
     if (RRS_return == RRSReturnType::ABORT)
     {
         // std::cout << "_ _ _ X" << std::endl;
+        for (const std::shared_ptr<Surface>& surface : prelocked_surfaces) omp_unset_nested_lock_with_log(surface->lock, "unlock surface");
         for (const std::shared_ptr<Surface>& surface : locked_surfaces) omp_unset_nested_lock_with_log(surface->lock, "unlock surface");
         for (const std::shared_ptr<Node>& node : locked_bvh_nodes) omp_unset_nest_lock(&node->omp_lock);
         for (const std::shared_ptr<RRSNode>& node : locked_rrs_nodes) omp_unset_nest_lock(&node->omp_lock);
@@ -223,6 +247,9 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
         // storage_->add_to_abort_queue(generic_point);
         return;
     }
+
+    // unlock prelocked surfaces
+    for (const std::shared_ptr<Surface>& surface : prelocked_surfaces) omp_unset_nested_lock_with_log(surface->lock, "unlock surface");
 
     //
     // if not abort, need to lock all nodes from the surfaces
