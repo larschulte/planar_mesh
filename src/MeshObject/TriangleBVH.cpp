@@ -194,7 +194,7 @@ void TriangleBVH::expand_node_box(const std::shared_ptr<Node>& node, const std::
     node->box.expand(face->get_vertex(2)->get_position());
 }
 
-BVHReturnType TriangleBVH::node_intersection_search(const std::shared_ptr<Node>& node, const Eigen::Vector3d& orig, const Eigen::Vector3d& dir, std::vector<std::shared_ptr<Face>>& faces_intersected) const
+BVHReturnType TriangleBVH::node_intersection_search(const std::shared_ptr<Node>& node, const Eigen::Vector3d& orig, const Eigen::Vector3d& dir, std::vector<std::shared_ptr<Face>>& faces_intersected, std::set<std::shared_ptr<Surface>, MeshObjectCompare>& intersected_surfaces) const
 {    
     // skip if not intersected
     if (!node->box.intersect(orig, dir))
@@ -206,9 +206,9 @@ BVHReturnType TriangleBVH::node_intersection_search(const std::shared_ptr<Node>&
     if (!node->isLeaf)
     {
         // search left and right
-        BVHReturnType left_return = node_intersection_search(node->left, orig, dir, faces_intersected);
+        BVHReturnType left_return = node_intersection_search(node->left, orig, dir, faces_intersected, intersected_surfaces);
         if (left_return == BVHReturnType::ABORT) return BVHReturnType::ABORT;
-        BVHReturnType right_return = node_intersection_search(node->right, orig, dir, faces_intersected);
+        BVHReturnType right_return = node_intersection_search(node->right, orig, dir, faces_intersected, intersected_surfaces);
         if (right_return == BVHReturnType::ABORT) return BVHReturnType::ABORT;
 
         // skip if both is skip
@@ -241,6 +241,7 @@ BVHReturnType TriangleBVH::node_intersection_search(const std::shared_ptr<Node>&
         // abort if can't lock face's surface
         const std::shared_ptr<Face>& face = node->faces[0];
         const std::shared_ptr<Surface>& surface = face->get_surface();
+        intersected_surfaces.insert(surface);
         if (!omp_test_nest_lock(&surface->lock)) // nest lock here since a ray could intersect two faces of the same surface in two nodes
         {
             omp_unset_nest_lock(&node->omp_lock);
@@ -531,10 +532,10 @@ void TriangleBVH::tree_add_face(std::shared_ptr<Face> face)
     node_add_face(root, face);
 }
 
-BVHReturnType TriangleBVH::tree_intersection_search(Eigen::Vector3d origin, Eigen::Vector3d endPoint, std::vector<std::shared_ptr<Face>>& faces_intersected) const
+BVHReturnType TriangleBVH::tree_intersection_search(Eigen::Vector3d origin, Eigen::Vector3d endPoint, std::vector<std::shared_ptr<Face>>& faces_intersected, std::set<std::shared_ptr<Surface>, MeshObjectCompare>& intersected_surfaces) const
 {
     Eigen::Vector3d dir = (endPoint - origin).normalized();
-    return node_intersection_search(root, origin, dir, faces_intersected);
+    return node_intersection_search(root, origin, dir, faces_intersected, intersected_surfaces);
 }
 
 BVHReturnType TriangleBVH::tree_find_leaf_node(const Eigen::Vector3d& origin, const Eigen::Vector3d& endPoint, std::shared_ptr<Node>& return_node)

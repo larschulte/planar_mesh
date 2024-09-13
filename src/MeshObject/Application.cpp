@@ -189,8 +189,11 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
         return;
     }
 
+    // set of surfaces that are intersected by the point
+    std::set<std::shared_ptr<Surface>, MeshObjectCompare> intersected_surfaces;
+
     std::vector<std::shared_ptr<Face>> bvh_results;
-    BVHReturnType BVH_return = storage_->face_intersection_search(generic_point, bvh_results);
+    BVHReturnType BVH_return = storage_->face_intersection_search(generic_point, bvh_results, intersected_surfaces);
     for (const std::shared_ptr<Face>& face : bvh_results) locked_bvh_nodes.emplace_back(face->node); // store the locked nodes
     for (const std::shared_ptr<Face>& face : bvh_results) locked_surfaces.emplace_back(face->get_surface()); // store the surface
 
