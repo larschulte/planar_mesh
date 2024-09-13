@@ -1120,6 +1120,10 @@ void Application<PointT>::loop()
         }
     }
 
+    std::chrono::high_resolution_clock::time_point t_end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> duration = t_end - t_init;
+    std::cout << "==================================================================== Processed " << accumulated_points << " points in " << duration.count() << " s" << std::endl;
+
     //     // check if abort queue is empty
     //     if (storage_->get_abort_queue_size() == 0) break;
 
