@@ -118,6 +118,34 @@ void Application<PointT>::load_point_cloud()
 template <typename PointT>
 void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& generic_point)
 {
+    // tree is the main structure.
+    // two tree, one stores faces and one stores vertices.
+    // surface etc are just additional data structure that provides passage between different faces and vertices in the tree
+
+    // if each leaf node stores only one face and only one vertex. leaf node == face or vertex
+    // locking a leaf node locks the face and vertex -> removal of face requries its removal from the node, thus they are closely bonded
+
+    //
+    // for single surface
+    // 
+    // 1. traverse the BVH and try to lock the inital leaf node
+    // if can lock, that means no other thread is currently working on the surface, they could however landed on other leaf node of the same surface
+    // if can't lock, that means other thread is working on the surface, the BVH search result is not reliable, for this leaf node
+
+    // 2. after locking the initial leaf node, lock the surface lock, 
+    // if can lock, that mean no other thread has landed on the leaf node of the surface
+    // if can't lock, that means other thread has landed on the leaf node of the surface has lock the surface lock faster, if so, release the initial leaf lock to allow other thread to obtain full surface lock, the BVH search result is not reliable for this leaf node
+
+    // 3. after locking the surface lock, lock all the leaf nodes that contains the face in the surface
+    // if one of the leaf node can't be locked, that mean other thread has landed on the leaf node, but since they can't lock the surface lock, they have to release the lock, thus can simply wait
+
+    // *. not reliable -> release all locks and process next point in the queue
+    // *. during intersection search, may delete vertex as well, thus need RRS leaf node lock at the same time as well
+    
+
+    // dead lock occurs when two threads lock the same two elements in different order
+    // thus if we always lock the element in the same order, dead lock will not occur
+
     
     // current issues
     // 1. if we do the radius search before the result of add by intersection, boundary point created by deletion of face will not be included in the radius search
