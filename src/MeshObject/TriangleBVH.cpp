@@ -301,7 +301,10 @@ BVHReturnType TriangleBVH::node_find_leaf_node(const std::shared_ptr<Node>& node
         return_node->faces.pop_back();
 
         // locks
-        omp_set_nest_lock(&return_node->omp_lock);
+        while (!omp_test_nest_lock(&return_node->omp_lock))
+        {
+            std::cout << "BVH lock return_node waiting ..." << std::endl;
+        };
         node->recursive_unlock();
 
         // return
@@ -328,8 +331,14 @@ void TriangleBVH::convert_leaf_to_branch(const std::shared_ptr<Node>& node)
     node->faces.clear();
 
     // set lock before setting isLeaf to false to prevent other threads from accessing the children node
-    omp_set_nest_lock(&node->left->omp_lock);
-    omp_set_nest_lock(&node->right->omp_lock);
+    while (!omp_test_nest_lock(&node->left->omp_lock))
+    {
+        std::cout << "BVH lock left children waiting ..." << std::endl;
+    };
+    while (!omp_test_nest_lock(&node->right->omp_lock))
+    {
+        std::cout << "BVH lock right children waiting ..." << std::endl;
+    };
     node->locked_children = true;
 
     // update isLeaf after locking the children

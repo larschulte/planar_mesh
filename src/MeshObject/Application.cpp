@@ -237,7 +237,10 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
             // get node
             std::shared_ptr<Node>& node = face->node;
             // lock node
-            while (!omp_test_nest_lock(&node->omp_lock)){}; // wait until lock
+            while (!omp_test_nest_lock(&node->omp_lock))
+            {
+                std::cout << "main lock BVH node waiting ..." << std::endl;
+            }; // wait until lock // this is because during leaf search may change the node into branch
             // store node
             locked_bvh_nodes.emplace_back(node);
         }
@@ -247,7 +250,10 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
             // get node
             std::shared_ptr<RRSNode>& node = vertex->node;            
             // lock node
-            while (!omp_test_nest_lock(&node->omp_lock)){}; // wait until lock
+            while (!omp_test_nest_lock(&node->omp_lock))
+            {
+                std::cout << "main lock RRS node waiting ..." << std::endl;
+            }; // wait until lock
             // store node
             locked_rrs_nodes.emplace_back(node);
         }
