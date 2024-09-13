@@ -8,10 +8,19 @@ public:
     virtual const int& get_id() const = 0;
 };
 
-struct MeshObjectHash {
+struct MeshObjectHash 
+{
     template<typename T>
     std::size_t operator()(const std::shared_ptr<T>& v) const 
     {
         return std::hash<int>()(v->get_id());
+    }
+};
+
+struct MeshObjectCompare 
+{
+    template<typename T>
+    bool operator()(const std::shared_ptr<T>& lhs, const std::shared_ptr<T>& rhs) const {
+        return lhs < rhs; // or any other comparison logic
     }
 };
