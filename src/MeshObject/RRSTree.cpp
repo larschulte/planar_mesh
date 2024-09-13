@@ -280,7 +280,7 @@ bool RRSTree::node_delete_vertex(const std::shared_ptr<RRSNode>& node, const std
     }
 }
 
-RRSReturnType RRSTree::node_reverse_radius_search(const std::shared_ptr<RRSNode>& node, const Eigen::Vector3d& point, std::vector<std::shared_ptr<Vertex>>& search_results)
+RRSReturnType RRSTree::node_reverse_radius_search(const std::shared_ptr<RRSNode>& node, const Eigen::Vector3d& point, std::vector<std::shared_ptr<Vertex>>& search_results, std::set<std::shared_ptr<Surface>, MeshObjectCompare>& intersected_surfaces)
 {
     // skip if not contained
     if (!node->box.contains(point))
@@ -292,9 +292,9 @@ RRSReturnType RRSTree::node_reverse_radius_search(const std::shared_ptr<RRSNode>
     if (!node->isLeaf)
     {
         // search left and right
-        RRSReturnType left_return = node_reverse_radius_search(node->left, point, search_results);
+        RRSReturnType left_return = node_reverse_radius_search(node->left, point, search_results, intersected_surfaces);
         if (left_return == RRSReturnType::ABORT) return RRSReturnType::ABORT;
-        RRSReturnType right_return = node_reverse_radius_search(node->right, point, search_results);
+        RRSReturnType right_return = node_reverse_radius_search(node->right, point, search_results, intersected_surfaces);
         if (right_return == RRSReturnType::ABORT) return RRSReturnType::ABORT;
 
         // skip if both is skip
@@ -335,6 +335,7 @@ RRSReturnType RRSTree::node_reverse_radius_search(const std::shared_ptr<RRSNode>
         // abort if can't lock vertex's surface
         const std::shared_ptr<Vertex>& boundary_vertex = node->boundary_vertices[0];
         const std::shared_ptr<Surface>& surface = boundary_vertex->get_surface_check();
+        intersected_surfaces.insert(surface);
         if (!omp_test_nest_lock(&surface->lock)) 
         {
             omp_unset_nest_lock(&node->omp_lock);
@@ -508,9 +509,9 @@ void RRSTree::tree_delete_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
     boundary_vertex->node = nullptr;
 }
 
-RRSReturnType RRSTree::tree_reverse_radius_search(const Eigen::Vector3d& point, std::vector<std::shared_ptr<Vertex>>& search_results)
+RRSReturnType RRSTree::tree_reverse_radius_search(const Eigen::Vector3d& point, std::vector<std::shared_ptr<Vertex>>& search_results, std::set<std::shared_ptr<Surface>, MeshObjectCompare>& intersected_surfaces)
 {
-    return node_reverse_radius_search(root, point, search_results);
+    return node_reverse_radius_search(root, point, search_results, intersected_surfaces);
 }
 
 RRSReturnType RRSTree::tree_find_leaf_node(const Eigen::Vector3d& point, std::shared_ptr<RRSNode>& return_node)

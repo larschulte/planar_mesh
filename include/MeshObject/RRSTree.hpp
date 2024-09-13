@@ -11,8 +11,10 @@
 #include <iostream> 
 
 #include "utilities/omp_utilities.hpp"
+#include <set>
 
 class Vertex;
+class Surface;
 
 struct RRSBoundingBox 
 {
@@ -76,7 +78,7 @@ private:
     void node_add_vertex(const std::shared_ptr<RRSNode>& node, const std::shared_ptr<Vertex>& boundary_vertex);
     void node_increase_radius(const std::shared_ptr<RRSNode>& node, const std::shared_ptr<Vertex>& boundary_vertex);
     bool node_delete_vertex(const std::shared_ptr<RRSNode>& node, const std::shared_ptr<Vertex>& boundary_vertex);
-    RRSReturnType node_reverse_radius_search(const std::shared_ptr<RRSNode>& node, const Eigen::Vector3d& point, std::vector<std::shared_ptr<Vertex>>& search_results);
+    RRSReturnType node_reverse_radius_search(const std::shared_ptr<RRSNode>& node, const Eigen::Vector3d& point, std::vector<std::shared_ptr<Vertex>>& search_results, std::set<std::shared_ptr<Surface>, MeshObjectCompare>& intersected_surfaces);
     RRSReturnType node_find_leaf_node(const std::shared_ptr<RRSNode>& node, const Eigen::Vector3d& point, std::shared_ptr<RRSNode>& return_node);
     void node_print(const std::shared_ptr<RRSNode>& node, int level) const;
     void node_flattern(const std::shared_ptr<RRSNode>& node, std::vector<std::shared_ptr<Vertex>>& flatten_list);
@@ -92,7 +94,7 @@ public:
     void tree_add_vertex(const std::shared_ptr<Vertex>& boundary_vertex);
     void tree_increase_radius(std::shared_ptr<Vertex> boundary_vertex);
     void tree_delete_vertex(const std::shared_ptr<Vertex>& boundary_vertex);
-    RRSReturnType tree_reverse_radius_search(const Eigen::Vector3d& point, std::vector<std::shared_ptr<Vertex>> &search_results);
+    RRSReturnType tree_reverse_radius_search(const Eigen::Vector3d& point, std::vector<std::shared_ptr<Vertex>> &search_results, std::set<std::shared_ptr<Surface>, MeshObjectCompare>& intersected_surfaces);
     RRSReturnType tree_find_leaf_node(const Eigen::Vector3d& point, std::shared_ptr<RRSNode>& return_node);
     void tree_print() const;
 };

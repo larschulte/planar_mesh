@@ -209,7 +209,7 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
     }
 
     std::vector<std::shared_ptr<Vertex>> rrs_results;
-    RRSReturnType RRS_return = storage_->reverse_radius_search(generic_point, rrs_results);    
+    RRSReturnType RRS_return = storage_->reverse_radius_search(generic_point, rrs_results, intersected_surfaces);    
     for (const std::shared_ptr<Vertex>& vertex : rrs_results) locked_rrs_nodes.emplace_back(vertex->node);
     for (const std::shared_ptr<Vertex>& vertex : rrs_results) locked_surfaces.emplace_back(vertex->get_surface());
 
