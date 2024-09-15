@@ -18,6 +18,11 @@ Settings Storage::settings_;
 Storage::Storage()
 {
     is_expired_ = false;
+
+    // resize to num_threads
+    smaller_queues_.resize(settings_.num_threads);
+    smaller_repeated_queues_.resize(settings_.num_threads);
+    smaller_abort_queues_.resize(settings_.num_threads);
 }
 
 Storage::~Storage()
@@ -321,11 +326,6 @@ void Storage::add_points_in_smaller_abort_queues_to_main_queue()
 
 void Storage::split_main_queue_into_smaller_queues()
 {
-    // resize to num_threads
-    smaller_queues_.resize(settings_.num_threads);
-    smaller_repeated_queues_.resize(settings_.num_threads);
-    smaller_abort_queues_.resize(settings_.num_threads);
-
     // Calculate base number of points per queue
     unsigned int total_points = main_queue_.size();
     unsigned int average = total_points / settings_.num_threads;  // Average points
