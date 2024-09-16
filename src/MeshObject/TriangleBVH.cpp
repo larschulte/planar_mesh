@@ -190,9 +190,8 @@ double TriangleBVH::sort_face_list_in_axis(std::vector<std::shared_ptr<Face>>& f
 
 void TriangleBVH::expand_node_box(const std::shared_ptr<Node>& node, const std::shared_ptr<Face>& face)
 {
-    node->box.expand(face->get_vertex(0)->get_position());
-    node->box.expand(face->get_vertex(1)->get_position());
-    node->box.expand(face->get_vertex(2)->get_position());
+    node->box.expand(face->get_min());
+    node->box.expand(face->get_max());
 }
 
 BVHReturnType TriangleBVH::node_intersection_search(const std::shared_ptr<Node>& node, const Eigen::Vector3d& orig, const Eigen::Vector3d& dir, std::vector<std::shared_ptr<Face>>& faces_intersected, std::set<std::shared_ptr<Surface>, MeshObjectCompare>& intersected_surfaces) const

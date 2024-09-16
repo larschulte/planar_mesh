@@ -35,6 +35,8 @@ public:
     const std::shared_ptr<Vertex>& get_vertex(int index) const;
     const std::shared_ptr<Vertex>& get_first_vertex() const;
     const std::shared_ptr<Surface>& get_surface() const;
+    const Eigen::Vector3d& get_min() const;
+    const Eigen::Vector3d& get_max() const;
     const std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& get_sibling_faces() const;
     bool is_expired() const;
     bool has_vertex(const std::shared_ptr<Vertex>& vertex) const;
@@ -74,6 +76,9 @@ private:
     bool is_confirmed_ = false;
 
     bool can_self_destruct_ = true;
+
+    Eigen::Vector3d min_;
+    Eigen::Vector3d max_;
 
     int id_;
     std::shared_ptr<Storage> storage_;

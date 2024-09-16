@@ -35,6 +35,14 @@ void Face::initialize_(const std::shared_ptr<Storage>& storage, const std::share
     connect(vertex1);
     connect(vertex2);
 
+    // compute min and max
+    BoundingBox box;
+    box.expand(vertex0->get_position());
+    box.expand(vertex1->get_position());
+    box.expand(vertex2->get_position());
+    min_ = box.min;
+    max_ = box.max;
+
     // first vertex
     first_vertex_ = vertex0;
 
@@ -191,6 +199,16 @@ const std::shared_ptr<Vertex>& Face::get_first_vertex() const
 const std::shared_ptr<Surface>& Face::get_surface() const
 {
     return surface_;
+}
+
+const Eigen::Vector3d& Face::get_min() const
+{
+    return min_;
+}
+
+const Eigen::Vector3d& Face::get_max() const
+{
+    return max_;
 }
 
 const std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& Face::get_sibling_faces() const
