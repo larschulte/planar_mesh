@@ -5,7 +5,7 @@
 // 
 
 template <typename T>
-void QueueStructure<T>::push(T value)
+void QueueStructure<T>::push(const T& value)
 {
     queue.push(value);
 }
@@ -42,7 +42,7 @@ unsigned int QueueStructure<T>::size() const
 //
 
 template <typename T>
-void StackStructure<T>::push(T value)
+void StackStructure<T>::push(const T& value)
 {
     stack.push(value);
 }
@@ -89,7 +89,7 @@ queue_or_stack<T>::queue_or_stack(bool useQueue)
 }
 
 template <typename T>
-void queue_or_stack<T>::push(T value)
+void queue_or_stack<T>::push(const T& value)
 {
     structure->push(value);
 }

@@ -9,7 +9,7 @@ template <typename T>
 class DataStructure
 {
 public:
-    virtual void push(T value) = 0;
+    virtual void push(const T& value) = 0;
     virtual void pop() = 0;
     virtual T get() = 0;
     virtual bool empty() const = 0;
@@ -25,7 +25,7 @@ private:
     std::queue<T> queue;
 
 public:
-    void push(T value) override;
+    void push(const T& value) override;
     void pop() override;
     T get() override;
     bool empty() const override;
@@ -40,7 +40,7 @@ private:
     std::stack<T> stack;
 
 public:
-    void push(T value) override;
+    void push(const T& value) override;
     void pop() override;
     T get() override;
     bool empty() const override;
@@ -59,7 +59,7 @@ public:
     queue_or_stack() : structure(nullptr) {};
     queue_or_stack(bool useQueue);
 
-    void push(T value);
+    void push(const T& value);
     void pop();
     T get();
     bool empty() const;
