@@ -63,6 +63,7 @@ Settings::Settings()
     num_of_delete_before_put_to_repeated_queue = 2;
 
     num_threads = 30;
+    use_queue = true;
 
     // min_face_angle = 20;
 

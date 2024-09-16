@@ -7,7 +7,7 @@
 #include "MeshObject/RRSTree.hpp"
 #include "MeshObject/TriangleBVH.hpp"
 
-#include <queue>
+#include "utilities/queue_or_stack.hpp"
 
 #include "MeshObject/Settings.hpp"
 
@@ -118,9 +118,9 @@ private:
 
     std::queue<std::shared_ptr<GenericPoint>> main_queue_;
     std::queue<std::shared_ptr<GenericPoint>> main_repeated_queue_;
-    std::vector<std::queue<std::shared_ptr<GenericPoint>>> smaller_queues_;
-    std::vector<std::queue<std::shared_ptr<GenericPoint>>> smaller_repeated_queues_;
-    std::vector<std::queue<std::shared_ptr<GenericPoint>>> smaller_abort_queues_;
+    std::vector<queue_or_stack<std::shared_ptr<GenericPoint>>> smaller_queues_;
+    std::vector<queue_or_stack<std::shared_ptr<GenericPoint>>> smaller_repeated_queues_;
+    std::vector<queue_or_stack<std::shared_ptr<GenericPoint>>> smaller_abort_queues_;
     unsigned int num_delete_before_put_to_repeated_queue_ = 2;
 
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertices_;
