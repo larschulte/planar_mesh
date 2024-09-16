@@ -66,6 +66,15 @@ void Vertex::initialize_(const std::shared_ptr<Storage>& storage, const std::sha
 
 void Vertex::delete_()
 {
+    // make a copy of node
+    std::shared_ptr<RRSNode> node_copy = node;
+
+    // lock node
+    while (!omp_test_nest_lock(&node_copy->omp_lock)) 
+    {
+        std::cout << "delete vertex waiting " << id_ << std::endl;
+    }
+
     // log
     if (settings_.log.deletion) std::cout << "Destroying vertex " << id_ << std::endl;
 
@@ -105,6 +114,9 @@ void Vertex::delete_()
 
     // set expired
     is_expired_ = true;
+
+    // release lock
+    omp_unset_nest_lock(&node_copy->omp_lock);
 }
 
 void Vertex::temp_initialize(const Eigen::Vector3d& position, unsigned int id)
@@ -474,6 +486,14 @@ void Vertex::disconnect(const std::shared_ptr<Surface>& surface)
     // check input
     if (surface->is_expired()) return;
 
+    // lock node
+    // make copy of node
+    std::shared_ptr<RRSNode> node_copy = this->node;
+    while (!omp_test_nest_lock(&node_copy->omp_lock)) 
+    {
+        std::cout << "disconnect vertex waiting " << id_ << std::endl;
+    }
+    
     // disconnect
     bool erased = surface_ == surface;
     if (erased) surface->disconnect(shared_from_this());
@@ -483,6 +503,9 @@ void Vertex::disconnect(const std::shared_ptr<Surface>& surface)
 
     // check self destruct
     if (!deleting_ && erased && can_self_destruct_) storage_->delete_vertex(shared_from_this());
+
+    // release lock
+    omp_unset_nest_lock(&node_copy->omp_lock);
 }
 
 void Vertex::disconnect(const std::shared_ptr<Vertex>& sibling_vertex)

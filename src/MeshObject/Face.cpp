@@ -113,6 +113,15 @@ void Face::update_radius(const std::shared_ptr<GenericPoint>& generic_point)
 
 void Face::delete_()
 {
+    // make a copy of node
+    std::shared_ptr<Node> node_copy = node;
+
+    // lock node
+    while (!omp_test_nest_lock(&node_copy->omp_lock)) 
+    {
+        std::cout << "delete face waiting for " << id_ << std::endl;
+    }
+
     // log
     if (settings_.log.deletion) std::cout << "Destroying face " << id_ << std::endl;
 
@@ -144,6 +153,9 @@ void Face::delete_()
 
     // set expired
     is_expired_ = true;
+
+    // release node lock
+    omp_unset_nest_lock(&node_copy->omp_lock);
 }
 
 void Face::temp_initialize(const Eigen::Vector3d& end_point)
@@ -397,6 +409,14 @@ void Face::disconnect(const std::shared_ptr<Surface>& surface)
     // check input
     if (surface->is_expired()) return;
 
+    // lock node
+    // make copy of node
+    std::shared_ptr<Node> node_copy = this->node;
+    while (!omp_test_nest_lock(&node_copy->omp_lock)) 
+    {
+        std::cout << "disconnect vertex waiting " << id_ << std::endl;
+    }
+
     // disconnect
     bool erased = surface_ == surface;
     if (erased) surface->disconnect(shared_from_this());
@@ -404,6 +424,9 @@ void Face::disconnect(const std::shared_ptr<Surface>& surface)
 
     // self destruct
     if (!deleting_ && erased && can_self_destruct_) storage_->delete_face(shared_from_this());
+
+    // release lock
+    omp_unset_nest_lock(&node_copy->omp_lock);
 }
 
 void Face::disconnect(const std::shared_ptr<InteriorPoint>& interior_point)
