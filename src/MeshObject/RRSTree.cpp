@@ -80,6 +80,7 @@ void RRSNode::recursive_unlock()
     omp_unset_nest_lock(&omp_lock);
     if (locked_children)
     {
+        if (!left || !right) throw std::runtime_error("RRSNode has locked children but one of them is null.");
         left->recursive_unlock();
         right->recursive_unlock();
         locked_children = false;
