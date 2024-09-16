@@ -930,12 +930,11 @@ bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
         
         // add to the smallest uncertainty surface as current surface
         std::shared_ptr<Surface> current_surface = sorted_surfaces_with_point_within[0];
-        std::shared_ptr<Vertex> current_vertex = storage_->add_vertex(generic_point);
+        std::shared_ptr<Vertex> current_vertex = storage_->add_vertex(current_surface, generic_point);
 
         current_vertex->reduce_reverse_radius_search_radius(radius);
         current_vertex->reduce_previous_radius(radius);
         current_surface->connect_by_edges_and_faces(current_vertex, neighboring_vertices);
-        current_surface->connect(current_vertex);
         
         // // connect and merge to next surface if possible
         // for (std::size_t i = 1; i < sorted_surfaces_with_point_within.size(); i++)
@@ -976,11 +975,10 @@ bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
 
         // add to the smallest uncertainty surface
         std::shared_ptr<Surface> smallest_surface = sorted_surfaces_with_low_confidence[0];
-        std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(generic_point);
+        std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(smallest_surface, generic_point);
         new_vertex->reduce_reverse_radius_search_radius(radius);
         new_vertex->reduce_previous_radius(radius);
         smallest_surface->connect_by_edges_and_faces(new_vertex, neighboring_vertices);
-        smallest_surface->connect(new_vertex);
     }
     else
     {
@@ -1052,10 +1050,9 @@ template <typename PointT>
 void Application<PointT>::add_point_by_new_surface(const std::shared_ptr<GenericPoint>& generic_point, double& radius)
 {
     std::shared_ptr<Surface> new_surface = storage_->add_surface();
-    std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(generic_point);
+    std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(new_surface, generic_point);
     new_vertex->reduce_reverse_radius_search_radius(radius);
     new_vertex->reduce_previous_radius(radius);
-    new_surface->connect(new_vertex);
 }
 
 template <typename PointT>

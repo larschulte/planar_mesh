@@ -39,11 +39,11 @@ Storage::~Storage()
     is_expired_ = true;
 }
 
-const std::shared_ptr<Vertex>& Storage::add_vertex(const Eigen::Vector3d& origin, const Eigen::Vector3d& position) 
+const std::shared_ptr<Vertex>& Storage::add_vertex(const std::shared_ptr<Surface>& surface, const Eigen::Vector3d& origin, const Eigen::Vector3d& position) 
 {
     // create
     std::shared_ptr<Vertex> vertex = std::make_shared<Vertex>();
-    vertex->initialize_(shared_from_this(), position, origin);
+    vertex->initialize_(shared_from_this(), surface, position, origin);
 
     // lock
     std::lock_guard<std::mutex> lock(vertices_mutex_);
@@ -52,11 +52,11 @@ const std::shared_ptr<Vertex>& Storage::add_vertex(const Eigen::Vector3d& origin
     return *vertices_.insert(vertex).first;
 }
 
-const std::shared_ptr<Vertex>& Storage::add_vertex(const Eigen::Vector3d& origin, const Eigen::Vector3d& position, const double& radius)
+const std::shared_ptr<Vertex>& Storage::add_vertex(const std::shared_ptr<Surface>& surface, const Eigen::Vector3d& origin, const Eigen::Vector3d& position, const double& radius)
 {
     // create
     std::shared_ptr<Vertex> vertex = std::make_shared<Vertex>();
-    vertex->initialize_(shared_from_this(), position, origin, radius);
+    vertex->initialize_(shared_from_this(), surface, position, origin, radius);
 
     // lock
     std::lock_guard<std::mutex> lock(vertices_mutex_);
@@ -65,11 +65,11 @@ const std::shared_ptr<Vertex>& Storage::add_vertex(const Eigen::Vector3d& origin
     return *vertices_.insert(vertex).first;
 }
 
-const std::shared_ptr<Vertex>& Storage::add_vertex(const std::shared_ptr<GenericPoint>& generic_point)
+const std::shared_ptr<Vertex>& Storage::add_vertex(const std::shared_ptr<Surface>& surface, const std::shared_ptr<GenericPoint>& generic_point)
 {
     // create
     std::shared_ptr<Vertex> vertex = std::make_shared<Vertex>();
-    vertex->initialize_(shared_from_this(), generic_point);
+    vertex->initialize_(shared_from_this(), surface, generic_point);
 
     // lock
     std::lock_guard<std::mutex> lock(vertices_mutex_);

@@ -13,7 +13,7 @@
 
 Settings Vertex::settings_;
 
-void Vertex::initialize_(const std::shared_ptr<Storage>& storage, const Eigen::Vector3d& position, const Eigen::Vector3d& origin, const double& radius)
+void Vertex::initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<Surface>& surface, const Eigen::Vector3d& position, const Eigen::Vector3d& origin, const double& radius)
 {
     // set expired
     is_expired_ = false;
@@ -33,6 +33,9 @@ void Vertex::initialize_(const std::shared_ptr<Storage>& storage, const Eigen::V
     // num of deletes
     num_deletes_ = 0;
 
+    // connect
+    connect(surface);
+
     // set reverse search radius based on input parameter
     set_reverse_radius_search_radius(radius);
 
@@ -46,18 +49,18 @@ void Vertex::initialize_(const std::shared_ptr<Storage>& storage, const Eigen::V
     if (settings_.log.initialize) std::cout << "Vertex " << id_ << " created.\n";
 }
 
-void Vertex::initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<GenericPoint>& generic_point)
+void Vertex::initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<Surface>& surface, const std::shared_ptr<GenericPoint>& generic_point)
 {
-    initialize_(storage, generic_point->get_position(), generic_point->get_origin(), generic_point->get_radius());
+    initialize_(storage, surface, generic_point->get_position(), generic_point->get_origin(), generic_point->get_radius());
     previous_surface_ = generic_point->get_previous_surface();
     previous_radius_ = generic_point->get_previous_radius();
     num_deletes_ = generic_point->get_num_deletes();
 }
 
-void Vertex::initialize_(const std::shared_ptr<Storage>& storage, const Eigen::Vector3d& position, const Eigen::Vector3d& origin)
+void Vertex::initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<Surface>& surface, const Eigen::Vector3d& position, const Eigen::Vector3d& origin)
 {
     std::shared_ptr<GenericPoint> generic_point = storage->add_generic_point(position, origin);
-    initialize_(storage, generic_point);
+    initialize_(storage, surface, generic_point);
     storage->delete_generic_point(generic_point);
 }
 
