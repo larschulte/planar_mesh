@@ -164,15 +164,7 @@ void RRSTree::convert_leaf_to_branch(const std::shared_ptr<RRSNode>& node)
     node->right->sibling = node->left;
     node->boundary_vertices.clear();
 
-    // set lock before setting isLeaf to false to prevent other threads from accessing the children node
-    while (!omp_test_nest_lock(&node->left->omp_lock))
-    {
-        std::cout << "RRS lock left children waiting ..." << std::endl;
-    };
-    while (!omp_test_nest_lock(&node->right->omp_lock))
-    {
-        std::cout << "RRS lock right children waiting ..." << std::endl;
-    };
+    // lock happen within build_node
     node->locked_children = true;
 
     // update isLeaf after locking the children
@@ -182,6 +174,12 @@ void RRSTree::convert_leaf_to_branch(const std::shared_ptr<RRSNode>& node)
 std::shared_ptr<RRSNode> RRSTree::build_node(const std::vector<std::shared_ptr<Vertex>>& boundary_vertex_list, const int& start, const int& end)
 {
     auto node = std::make_shared<RRSNode>();
+
+    // lock before creating link between vertex and node
+    while (!omp_test_nest_lock(&node->omp_lock))
+    {
+        std::cout << "RRS lock node inside build node waiting ..." << std::endl;
+    };
 
     // expand box
     for (int i = start; i < end; i++)
@@ -474,6 +472,9 @@ void RRSTree::rebuild()
         std::vector<std::shared_ptr<Vertex>> boundary_vertex_list = compute_vertices_list();
         root = build_node(boundary_vertex_list, 0, boundary_vertex_list.size());
     }
+
+    // release lock
+    root->recursive_unlock();
 }
 
 bool RRSTree::can_reverse_radius_search()
