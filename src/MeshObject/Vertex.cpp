@@ -807,6 +807,15 @@ void Vertex::update_boundary_state()
 
 void Vertex::update_searchable_state()
 {
+    if (node)
+    {
+        // lock node
+        while (!omp_test_nest_lock(&node->omp_lock)) 
+        {
+            std::cout << "update searchable state waiting " << id_ << std::endl;
+        }
+    }
+
     // check if is boundary
     if (is_boundary() && !is_searchable_)
     {
@@ -815,6 +824,12 @@ void Vertex::update_searchable_state()
     else if (!is_boundary() && is_searchable_)
     {
         is_searchable_ = false;
+    }
+
+    if (node)
+    {
+        // release lock
+        omp_unset_nest_lock(&node->omp_lock);
     }
 }
 
@@ -835,6 +850,15 @@ void Vertex::can_create_generic_point(bool state)
 
 void Vertex::set_reverse_radius_search_radius(double radius)
 {
+    if (node)
+    {
+        // lock node
+        while (!omp_test_nest_lock(&node->omp_lock)) 
+        {
+            std::cout << "set reverse radius search radius waiting " << id_ << std::endl;
+        }
+    }
+
     // set radius
     double previous_radius = reverse_search_radius_;
     reverse_search_radius_ = radius;
@@ -856,6 +880,12 @@ void Vertex::set_reverse_radius_search_radius(double radius)
             node->box = RRSBoundingBox(min_, max_);
             node->recursive_shrink_parent_box();
         }
+    }
+
+    if (node)
+    {
+        // release lock
+        omp_unset_nest_lock(&node->omp_lock);
     }
 }
 
