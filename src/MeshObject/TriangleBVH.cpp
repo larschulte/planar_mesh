@@ -331,15 +331,7 @@ void TriangleBVH::convert_leaf_to_branch(const std::shared_ptr<Node>& node)
     node->right->sibling = node->left;
     node->faces.clear();
 
-    // set lock before setting isLeaf to false to prevent other threads from accessing the children node
-    while (!omp_test_nest_lock(&node->left->omp_lock))
-    {
-        std::cout << "BVH lock left children waiting ..." << std::endl;
-    };
-    while (!omp_test_nest_lock(&node->right->omp_lock))
-    {
-        std::cout << "BVH lock right children waiting ..." << std::endl;
-    };
+    // lock happen within build_node
     node->locked_children = true;
 
     // update isLeaf after locking the children
@@ -349,6 +341,12 @@ void TriangleBVH::convert_leaf_to_branch(const std::shared_ptr<Node>& node)
 std::shared_ptr<Node> TriangleBVH::build_node(const std::vector<std::shared_ptr<Face>>& face_list, const int& start, const int& end)
 {
     auto node = std::make_shared<Node>();
+    
+    // lock before creating link between face and node
+    while (!omp_test_nest_lock(&node->omp_lock))
+    {
+        std::cout << "BVH lock node inside build node waiting ..." << std::endl;
+    };
 
     // expand box
     for (int i = start; i < end; i++)
@@ -517,8 +515,7 @@ void TriangleBVH::rebuild()
     }
 
     // release lock
-    if (root->left) root->left->recursive_unlock();
-    if (root->right) root->right->recursive_unlock();
+    root->recursive_unlock();
 }
 
 void TriangleBVH::tree_add_face(std::shared_ptr<Face> face)
