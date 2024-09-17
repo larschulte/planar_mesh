@@ -160,8 +160,11 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
     std::vector<std::shared_ptr<Surface>> locked_surfaces;
     std::set<std::shared_ptr<Surface>, MeshObjectCompare> prelocked_surfaces;
 
-    // prelock surfaces
-    for (const std::shared_ptr<Surface>& surface : generic_point->prelock_surface_candidates)
+    // get candidate prelock surfaces
+    std::set<std::shared_ptr<Surface>, MeshObjectCompare>& prelock_surface_candidates = generic_point->prelock_surface_candidates;
+
+    // lock
+    for (const std::shared_ptr<Surface>& surface : prelock_surface_candidates)
     {
         const bool can_lock = omp_test_nest_lock(&surface->lock);
         if (can_lock)
