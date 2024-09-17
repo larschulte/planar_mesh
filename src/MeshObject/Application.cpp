@@ -181,6 +181,9 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
                 std::cout << ss.str();
             }
 
+            // increment count
+            surface_to_contention_count[surface]++;
+
             // abort
             for (const std::shared_ptr<Surface>& surface : prelocked_surfaces) omp_unset_nested_lock_with_log(surface->lock, "unlock surface");
             storage_->add_to_queue(generic_point);
@@ -244,6 +247,8 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
                 std::cout << ss.str();
             }
 
+            // increment count
+            surface_to_contention_count[surface]++;
         }
 
         // std::cout << "_ X _ _" << std::endl;
@@ -277,6 +282,8 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
                 std::cout << ss.str();
             }
 
+            // increment count
+            surface_to_contention_count[surface]++;
         }
 
         // std::cout << "_ _ _ X" << std::endl;
@@ -1332,6 +1339,14 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_interior_poi
             point.g = std::get<1>(color);
             point.b = std::get<2>(color);
         }
+        else if (settings.color_mode == ColorMode::CONTENTION)
+        {
+            double distance = surface_to_contention_count[interior_point->get_surface()] / settings.contention_denominator;
+            std::tuple<int, int, int> color = valueToJet(distance);
+            point.r = std::get<0>(color);
+            point.g = std::get<1>(color);
+            point.b = std::get<2>(color);
+        }
         cloud->push_back(point);
     }
     return cloud;
@@ -1448,6 +1463,14 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_vertex_point
         else if (setting.color_mode == ColorMode::SURFACE_UNCERTAINTY)
         {
             double distance = vertex->get_surface()->get_surface_position_std_in_normal_direction() / setting.positional_uncertainty_denominator;
+            std::tuple<int, int, int> color = valueToJet(distance);
+            point.r = std::get<0>(color);
+            point.g = std::get<1>(color);
+            point.b = std::get<2>(color);
+        }
+        else if (setting.color_mode == ColorMode::CONTENTION)
+        {
+            double distance = surface_to_contention_count[vertex->get_surface()] / setting.contention_denominator;
             std::tuple<int, int, int> color = valueToJet(distance);
             point.r = std::get<0>(color);
             point.g = std::get<1>(color);

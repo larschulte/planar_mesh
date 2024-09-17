@@ -27,7 +27,8 @@ enum class ColorMode
     POSITIONAL_UNCERTAINTY,
     RADIUS,
     SIBLINGS,
-    SURFACE_UNCERTAINTY
+    SURFACE_UNCERTAINTY,
+    CONTENTION
 };
 
 struct Settings 
@@ -81,6 +82,7 @@ struct Settings
     double siblings_denominator;
     double radius_denominator;
     double positional_uncertainty_denominator;
+    double contention_denominator;
     bool show_wireframe;
     bool show_sphere;
     int number_of_spheres_to_display;  

@@ -123,6 +123,7 @@ Settings::Settings()
     siblings_denominator = 3.0;
     radius_denominator = radius_value;
     positional_uncertainty_denominator = 0.002;
+    contention_denominator = 500;
     show_wireframe = true;
     show_sphere = false;
     number_of_spheres_to_display = 60;
