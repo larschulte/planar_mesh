@@ -1255,14 +1255,14 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_interior_poi
             point.y = interior_point->get_position()[1];
             point.z = interior_point->get_position()[2];
         }
-        if (settings.color_mode == 0)
+        if (settings.color_mode == ColorMode::ID)
         {
             const std::tuple<int, int, int>& color = interior_point->get_surface()->get_color();
             point.r = std::get<0>(color);
             point.g = std::get<1>(color);
             point.b = std::get<2>(color);
         }
-        else if (settings.color_mode == 1)
+        else if (settings.color_mode == ColorMode::POSITIONAL_UNCERTAINTY)
         {
             double distance = std::fabs(interior_point->buffer_compute_projected_distance() / 0.05);
             std::tuple<int, int, int> color = valueToJet(distance);
@@ -1270,7 +1270,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_interior_poi
             point.g = std::get<1>(color);
             point.b = std::get<2>(color);
         }
-        else if (settings.color_mode == 2)
+        else if (settings.color_mode == ColorMode::SIBLINGS)
         {
             double distance = interior_point->get_sibling_interior_points().size() / settings.siblings_denominator;
             std::tuple<int, int, int> color = valueToJet(distance);
@@ -1278,7 +1278,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_interior_poi
             point.g = std::get<1>(color);
             point.b = std::get<2>(color);
         }
-        else if (settings.color_mode == 3)
+        else if (settings.color_mode == ColorMode::RADIUS)
         {
             double distance = interior_point->get_radius() / settings.radius_denominator;
             std::tuple<int, int, int> color = valueToJet(distance);
@@ -1286,7 +1286,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_interior_poi
             point.g = std::get<1>(color);
             point.b = std::get<2>(color);
         }
-        else if (settings.color_mode == 4)
+        else if (settings.color_mode == ColorMode::SURFACE_UNCERTAINTY)
         {
             double distance = interior_point->get_surface()->get_surface_position_std_in_normal_direction() / settings.positional_uncertainty_denominator;
             std::tuple<int, int, int> color = valueToJet(distance);
@@ -1376,14 +1376,14 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_vertex_point
             point.y = vertex->get_position()[1];
             point.z = vertex->get_position()[2];
         }
-        if (setting.color_mode == 0)
+        if (setting.color_mode == ColorMode::ID)
         {
             const std::tuple<int, int, int>& color = vertex->get_surface()->get_color();
             point.r = std::get<0>(color);
             point.g = std::get<1>(color);
             point.b = std::get<2>(color);
         }
-        else if (setting.color_mode == 1)
+        else if (setting.color_mode == ColorMode::POSITIONAL_UNCERTAINTY)
         {
             double distance = std::abs(vertex->buffer_compute_projected_distance() / 0.05);
             std::tuple<int, int, int> color = valueToJet(distance);
@@ -1391,7 +1391,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_vertex_point
             point.g = std::get<1>(color);
             point.b = std::get<2>(color);
         }
-        else if (setting.color_mode == 2)
+        else if (setting.color_mode == ColorMode::SIBLINGS)
         {
             double distance = vertex->get_sibling_vertices().size() / setting.siblings_denominator;
             std::tuple<int, int, int> color = valueToJet(distance);
@@ -1399,7 +1399,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_vertex_point
             point.g = std::get<1>(color);
             point.b = std::get<2>(color);
         }
-        else if (setting.color_mode == 3)
+        else if (setting.color_mode == ColorMode::RADIUS)
         {
             double distance = vertex->get_radius() / setting.radius_denominator;
             std::tuple<int, int, int> color = valueToJet(distance);
@@ -1407,7 +1407,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_vertex_point
             point.g = std::get<1>(color);
             point.b = std::get<2>(color);
         }
-        else if (setting.color_mode == 4)
+        else if (setting.color_mode == ColorMode::SURFACE_UNCERTAINTY)
         {
             double distance = vertex->get_surface()->get_surface_position_std_in_normal_direction() / setting.positional_uncertainty_denominator;
             std::tuple<int, int, int> color = valueToJet(distance);

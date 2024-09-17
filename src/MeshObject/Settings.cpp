@@ -116,7 +116,7 @@ Settings::Settings()
     show_keycode = false;
     show_singular_edge = false;
     show_singular_vertex = false;
-    color_mode = 0;
+    color_mode = ColorMode::ID;
     surface_denominator = 10.0;
     siblings_denominator = 3.0;
     radius_denominator = radius_value;

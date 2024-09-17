@@ -151,7 +151,7 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
     // kp number 0
     if (event.getKeySym() == "KP_Insert" && event.keyDown())
     {
-        settings_.color_mode = 0;
+        settings_.color_mode = ColorMode::ID;
         update_display();
 
         // log
@@ -160,7 +160,7 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
     // kp number 1
     if (event.getKeySym() == "KP_End" && event.keyDown())
     {
-        settings_.color_mode = 1;
+        settings_.color_mode = ColorMode::POSITIONAL_UNCERTAINTY;
         update_display();
 
         // log
@@ -169,7 +169,7 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
     // kp number 2
     if (event.getKeySym() == "KP_Down" && event.keyDown())
     {
-        settings_.color_mode = 2;
+        settings_.color_mode = ColorMode::SIBLINGS;
         update_display();
 
         // log
@@ -178,7 +178,7 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
     // kp number 3
     if (event.getKeySym() == "KP_Next" && event.keyDown())
     {
-        settings_.color_mode = 3;
+        settings_.color_mode = ColorMode::RADIUS;
         update_display();
 
         // log
@@ -187,7 +187,7 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
     // kp number 4
     if (event.getKeySym() == "KP_Left" && event.keyDown())
     {
-        settings_.color_mode = 4;
+        settings_.color_mode = ColorMode::SURFACE_UNCERTAINTY;
         update_display();
 
         // log

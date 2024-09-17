@@ -20,6 +20,15 @@ struct LOG
     bool total_processed_points;
 };
 
+enum class ColorMode
+{
+    ID,
+    POSITIONAL_UNCERTAINTY,
+    RADIUS,
+    SIBLINGS,
+    SURFACE_UNCERTAINTY
+};
+
 struct Settings 
 {
     Settings();
@@ -66,7 +75,7 @@ struct Settings
     bool show_keycode;
     bool show_singular_edge;
     bool show_singular_vertex;
-    int color_mode;
+    ColorMode color_mode;
     double surface_denominator;
     double siblings_denominator;
     double radius_denominator;
