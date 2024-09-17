@@ -173,6 +173,14 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
         }
         else
         {
+            if (settings_.log.show_contented_surface)
+            {
+                // print the last surface that can't be locked
+                std::stringstream ss;
+                ss << "P _ _ surface - " << surface->get_id() << std::endl;
+                std::cout << ss.str();
+            }
+
             // abort
             for (const std::shared_ptr<Surface>& surface : prelocked_surfaces) omp_unset_nested_lock_with_log(surface->lock, "unlock surface");
             storage_->add_to_queue(generic_point);
@@ -223,6 +231,21 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
 
     if (BVH_return == BVHReturnType::ABORT)
     {
+        if (intersected_surfaces.size() > 0)
+        {
+            // the last surface should be contented surface
+            std::shared_ptr<Surface> surface = *intersected_surfaces.rbegin();
+
+            if (settings_.log.show_contented_surface)
+            {
+                // print the last surface that can't be locked
+                std::stringstream ss;
+                ss << "_ B _ surface - " << surface->get_id() << std::endl;
+                std::cout << ss.str();
+            }
+
+        }
+
         // std::cout << "_ X _ _" << std::endl;
         for (const std::shared_ptr<Surface>& surface : prelocked_surfaces) omp_unset_nested_lock_with_log(surface->lock, "unlock surface");
         for (const std::shared_ptr<Surface>& surface : locked_surfaces) omp_unset_nested_lock_with_log(surface->lock, "unlock surface");
@@ -241,6 +264,21 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
 
     if (RRS_return == RRSReturnType::ABORT)
     {
+        if (intersected_surfaces.size() > 0)
+        {
+            // the last surface should be contented surface
+            std::shared_ptr<Surface> surface = *intersected_surfaces.rbegin();
+
+            if (settings_.log.show_contented_surface)
+            {
+                // print the last surface that can't be locked
+                std::stringstream ss;
+                ss << "_ _ R surface - " << surface->get_id() << std::endl;
+                std::cout << ss.str();
+            }
+
+        }
+
         // std::cout << "_ _ _ X" << std::endl;
         for (const std::shared_ptr<Surface>& surface : prelocked_surfaces) omp_unset_nested_lock_with_log(surface->lock, "unlock surface");
         for (const std::shared_ptr<Surface>& surface : locked_surfaces) omp_unset_nested_lock_with_log(surface->lock, "unlock surface");

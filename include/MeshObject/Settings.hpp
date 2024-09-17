@@ -18,6 +18,7 @@ struct LOG
     bool duplicated_point;
     bool num_of_concurrent_processes;
     bool total_processed_points;
+    bool show_contented_surface;
 };
 
 enum class ColorMode

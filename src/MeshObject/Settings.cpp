@@ -85,6 +85,7 @@ Settings::Settings()
         log.duplicated_point = true;
         log.num_of_concurrent_processes = true;
         log.total_processed_points = true;
+        log.show_contented_surface = true;
     }
     else
     {
@@ -101,7 +102,8 @@ Settings::Settings()
         log.merge_surface = false;
         log.duplicated_point = false;
         log.num_of_concurrent_processes = false;
-        log.total_processed_points = true;
+        log.total_processed_points = false;
+        log.show_contented_surface = true;
     }
     
 
