@@ -61,6 +61,8 @@ struct Settings
     unsigned int num_threads;
     bool use_queue;
 
+    bool record_countent_surface_count;
+
     // double min_face_angle;
 
     // log settings

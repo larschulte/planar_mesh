@@ -181,8 +181,11 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
                 std::cout << ss.str();
             }
 
-            // increment count
-            surface_to_contention_count[surface]++;
+            if (settings_.record_countent_surface_count)
+            {
+                // increment count
+                surface_to_contention_count[surface]++;
+            }
 
             // abort
             for (const std::shared_ptr<Surface>& surface : prelocked_surfaces) omp_unset_nested_lock_with_log(surface->lock, "unlock surface");
@@ -247,8 +250,11 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
                 std::cout << ss.str();
             }
 
-            // increment count
-            surface_to_contention_count[surface]++;
+            if (settings_.record_countent_surface_count)
+            {
+                // increment count
+                surface_to_contention_count[surface]++;
+            }
         }
 
         // std::cout << "_ X _ _" << std::endl;
@@ -282,8 +288,11 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
                 std::cout << ss.str();
             }
 
-            // increment count
-            surface_to_contention_count[surface]++;
+            if (settings_.record_countent_surface_count)
+            {
+                // increment count
+                surface_to_contention_count[surface]++;
+            }
         }
 
         // std::cout << "_ _ _ X" << std::endl;
