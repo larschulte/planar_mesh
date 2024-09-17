@@ -87,5 +87,5 @@ private:
     std::chrono::time_point<std::chrono::high_resolution_clock> t_last;
     std::mutex t_last_mutex;
 
-    std::map<std::shared_ptr<Surface>, unsigned int> surface_to_contention_count;
+    std::unordered_map<std::shared_ptr<Surface>, unsigned int, MeshObjectHash> surface_to_contention_count;
 };
