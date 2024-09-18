@@ -160,39 +160,38 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
     std::vector<std::shared_ptr<Surface>> locked_surfaces;
     std::set<std::shared_ptr<Surface>, MeshObjectCompare> prelocked_surfaces;
 
-    // get candidate prelock surfaces
-    std::set<std::shared_ptr<Surface>, MeshObjectCompare>& prelock_surface_candidates = generic_point->prelock_surface_candidates;
+    // // get candidate prelock surfaces
+    // std::vector<std::shared_ptr<Surface>> prelock_surface_candidates;
+    // for (const auto& surface : generic_point->intersected_surfaces)
+    // {
+    //     prelock_surface_candidates.push_back(surface);
+    // }
+    
+    // // lock
+    // for (const std::shared_ptr<Surface>& surface : prelock_surface_candidates)
+    // {
+    //     const bool can_lock = omp_test_nest_lock(&surface->lock);
+    //     if (can_lock)
+    //     {
+    //         prelocked_surfaces.insert(surface);
+    //     }
+    //     else
+    //     {
+    //         // increment contention count
+    //         generic_point->contented_surfaces[surface]++;
 
-    // lock
-    for (const std::shared_ptr<Surface>& surface : prelock_surface_candidates)
-    {
-        const bool can_lock = omp_test_nest_lock(&surface->lock);
-        if (can_lock)
-        {
-            prelocked_surfaces.insert(surface);
-        }
-        else
-        {
-            if (settings_.log.show_contented_surface)
-            {
-                // print the last surface that can't be locked
-                std::stringstream ss;
-                ss << "P _ _ surface - " << surface->get_id() << std::endl;
-                std::cout << ss.str();
-            }
-
-            if (settings_.record_countent_surface_count)
-            {
-                // increment count
-                surface_to_contention_count[surface]++;
-            }
-
-            // abort
-            for (const std::shared_ptr<Surface>& surface : prelocked_surfaces) omp_unset_nested_lock_with_log(surface->lock, "unlock surface");
-            storage_->add_to_queue(generic_point);
-            return;
-        }
-    }
+    //         for (const std::shared_ptr<Surface>& surface : prelocked_surfaces) omp_unset_nested_lock_with_log(surface->lock, "unlock surface");
+    //         if (generic_point->get_contention_count() > settings_.retry_threshold)
+    //         {
+    //             storage_->add_to_abort_queue(generic_point);
+    //         }
+    //         else
+    //         {
+    //             storage_->add_to_queue(generic_point);
+    //         }
+    //         return;
+    //     }
+    // }
 
     std::shared_ptr<Node> bvh_storage_node;
     BVHReturnType BVH_storage_return = storage_->face_intersection_search_find_node(generic_point->get_origin(), generic_point->get_position(), bvh_storage_node);    
