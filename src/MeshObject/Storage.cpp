@@ -482,20 +482,9 @@ bool Storage::can_reverse_radius_search()
     return rrs_tree_.can_reverse_radius_search(); 
 }
 
-// reverse radius search
-RRSReturnType Storage::reverse_radius_search(const Eigen::Vector3d& point, std::vector<std::shared_ptr<Vertex>>& result, std::set<std::shared_ptr<Surface>, MeshObjectCompare>& intersected_surfaces) 
+RRSReturnType Storage::reverse_radius_search(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Vertex>>& result) 
 {
-    return rrs_tree_.tree_reverse_radius_search(point, result, intersected_surfaces);
-}
-
-RRSReturnType Storage::reverse_radius_search(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Vertex>>& result, std::set<std::shared_ptr<Surface>, MeshObjectCompare>& intersected_surfaces) 
-{
-    return reverse_radius_search(generic_point->get_position(), result, intersected_surfaces);
-}
-
-RRSReturnType Storage::reverse_radius_search(const std::shared_ptr<Vertex>& vertex, std::vector<std::shared_ptr<Vertex>>& result, std::set<std::shared_ptr<Surface>, MeshObjectCompare>& intersected_surfaces)
-{
-    return reverse_radius_search(vertex->get_position(), result, intersected_surfaces);
+    return rrs_tree_.tree_reverse_radius_search(generic_point, result);
 }
 
 RRSReturnType Storage::reverse_radius_search_find_node(const Eigen::Vector3d& point, std::shared_ptr<RRSNode>& return_node)
@@ -503,15 +492,9 @@ RRSReturnType Storage::reverse_radius_search_find_node(const Eigen::Vector3d& po
     return rrs_tree_.tree_find_leaf_node(point, return_node);
 }
 
-// face intersection search
-BVHReturnType Storage::face_intersection_search(const Eigen::Vector3d& origin, const Eigen::Vector3d& point, std::vector<std::shared_ptr<Face>>& result, std::set<std::shared_ptr<Surface>, MeshObjectCompare>& intersected_surfaces) 
+BVHReturnType Storage::face_intersection_search(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Face>>& result) 
 {
-    return triangle_bvh_.tree_intersection_search(origin, point, result, intersected_surfaces);
-}
-
-BVHReturnType Storage::face_intersection_search(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Face>>& result, std::set<std::shared_ptr<Surface>, MeshObjectCompare>& intersected_surfaces) 
-{
-    return face_intersection_search(generic_point->get_origin(), generic_point->get_position(), result, intersected_surfaces);
+    return triangle_bvh_.tree_intersection_search(generic_point, result);
 }
 
 BVHReturnType Storage::face_intersection_search_find_node(const Eigen::Vector3d& origin, const Eigen::Vector3d& point, std::shared_ptr<Node>& return_node)
