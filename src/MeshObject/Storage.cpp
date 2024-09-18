@@ -420,7 +420,7 @@ void Storage::print_main_queue_stats()
         // print 
         for (const auto& pair : surface_to_generic_points)
         {
-            std::cout << "Surface " << pair.first->get_id() << " has " << pair.second.size() << " points." << std::endl;
+            std::cout << pair.second.size() << "            points failed to lock surface         " << pair.first->get_id() << std::endl;
         }
 
         std::cout << "Num of point with no surface " << num_point_with_no_surface << std::endl;
