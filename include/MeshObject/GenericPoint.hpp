@@ -36,6 +36,7 @@ public:
 
     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> intersected_surfaces;
     std::unordered_map<std::shared_ptr<Surface>, unsigned int, MeshObjectHash> contented_surfaces;
+    unsigned int get_contention_count() const;
     
 private:
     static Settings settings_;

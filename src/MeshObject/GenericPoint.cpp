@@ -121,6 +121,17 @@ void GenericPoint::reset_num_deletes()
     num_deletes_ = 0;
 }
 
+unsigned int GenericPoint::get_contention_count() const
+{
+    unsigned int total = 0;
+    for (const auto& contented_surface : contented_surfaces)
+    {
+        total += contented_surface.second;
+    }
+
+    return total;
+}
+
 bool operator<(const std::shared_ptr<GenericPoint>& lhs, const std::shared_ptr<GenericPoint>& rhs)
 {
     if (lhs->is_expired() || rhs->is_expired()) throw std::runtime_error("Comparing expired GenericPoints");
