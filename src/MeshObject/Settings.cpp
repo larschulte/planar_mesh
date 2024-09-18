@@ -51,7 +51,7 @@ Settings::Settings()
     start_cloud = 50;
     start_point = 0;
     fit_plane_threshold = 4;
-    shuffle_pointcloud = false;
+    shuffle_pointcloud = true;
     use_radius_value = true;
     pointcloud_fraction = 1;
     radius_value = 3;
@@ -61,6 +61,9 @@ Settings::Settings()
     envelope_size = 3.5;
 
     num_of_delete_before_put_to_repeated_queue = 2;
+    
+    num_threads = 30;
+    record_countent_surface_count = false;
 
     use_queue = true;
     retry_threshold = 10;
@@ -104,7 +107,7 @@ Settings::Settings()
         log.duplicated_point = false;
         log.num_of_concurrent_processes = false;
         log.total_processed_points = false;
-        log.show_contented_surface = true;
+        log.show_contented_surface = false;
     }
     
 
