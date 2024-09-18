@@ -64,6 +64,7 @@ public: // to user
     unsigned int get_queue_size();
     unsigned int get_repeated_queue_size();
     unsigned int get_abort_queue_size();
+    void clear_queues();
 
     bool can_reverse_radius_search();
     RRSReturnType reverse_radius_search(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Vertex>>& result);

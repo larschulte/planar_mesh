@@ -596,6 +596,27 @@ unsigned int Storage::get_abort_queue_size()
     return size;
 }
 
+void Storage::clear_queues()
+{
+    // clear main queue
+    while (!main_queue_.empty()) main_queue_.pop();
+
+    for (queue_or_stack<std::shared_ptr<GenericPoint>>& queue : smaller_queues_)
+    {
+        while (!queue.empty()) queue.pop();
+    }
+
+    for (queue_or_stack<std::shared_ptr<GenericPoint>>& repeated_queue : smaller_repeated_queues_)
+    {
+        while (!repeated_queue.empty()) repeated_queue.pop();
+    }
+
+    for (queue_or_stack<std::shared_ptr<GenericPoint>>& abort_queue : smaller_abort_queues_)
+    {
+        while (!abort_queue.empty()) abort_queue.pop();
+    }
+}
+
 void Storage::add_searchable_vertex(const std::shared_ptr<Vertex>& vertex)
 {
     // add to rrs_tree

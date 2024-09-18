@@ -64,6 +64,7 @@ struct Settings
     bool record_countent_surface_count;
 
     unsigned int retry_threshold;
+    unsigned int num_iterations;
 
     // double min_face_angle;
 
