@@ -205,8 +205,11 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
         for (const std::shared_ptr<Surface>& surface : locked_surfaces) omp_unset_nested_lock_with_log(surface->lock, "unlock surface");
         for (const std::shared_ptr<Node>& node : locked_bvh_nodes) omp_unset_nest_lock(&node->omp_lock);
         for (const std::shared_ptr<RRSNode>& node : locked_rrs_nodes) omp_unset_nest_lock(&node->omp_lock);
+
+        // alway retry until it contents with surface
         storage_->add_to_queue(generic_point);
-        // storage_->add_to_abort_queue(generic_point);
+
+        // return
         return;
     }
 
@@ -221,8 +224,11 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
         for (const std::shared_ptr<Surface>& surface : locked_surfaces) omp_unset_nested_lock_with_log(surface->lock, "unlock surface");
         for (const std::shared_ptr<Node>& node : locked_bvh_nodes) omp_unset_nest_lock(&node->omp_lock);
         for (const std::shared_ptr<RRSNode>& node : locked_rrs_nodes) omp_unset_nest_lock(&node->omp_lock);
+        
+        // alway retry until it contents with surface
         storage_->add_to_queue(generic_point);
-        // storage_->add_to_abort_queue(generic_point);
+        
+        // return
         return;
     }
 
@@ -233,33 +239,20 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
 
     if (BVH_return == BVHReturnType::ABORT)
     {
-        if (intersected_surfaces.size() > 0)
-        {
-            // the last surface should be contented surface
-            std::shared_ptr<Surface> surface = *intersected_surfaces.rbegin();
-
-            if (settings_.log.show_contented_surface)
-            {
-                // print the last surface that can't be locked
-                std::stringstream ss;
-                ss << "_ B _ surface - " << surface->get_id() << std::endl;
-                std::cout << ss.str();
-            }
-
-            if (settings_.record_countent_surface_count)
-            {
-                // increment count
-                surface_to_contention_count[surface]++;
-            }
-        }
-
         // std::cout << "_ X _ _" << std::endl;
         for (const std::shared_ptr<Surface>& surface : prelocked_surfaces) omp_unset_nested_lock_with_log(surface->lock, "unlock surface");
         for (const std::shared_ptr<Surface>& surface : locked_surfaces) omp_unset_nested_lock_with_log(surface->lock, "unlock surface");
         for (const std::shared_ptr<Node>& node : locked_bvh_nodes) omp_unset_nest_lock(&node->omp_lock);
         for (const std::shared_ptr<RRSNode>& node : locked_rrs_nodes) omp_unset_nest_lock(&node->omp_lock);
-        storage_->add_to_queue(generic_point);
-        // storage_->add_to_abort_queue(generic_point);
+        
+        if (generic_point->get_contention_count() > settings_.retry_threshold)
+        {
+            storage_->add_to_abort_queue(generic_point);
+        }
+        else
+        {
+            storage_->add_to_queue(generic_point);
+        }
         return;
     }
 
@@ -270,33 +263,20 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
 
     if (RRS_return == RRSReturnType::ABORT)
     {
-        if (intersected_surfaces.size() > 0)
-        {
-            // the last surface should be contented surface
-            std::shared_ptr<Surface> surface = *intersected_surfaces.rbegin();
-
-            if (settings_.log.show_contented_surface)
-            {
-                // print the last surface that can't be locked
-                std::stringstream ss;
-                ss << "_ _ R surface - " << surface->get_id() << std::endl;
-                std::cout << ss.str();
-            }
-
-            if (settings_.record_countent_surface_count)
-            {
-                // increment count
-                surface_to_contention_count[surface]++;
-            }
-        }
-
         // std::cout << "_ _ _ X" << std::endl;
         for (const std::shared_ptr<Surface>& surface : prelocked_surfaces) omp_unset_nested_lock_with_log(surface->lock, "unlock surface");
         for (const std::shared_ptr<Surface>& surface : locked_surfaces) omp_unset_nested_lock_with_log(surface->lock, "unlock surface");
         for (const std::shared_ptr<Node>& node : locked_bvh_nodes) omp_unset_nest_lock(&node->omp_lock);
         for (const std::shared_ptr<RRSNode>& node : locked_rrs_nodes) omp_unset_nest_lock(&node->omp_lock);
-        storage_->add_to_queue(generic_point);
-        // storage_->add_to_abort_queue(generic_point);
+
+        if (generic_point->get_contention_count() > settings_.retry_threshold)
+        {
+            storage_->add_to_abort_queue(generic_point);
+        }
+        else
+        {
+            storage_->add_to_queue(generic_point);
+        }
         return;
     }
 

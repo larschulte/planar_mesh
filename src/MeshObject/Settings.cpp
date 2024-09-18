@@ -63,7 +63,7 @@ Settings::Settings()
     num_of_delete_before_put_to_repeated_queue = 2;
 
 
-    record_countent_surface_count = true;
+    retry_threshold = 5;
 
     // min_face_angle = 20;
 
