@@ -427,6 +427,84 @@ void Storage::print_main_queue_stats()
     }
 }
 
+void Storage::split_main_queue_into_smaller_queues_by_contention()
+{
+    // group points by contented surface
+    std::unordered_map<std::shared_ptr<Surface>, std::vector<std::shared_ptr<GenericPoint>>, MeshObjectHash> surface_to_generic_points;
+    {
+        unsigned int size = main_queue_.size();
+        for (unsigned int i = 0; i < size; i++)
+        {
+            // get point from main queue
+            std::shared_ptr<GenericPoint> generic_point = main_queue_.front();
+            main_queue_.pop();
+
+            // throw if no surface
+            if (generic_point->contented_surfaces.empty()) throw std::runtime_error("No surface for generic point.");
+
+            // find the surface with the largest count
+            std::pair<std::shared_ptr<Surface>, unsigned int> pair = std::make_pair(nullptr, 0);
+            for (const auto& surface : generic_point->contented_surfaces)
+            {
+                if (surface.second > pair.second)
+                {
+                    pair = surface;
+                }
+            }
+
+            // clear contented surface
+            generic_point->contented_surfaces.clear();
+
+            // store in the map
+            surface_to_generic_points[pair.first].push_back(generic_point);
+        }
+    }
+
+    // sort by group size, largest first
+    std::vector<std::vector<std::shared_ptr<GenericPoint>>> sorted_surface_to_generic_points;
+    {
+        for (const auto &pair : surface_to_generic_points)
+        {
+            sorted_surface_to_generic_points.push_back(pair.second);
+        }
+        std::sort(sorted_surface_to_generic_points.begin(), sorted_surface_to_generic_points.end(), 
+            [](const std::vector<std::shared_ptr<GenericPoint>> &a, const std::vector<std::shared_ptr<GenericPoint>> &b)
+            { 
+                return a.size() > b.size(); 
+            });
+    }
+    
+    // allocte the sorted groups to smaller lists
+    std::vector<std::vector<std::shared_ptr<GenericPoint>>> smallerLists(settings_.num_threads);
+    {
+        for (const auto &group : sorted_surface_to_generic_points)
+        {
+            // Find the smallest list to distribute the group
+            unsigned int minListSize = smallerLists[0].size();
+            int minIndex = 0;
+            for (unsigned int i = 0; i < settings_.num_threads; ++i)
+            {
+                if (smallerLists[i].size() < minListSize)
+                {
+                    minListSize = smallerLists[i].size();
+                    minIndex = i;
+                }
+            }
+
+            // Add the group to the smallest list
+            smallerLists[minIndex].insert(smallerLists[minIndex].end(), group.begin(), group.end());
+        }
+    }
+    
+    // add list to queue
+    for (unsigned int i = 0; i < smallerLists.size(); ++i)
+    {
+        for (const auto &point : smallerLists[i])
+        {
+            smaller_queues_[i].push(point);
+        }
+    }
+}
 
 void Storage::add_to_queue(const Eigen::Vector3d& position, const Eigen::Vector3d& origin) 
 {
