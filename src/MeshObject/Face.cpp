@@ -35,6 +35,11 @@ void Face::initialize_(const std::shared_ptr<Storage>& storage, const std::share
     connect(vertex1);
     connect(vertex2);
 
+    // store vertices position
+    v0_ = vertex0->get_position();
+    v1_ = vertex1->get_position();
+    v2_ = vertex2->get_position();
+
     // compute min and max
     BoundingBox box;
     box.expand(vertex0->get_position());
@@ -240,13 +245,9 @@ bool Face::has_vertex(const std::shared_ptr<Vertex>& vertex) const
 
 bool Face::intersects_point(const Eigen::Vector3d& origin, const Eigen::Vector3d& direction)
 {    
-    const Eigen::Vector3d& v0 = get_vertex(0)->get_position();
-    const Eigen::Vector3d& v1 = get_vertex(1)->get_position();
-    const Eigen::Vector3d& v2 = get_vertex(2)->get_position();
-
     const double EPSILON = 1e-8;
-    Eigen::Vector3d edge1 = v1 - v0;
-    Eigen::Vector3d edge2 = v2 - v0;
+    Eigen::Vector3d edge1 = v1_ - v0_;
+    Eigen::Vector3d edge2 = v2_ - v0_;
     
     Eigen::Vector3d pvec = direction.cross(edge2);
     double det = edge1.dot(pvec);
@@ -254,7 +255,7 @@ bool Face::intersects_point(const Eigen::Vector3d& origin, const Eigen::Vector3d
 
     double invDet = 1.0 / det;
 
-    Eigen::Vector3d tvec = origin - v0;
+    Eigen::Vector3d tvec = origin - v0_;
     double u = tvec.dot(pvec) * invDet;
     if (u < 0.0 || u > 1.0) return false;
     

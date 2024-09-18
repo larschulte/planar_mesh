@@ -79,6 +79,9 @@ private:
 
     Eigen::Vector3d min_;
     Eigen::Vector3d max_;
+    Eigen::Vector3d v0_;
+    Eigen::Vector3d v1_;
+    Eigen::Vector3d v2_;
 
     int id_;
     std::shared_ptr<Storage> storage_;
