@@ -354,6 +354,79 @@ void Storage::split_main_queue_into_smaller_queues()
     }
 }
 
+void Storage::print_main_queue_stats()
+{
+    // print individual point
+    const bool print_individual_point = false;
+    const bool print_surface_related = true;
+
+    if (print_individual_point)
+    {
+        unsigned int size = main_queue_.size();
+        for (unsigned int i = 0; i < size; i++)
+        {
+            std::shared_ptr<GenericPoint> generic_point = main_queue_.front();
+            main_queue_.pop();
+            main_queue_.push(generic_point);
+
+            std::stringstream ss;
+
+            for (const auto& pair : generic_point->contented_surfaces)
+            {
+                ss << "surface " << pair.first->get_id() << " contented for " << pair.second << " times | ";
+            }
+
+            ss << std::endl;
+            std::cout << ss.str();
+        }
+    }
+
+    if (print_surface_related)
+    {
+        std::unordered_map<std::shared_ptr<Surface>, std::vector<std::shared_ptr<GenericPoint>>, MeshObjectHash> surface_to_generic_points;
+
+        unsigned int num_point_with_no_surface = 0;
+
+        unsigned int size = main_queue_.size();
+        for (unsigned int i = 0; i < size; i++)
+        {
+            std::shared_ptr<GenericPoint> generic_point = main_queue_.front();
+            main_queue_.pop();
+            main_queue_.push(generic_point);
+
+            std::stringstream ss;
+
+            // skip if no surface
+            if (generic_point->contented_surfaces.empty()) 
+            {
+                num_point_with_no_surface++;
+                continue;
+            }
+
+            // find the surface with the largest count
+            std::pair<std::shared_ptr<Surface>, unsigned int> pair = std::make_pair(nullptr, 0);
+            for (const auto& surface : generic_point->contented_surfaces)
+            {
+                if (surface.second > pair.second)
+                {
+                    pair = surface;
+                }
+            }
+
+            // store in the map
+            surface_to_generic_points[pair.first].push_back(generic_point);
+        }
+
+        // print 
+        for (const auto& pair : surface_to_generic_points)
+        {
+            std::cout << "Surface " << pair.first->get_id() << " has " << pair.second.size() << " points." << std::endl;
+        }
+
+        std::cout << "Num of point with no surface " << num_point_with_no_surface << std::endl;
+    }
+}
+
 
 void Storage::add_to_queue(const Eigen::Vector3d& position, const Eigen::Vector3d& origin) 
 {

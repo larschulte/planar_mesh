@@ -49,6 +49,7 @@ public: // to user
 
     void add_to_main_queue(const Eigen::Vector3d& position, const Eigen::Vector3d& origin);
     void split_main_queue_into_smaller_queues();
+    void print_main_queue_stats();
 
     void add_points_in_smaller_repeated_queues_to_main_queue();
     void add_points_in_smaller_abort_queues_to_main_queue();
