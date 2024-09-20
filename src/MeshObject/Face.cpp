@@ -118,14 +118,20 @@ void Face::update_radius(const std::shared_ptr<GenericPoint>& generic_point)
 
 void Face::delete_()
 {
-    // make a copy of node
-    std::shared_ptr<Node> node_copy = node;
-
     // lock node
+    std::shared_ptr<Node> node_copy = node ? node : std::make_shared<Node>(); // lock if node exists
     while (!omp_test_nest_lock(&node_copy->omp_lock)) 
     {
         std::cout << "delete face waiting for " << id_ << std::endl;
     }
+
+    // set nan bounding box
+    node->box = BoundingBox();
+    node->recursive_shrink_parent_box();
+
+    // remove from search tree
+    storage_->remove_searchable_face(shared_from_this());
+    is_searchable_ = false;
 
     // log
     if (settings_.log.deletion) std::cout << "Destroying face " << id_ << std::endl;
@@ -144,14 +150,6 @@ void Face::delete_()
     for (const auto& interior_point : interior_points) disconnect(interior_point);
     if (surface_ != nullptr) disconnect(surface_);
     for (const auto& sibling_face : sibling_faces) disconnect(sibling_face);
-
-    // set nan bounding box
-    node->box = BoundingBox();
-    node->recursive_shrink_parent_box();
-
-    // remove from search tree
-    storage_->remove_searchable_face(shared_from_this());
-    is_searchable_ = false;
 
     // log
     if (settings_.log.deletion) std::cout << "---------- face " << id_ << " destroyed" << std::endl;
@@ -407,16 +405,15 @@ void Face::disconnect(const std::shared_ptr<Edge>& edge)
 
 void Face::disconnect(const std::shared_ptr<Surface>& surface)
 {
-    // check input
-    if (surface->is_expired()) return;
-
     // lock node
-    // make copy of node
-    std::shared_ptr<Node> node_copy = this->node;
+    std::shared_ptr<Node> node_copy = node ? node : std::make_shared<Node>(); // lock if node exists
     while (!omp_test_nest_lock(&node_copy->omp_lock)) 
     {
         std::cout << "disconnect vertex waiting " << id_ << std::endl;
     }
+
+    // check input
+    if (surface->is_expired()) return;
 
     // disconnect
     bool erased = surface_ == surface;

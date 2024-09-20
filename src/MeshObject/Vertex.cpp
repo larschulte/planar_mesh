@@ -66,14 +66,20 @@ void Vertex::initialize_(const std::shared_ptr<Storage>& storage, const std::sha
 
 void Vertex::delete_()
 {
-    // make a copy of node
-    std::shared_ptr<RRSNode> node_copy = node;
-
     // lock node
+    std::shared_ptr<RRSNode> node_copy = node ? node : std::make_shared<RRSNode>(); // lock if node exists
     while (!omp_test_nest_lock(&node_copy->omp_lock)) 
     {
         std::cout << "delete vertex waiting " << id_ << std::endl;
     }
+
+    // shrink bounding box
+    node->box = RRSBoundingBox();
+    node->recursive_shrink_parent_box();
+
+    // remove from rrs tree
+    storage_->remove_searchable_vertex(shared_from_this());
+    is_searchable_ = false;
 
     // log
     if (settings_.log.deletion) std::cout << "Destroying vertex " << id_ << std::endl;
@@ -88,14 +94,6 @@ void Vertex::delete_()
     for (const auto& face : faces) disconnect(face);
     if (surface_) disconnect(surface_);
 
-    // shrink bounding box
-    node->box = RRSBoundingBox();
-    node->recursive_shrink_parent_box();
-
-    // remove from rrs tree
-    storage_->remove_searchable_vertex(shared_from_this());
-    is_searchable_ = false;
-    
     // update delete count
     num_deletes_++;
 
@@ -483,16 +481,15 @@ void Vertex::disconnect(const std::shared_ptr<Face>& face)
 
 void Vertex::disconnect(const std::shared_ptr<Surface>& surface)
 {
-    // check input
-    if (surface->is_expired()) return;
-
     // lock node
-    // make copy of node
-    std::shared_ptr<RRSNode> node_copy = this->node;
+    std::shared_ptr<RRSNode> node_copy = node ? node : std::make_shared<RRSNode>(); // lock if node exists
     while (!omp_test_nest_lock(&node_copy->omp_lock)) 
     {
         std::cout << "disconnect vertex waiting " << id_ << std::endl;
     }
+
+    // check input
+    if (surface->is_expired()) return;
     
     // disconnect
     bool erased = surface_ == surface;
