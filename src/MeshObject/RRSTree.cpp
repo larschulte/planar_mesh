@@ -170,10 +170,13 @@ double RRSTree::sort_boundary_vertex_list_in_axis(std::vector<std::shared_ptr<Ve
     return boundary_vertex_list[mid]->get_position()[axis];
 }
 
-void RRSTree::expand_node_box(const std::shared_ptr<RRSNode>& node, const std::shared_ptr<Vertex>& boundary_vertex)
+void RRSTree::sort_boundary_vertex_list_in_axis(std::vector<std::shared_ptr<Vertex>>& boundary_vertex_list, int axis, int start, int end)
 {
-    node->box.expand(boundary_vertex->get_min());
-    node->box.expand(boundary_vertex->get_max());
+    std::sort(boundary_vertex_list.begin() + start, boundary_vertex_list.begin() + end, 
+        [&](const std::shared_ptr<Vertex>& boundary_vertex_a, const std::shared_ptr<Vertex>& boundary_vertex_b)
+{
+    return boundary_vertex_a->get_position()[axis] < boundary_vertex_b->get_position()[axis];
+        });
 }
 
 void RRSTree::convert_leaf_to_branch(const std::shared_ptr<RRSNode>& node)
