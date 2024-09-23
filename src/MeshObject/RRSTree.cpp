@@ -9,16 +9,16 @@ std::ostream& operator<<(std::ostream& os, const RRSReturnType& type)
     switch (type)
     {
         case RRSReturnType::INTERSECTED:
-            os << "_";
+            os << "I _ _";
             break;
         case RRSReturnType::SKIP:
-            os << "-";
+            os << "_ S _";
             break;
         case RRSReturnType::ABORT:
-            os << "X";
+            os << "_ _ A";
             break;
         default:
-            os << "?";
+            os << "? ? ?";
             break;
     }
     return os;
