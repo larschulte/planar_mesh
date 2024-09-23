@@ -511,6 +511,7 @@ RRSReturnType RRSTree::node_find_leaf_node(const std::shared_ptr<RRSNode>& node,
         temp_vertex->temp_initialize(point, 0);
 
         //  add and branch
+node->box.expand_box_no_return(temp_vertex->get_min(), temp_vertex->get_max());
         node->boundary_vertices.push_back(temp_vertex);
         convert_leaf_to_branch(node); // this may cause error in Application when locking surface's node
 
