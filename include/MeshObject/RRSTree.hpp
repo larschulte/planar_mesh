@@ -79,6 +79,7 @@ private:
     void convert_leaf_to_branch(const std::shared_ptr<RRSNode>& node);
 
     void node_add_vertex(const std::shared_ptr<RRSNode>& node, const std::shared_ptr<Vertex>& boundary_vertex);
+    double calculate_sah(const RRSBoundingBox& parent_box, const RRSBoundingBox& left_box, const RRSBoundingBox& right_box, int left_count, int right_count);
     void node_increase_radius(const std::shared_ptr<RRSNode>& node, const std::shared_ptr<Vertex>& boundary_vertex);
     bool node_delete_vertex(const std::shared_ptr<RRSNode>& node, const std::shared_ptr<Vertex>& boundary_vertex);
     RRSReturnType node_reverse_radius_search(const std::shared_ptr<RRSNode>& node, const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Vertex>>& search_results);

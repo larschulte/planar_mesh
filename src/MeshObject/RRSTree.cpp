@@ -184,6 +184,19 @@ void RRSTree::convert_leaf_to_branch(const std::shared_ptr<RRSNode>& node)
     node->isLeaf = false;
 }
 
+double RRSTree::calculate_sah(const RRSBoundingBox& parent_box, const RRSBoundingBox& left_box, const RRSBoundingBox& right_box, int left_count, int right_count)
+{
+    double S_parent = parent_box.compute_surface_area();  // Surface area of parent node
+    double S_left = left_box.compute_surface_area();     // Surface area of left child
+    double S_right = right_box.compute_surface_area();   // Surface area of right child
+
+    // The cost of traversing the node, typically set to a constant, e.g., 1.0
+    const double traversal_cost = 1.0;
+
+    // SAH cost formula
+    return traversal_cost + (S_left / S_parent) * left_count + (S_right / S_parent) * right_count;
+}
+
 std::shared_ptr<RRSNode> RRSTree::build_node(const std::vector<std::shared_ptr<Vertex>>& boundary_vertex_list, const int& start, const int& end)
 {
     auto node = std::make_shared<RRSNode>();
