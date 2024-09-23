@@ -64,7 +64,7 @@ void RRSBoundingBox::expand_box_no_return(const RRSBoundingBox& box)
 
 bool RRSBoundingBox::expand_box(const Eigen::Vector3d& input_min, const Eigen::Vector3d& input_max)
 {
-// make copy of old min and max
+    // make copy of old min and max
     Eigen::Vector3d oldMin = min;
     Eigen::Vector3d oldMax = max;
 
@@ -175,9 +175,9 @@ double RRSTree::sort_boundary_vertex_list_in_axis(std::vector<std::shared_ptr<Ve
 void RRSTree::sort_boundary_vertex_list_in_axis(std::vector<std::shared_ptr<Vertex>>& boundary_vertex_list, int axis, int start, int end)
 {
     std::sort(boundary_vertex_list.begin() + start, boundary_vertex_list.begin() + end, 
-        [&](const std::shared_ptr<Vertex>& boundary_vertex_a, const std::shared_ptr<Vertex>& boundary_vertex_b)
-{
-    return boundary_vertex_a->get_position()[axis] < boundary_vertex_b->get_position()[axis];
+        [&](const std::shared_ptr<Vertex>& boundary_vertex_a, const std::shared_ptr<Vertex>& boundary_vertex_b) 
+        {
+            return boundary_vertex_a->get_position()[axis] < boundary_vertex_b->get_position()[axis];
         });
 }
 
@@ -195,8 +195,8 @@ void RRSTree::convert_leaf_to_branch(const std::shared_ptr<RRSNode>& node)
     {
         // use simple median split
         split_index = (start + end) / 2;
-    split_axis = node->box.get_longest_axis();
-    split_value = sort_boundary_vertex_list_in_axis(node->boundary_vertices, split_axis, start, split_index, end);
+        split_axis = node->box.get_longest_axis();
+        split_value = sort_boundary_vertex_list_in_axis(node->boundary_vertices, split_axis, start, split_index, end);
     }
     else
     {
@@ -511,12 +511,16 @@ RRSReturnType RRSTree::node_find_leaf_node(const std::shared_ptr<RRSNode>& node,
         temp_vertex->temp_initialize(point, 0);
 
         //  add and branch
-node->box.expand_box_no_return(temp_vertex->get_min(), temp_vertex->get_max());
+        node->box.expand_box_no_return(temp_vertex->get_min(), temp_vertex->get_max());
         node->boundary_vertices.push_back(temp_vertex);
         convert_leaf_to_branch(node); // this may cause error in Application when locking surface's node
 
         // delete
         return_node = point[node->split_axis] < node->split_value ? node->left : node->right;
+
+        // throw if return_node is not the same as temp_vertex->node
+        if (return_node != temp_vertex->node) throw std::runtime_error("RRSTree::node_find_leaf_node() returned wrong node.");
+
         return_node->boundary_vertices.pop_back();
 
         // locks
@@ -630,7 +634,11 @@ void RRSTree::tree_delete_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
 
     // get vertex's node reference
     const std::shared_ptr<RRSNode>& node = boundary_vertex->node;
-    if (node == nullptr) throw std::invalid_argument("Vertex not found in BVH.");
+    if (node == nullptr) throw std::invalid_argument("node is null.");
+
+    // throw if not found in node->boundary_vertices
+    const bool found = std::find(node->boundary_vertices.begin(), node->boundary_vertices.end(), boundary_vertex) != node->boundary_vertices.end();
+    if (!found) throw std::invalid_argument("Vertex not found in node's boundary_vertices.");
 
     // delete from node
     node->boundary_vertices.erase(std::remove(node->boundary_vertices.begin(), node->boundary_vertices.end(), boundary_vertex), node->boundary_vertices.end());
