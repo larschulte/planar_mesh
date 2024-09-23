@@ -93,8 +93,8 @@ public: // for reverse radius search
     void set_reverse_radius_search_radius(double radius);
     void reduce_reverse_radius_search_radius(double radius);
     void reduce_previous_radius(double radius);
-    Eigen::Vector3d get_min() const;
-    Eigen::Vector3d get_max() const;
+    const Eigen::Vector3d& get_min() const;
+    const Eigen::Vector3d& get_max() const;
     const double& get_radius() const;
     const double& get_radius(const std::shared_ptr<Surface>& surface) const;
     bool contains(const Eigen::Vector3d& point) const;

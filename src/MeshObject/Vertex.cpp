@@ -940,12 +940,12 @@ void Vertex::reduce_previous_radius(double radius)
     previous_radius_ = radius;
 }
 
-Eigen::Vector3d Vertex::get_min() const
+const Eigen::Vector3d& Vertex::get_min() const
 {
     return min_;
 }
 
-Eigen::Vector3d Vertex::get_max() const
+const Eigen::Vector3d& Vertex::get_max() const
 {
     return max_;
 }
