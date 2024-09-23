@@ -81,6 +81,12 @@ int RRSBoundingBox::get_longest_axis()
     return axis;
 }
 
+double RRSBoundingBox::compute_surface_area() const
+{
+    Eigen::Vector3d dimensions = max - min;
+    return 2.0 * (dimensions[0] * dimensions[1] + dimensions[1] * dimensions[2] + dimensions[2] * dimensions[0]);
+}
+
 void RRSNode::recursive_unlock()
 {
     omp_unset_nest_lock(&omp_lock);

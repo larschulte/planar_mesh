@@ -28,6 +28,7 @@ bool expand_box(const Eigen::Vector3d& min, const Eigen::Vector3d& max);
     bool expand_box(const RRSBoundingBox& box);
     bool contains(const Eigen::Vector3d& point);
     int get_longest_axis();
+double compute_surface_area() const;
 };
 
 struct RRSNode 
