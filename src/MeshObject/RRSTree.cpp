@@ -45,19 +45,24 @@ bool RRSBoundingBox::expand(const Eigen::Vector3d& point)
     return changed;
 }
 
-bool RRSBoundingBox::expand_box(const RRSBoundingBox& box)
+bool RRSBoundingBox::expand_box(const Eigen::Vector3d& input_min, const Eigen::Vector3d& input_max)
 {
     Eigen::Vector3d oldMin = min;
     Eigen::Vector3d oldMax = max;
 
     // Update min and max to include the new box
-    min = min.cwiseMin(box.min);
-    max = max.cwiseMax(box.max);
+    min = min.cwiseMin(input_min);
+    max = max.cwiseMax(input_max);
 
     // Check if min or max changed
     bool changed = (min != oldMin || max != oldMax);
 
     return changed;
+}
+
+bool RRSBoundingBox::expand_box(const RRSBoundingBox& box)
+{
+    return expand_box(box.min, box.max);
 } 
 
 bool RRSBoundingBox::contains(const Eigen::Vector3d& point)
