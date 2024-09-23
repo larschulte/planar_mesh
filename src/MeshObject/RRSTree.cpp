@@ -101,7 +101,9 @@ int RRSBoundingBox::get_longest_axis()
 double RRSBoundingBox::compute_surface_area() const
 {
     Eigen::Vector3d dimensions = max - min;
-    return 2.0 * (dimensions[0] * dimensions[1] + dimensions[1] * dimensions[2] + dimensions[2] * dimensions[0]);
+    double area = 2.0 * (dimensions[0] * dimensions[1] + dimensions[1] * dimensions[2] + dimensions[2] * dimensions[0]);
+    if (std::isnan(area)) throw std::runtime_error("RRSBoundingBox::compute_surface_area() returned nan."); // throw if nan
+    return area;
 }
 
 void RRSNode::recursive_unlock()
