@@ -45,14 +45,31 @@ bool RRSBoundingBox::expand(const Eigen::Vector3d& point)
     return changed;
 }
 
+void RRSBoundingBox::expand_box_no_return(const Eigen::Vector3d& input_min, const Eigen::Vector3d& input_max)
+{
+    // Component-wise min and max without calling Eigen's functions
+    if (input_min[0] < min[0]) min[0] = input_min[0];
+    if (input_min[1] < min[1]) min[1] = input_min[1];
+    if (input_min[2] < min[2]) min[2] = input_min[2];
+
+    if (input_max[0] > max[0]) max[0] = input_max[0];
+    if (input_max[1] > max[1]) max[1] = input_max[1];
+    if (input_max[2] > max[2]) max[2] = input_max[2];
+}
+
+void RRSBoundingBox::expand_box_no_return(const RRSBoundingBox& box)
+{
+    expand_box_no_return(box.min, box.max);
+}
+
 bool RRSBoundingBox::expand_box(const Eigen::Vector3d& input_min, const Eigen::Vector3d& input_max)
 {
+// make copy of old min and max
     Eigen::Vector3d oldMin = min;
     Eigen::Vector3d oldMax = max;
 
     // Update min and max to include the new box
-    min = min.cwiseMin(input_min);
-    max = max.cwiseMax(input_max);
+    expand_box_no_return(input_min, input_max);
 
     // Check if min or max changed
     bool changed = (min != oldMin || max != oldMax);
