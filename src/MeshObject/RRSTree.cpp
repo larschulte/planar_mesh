@@ -140,8 +140,8 @@ void RRSNode::recursive_shrink_parent_box()
 
         // new parent box
         RRSBoundingBox new_parent_box = RRSBoundingBox();
-        new_parent_box.expand_box(parent->left->box);
-        new_parent_box.expand_box(parent->right->box);
+        new_parent_box.expand_box_no_return(parent->left->box);
+        new_parent_box.expand_box_no_return(parent->right->box);
         
         // shrunk
         const bool shrunk = new_parent_box.min[0] > old_parent_box.min[0] &&
@@ -227,7 +227,7 @@ std::shared_ptr<RRSNode> RRSTree::build_node(const std::vector<std::shared_ptr<V
     // expand box
     for (int i = start; i < end; i++)
     {
-        node->box.expand_box(boundary_vertex_list[i]->get_min(), boundary_vertex_list[i]->get_max());
+        node->box.expand_box_no_return(boundary_vertex_list[i]->get_min(), boundary_vertex_list[i]->get_max());
     }
 
     // store vertices
@@ -247,7 +247,7 @@ std::shared_ptr<RRSNode> RRSTree::build_node(const std::vector<std::shared_ptr<V
 
 void RRSTree::node_add_vertex(const std::shared_ptr<RRSNode>& node, const std::shared_ptr<Vertex>& boundary_vertex)
 {
-    node->box.expand_box(boundary_vertex->get_min(), boundary_vertex->get_max());
+    node->box.expand_box_no_return(boundary_vertex->get_min(), boundary_vertex->get_max());
 
     if (!node->isLeaf)
     {    
@@ -273,7 +273,7 @@ void RRSTree::node_add_vertex(const std::shared_ptr<RRSNode>& node, const std::s
 
 void RRSTree::node_increase_radius(const std::shared_ptr<RRSNode>& node, const std::shared_ptr<Vertex>& boundary_vertex)
 {
-    node->box.expand_box(boundary_vertex->get_min(), boundary_vertex->get_max());
+    node->box.expand_box_no_return(boundary_vertex->get_min(), boundary_vertex->get_max());
 
     if (!node->isLeaf)
     {
