@@ -127,6 +127,9 @@ void Vertex::temp_initialize(const Eigen::Vector3d& position, unsigned int id)
 
     // set position
     position_ = position;
+
+    // set radius
+    set_reverse_radius_search_radius(0.001);
 }
 
 const int& Vertex::get_id() const 
