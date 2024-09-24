@@ -106,6 +106,18 @@ double RRSBoundingBox::compute_surface_area() const
     return area;
 }
 
+const double& RRSBoundingBox::get_surface_area()
+{
+    // if min and max are not updated, return the stored value
+    if (min == min_used_for_surface_area && max == max_used_for_surface_area) return surface_area;
+
+    // else update and return
+    min_used_for_surface_area = min;
+    max_used_for_surface_area = max;
+    surface_area = compute_surface_area();
+    return surface_area;
+}
+
 void RRSNode::recursive_unlock()
 {
     omp_unset_nest_lock(&omp_lock);
@@ -283,11 +295,11 @@ void RRSTree::convert_leaf_to_branch(const std::shared_ptr<RRSNode>& node)
     return;
 }
 
-double RRSTree::calculate_sah(const RRSBoundingBox& parent_box, const RRSBoundingBox& left_box, const RRSBoundingBox& right_box, int left_count, int right_count)
+double RRSTree::calculate_sah(RRSBoundingBox& parent_box, RRSBoundingBox& left_box, RRSBoundingBox& right_box, int left_count, int right_count)
 {
-    double S_parent = parent_box.compute_surface_area();  // Surface area of parent node
-    double S_left = left_box.compute_surface_area();     // Surface area of left child
-    double S_right = right_box.compute_surface_area();   // Surface area of right child
+    double S_parent = parent_box.get_surface_area();  // Surface area of parent node
+    double S_left = left_box.get_surface_area();     // Surface area of left child
+    double S_right = right_box.get_surface_area();   // Surface area of right child
 
     // The cost of traversing the node, typically set to a constant, e.g., 1.0
     const double traversal_cost = 1.0;

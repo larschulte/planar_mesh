@@ -153,6 +153,18 @@ double BoundingBox::compute_surface_area() const
     return area;
 }
 
+const double& BoundingBox::get_surface_area()
+{
+    // if min and max are not updated, return the stored value
+    if (min == min_used_for_surface_area && max == max_used_for_surface_area) return surface_area;
+
+    // else update and return
+    min_used_for_surface_area = min;
+    max_used_for_surface_area = max;
+    surface_area = compute_surface_area();
+    return surface_area;
+}
+
 void Node::recursive_unlock()
 {
     omp_unset_nest_lock(&omp_lock);
@@ -512,11 +524,11 @@ void TriangleBVH::node_add_face(const std::shared_ptr<Node>& node, const std::sh
     }
 }
 
-double TriangleBVH::calculate_sah(const BoundingBox& parent_box, const BoundingBox& left_box, const BoundingBox& right_box, int left_count, int right_count)
+double TriangleBVH::calculate_sah(BoundingBox& parent_box, BoundingBox& left_box, BoundingBox& right_box, int left_count, int right_count)
 {
-    double S_parent = parent_box.compute_surface_area();  // Surface area of parent node
-    double S_left = left_box.compute_surface_area();     // Surface area of left child
-    double S_right = right_box.compute_surface_area();   // Surface area of right child
+    double S_parent = parent_box.get_surface_area();  // Surface area of parent node
+    double S_left = left_box.get_surface_area();     // Surface area of left child
+    double S_right = right_box.get_surface_area();   // Surface area of right child
 
     // The cost of traversing the node, typically set to a constant, e.g., 1.0
     const double traversal_cost = 1.0;

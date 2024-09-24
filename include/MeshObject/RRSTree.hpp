@@ -21,6 +21,9 @@ struct RRSBoundingBox
 {
     Eigen::Vector3d min;
     Eigen::Vector3d max;
+    Eigen::Vector3d min_used_for_surface_area;
+    Eigen::Vector3d max_used_for_surface_area;
+    double surface_area;
     RRSBoundingBox();
     RRSBoundingBox(const Eigen::Vector3d& min, const Eigen::Vector3d& max);
     bool expand(const Eigen::Vector3d& point);
@@ -31,6 +34,7 @@ struct RRSBoundingBox
     bool contains(const Eigen::Vector3d& point);
     int get_longest_axis();
     double compute_surface_area() const;
+    const double& get_surface_area();
 };
 
 struct RRSNode 
@@ -82,7 +86,7 @@ private:
     void convert_leaf_to_branch(const std::shared_ptr<RRSNode>& node);
 
     void node_add_vertex(const std::shared_ptr<RRSNode>& node, const std::shared_ptr<Vertex>& boundary_vertex);
-    double calculate_sah(const RRSBoundingBox& parent_box, const RRSBoundingBox& left_box, const RRSBoundingBox& right_box, int left_count, int right_count);
+    double calculate_sah(RRSBoundingBox& parent_box, RRSBoundingBox& left_box, RRSBoundingBox& right_box, int left_count, int right_count);
     void node_increase_radius(const std::shared_ptr<RRSNode>& node, const std::shared_ptr<Vertex>& boundary_vertex);
     bool node_delete_vertex(const std::shared_ptr<RRSNode>& node, const std::shared_ptr<Vertex>& boundary_vertex);
     RRSReturnType node_reverse_radius_search(const std::shared_ptr<RRSNode>& node, const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Vertex>>& search_results);
