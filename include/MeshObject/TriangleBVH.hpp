@@ -87,6 +87,7 @@ private:
     BVHReturnType node_intersection_search(const std::shared_ptr<Node>& node, const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Face>>& faces_intersected) const;
     BVHReturnType node_find_leaf_node(const std::shared_ptr<Node>& node, const Eigen::Vector3d& orig, const Eigen::Vector3d& endPoint, std::shared_ptr<Node>& return_node);
     void node_add_face(const std::shared_ptr<Node>& node, const std::shared_ptr<Face>& face);
+    double calculate_sah(const BoundingBox& parent_box, const BoundingBox& left_box, const BoundingBox& right_box, int left_count, int right_count);
     bool node_delete_face(const std::shared_ptr<Node>& node, const std::shared_ptr<Face>& face);
     void node_print(const std::shared_ptr<Node>& node, int level) const;
     void node_flatten(const std::shared_ptr<Node>& node, std::vector<std::shared_ptr<Face>>& face_list) const;
