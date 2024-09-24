@@ -10,16 +10,16 @@ std::ostream& operator<<(std::ostream& os, const BVHReturnType& type)
     switch (type)
     {
         case BVHReturnType::INTERSECTED:
-            os << "_";
+            os << "I _ _";
             break;
         case BVHReturnType::SKIP:
-            os << "-";
+            os << "_ S _";
             break;
         case BVHReturnType::ABORT:
-            os << "X";
+            os << "_ _ A";
             break;
         default:
-            os << "?";
+            os << "? ? ?";
             break;
     }
     return os;
