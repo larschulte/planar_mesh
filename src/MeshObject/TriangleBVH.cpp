@@ -77,20 +77,42 @@ bool BoundingBox::expand(const Eigen::Vector3d& point)
     return changed;
 }
 
-bool BoundingBox::expand_box(const BoundingBox& box) 
+void BoundingBox::expand_box_no_return(const Eigen::Vector3d& input_min, const Eigen::Vector3d& input_max)
 {
+    // Component-wise min and max without calling Eigen's functions
+    if (input_min[0] < min[0]) min[0] = input_min[0];
+    if (input_min[1] < min[1]) min[1] = input_min[1];
+    if (input_min[2] < min[2]) min[2] = input_min[2];
+
+    if (input_max[0] > max[0]) max[0] = input_max[0];
+    if (input_max[1] > max[1]) max[1] = input_max[1];
+    if (input_max[2] > max[2]) max[2] = input_max[2];
+}
+
+void BoundingBox::expand_box_no_return(const BoundingBox& box)
+{
+    expand_box_no_return(box.min, box.max);
+}
+
+bool BoundingBox::expand_box(const Eigen::Vector3d& input_min, const Eigen::Vector3d& input_max)
+{
+    // make copy of old min and max
     Eigen::Vector3d oldMin = min;
     Eigen::Vector3d oldMax = max;
 
     // Update min and max to include the new box
-    min = min.cwiseMin(box.min);
-    max = max.cwiseMax(box.max);
+    expand_box_no_return(input_min, input_max);
 
     // Check if min or max changed
     bool changed = (min != oldMin || max != oldMax);
 
     return changed;
 }
+
+bool BoundingBox::expand_box(const BoundingBox& box)
+{
+    return expand_box(box.min, box.max);
+} 
 
 bool BoundingBox::intersect(const Eigen::Vector3d& orig, const Eigen::Vector3d& dir, double& tMin, double& tMax) const 
 {
@@ -159,8 +181,8 @@ void Node::recursive_shrink_parent_box()
 
         // new parent box
         BoundingBox new_parent_box = BoundingBox();
-        new_parent_box.expand_box(parent->left->box);
-        new_parent_box.expand_box(parent->right->box);
+        new_parent_box.expand_box_no_return(parent->left->box);
+        new_parent_box.expand_box_no_return(parent->right->box);
                 
         // shrunk
         const bool shrunk = new_parent_box.min[0] > old_parent_box.min[0] &&
@@ -187,12 +209,6 @@ double TriangleBVH::sort_face_list_in_axis(std::vector<std::shared_ptr<Face>>& f
             return triangle_a->get_first_vertex()->get_position()[axis] < triangle_b->get_first_vertex()->get_position()[axis];
         });
     return face_list[mid]->get_first_vertex()->get_position()[axis];
-}
-
-void TriangleBVH::expand_node_box(const std::shared_ptr<Node>& node, const std::shared_ptr<Face>& face)
-{
-    node->box.expand(face->get_min());
-    node->box.expand(face->get_max());
 }
 
 BVHReturnType TriangleBVH::node_intersection_search(const std::shared_ptr<Node>& node, const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Face>>& faces_intersected) const
@@ -353,7 +369,7 @@ std::shared_ptr<Node> TriangleBVH::build_node(const std::vector<std::shared_ptr<
     // expand box
     for (int i = start; i < end; i++)
     {
-        expand_node_box(node, face_list[i]);
+        node->box.expand_box_no_return(face_list[i]->get_min(), face_list[i]->get_max());
     }
 
     // store faces    
@@ -373,7 +389,7 @@ std::shared_ptr<Node> TriangleBVH::build_node(const std::vector<std::shared_ptr<
 
 void TriangleBVH::node_add_face(const std::shared_ptr<Node>& node, const std::shared_ptr<Face>& face)
 {
-    expand_node_box(node, face);
+    node->box.expand_box_no_return(face->get_min(), face->get_max());
 
     if (!node->isLeaf)
     {    
