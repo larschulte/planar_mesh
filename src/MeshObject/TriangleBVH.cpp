@@ -335,6 +335,10 @@ BVHReturnType TriangleBVH::node_find_leaf_node(const std::shared_ptr<Node>& node
 
         // delete
         return_node = endPoint[node->split_axis] < node->split_value ? node->left : node->right;
+
+        // throw if return_node is not hte same as temp_face's node
+        if (return_node != temp_face->node) throw std::runtime_error("TriangleBVH::node_find_leaf_node() return_node is not the same as temp_face's node.");
+        
         return_node->faces.pop_back();
 
         // locks
@@ -602,6 +606,10 @@ void TriangleBVH::tree_delete_face(std::shared_ptr<Face> face)
     // get face's node reference
     const std::shared_ptr<Node>& node = face->node;
     if (node == nullptr) throw std::invalid_argument("Vertex not found in BVH.");
+
+    // throw if not found in node->faces
+    const bool found = std::find(node->faces.begin(), node->faces.end(), face) != node->faces.end();
+    if (!found) throw std::invalid_argument("Face not found in BVH.");
 
     // delete from node
     node->faces.erase(std::remove(node->faces.begin(), node->faces.end(), face), node->faces.end());
