@@ -176,6 +176,11 @@ void Face::temp_initialize(const Eigen::Vector3d& end_point)
     vertices_.insert(temp0);
     vertices_.insert(temp1);
     vertices_.insert(temp2);
+
+    // set the bounding box
+    double radius = 0.001;
+    min_ = end_point - Eigen::Vector3d(radius, radius, radius);
+    max_ = end_point + Eigen::Vector3d(radius, radius, radius);
 }
 
 const int& Face::get_id() const
