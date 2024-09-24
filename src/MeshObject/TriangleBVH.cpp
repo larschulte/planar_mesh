@@ -329,6 +329,7 @@ BVHReturnType TriangleBVH::node_find_leaf_node(const std::shared_ptr<Node>& node
         temp_face->temp_initialize(endPoint);
 
         //  add and branch
+        node->box.expand_box_no_return(temp_face->get_min(), temp_face->get_max());
         node->faces.push_back(temp_face);
         convert_leaf_to_branch(node); // this may cause error in Application when locking surface's node
 
