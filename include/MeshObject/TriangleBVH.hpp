@@ -34,8 +34,8 @@ struct BoundingBox
     void expand_box_no_return(const BoundingBox& box);
     bool expand_box(const Eigen::Vector3d& input_min, const Eigen::Vector3d& input_max);
     bool expand_box(const BoundingBox& box);
-    bool intersect(const Eigen::Vector3d& orig, const Eigen::Vector3d& dir, double& tMin, double& tMax) const;
-    bool intersect(const Eigen::Vector3d& orig, const Eigen::Vector3d& dir) const;
+    bool intersect(const Eigen::Vector3d& orig, const Eigen::Vector3d& invdir, double& tMin, double& tMax) const;
+    bool intersect(const Eigen::Vector3d& orig, const Eigen::Vector3d& invdir) const;
     int get_longest_axis();
     double compute_surface_area() const;
     const double& get_surface_area();

@@ -114,17 +114,15 @@ bool BoundingBox::expand_box(const BoundingBox& box)
     return expand_box(box.min, box.max);
 } 
 
-bool BoundingBox::intersect(const Eigen::Vector3d& orig, const Eigen::Vector3d& dir, double& tMin, double& tMax) const 
+bool BoundingBox::intersect(const Eigen::Vector3d& orig, const Eigen::Vector3d& invDir, double& tMin, double& tMax) const 
 {
     for (int i = 0; i < 3; ++i) 
     {
-        double invD = 1.0 / dir[i];
-        double t0 = (min[i] - orig[i]) * invD;
-        double t1 = (max[i] - orig[i]) * invD;
-        if (invD < 0.0) std::swap(t0, t1);
+        double t0 = std::min((min[i] - orig[i]) * invDir[i], (max[i] - orig[i]) * invDir[i]);
+        double t1 = std::max((min[i] - orig[i]) * invDir[i], (max[i] - orig[i]) * invDir[i]);
+        if (t1 < tMin || t0 > tMax) return false;  // Early exit if miss
         tMin = std::max(tMin, t0);
         tMax = std::min(tMax, t1);
-        if (tMax < tMin) return false;
     }
     return true;
 }
@@ -243,7 +241,7 @@ void TriangleBVH::sort_face_list_in_axis(std::vector<std::shared_ptr<Face>>& fac
 BVHReturnType TriangleBVH::node_intersection_search(const std::shared_ptr<Node>& node, const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Face>>& faces_intersected) const
 {    
     // skip if not intersected
-    if (!node->box.intersect(generic_point->get_position(), generic_point->get_direction()))
+    if (!node->box.intersect(generic_point->get_position(), generic_point->get_inv_direction()))
     {
         return BVHReturnType::SKIP;
     }

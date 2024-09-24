@@ -26,6 +26,7 @@ public:
     const Eigen::Vector3d& get_position() const;
     const Eigen::Vector3d& get_origin() const;
     const Eigen::Vector3d& get_direction() const;
+    const Eigen::Vector3d& get_inv_direction() const;
     const double& get_radius() const;
     const double& get_previous_radius() const;
     const std::shared_ptr<Surface>& get_previous_surface() const;
@@ -51,6 +52,7 @@ private:
     Eigen::Vector3d position_;
     Eigen::Vector3d origin_;
     Eigen::Vector3d direction_;
+    Eigen::Vector3d inv_direction_;
     double radius_;
     double previous_radius_;
     std::shared_ptr<Surface> previous_surface_;
