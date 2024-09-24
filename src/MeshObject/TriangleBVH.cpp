@@ -145,6 +145,14 @@ int BoundingBox::get_longest_axis()
     return axis;
 }
 
+double BoundingBox::compute_surface_area() const
+{
+    Eigen::Vector3d dimensions = max - min;
+    double area = 2.0 * (dimensions[0] * dimensions[1] + dimensions[1] * dimensions[2] + dimensions[2] * dimensions[0]);
+    if (std::isnan(area)) throw std::runtime_error("BVHBoundingBox::compute_surface_area() returned nan."); // throw if nan
+    return area;
+}
+
 void Node::recursive_unlock()
 {
     omp_unset_nest_lock(&omp_lock);

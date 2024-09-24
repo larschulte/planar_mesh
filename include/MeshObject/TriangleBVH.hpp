@@ -34,6 +34,7 @@ struct BoundingBox
     bool intersect(const Eigen::Vector3d& orig, const Eigen::Vector3d& dir, double& tMin, double& tMax) const;
     bool intersect(const Eigen::Vector3d& orig, const Eigen::Vector3d& dir) const;
     int get_longest_axis();
+    double compute_surface_area() const;
 };
 
 struct Node 
