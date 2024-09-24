@@ -80,6 +80,7 @@ private:
     unsigned int leaf_size;
 
     double sort_face_list_in_axis(std::vector<std::shared_ptr<Face>>& face_list, int axis, int start, int mid, int end);
+    void sort_face_list_in_axis(std::vector<std::shared_ptr<Face>>& face_list, int axis, int start, int end);
     
     std::shared_ptr<Node> build_node(const std::vector<std::shared_ptr<Face>>& face_list, const int& start, const int& end);
     void convert_leaf_to_branch(const std::shared_ptr<Node>& node);

@@ -219,6 +219,15 @@ double TriangleBVH::sort_face_list_in_axis(std::vector<std::shared_ptr<Face>>& f
     return face_list[mid]->get_first_vertex()->get_position()[axis];
 }
 
+void TriangleBVH::sort_face_list_in_axis(std::vector<std::shared_ptr<Face>>& face_list, int axis, int start, int end)
+{
+    std::sort(face_list.begin() + start, face_list.begin() + end, 
+        [&](const std::shared_ptr<Face>& triangle_a, const std::shared_ptr<Face>& triangle_b) 
+        {
+            return triangle_a->get_first_vertex()->get_position()[axis] < triangle_b->get_first_vertex()->get_position()[axis];
+        });
+}
+
 BVHReturnType TriangleBVH::node_intersection_search(const std::shared_ptr<Node>& node, const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Face>>& faces_intersected) const
 {    
     // skip if not intersected
