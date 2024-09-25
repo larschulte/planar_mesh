@@ -66,6 +66,8 @@ public: // to user
     unsigned int get_abort_queue_size();
     void clear_queues();
 
+    void add_points_in_add_searchable_vertex_queue();
+
     bool can_reverse_radius_search();
     RRSReturnType reverse_radius_search(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Vertex>>& result);
     RRSReturnType reverse_radius_search_find_node(const Eigen::Vector3d& point, std::shared_ptr<RRSNode>& return_node);
@@ -122,6 +124,8 @@ private:
     std::vector<queue_or_stack<std::shared_ptr<GenericPoint>>> smaller_repeated_queues_;
     std::vector<queue_or_stack<std::shared_ptr<GenericPoint>>> smaller_abort_queues_;
     unsigned int num_delete_before_put_to_repeated_queue_ = 2;
+
+    std::vector<std::queue<std::shared_ptr<Vertex>>> smaller_add_searchable_vertices_queue_;
 
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertices_;
     std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges_;

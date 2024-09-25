@@ -339,6 +339,25 @@ std::shared_ptr<RRSNode> RRSTree::build_node(const std::vector<std::shared_ptr<V
     return node;
 }
 
+//
+// PROBLEM
+//
+// if we do not have find leaf node function.
+// we need to lock the node here which will cause deadlock.
+
+// 
+// FACTS
+// 
+// within one thread, as all searches are performed before we process point
+// thus addition of point to search tree can be done after we process points
+// 
+// thus we add the point into the search tree because we want future searches to find this point, not the current process point function        
+
+//
+// SOLUTION
+// 
+// only add vertex to tree or faces to tree after all surface lock and node lock are released. 
+// when adding vertex from storage, add to a queue. that is processed after all locks are released
 void RRSTree::node_add_vertex(const std::shared_ptr<RRSNode>& node, const std::shared_ptr<Vertex>& boundary_vertex)
 {
     node->box.expand_box_no_return(boundary_vertex->get_min(), boundary_vertex->get_max());
@@ -356,12 +375,29 @@ void RRSTree::node_add_vertex(const std::shared_ptr<RRSNode>& node, const std::s
     }
     else
     {
-        node->boundary_vertices.push_back(boundary_vertex);
+        // lock before adding vertex
+        while (!omp_test_nest_lock(&node->omp_lock))
+        {
+            // std::cout << "RRS lock node inside add vertex waiting ..." << std::endl;
+        };
 
-        // add node pointer to vertex
+        // node could become branch while waiting (when other thread add to the same node), hence need a new node_add_vertex call
+        if (!node->isLeaf)
+        {
+            omp_unset_nest_lock(&node->omp_lock);
+            node_add_vertex(node, boundary_vertex);
+            return;
+        }
+
+        // connect to this node
+        node->boundary_vertices.push_back(boundary_vertex);
         boundary_vertex->node = node;
 
+        // convert to branch
         if (node->boundary_vertices.size() > leaf_size) convert_leaf_to_branch(node);
+
+        // unlock
+        node->recursive_unlock();        
     }
 }
 

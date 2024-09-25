@@ -66,21 +66,31 @@ void Vertex::initialize_(const std::shared_ptr<Storage>& storage, const std::sha
 
 void Vertex::delete_()
 {
-    // lock node
-    std::shared_ptr<RRSNode> node_copy = node ? node : std::make_shared<RRSNode>(); // lock if node exists
-    while (!omp_test_nest_lock(&node_copy->omp_lock)) 
+    std::shared_ptr<RRSNode> node_copy;
+    const bool added_to_rrs = node != nullptr; // we could be deleting a vertex that is not yet added to the tree
+    if (added_to_rrs) 
     {
-        std::cout << "delete vertex waiting " << id_ << std::endl;
+        // lock node
+        std::shared_ptr<RRSNode>& node = this->node;
+        omp_nest_lock_t& omp_lock = node->omp_lock;
+        while (!omp_test_nest_lock(&omp_lock)) // don't copy node, as node can change when other thread is adding point to the node
+        {
+            std::cout << "delete vertex waiting " << id_ << std::endl;
+        }
+
+        // after locking the node, make copy for later release lock
+        node_copy = this->node;
+
+        // shrink bounding box
+        node->box = RRSBoundingBox();
+        node->recursive_shrink_parent_box();
+
+        // remove from rrs tree
+        storage_->remove_searchable_vertex(shared_from_this());
+        is_searchable_ = false;
     }
 
-    // shrink bounding box
-    node->box = RRSBoundingBox();
-    node->recursive_shrink_parent_box();
-
-    // remove from rrs tree
-    storage_->remove_searchable_vertex(shared_from_this());
-    is_searchable_ = false;
-
+    
     // log
     if (settings_.log.deletion) std::cout << "Destroying vertex " << id_ << std::endl;
 
@@ -114,7 +124,10 @@ void Vertex::delete_()
     is_expired_ = true;
 
     // release lock
-    omp_unset_nest_lock(&node_copy->omp_lock);
+    if (added_to_rrs) 
+    {
+        omp_unset_nest_lock(&node_copy->omp_lock);
+    }
 }
 
 void Vertex::temp_initialize(const Eigen::Vector3d& position, unsigned int id)

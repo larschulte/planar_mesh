@@ -24,6 +24,7 @@ Storage::Storage()
     smaller_queues_.resize(settings_.num_threads);
     smaller_repeated_queues_.resize(settings_.num_threads);
     smaller_abort_queues_.resize(settings_.num_threads);
+    smaller_add_searchable_vertices_queue_.resize(settings_.num_threads);
     
     // initialize with queue or stack
     for (size_t i = 0; i < settings_.num_threads; ++i)
@@ -619,8 +620,22 @@ void Storage::clear_queues()
 
 void Storage::add_searchable_vertex(const std::shared_ptr<Vertex>& vertex)
 {
-    // add to rrs_tree
-    rrs_tree_.tree_add_vertex(vertex);
+    // add to a queue that will be processed once all locks are released
+    smaller_add_searchable_vertices_queue_[omp_get_thread_num()].push(vertex);
+}
+
+void Storage::add_points_in_add_searchable_vertex_queue()
+{
+    const unsigned int num_points = smaller_add_searchable_vertices_queue_[omp_get_thread_num()].size();
+
+    for (unsigned int i = 0; i < num_points; i++)
+    {
+        std::shared_ptr<Vertex> vertex = smaller_add_searchable_vertices_queue_[omp_get_thread_num()].front();
+        smaller_add_searchable_vertices_queue_[omp_get_thread_num()].pop();
+
+        // add to rrs_tree
+        rrs_tree_.tree_add_vertex(vertex);
+    }
 }
 
 void Storage::remove_searchable_vertex(const std::shared_ptr<Vertex>& vertex)
