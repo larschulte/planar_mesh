@@ -63,20 +63,11 @@ void Vertex::initialize_(const std::shared_ptr<Storage>& storage, const std::sha
 
 void Vertex::delete_()
 {
-    std::shared_ptr<RRSNode> node_copy;
-    const bool added_to_rrs = node != nullptr; // we could be deleting a vertex that is not yet added to the tree
-    if (added_to_rrs) 
+    // lock vertex
+    while (!omp_test_nest_lock(&vertex_lock)) 
     {
-        // lock node
-        std::shared_ptr<RRSNode>& node = this->node;
-        omp_nest_lock_t& omp_lock = node->omp_lock;
-        while (!omp_test_nest_lock(&omp_lock)) // don't copy node, as node can change when other thread is adding point to the node
-        {
-            std::cout << "delete vertex waiting " << id_ << std::endl;
-        }
-
-        // after locking the node, make copy for later release lock
-        node_copy = this->node;
+        std::cout << "waiting to lock vertex " << id_ << std::endl;
+    }
 
         // we need to add it to remove queue to truely remove it from the tree
         storage_->remove_searchable_vertex(shared_from_this());
@@ -116,11 +107,8 @@ void Vertex::delete_()
     // set expired
     is_expired_ = true;
 
-    // release lock
-    if (added_to_rrs) 
-    {
-        omp_unset_nest_lock(&node_copy->omp_lock);
-    }
+    // release vertex lock
+    omp_unset_nest_lock(&vertex_lock);
 }
 
 void Vertex::temp_initialize(const Eigen::Vector3d& position, unsigned int id)
