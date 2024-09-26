@@ -841,6 +841,7 @@ void Vertex::update_searchable_state()
     else if (!is_boundary() && is_searchable_)
     {
         is_searchable_ = false;
+        storage_->add_affected_vertex(shared_from_this());
     }
 }
 
