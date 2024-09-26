@@ -25,6 +25,7 @@ Storage::Storage()
     smaller_repeated_queues_.resize(settings_.num_threads);
     smaller_abort_queues_.resize(settings_.num_threads);
     smaller_add_searchable_vertices_queue_.resize(settings_.num_threads);
+    smaller_affected_vertices_sets_.resize(settings_.num_threads);
     
     // initialize with queue or stack
     for (size_t i = 0; i < settings_.num_threads; ++i)
@@ -638,10 +639,43 @@ void Storage::add_points_in_add_searchable_vertex_queue()
     }
 }
 
+void Storage::add_points_in_affected_vertices_set()
+{
+    for (const std::shared_ptr<Vertex>& vertex : smaller_affected_vertices_sets_[omp_get_thread_num()])
+    {
+        // i need a explicit flag that indicates if the vertex is added to the rrs tree or not, instead of just a is_searchable flag
+
+        // check if vertex needs to be added or removed or unchanged from rrs_tree
+        if (vertex->is_searchable() && vertex->node == nullptr)
+        {
+            // add to rrs_tree
+            rrs_tree_.tree_add_vertex(vertex);
+        }
+        // else if (!vertex->is_boundary() && vertex->node != nullptr)
+        // {
+        //     // remove from rrs_tree
+        //     rrs_tree_.tree_delete_vertex(vertex);
+        // }
+        // else
+        // {
+        //     // do nothing
+        // }
+    }
+
+    // clear
+    smaller_affected_vertices_sets_[omp_get_thread_num()].clear();
+}
+
 void Storage::remove_searchable_vertex(const std::shared_ptr<Vertex>& vertex)
 {
     // remove from rrs_tree
     rrs_tree_.tree_delete_vertex(vertex);
+}
+
+void Storage::add_affected_vertex(const std::shared_ptr<Vertex>& vertex)
+{
+    // add to affected vertices set
+    smaller_affected_vertices_sets_[omp_get_thread_num()].insert(vertex);
 }
 
 void Storage::add_searchable_face(const std::shared_ptr<Face>& face)

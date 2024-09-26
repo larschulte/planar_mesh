@@ -67,6 +67,7 @@ public: // to user
     void clear_queues();
 
     void add_points_in_add_searchable_vertex_queue();
+    void add_points_in_affected_vertices_set();
 
     bool can_reverse_radius_search();
     RRSReturnType reverse_radius_search(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Vertex>>& result);
@@ -99,6 +100,8 @@ private: // to Vertex and Face class
     void add_searchable_vertex(const std::shared_ptr<Vertex>& vertex);
     void remove_searchable_vertex(const std::shared_ptr<Vertex>& vertex);
 
+    void add_affected_vertex(const std::shared_ptr<Vertex>& vertex);
+
     void add_searchable_face(const std::shared_ptr<Face>& face);
     void remove_searchable_face(const std::shared_ptr<Face>& face);
 
@@ -126,6 +129,7 @@ private:
     unsigned int num_delete_before_put_to_repeated_queue_ = 2;
 
     std::vector<std::queue<std::shared_ptr<Vertex>>> smaller_add_searchable_vertices_queue_;
+    std::vector<std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>> smaller_affected_vertices_sets_;
 
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertices_;
     std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges_;
