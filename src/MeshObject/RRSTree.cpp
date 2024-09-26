@@ -476,6 +476,7 @@ RRSReturnType RRSTree::node_reverse_radius_search(const std::shared_ptr<RRSNode>
     else
     {
         // abort if can't lock node
+        // node lock prevents vertex from being added or deleted from the node
         if (!omp_test_nest_lock(&node->omp_lock))
         {
             // std::cout << "_ _ _ _ X _ _ _" << std::endl;
@@ -488,10 +489,20 @@ RRSReturnType RRSTree::node_reverse_radius_search(const std::shared_ptr<RRSNode>
             omp_unset_nest_lock(&node->omp_lock);
             return RRSReturnType::SKIP;
         }
+        const std::shared_ptr<Vertex>& boundary_vertex = node->boundary_vertices[0];
 
-        // skip if boundary vertex is not searchable
+        // abort if can't lock vertex
+        // vertex lock prevent vertex's properties from being changed when we are accessing
+        if (!omp_test_nest_lock(&boundary_vertex->vertex_lock))
+        {
+            omp_unset_nest_lock(&node->omp_lock);
+            return RRSReturnType::ABORT;
+        }
+        
+        // skip if boundary vertex is not searchable ( this mean the vertex should be removed from node but has not been removed yet)
         if (!node->boundary_vertices[0]->is_searchable())
         {
+            omp_unset_nest_lock(&boundary_vertex->vertex_lock);
             omp_unset_nest_lock(&node->omp_lock);
             return RRSReturnType::SKIP;
         }
@@ -499,17 +510,18 @@ RRSReturnType RRSTree::node_reverse_radius_search(const std::shared_ptr<RRSNode>
         // skip if not contained
         if (!node->boundary_vertices[0]->approx_contains(generic_point->get_position()))
         {
+            omp_unset_nest_lock(&boundary_vertex->vertex_lock);
             omp_unset_nest_lock(&node->omp_lock);
             return RRSReturnType::SKIP;
         }
 
         // abort if can't lock vertex's surface
-        const std::shared_ptr<Vertex>& boundary_vertex = node->boundary_vertices[0];
         const std::shared_ptr<Surface>& surface = boundary_vertex->get_surface_check();
         generic_point->intersected_surfaces.insert(surface);
         if (!omp_test_nest_lock(&surface->lock)) 
         {
             generic_point->contented_surfaces[surface]++;
+            omp_unset_nest_lock(&boundary_vertex->vertex_lock);
             omp_unset_nest_lock(&node->omp_lock);
             // std::cout << "_ _ _ _ _ _ X _" << std::endl;
             return RRSReturnType::ABORT;
@@ -517,6 +529,8 @@ RRSReturnType RRSTree::node_reverse_radius_search(const std::shared_ptr<RRSNode>
 
         // return
         search_results.push_back(node->boundary_vertices[0]);
+
+        omp_unset_nest_lock(&boundary_vertex->vertex_lock);
         return RRSReturnType::INTERSECTED;
     }
 }
