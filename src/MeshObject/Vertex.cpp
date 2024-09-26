@@ -78,11 +78,7 @@ void Vertex::delete_()
         // after locking the node, make copy for later release lock
         node_copy = this->node;
 
-        // shrink bounding box
-        node->box = RRSBoundingBox();
-        node->recursive_shrink_parent_box();
-
-        // remove from rrs tree
+        // we need to add it to remove queue to truely remove it from the tree
         storage_->remove_searchable_vertex(shared_from_this());
         is_searchable_ = false;
     }

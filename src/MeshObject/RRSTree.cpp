@@ -702,6 +702,10 @@ void RRSTree::tree_delete_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
     const bool found = std::find(node->boundary_vertices.begin(), node->boundary_vertices.end(), boundary_vertex) != node->boundary_vertices.end();
     if (!found) throw std::invalid_argument("Vertex not found in node's boundary_vertices.");
 
+    // shrink bounding box
+    node->box = RRSBoundingBox();
+    node->recursive_shrink_parent_box();
+
     // delete from node
     node->boundary_vertices.erase(std::remove(node->boundary_vertices.begin(), node->boundary_vertices.end(), boundary_vertex), node->boundary_vertices.end());
     boundary_vertex->node = nullptr;
