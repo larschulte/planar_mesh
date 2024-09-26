@@ -417,7 +417,7 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
     // lock.unlock();
 
     // after unlocking all locks, add the point in queue to the search tree
-    storage_->add_points_in_add_searchable_vertex_queue();
+    storage_->add_points_in_affected_vertices_set();
 }
 
 template <typename PointT>

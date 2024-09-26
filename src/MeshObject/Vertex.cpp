@@ -42,12 +42,6 @@ void Vertex::initialize_(const std::shared_ptr<Storage>& storage, const std::sha
     // set reverse search radius based on input parameter
     set_reverse_radius_search_radius(radius);
 
-    // add to rrs tree
-    storage_->add_searchable_vertex(shared_from_this());
-
-    // update boundary state
-    update_boundary_state();
-
     // log
     if (settings_.log.initialize) std::cout << "Vertex " << id_ << " created.\n";
 }
@@ -830,6 +824,7 @@ void Vertex::update_searchable_state()
     if (is_boundary() && !is_searchable_)
     {
         is_searchable_ = true;
+        storage_->add_affected_vertex(shared_from_this());
     }
     else if (!is_boundary() && is_searchable_)
     {
