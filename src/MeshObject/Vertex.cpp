@@ -442,8 +442,6 @@ void Vertex::connect(const std::shared_ptr<Surface>& surface)
         previous_radius_ = 0;
     }
     if (inserted) surface->connect(shared_from_this());
-    if (inserted) is_boundary_ = false;
-    if (inserted) update_boundary_state();
     if (inserted) is_singular_ = true;
     if (inserted) update_singular_state();
 }
