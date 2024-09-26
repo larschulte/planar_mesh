@@ -151,6 +151,10 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
     // 1. if we do the radius search before the result of add by intersection, boundary point created by deletion of face will not be included in the radius search
 
     // std::unique_lock<std::mutex> lock(process_point_mutex);
+    
+    // several previous improvement are due to reducing reverse radius search radius of points -> thus each surface is required by fewer points
+    // theoratical optimal time is the time takening to process all points that will be added to the same largest surface one by one
+    // pre locking may not be necessary ...
 
     //
     // find new storage leaf node
