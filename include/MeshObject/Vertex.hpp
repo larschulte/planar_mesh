@@ -30,6 +30,8 @@ protected:
     void delete_();
 
 public:
+    omp_nest_lock_t vertex_lock;
+
     void temp_initialize(const Eigen::Vector3d& position, unsigned int id);
     std::shared_ptr<RRSNode> node;
 
