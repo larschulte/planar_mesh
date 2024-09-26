@@ -36,6 +36,9 @@ void Vertex::initialize_(const std::shared_ptr<Storage>& storage, const std::sha
     // connect
     connect(surface);
 
+    // update boundary state here, in case no edge is connected, the point is still boundary and need to add to rrs tree
+    update_boundary_state();
+
     // set reverse search radius based on input parameter
     set_reverse_radius_search_radius(radius);
 
