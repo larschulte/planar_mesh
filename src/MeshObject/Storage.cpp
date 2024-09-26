@@ -648,7 +648,7 @@ void Storage::add_points_in_affected_vertices_set()
         // i need a explicit flag that indicates if the vertex is added to the rrs tree or not, instead of just a is_searchable flag
 
         // check if vertex needs to be added or removed or unchanged from rrs_tree
-        if (vertex->is_searchable() && vertex->node == nullptr)
+        if (vertex->is_boundary() && vertex->node == nullptr)
         {
             // add to rrs_tree
             rrs_tree_.tree_add_vertex(vertex);
