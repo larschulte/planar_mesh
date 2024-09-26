@@ -404,7 +404,7 @@ void Vertex::connect(const std::shared_ptr<Edge>& edge)
     if (inserted) edge->connect(shared_from_this());
 
     // update boundary state
-    update_boundary_state();
+    if (inserted) update_boundary_state();
 }
 
 void Vertex::connect(const std::shared_ptr<Face>& face) 
