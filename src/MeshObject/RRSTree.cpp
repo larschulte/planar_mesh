@@ -691,7 +691,7 @@ void RRSTree::tree_add_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
 void RRSTree::tree_delete_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
 {
     // check input
-    if (boundary_vertex->is_expired()) throw std::invalid_argument("Invalid vertex in boundary_vertex_list");
+    // if (boundary_vertex->is_expired()) throw std::invalid_argument("Invalid vertex in boundary_vertex_list");
 
     // decrease size
     tree_size--;
