@@ -414,7 +414,7 @@ void Face::disconnect(const std::shared_ptr<Surface>& surface)
     std::shared_ptr<Node> node_copy = node ? node : std::make_shared<Node>(); // lock if node exists
     while (!omp_test_nest_lock(&node_copy->omp_lock)) 
     {
-        std::cout << "disconnect vertex waiting " << id_ << std::endl;
+        std::cout << "disconnect face waiting " << id_ << std::endl;
     }
 
     // check input
