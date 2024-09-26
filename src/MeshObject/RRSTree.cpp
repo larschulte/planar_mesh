@@ -698,6 +698,15 @@ void RRSTree::tree_delete_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
     const std::shared_ptr<RRSNode>& node = boundary_vertex->node;
     if (node == nullptr) throw std::invalid_argument("node is null.");
 
+    // lock the node
+    while (!omp_test_nest_lock(&node->omp_lock)) // don't copy node, as node can change when other thread is adding point to the node
+    {
+        std::cout << "delete vertex waiting ..." << std::endl;
+    }
+
+    // make copy for later release
+    const std::shared_ptr<RRSNode> locked_node = node;
+
     // throw if not found in node->boundary_vertices
     const bool found = std::find(node->boundary_vertices.begin(), node->boundary_vertices.end(), boundary_vertex) != node->boundary_vertices.end();
     if (!found) throw std::invalid_argument("Vertex not found in node's boundary_vertices.");
@@ -709,6 +718,9 @@ void RRSTree::tree_delete_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
     // delete from node
     node->boundary_vertices.erase(std::remove(node->boundary_vertices.begin(), node->boundary_vertices.end(), boundary_vertex), node->boundary_vertices.end());
     boundary_vertex->node = nullptr;
+
+    // release
+    omp_unset_nest_lock(&locked_node->omp_lock);
 }
 
 RRSReturnType RRSTree::tree_reverse_radius_search(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Vertex>>& search_results)
