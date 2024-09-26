@@ -61,6 +61,22 @@ void Vertex::initialize_(const std::shared_ptr<Storage>& storage, const std::sha
     storage->delete_generic_point(generic_point);
 }
 
+// [todo]
+// i initially wanted each vertex to be strongly bounded with node, so that i can use node's lock to present vertex's lock
+// however, since now each vertex may not get a node after process point
+// or since each vertex may not disconnect from node after process point
+
+// it shouldn't hurt to have a lock for each vertex
+// this prevents other thread from trying to read the vertex while it is being deleted
+
+// when adding vertex to search tree, we can postpone and add it to the tree after process point
+// when removing vertex from search tree, there are two causes
+    // when deleting vertex
+        // thus the surface will be nullptr
+        // some check need to be done before accessing its surface during search
+    // when vertex is not boundary
+        // the surface will not be null ptr
+
 void Vertex::delete_()
 {
     // lock vertex

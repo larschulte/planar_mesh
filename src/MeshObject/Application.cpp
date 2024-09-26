@@ -198,6 +198,39 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
             return;
         }
     }
+    // [todo]
+
+    // perhaps prelock nodes even
+
+    // even on single pass, the time taken is increasing as more points are added
+    // this is because the RRS tree kept growing. 
+
+    // interior point is not added to RRS tree
+    // every vertex point is added to RRS tree
+
+    // 
+    // RRS taking a lot of time
+    //
+    // - either reduce number of vertex point ? how
+    // - or reduce the number of silver triangle ? through adding point as inteiror then promote to vertex -> to reduce vertex points
+    // - or simply reduce reverse search radius of all points
+    // - or improve the RRS tree structure
+
+
+    // rrs takes a lot of time
+    // check if each run of rrs returns intersected or abort
+
+    // reduce locking time
+    // by locking smaller element
+
+    // for triangle intersection search, don't skip points that can't lock surface but have RRS search result -> they are boundary thus should be filled.
+
+
+
+    // 
+    // next todo
+    // 
+    // don't add internal vertex to RRS, if an internal vertex becomes a boundary, add to RRS at the end
 
     std::shared_ptr<Node> bvh_storage_node;
     BVHReturnType BVH_storage_return = storage_->face_intersection_search_find_node(generic_point->get_origin(), generic_point->get_position(), bvh_storage_node);    

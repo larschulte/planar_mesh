@@ -302,6 +302,8 @@ BVHReturnType TriangleBVH::node_intersection_search(const std::shared_ptr<Node>&
 
 BVHReturnType TriangleBVH::node_find_leaf_node(const std::shared_ptr<Node>& node, const Eigen::Vector3d& orig, const Eigen::Vector3d& endPoint, std::shared_ptr<Node>& return_node)
 {
+    // [todo] is this fine? each thread may add multiple faces to the same node
+
     // branch if not leaf
     if (!node->isLeaf)
     {   

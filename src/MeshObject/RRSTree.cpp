@@ -363,7 +363,9 @@ void RRSTree::node_add_vertex(const std::shared_ptr<RRSNode>& node, const std::s
     node->box.expand_box_no_return(boundary_vertex->get_min(), boundary_vertex->get_max());
 
     if (!node->isLeaf)
-    {    
+    {
+        // [todo] add vertex to node not based on split value, but based on minimizing delta SAH
+        // this however, means the location of node is not determined. thus can't be precomputed.
         if (boundary_vertex->get_position()[node->split_axis] < node->split_value)
         {
             node_add_vertex(node->left, boundary_vertex);
