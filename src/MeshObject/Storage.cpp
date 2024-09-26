@@ -634,7 +634,9 @@ void Storage::add_points_in_add_searchable_vertex_queue()
         std::shared_ptr<Vertex> vertex = smaller_add_searchable_vertices_queue_[omp_get_thread_num()].front();
         smaller_add_searchable_vertices_queue_[omp_get_thread_num()].pop();
 
-        // add to rrs_tree
+        // add to rrs_tree only add if the vertex is searchable
+        if (!vertex->is_searchable()) continue; 
+
         rrs_tree_.tree_add_vertex(vertex);
     }
 }
