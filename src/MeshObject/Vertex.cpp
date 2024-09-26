@@ -99,7 +99,8 @@ void Vertex::delete_()
         is_searchable_ = false;
 
         // we need to add it to remove queue to truely remove it from the tree
-        storage_->remove_searchable_vertex(shared_from_this());
+        // storage_->remove_searchable_vertex(shared_from_this());
+        storage_->add_affected_vertex(shared_from_this());
     }
 
     // log

@@ -653,11 +653,12 @@ void Storage::add_points_in_affected_vertices_set()
             // add to rrs_tree
             rrs_tree_.tree_add_vertex(vertex);
         }
-        // else if (!vertex->is_boundary() && vertex->node != nullptr)
-        // {
-        //     // remove from rrs_tree
-        //     rrs_tree_.tree_delete_vertex(vertex);
-        // }
+        else if (!vertex->is_boundary() && vertex->node != nullptr)
+        {
+            // remove from rrs_tree
+            rrs_tree_.tree_delete_vertex(vertex);
+        }
+
         // else
         // {
         //     // do nothing
