@@ -1214,9 +1214,9 @@ void Application<PointT>::loop()
         }
         num_iteration ++;
 
-        std::chrono::high_resolution_clock::time_point t_end = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double> duration = t_end - t_init;
-        std::cout << "==================================================================== Processed " << accumulated_points << " points in " << duration.count() << " s" << std::endl;
+        // std::chrono::high_resolution_clock::time_point t_end = std::chrono::high_resolution_clock::now();
+        // std::chrono::duration<double> duration = t_end - t_init;
+        // std::cout << "==================================================================== Processed " << accumulated_points << " points in " << duration.count() << " s" << std::endl;
 
         // add all points from the abort queue to the main queue
         storage_->add_points_in_smaller_abort_queues_to_main_queue();
