@@ -378,7 +378,7 @@ void RRSTree::node_add_vertex(const std::shared_ptr<RRSNode>& node, const std::s
         // lock before adding vertex
         while (!omp_test_nest_lock(&node->omp_lock))
         {
-            // std::cout << "RRS lock node inside add vertex waiting ..." << std::endl;
+            std::cout << "RRS lock node inside add vertex waiting ... " << std::endl;
         };
 
         // node could become branch while waiting (when other thread add to the same node), hence need a new node_add_vertex call
