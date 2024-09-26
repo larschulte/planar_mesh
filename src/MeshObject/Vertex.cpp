@@ -69,12 +69,23 @@ void Vertex::delete_()
         std::cout << "waiting to lock vertex " << id_ << std::endl;
     }
 
+    // we are not adding vertex to rrs tree right away
+    // a vertex is schedule to be added to rrs tree, but then get deleted
+    // hence do not have node pointer
+    // and thus is not changed to not searchable
+    is_searchable_ = false;
+
+    // if vertex is added to rrs, 
+    const bool added_to_rrs = node != nullptr;
+    if (added_to_rrs) 
+    {   
+        // we need to set its is_searchable_ to false so future search will know it just has not yet been deleted and will skip it
+        is_searchable_ = false;
+
         // we need to add it to remove queue to truely remove it from the tree
         storage_->remove_searchable_vertex(shared_from_this());
-        is_searchable_ = false;
     }
 
-    
     // log
     if (settings_.log.deletion) std::cout << "Destroying vertex " << id_ << std::endl;
 
