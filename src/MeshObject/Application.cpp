@@ -232,24 +232,24 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
     // 
     // don't add internal vertex to RRS, if an internal vertex becomes a boundary, add to RRS at the end
 
-    std::shared_ptr<Node> bvh_storage_node;
-    BVHReturnType BVH_storage_return = storage_->face_intersection_search_find_node(generic_point->get_origin(), generic_point->get_position(), bvh_storage_node);    
-    if (BVH_storage_return == BVHReturnType::INTERSECTED) locked_bvh_nodes.push_back(bvh_storage_node); // store the locked nodes
+    // std::shared_ptr<Node> bvh_storage_node;
+    // BVHReturnType BVH_storage_return = storage_->face_intersection_search_find_node(generic_point->get_origin(), generic_point->get_position(), bvh_storage_node);    
+    // if (BVH_storage_return == BVHReturnType::INTERSECTED) locked_bvh_nodes.push_back(bvh_storage_node); // store the locked nodes
 
-    if (BVH_storage_return == BVHReturnType::ABORT)
-    {
-        // std::cout << "X _ _ _" << std::endl;
-        for (const std::shared_ptr<Surface>& surface : prelocked_surfaces) omp_unset_nested_lock_with_log(surface->lock, "unlock surface");
-        for (const std::shared_ptr<Surface>& surface : locked_surfaces) omp_unset_nested_lock_with_log(surface->lock, "unlock surface");
-        for (const std::shared_ptr<Node>& node : locked_bvh_nodes) omp_unset_nest_lock(&node->omp_lock);
-        for (const std::shared_ptr<RRSNode>& node : locked_rrs_nodes) omp_unset_nest_lock(&node->omp_lock);
+    // if (BVH_storage_return == BVHReturnType::ABORT)
+    // {
+    //     // std::cout << "X _ _ _" << std::endl;
+    //     for (const std::shared_ptr<Surface>& surface : prelocked_surfaces) omp_unset_nested_lock_with_log(surface->lock, "unlock surface");
+    //     for (const std::shared_ptr<Surface>& surface : locked_surfaces) omp_unset_nested_lock_with_log(surface->lock, "unlock surface");
+    //     for (const std::shared_ptr<Node>& node : locked_bvh_nodes) omp_unset_nest_lock(&node->omp_lock);
+    //     for (const std::shared_ptr<RRSNode>& node : locked_rrs_nodes) omp_unset_nest_lock(&node->omp_lock);
 
-        // alway retry until it contents with surface
-        storage_->add_to_queue(generic_point);
+    //     // alway retry until it contents with surface
+    //     storage_->add_to_queue(generic_point);
 
-        // return
-        return;
-    }
+    //     // return
+    //     return;
+    // }
 
     // std::shared_ptr<RRSNode> rrs_storage_node;
     // RRSReturnType RRS_storage_return = storage_->reverse_radius_search_find_node(generic_point->get_position(), rrs_storage_node);
@@ -451,6 +451,7 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
 
     // after unlocking all locks, add the point in queue to the search tree
     storage_->add_points_in_affected_vertices_set();
+    storage_->add_faces_in_affected_faces_set();
 }
 
 template <typename PointT>

@@ -93,7 +93,8 @@ void Face::initialize_(const std::shared_ptr<Storage>& storage, const std::share
     center_ = (pos0 + pos1 + pos2) / 3;
 
     // add to search
-    storage_->add_searchable_face(shared_from_this());
+    // storage_->add_searchable_face(shared_from_this());
+    storage_->add_affected_face(shared_from_this());
     is_searchable_ = true;
 
     // log
@@ -124,13 +125,14 @@ void Face::delete_()
         std::cout << "waiting to lock face " << id_ << std::endl;
     }
 
-    // set nan bounding box
-    node->box = BoundingBox();
-    node->recursive_shrink_parent_box();
-
-    // remove from search tree
-    storage_->remove_searchable_face(shared_from_this());
     is_searchable_ = false;
+
+    if (node)
+    {
+        // remove from search tree
+        storage_->remove_searchable_face(shared_from_this());
+        is_searchable_ = false;
+    }
 
     // log
     if (settings_.log.deletion) std::cout << "Destroying face " << id_ << std::endl;
