@@ -655,13 +655,28 @@ void TriangleBVH::tree_delete_face(std::shared_ptr<Face> face)
     const std::shared_ptr<Node>& node = face->node;
     if (node == nullptr) throw std::invalid_argument("Vertex not found in BVH.");
 
+    // lock node
+    while (!omp_test_nest_lock(&node->omp_lock)) 
+    {
+        std::cout << "delete face waiting for " << std::endl;
+    }
+
+    // make copy for later release
+    const std::shared_ptr<Node> locked_node = node;
+
     // throw if not found in node->faces
     const bool found = std::find(node->faces.begin(), node->faces.end(), face) != node->faces.end();
     if (!found) throw std::invalid_argument("Face not found in BVH.");
 
+    node->box = BoundingBox();
+    node->recursive_shrink_parent_box();
+
     // delete from node
     node->faces.erase(std::remove(node->faces.begin(), node->faces.end(), face), node->faces.end());
     face->node = nullptr;
+
+    // release lock
+    omp_unset_nest_lock(&locked_node->omp_lock);
 }
 
 TriangleBVH::TriangleBVH()
