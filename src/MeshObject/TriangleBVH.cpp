@@ -275,20 +275,37 @@ BVHReturnType TriangleBVH::node_intersection_search(const std::shared_ptr<Node>&
             return BVHReturnType::SKIP;
         }
 
+        // abort if can't lock face lock
+        const std::shared_ptr<Face>& face = node->faces[0];
+        if (!omp_test_nest_lock(&face->face_lock))
+        {
+            omp_unset_nest_lock(&node->omp_lock);
+            return BVHReturnType::ABORT;
+        }
+
+        // skip if face is not searchable
+        if (!node->faces[0]->is_searchable())
+        {
+            omp_unset_nest_lock(&face->face_lock);
+            omp_unset_nest_lock(&node->omp_lock);
+            return BVHReturnType::SKIP;
+        }
+
         // skip if not intersected
         if (!node->faces[0]->intersects_point(generic_point->get_origin(), generic_point->get_direction()))
         {
+            omp_unset_nest_lock(&face->face_lock);
             omp_unset_nest_lock(&node->omp_lock);
             return BVHReturnType::SKIP;
         }
 
         // abort if can't lock face's surface
-        const std::shared_ptr<Face>& face = node->faces[0];
         const std::shared_ptr<Surface>& surface = face->get_surface();
         generic_point->intersected_surfaces.insert(surface);
         if (!omp_test_nest_lock(&surface->lock)) // nest lock here since a ray could intersect two faces of the same surface in two nodes
         {
             generic_point->contented_surfaces[surface]++;
+            omp_unset_nest_lock(&face->face_lock);
             omp_unset_nest_lock(&node->omp_lock);
             // std::cout << "_ _ X _ _ _ _ _" << std::endl;
             return BVHReturnType::ABORT;
@@ -296,6 +313,8 @@ BVHReturnType TriangleBVH::node_intersection_search(const std::shared_ptr<Node>&
 
         // return
         faces_intersected.push_back(node->faces[0]);
+
+        omp_unset_nest_lock(&face->face_lock);
         return BVHReturnType::INTERSECTED;
     }
 }
