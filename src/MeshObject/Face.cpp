@@ -118,11 +118,10 @@ void Face::update_radius(const std::shared_ptr<GenericPoint>& generic_point)
 
 void Face::delete_()
 {
-    // lock node
-    std::shared_ptr<Node> node_copy = node ? node : std::make_shared<Node>(); // lock if node exists
-    while (!omp_test_nest_lock(&node_copy->omp_lock)) 
+    // lock face
+    while (!omp_test_nest_lock(&face_lock)) 
     {
-        std::cout << "delete face waiting for " << id_ << std::endl;
+        std::cout << "waiting to lock face " << id_ << std::endl;
     }
 
     // set nan bounding box
@@ -157,8 +156,8 @@ void Face::delete_()
     // set expired
     is_expired_ = true;
 
-    // release node lock
-    omp_unset_nest_lock(&node_copy->omp_lock);
+    // release face lock
+    omp_unset_nest_lock(&face_lock);
 }
 
 void Face::temp_initialize(const Eigen::Vector3d& end_point)
