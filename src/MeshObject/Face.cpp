@@ -130,7 +130,8 @@ void Face::delete_()
     if (node)
     {
         // remove from search tree
-        storage_->remove_searchable_face(shared_from_this());
+        // storage_->remove_searchable_face(shared_from_this());
+        storage_->add_affected_face(shared_from_this());
         is_searchable_ = false;
     }
 

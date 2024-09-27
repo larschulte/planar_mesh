@@ -682,11 +682,11 @@ void Storage::add_faces_in_affected_faces_set()
             // add to rrs_tree
             triangle_bvh_.tree_add_face(face);
         }
-        // else if (!face->is_searchable() && face->node != nullptr)
-        // {
-        //     // remove from rrs_tree
-        //     triangle_bvh_.tree_delete_face(face);
-        // }
+        else if (!face->is_searchable() && face->node != nullptr)
+        {
+            // remove from rrs_tree
+            triangle_bvh_.tree_delete_face(face);
+        }
 
         // else
         // {
