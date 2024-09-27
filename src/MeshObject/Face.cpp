@@ -241,6 +241,11 @@ bool Face::is_expired() const
     return is_expired_;
 }
 
+bool Face::is_searchable() const
+{
+    return is_searchable_;
+}
+
 bool Face::has_vertex(const std::shared_ptr<Vertex>& vertex) const
 {
     return vertices_.find(vertex) != vertices_.end();
