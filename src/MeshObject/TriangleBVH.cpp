@@ -515,12 +515,29 @@ void TriangleBVH::node_add_face(const std::shared_ptr<Node>& node, const std::sh
     }
     else
     {
+        // lock before adding vertex
+        while (!omp_test_nest_lock(&node->omp_lock))
+        {
+            std::cout << "BVH lock node inside add face waiting ... " << std::endl;
+        };
+
+        // node could become branch while waiting (when other thread add to the same node), hence need a new node_add_vertex call
+        if (!node->isLeaf)
+        {
+            omp_unset_nest_lock(&node->omp_lock);
+            node_add_face(node, face);
+            return;
+        }
+
         node->faces.push_back(face);
 
         // store node pointer in face
         face->node = node;
 
         if (node->faces.size() > leaf_size) convert_leaf_to_branch(node);
+        
+        // unlock
+        node->recursive_unlock();        
     }
 }
 
