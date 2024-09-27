@@ -72,9 +72,7 @@ public: // to user
 
     bool can_reverse_radius_search();
     RRSReturnType reverse_radius_search(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Vertex>>& result);
-    RRSReturnType reverse_radius_search_find_node(const Eigen::Vector3d& point, std::shared_ptr<RRSNode>& return_node);
     BVHReturnType face_intersection_search(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Face>>& result);
-    BVHReturnType face_intersection_search_find_node(const Eigen::Vector3d& origin, const Eigen::Vector3d& point, std::shared_ptr<Node>& return_node);
 
     const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& get_vertices() const;
     const std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& get_edges() const;

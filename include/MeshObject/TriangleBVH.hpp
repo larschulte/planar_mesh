@@ -90,7 +90,6 @@ private:
     void convert_leaf_to_branch(const std::shared_ptr<Node>& node);
 
     BVHReturnType node_intersection_search(const std::shared_ptr<Node>& node, const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Face>>& faces_intersected) const;
-    BVHReturnType node_find_leaf_node(const std::shared_ptr<Node>& node, const Eigen::Vector3d& orig, const Eigen::Vector3d& endPoint, std::shared_ptr<Node>& return_node);
     void node_add_face(const std::shared_ptr<Node>& node, const std::shared_ptr<Face>& face);
     double calculate_sah(BoundingBox& parent_box, BoundingBox& left_box, BoundingBox& right_box, int left_count, int right_count);
     bool node_delete_face(const std::shared_ptr<Node>& node, const std::shared_ptr<Face>& face);
@@ -106,7 +105,6 @@ public:
     void tree_add_face(std::shared_ptr<Face> face);
     void tree_delete_face(std::shared_ptr<Face> face);
     BVHReturnType tree_intersection_search(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Face>>& faces_intersected) const;
-    BVHReturnType tree_find_leaf_node(const Eigen::Vector3d& origin, const Eigen::Vector3d& endPoint, std::shared_ptr<Node>& return_node);
     void tree_print() const;
 
     unsigned int get_size() const;
