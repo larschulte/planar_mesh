@@ -646,7 +646,7 @@ std::vector<std::shared_ptr<Face>> TriangleBVH::get_face_list() const
 void TriangleBVH::tree_delete_face(std::shared_ptr<Face> face)
 {
     // check input
-    if (face->is_expired()) throw std::runtime_error("Attempts to delete expired face.");
+    // if (face->is_expired()) throw std::runtime_error("Attempts to delete expired face.");
 
     // decrement face size
     face_size--;
