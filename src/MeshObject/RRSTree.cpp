@@ -339,6 +339,26 @@ std::shared_ptr<RRSNode> RRSTree::build_node(const std::vector<std::shared_ptr<V
     return node;
 }
 
+std::shared_ptr<RRSNode> RRSTree::find_best_node(const std::shared_ptr<RRSNode>& node, const std::shared_ptr<Vertex>& boundary_vertex)
+{
+    if (!node->isLeaf)
+    {
+        if (boundary_vertex->get_position()[node->split_axis] < node->split_value)
+        {
+            return find_best_node(node->left, boundary_vertex);
+        }
+        else
+        {
+            return find_best_node(node->right, boundary_vertex);
+        }
+    }
+    else
+    {
+        return node;
+    }
+}
+
+
 //
 // PROBLEM
 //
@@ -360,47 +380,39 @@ std::shared_ptr<RRSNode> RRSTree::build_node(const std::vector<std::shared_ptr<V
 // when adding vertex from storage, add to a queue. that is processed after all locks are released
 void RRSTree::node_add_vertex(const std::shared_ptr<RRSNode>& node, const std::shared_ptr<Vertex>& boundary_vertex)
 {
-    node->box.expand_box_no_return(boundary_vertex->get_min(), boundary_vertex->get_max());
+    // lock before adding vertex
+    while (!omp_test_nest_lock(&node->omp_lock))
+    {
+        std::cout << "RRS lock node inside add vertex waiting ... " << std::endl;
+    };
 
+    // node could become branch while waiting (when other thread add to the same node), hence need a new node_add_vertex call
     if (!node->isLeaf)
     {
-        // [todo] add vertex to node not based on split value, but based on minimizing delta SAH
-        // this however, means the location of node is not determined. thus can't be precomputed.
-        if (boundary_vertex->get_position()[node->split_axis] < node->split_value)
-        {
-            node_add_vertex(node->left, boundary_vertex);
-        }
-        else 
-        {
-            node_add_vertex(node->right, boundary_vertex);
-        }
+        // unlock current branch node
+        omp_unset_nest_lock(&node->omp_lock);
+
+        // continue to find the best node
+        std::shared_ptr<RRSNode> best_node = find_best_node(node, boundary_vertex);
+
+        // add to best node
+        node_add_vertex(best_node, boundary_vertex);
+
+        return;
     }
-    else
-    {
-        // lock before adding vertex
-        while (!omp_test_nest_lock(&node->omp_lock))
-        {
-            std::cout << "RRS lock node inside add vertex waiting ... " << std::endl;
-        };
 
-        // node could become branch while waiting (when other thread add to the same node), hence need a new node_add_vertex call
-        if (!node->isLeaf)
-        {
-            omp_unset_nest_lock(&node->omp_lock);
-            node_add_vertex(node, boundary_vertex);
-            return;
-        }
+    node->box.expand_box_no_return(boundary_vertex->get_min(), boundary_vertex->get_max());
+    node->recursive_expand_parent_box();
 
-        // connect to this node
-        node->boundary_vertices.push_back(boundary_vertex);
-        boundary_vertex->node = node;
+    // connect to this node
+    node->boundary_vertices.push_back(boundary_vertex);
+    boundary_vertex->node = node;
 
-        // convert to branch
-        if (node->boundary_vertices.size() > leaf_size) convert_leaf_to_branch(node);
+    // convert to branch
+    if (node->boundary_vertices.size() > leaf_size) convert_leaf_to_branch(node);
 
-        // unlock
-        node->recursive_unlock();        
-    }
+    // unlock
+    node->recursive_unlock();        
 }
 
 void RRSTree::node_increase_radius(const std::shared_ptr<RRSNode>& node, const std::shared_ptr<Vertex>& boundary_vertex)
@@ -623,7 +635,11 @@ void RRSTree::tree_add_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
     // increase size
     tree_size++;
 
-    node_add_vertex(root, boundary_vertex);
+    // find best node to add
+    std::shared_ptr<RRSNode> best_node = find_best_node(root, boundary_vertex);
+
+    // add to best node
+    node_add_vertex(best_node, boundary_vertex);
 }
 
 void RRSTree::tree_delete_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
