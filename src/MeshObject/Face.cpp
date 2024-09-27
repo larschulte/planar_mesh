@@ -125,15 +125,9 @@ void Face::delete_()
         std::cout << "waiting to lock face " << id_ << std::endl;
     }
 
+    // add to affected faces set
     is_searchable_ = false;
-
-    if (node)
-    {
-        // remove from search tree
-        // storage_->remove_searchable_face(shared_from_this());
-        storage_->add_affected_face(shared_from_this());
-        is_searchable_ = false;
-    }
+    storage_->add_affected_face(shared_from_this());
 
     // log
     if (settings_.log.deletion) std::cout << "Destroying face " << id_ << std::endl;
