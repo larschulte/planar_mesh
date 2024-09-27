@@ -24,6 +24,8 @@ protected:
     void delete_();
 
 public:
+    omp_nest_lock_t face_lock;
+
     void temp_initialize(const Eigen::Vector3d& end_point);
 
     std::shared_ptr<Node> node;
