@@ -71,6 +71,10 @@ struct Settings
     // log settings
     LOG log;
 
+    // output time
+    bool output_time;
+    std::string output_file_name;
+
     // interactive viewer settings
     bool flip_color;
     bool show_generic_points;

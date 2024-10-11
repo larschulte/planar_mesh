@@ -109,7 +109,10 @@ Settings::Settings()
         log.total_processed_points = false;
         log.show_contented_surface = false;
     }
-    
+
+    // output time
+    output_time = true;
+    output_file_name = "threads_more_iteration_" + std::to_string(num_threads) + ".txt";
 
     // interactive viewer settings
     flip_color = true;

@@ -1224,6 +1224,15 @@ void Application<PointT>::loop()
     std::chrono::duration<double> duration = t_end - t_init;
     std::cout << "==================================================================== Processed " << accumulated_points << " points in " << duration.count() << " s" << std::endl;
 
+    // store time and ith_cloud into file
+    if (settings_.output_time)
+    {
+        std::ofstream file;
+        file.open(settings_.output_file_name, std::ios_base::app);
+        file << ith_cloud << " " << duration.count() << std::endl;
+        file.close();
+    }
+
     // print repeated queue size
     if (settings_.log.step) std::cout << "==================================================================== repeated queue size: " << storage_->get_repeated_queue_size() << std::endl;
 
