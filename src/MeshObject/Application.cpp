@@ -1315,8 +1315,8 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_interior_poi
         }
         else if (settings.color_mode == ColorMode::RADIUS)
         {
-            double distance = interior_point->get_radius() / settings.radius_denominator;
-            std::tuple<int, int, int> color = valueToJet(distance);
+            double ratio = interior_point->get_radius() / settings.radius_denominator;
+            std::tuple<int, int, int> color = valueToJet(1.0-ratio);
             point.r = std::get<0>(color);
             point.g = std::get<1>(color);
             point.b = std::get<2>(color);
@@ -1444,8 +1444,8 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_vertex_point
         }
         else if (setting.color_mode == ColorMode::RADIUS)
         {
-            double distance = vertex->get_radius() / setting.radius_denominator;
-            std::tuple<int, int, int> color = valueToJet(distance);
+            double ratio = vertex->get_radius() / setting.radius_denominator;
+            std::tuple<int, int, int> color = valueToJet(1.0-ratio);
             point.r = std::get<0>(color);
             point.g = std::get<1>(color);
             point.b = std::get<2>(color);
