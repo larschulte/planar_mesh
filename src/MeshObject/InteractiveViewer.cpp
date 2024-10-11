@@ -13,7 +13,14 @@ InteractiveViewer<PointT>::InteractiveViewer(Application<PointT>& app)
     viewer_(new pcl::visualization::PCLVisualizer ("3D Viewer"))
 {   
     viewer_->getRenderWindow()->GlobalWarningDisplayOff(); // Add This Line
-    viewer_->setBackgroundColor (0, 0, 0);
+    if (settings_.flip_color) 
+    {
+        viewer_->setBackgroundColor (1, 1, 1);
+    }
+    else
+    {
+        viewer_->setBackgroundColor (0, 0, 0);
+    }
     viewer_->initCameraParameters();
     viewer_->addCoordinateSystem(1);
     viewer_->registerKeyboardCallback(&InteractiveViewer::keyboard_callback, *this, nullptr);
@@ -94,7 +101,14 @@ void InteractiveViewer<PointT>::update_display()
             boundary_mesh.polygons.push_back(boundary_edge);
         }
         viewer_->addPolylineFromPolygonMesh(boundary_mesh, "boundary_edges");
-        viewer_->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, 1, 1, 1, "boundary_edges");
+        if (settings_.flip_color) 
+        {
+            viewer_->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, 0, 0, 0, "boundary_edges");
+        }
+        else
+        {
+            viewer_->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, 1, 1, 1, "boundary_edges");
+        }
         viewer_->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, 2, "boundary_edges");
     }
 

@@ -112,6 +112,7 @@ Settings::Settings()
     
 
     // interactive viewer settings
+    flip_color = true;
     show_generic_points = true;
     show_interior_points = true;
     show_pointcloud = true;

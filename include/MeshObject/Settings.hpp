@@ -72,6 +72,7 @@ struct Settings
     LOG log;
 
     // interactive viewer settings
+    bool flip_color;
     bool show_generic_points;
     bool show_interior_points;
     bool show_pointcloud;
