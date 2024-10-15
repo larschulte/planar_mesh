@@ -352,21 +352,21 @@ std::shared_ptr<RRSNode> RRSTree::find_best_node(const std::shared_ptr<RRSNode>&
     std::shared_ptr<RRSNode> best_node = nullptr;
 
     // while queue is not empty
-    while (queue.size() != 0)
+    while (!queue.empty())
     {
         // get the first element
         std::pair<std::shared_ptr<RRSNode>, double> current = queue.front();
         queue.pop();
 
         // get the node and inherited cost
-        std::shared_ptr<RRSNode> node = current.first;
+        std::shared_ptr<RRSNode> current_node = current.first;
         double inherited_cost = current.second;
 
         // cost to branch from current node
         double cost;
         {
             // cost of creating a new branch node
-            RRSBoundingBox new_branch_box = node->box;
+            RRSBoundingBox new_branch_box = current_node->box;
             new_branch_box.expand_box_no_return(boundary_vertex->get_min(), boundary_vertex->get_max());
             double new_branch_node_cost = new_branch_box.get_surface_area();
 
@@ -377,16 +377,16 @@ std::shared_ptr<RRSNode> RRSTree::find_best_node(const std::shared_ptr<RRSNode>&
         if (cost < best_cost)
         {
             best_cost = cost;
-            best_node = node;
+            best_node = current_node;
         }
 
         // check if it is worth it to go to the children
-        if (!node->isLeaf)
+        if (!current_node->isLeaf)
         {
             // compute change to inherited cost
-            RRSBoundingBox expanded_box = node->box;
+            RRSBoundingBox expanded_box = current_node->box;
             expanded_box.expand_box_no_return(boundary_vertex->get_min(), boundary_vertex->get_max());
-            double change_to_inherited = expanded_box.get_surface_area() - node->box.get_surface_area();
+            double change_to_inherited = expanded_box.get_surface_area() - current_node->box.get_surface_area();
 
             // compute lower bound cost to add branch node
             RRSBoundingBox smallest_branch_box(boundary_vertex->get_min(), boundary_vertex->get_max());
@@ -400,8 +400,8 @@ std::shared_ptr<RRSNode> RRSTree::find_best_node(const std::shared_ptr<RRSNode>&
             else
             {
                 // we should go into the children
-                queue.push(std::make_pair(node->left, inherited_cost + change_to_inherited));
-                queue.push(std::make_pair(node->right, inherited_cost + change_to_inherited));
+                queue.push(std::make_pair(current_node->left, inherited_cost + change_to_inherited));
+                queue.push(std::make_pair(current_node->right, inherited_cost + change_to_inherited));
             }
         }
     }
