@@ -489,30 +489,70 @@ void TriangleBVH::node_add_face(const std::shared_ptr<Node>& node, const std::sh
         std::cout << "BVH lock node inside add face waiting ... " << std::endl;
     };
 
-    // node could become branch while waiting (when other thread add to the same node), hence need a new node_add_vertex call
-    if (!node->isLeaf)
+    // after locking the node
+    
+    // create new node
+    std::shared_ptr<Node> new_node = std::make_shared<Node>();
     {
-        // unlock current branch node
-        omp_unset_nest_lock(&node->omp_lock);
-
-        // continue to find the best node
-        std::shared_ptr<Node> best_node = find_best_node(node, face);
-
-        // add to best node
-        node_add_face(best_node, face);
-
-        return;
+        new_node->box.expand_box_no_return(face->get_min(), face->get_max());
+        new_node->faces.push_back(face);
+        face->node = new_node;
     }
+    
+    // create duplicate node
+    std::shared_ptr<Node> duplicate_node = std::make_shared<Node>();
+    {
+        duplicate_node->box = node->box;
+        duplicate_node->split_value = node->split_value;
+        duplicate_node->split_axis = node->split_axis;
+        
+        // if node is leaf, copy boundary vertices
+        if (node->isLeaf)
+        {
+            duplicate_node->faces = node->faces;
+            for (const std::shared_ptr<Face>& sub_face : duplicate_node->faces)
+            {
+                sub_face->node = duplicate_node;
+            }
+        }
+        else
+        {
+            // else, copy children
+            duplicate_node->left = node->left;
+            node->left->parent = duplicate_node;
 
-    node->box.expand_box_no_return(face->get_min(), face->get_max());
-    node->recursive_expand_parent_box();
+            duplicate_node->right = node->right;
+            node->right->parent = duplicate_node;
 
-    // connect to this node
-    node->faces.push_back(face);
-    face->node = node;
+            duplicate_node->isLeaf.store(node->isLeaf.load());
+        }
+    }
+    
+    // make new node and duplicate node children of the current node
+    {
+        // expand current node box
+        node->box.expand_box_no_return(new_node->box);
+        node->recursive_expand_parent_box();
 
-    // convert to branch
-    if (node->faces.size() > leaf_size) convert_leaf_to_branch(node);
+        // get split axis
+        node->split_axis = node->box.get_longest_axis();
+
+        // get split value  
+        node->split_value = face->get_first_vertex()->get_position()[node->split_axis];
+
+        // put into children
+        node->left = duplicate_node;
+        duplicate_node->parent = node;
+        node->right = new_node;
+        new_node->parent = node;
+
+        // assign sibling
+        duplicate_node->sibling = node->sibling;
+        new_node->sibling = duplicate_node;
+
+        // change to branch
+        node->isLeaf = false;
+    }
     
     // unlock
     node->recursive_unlock();

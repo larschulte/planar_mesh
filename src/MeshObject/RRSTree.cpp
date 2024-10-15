@@ -388,31 +388,71 @@ void RRSTree::node_add_vertex(const std::shared_ptr<RRSNode>& node, const std::s
         std::cout << "RRS lock node inside add vertex waiting ... " << std::endl;
     };
 
-    // node could become branch while waiting (when other thread add to the same node), hence need a new node_add_vertex call
-    if (!node->isLeaf)
+    // after locking the node
+    
+    // create new node
+    std::shared_ptr<RRSNode> new_node = std::make_shared<RRSNode>();
     {
-        // unlock current branch node
-        omp_unset_nest_lock(&node->omp_lock);
-
-        // continue to find the best node
-        std::shared_ptr<RRSNode> best_node = find_best_node(node, boundary_vertex);
-
-        // add to best node
-        node_add_vertex(best_node, boundary_vertex);
-
-        return;
+        new_node->box.expand_box_no_return(boundary_vertex->get_min(), boundary_vertex->get_max());
+        new_node->boundary_vertices.push_back(boundary_vertex);
+        boundary_vertex->node = new_node;
     }
+    
+    // create duplicate node
+    std::shared_ptr<RRSNode> duplicate_node = std::make_shared<RRSNode>();
+    {
+        duplicate_node->box = node->box;
+        duplicate_node->split_value = node->split_value;
+        duplicate_node->split_axis = node->split_axis;
+        
+        // if node is leaf, copy boundary vertices
+        if (node->isLeaf)
+        {
+            duplicate_node->boundary_vertices = node->boundary_vertices;
+            for (const std::shared_ptr<Vertex>& vertex : duplicate_node->boundary_vertices)
+            {
+                vertex->node = duplicate_node;
+            }
+        }
+        else
+        {
+            // else, copy children
+            duplicate_node->left = node->left;
+            node->left->parent = duplicate_node;
 
-    node->box.expand_box_no_return(boundary_vertex->get_min(), boundary_vertex->get_max());
-    node->recursive_expand_parent_box();
+            duplicate_node->right = node->right;
+            node->right->parent = duplicate_node;
 
-    // connect to this node
-    node->boundary_vertices.push_back(boundary_vertex);
-    boundary_vertex->node = node;
+            duplicate_node->isLeaf.store(node->isLeaf.load());
+        }
+    }
+    
+    // make new node and duplicate node children of the current node
+    {
+        // expand current node box
+        node->box.expand_box_no_return(new_node->box);
+        node->recursive_expand_parent_box();
 
-    // convert to branch
-    if (node->boundary_vertices.size() > leaf_size) convert_leaf_to_branch(node);
+        // get split axis
+        node->split_axis = node->box.get_longest_axis();
 
+        // get split value  
+        node->split_value = boundary_vertex->get_position()[node->split_axis];
+
+        // put into children
+        node->left = duplicate_node;
+        duplicate_node->parent = node;
+        node->right = new_node;
+        new_node->parent = node;
+
+        // assign sibling
+        duplicate_node->sibling = node->sibling;
+        new_node->sibling = duplicate_node;
+
+        // change to branch
+        node->isLeaf = false;
+    }
+    
     // unlock
     node->recursive_unlock();        
 }
