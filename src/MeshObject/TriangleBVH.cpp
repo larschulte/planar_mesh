@@ -464,21 +464,71 @@ std::shared_ptr<Node> TriangleBVH::build_node(const std::vector<std::shared_ptr<
 
 std::shared_ptr<Node> TriangleBVH::find_best_node(const std::shared_ptr<Node>& node, const std::shared_ptr<Face>& face)
 {
-    if (!node->isLeaf)
+    // store a list of queue to process
+    std::queue<std::pair<std::shared_ptr<Node>, double>> queue;
+    queue.push(std::make_pair(node, 0));
+
+    // initialize
+    double best_cost = std::numeric_limits<double>::infinity();
+    std::shared_ptr<Node> best_node = nullptr;
+
+    // while queue is not empty
+    while (queue.size() != 0)
     {
-        if (face->get_first_vertex()->get_position()[node->split_axis] < node->split_value)
+        // get the first element
+        std::pair<std::shared_ptr<Node>, double> current = queue.front();
+        queue.pop();
+
+        // get the node and inherited cost
+        std::shared_ptr<Node> node = current.first;
+        double inherited_cost = current.second;
+
+        // cost to branch from current node
+        double cost;
         {
-            return find_best_node(node->left, face);
+            // cost of creating a new branch node
+            BoundingBox new_branch_box = node->box;
+            new_branch_box.expand_box_no_return(face->get_min(), face->get_max());
+            double new_branch_node_cost = new_branch_box.get_surface_area();
+
+            // total cost
+            cost = inherited_cost + new_branch_node_cost;
         }
-        else
+
+        if (cost < best_cost)
         {
-            return find_best_node(node->right, face);
+            best_cost = cost;
+            best_node = node;
+        }
+
+        // check if it is worth it to go to the children
+        if (!node->isLeaf)
+        {
+            // compute change to inherited cost
+            BoundingBox expanded_box = node->box;
+            expanded_box.expand_box_no_return(face->get_min(), face->get_max());
+            double change_to_inherited = expanded_box.get_surface_area() - node->box.get_surface_area();
+
+            // compute lower bound cost to add branch node
+            RRSBoundingBox smallest_branch_box(face->get_min(), face->get_max());
+            double lower_bound_cost = smallest_branch_box.get_surface_area();
+            
+            if (inherited_cost + change_to_inherited + lower_bound_cost > best_cost)
+            {
+                // it is not worth it to go to the children
+                continue;
+            }
+            else
+            {
+                // we should go into the children
+                queue.push(std::make_pair(node->left, inherited_cost + change_to_inherited));
+                queue.push(std::make_pair(node->right, inherited_cost + change_to_inherited));
+            }
         }
     }
-    else
-    {
-        return node;
-    }
+
+    // return the best node
+    return best_node;
 }
 
 void TriangleBVH::node_add_face(const std::shared_ptr<Node>& node, const std::shared_ptr<Face>& face)
