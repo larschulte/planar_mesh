@@ -74,6 +74,7 @@ struct Settings
     // output time
     bool output_time;
     std::string output_file_name;
+    bool turn_off_sah;
 
     // interactive viewer settings
     bool flip_color;

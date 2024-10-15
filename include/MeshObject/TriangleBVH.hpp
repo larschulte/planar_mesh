@@ -10,6 +10,7 @@
 #include <array>
 
 #include "utilities/omp_utilities.hpp"
+#include "MeshObject/Settings.hpp"
 
 #include <set>
 
@@ -77,6 +78,8 @@ class TriangleBVH
 {
 
 private:
+    static Settings settings_;
+    
     std::shared_ptr<Node> root;
     double rebuild_threshold;
     int size_at_last_rebuild;

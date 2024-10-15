@@ -111,11 +111,12 @@ Settings::Settings()
     }
 
     // output time
-    output_time = true;
-    output_file_name = "threads_more_iteration_" + std::to_string(num_threads) + ".txt";
+    output_time = false;
+    output_file_name = "with_sah_threads_more_iteration_" + std::to_string(num_threads) + ".txt";
+    turn_off_sah = false;
 
     // interactive viewer settings
-    flip_color = true;
+    flip_color = false;
     show_generic_points = true;
     show_interior_points = true;
     show_pointcloud = true;

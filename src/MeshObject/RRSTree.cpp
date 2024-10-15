@@ -4,6 +4,8 @@
 #include "MeshObject/Surface.hpp"
 #include "MeshObject/GenericPoint.hpp"
 
+Settings RRSTree::settings_;
+
 std::ostream& operator<<(std::ostream& os, const RRSReturnType& type)
 {
     switch (type)
@@ -202,7 +204,7 @@ void RRSTree::convert_leaf_to_branch(const std::shared_ptr<RRSNode>& node)
     int split_index;    // value to be computed
 
     // fill in value to be computed
-    const bool use_sah = node->boundary_vertices.size() > 2;
+    const bool use_sah = (node->boundary_vertices.size() > 2) && !settings_.turn_off_sah;
     if (!use_sah)
     {
         // use simple median split

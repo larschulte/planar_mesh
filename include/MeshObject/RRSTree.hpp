@@ -12,6 +12,7 @@
 
 #include "utilities/omp_utilities.hpp"
 #include <set>
+#include "MeshObject/Settings.hpp"
 
 class Vertex;
 class Surface;
@@ -72,6 +73,8 @@ std::ostream& operator<<(std::ostream& os, const RRSReturnType& type);
 class RRSTree
 {    
 private:
+    static Settings settings_;
+
     std::shared_ptr<RRSNode> root;
     double rebuild_threshold;
     int size_at_last_rebuild;

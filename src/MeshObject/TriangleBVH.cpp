@@ -5,6 +5,8 @@
 #include "MeshObject/GenericPoint.hpp" // Include the header file for the 'GenericPoint' class
 #include <iostream>
 
+Settings TriangleBVH::settings_;
+
 std::ostream& operator<<(std::ostream& os, const BVHReturnType& type)
 {
     switch (type)
@@ -328,7 +330,7 @@ void TriangleBVH::convert_leaf_to_branch(const std::shared_ptr<Node>& node)
     int split_index;    // value to be computed
 
     // fill in value to be computed
-    const bool use_sah = node->faces.size() > 2;
+    const bool use_sah = (node->faces.size() > 2) && !settings_.turn_off_sah;
     if (!use_sah)
     {
         // use simple median split
