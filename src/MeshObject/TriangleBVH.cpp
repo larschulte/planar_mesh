@@ -242,19 +242,33 @@ void TriangleBVH::sort_face_list_in_axis(std::vector<std::shared_ptr<Face>>& fac
 
 BVHReturnType TriangleBVH::node_intersection_search(const std::shared_ptr<Node>& node, const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Face>>& faces_intersected) const
 {    
+    // lock the node for exclusive read/write (abort if can't lock node -> someone else is reading/writing this node)
+    if (!omp_test_nest_lock(&node->omp_lock))
+    {
+        // std::cout << "_ X waiting ..." << std::endl;
+        return BVHReturnType::ABORT;
+    }
+    
     // skip if not intersected
     if (!node->box.intersect(generic_point->get_position(), generic_point->get_inv_direction()))
     {
+        omp_unset_nest_lock(&node->omp_lock);
         return BVHReturnType::SKIP;
     }
     
     // branch if not leaf
     if (!node->isLeaf)
     {
+        // get copy of left and right node
+        std::shared_ptr<Node> left = node->left;
+        std::shared_ptr<Node> right = node->right;
+        // unlock node
+        omp_unset_nest_lock(&node->omp_lock);
+
         // search left and right
-        BVHReturnType left_return = node_intersection_search(node->left, generic_point, faces_intersected);
+        BVHReturnType left_return = node_intersection_search(left, generic_point, faces_intersected);
         if (left_return == BVHReturnType::ABORT) return BVHReturnType::ABORT;
-        BVHReturnType right_return = node_intersection_search(node->right, generic_point, faces_intersected);
+        BVHReturnType right_return = node_intersection_search(right, generic_point, faces_intersected);
         if (right_return == BVHReturnType::ABORT) return BVHReturnType::ABORT;
 
         // skip if both is skip
@@ -264,12 +278,6 @@ BVHReturnType TriangleBVH::node_intersection_search(const std::shared_ptr<Node>&
     }
     else
     {
-        // abort if can't lock node
-        if (!omp_test_nest_lock(&node->omp_lock))
-        {
-            return BVHReturnType::ABORT;
-        }
-
         // skip if no faces
         if (node->faces.size() == 0)
         {

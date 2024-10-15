@@ -469,19 +469,33 @@ bool RRSTree::node_delete_vertex(const std::shared_ptr<RRSNode>& node, const std
 
 RRSReturnType RRSTree::node_reverse_radius_search(const std::shared_ptr<RRSNode>& node, const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Vertex>>& search_results)
 {
+    // lock the node for exclusive read/write (abort if can't lock node -> someone else is reading/writing this node)
+    if (!omp_test_nest_lock(&node->omp_lock))
+    {
+        // std::cout << "X _ waiting ..." << std::endl;
+        return RRSReturnType::ABORT;
+    }
+
     // skip if not contained
     if (!node->box.contains(generic_point->get_position()))
     {
+        omp_unset_nest_lock(&node->omp_lock);
         return RRSReturnType::SKIP;
     }
 
     // branch if not leaf
     if (!node->isLeaf)
     {
+        // get copy of left and right node
+        std::shared_ptr<RRSNode> left = node->left;
+        std::shared_ptr<RRSNode> right = node->right;
+        // unlock node
+        omp_unset_nest_lock(&node->omp_lock);
+
         // search left and right
-        RRSReturnType left_return = node_reverse_radius_search(node->left, generic_point, search_results);
+        RRSReturnType left_return = node_reverse_radius_search(left, generic_point, search_results);
         if (left_return == RRSReturnType::ABORT) return RRSReturnType::ABORT;
-        RRSReturnType right_return = node_reverse_radius_search(node->right, generic_point, search_results);
+        RRSReturnType right_return = node_reverse_radius_search(right, generic_point, search_results);
         if (right_return == RRSReturnType::ABORT) return RRSReturnType::ABORT;
 
         // skip if both is skip
@@ -491,14 +505,6 @@ RRSReturnType RRSTree::node_reverse_radius_search(const std::shared_ptr<RRSNode>
     }
     else
     {
-        // abort if can't lock node
-        // node lock prevents vertex from being added or deleted from the node
-        if (!omp_test_nest_lock(&node->omp_lock))
-        {
-            // std::cout << "_ _ _ _ X _ _ _" << std::endl;
-            return RRSReturnType::ABORT;
-        }
-        
         // skip if no vertices
         if (node->boundary_vertices.size() == 0)
         {
