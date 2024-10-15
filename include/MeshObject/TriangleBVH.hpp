@@ -93,6 +93,8 @@ private:
     void convert_leaf_to_branch(const std::shared_ptr<Node>& node);
 
     BVHReturnType node_intersection_search(const std::shared_ptr<Node>& node, const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Face>>& faces_intersected) const;
+
+    std::shared_ptr<Node> find_best_node(const std::shared_ptr<Node>& node, const std::shared_ptr<Face>& face);
     void node_add_face(const std::shared_ptr<Node>& node, const std::shared_ptr<Face>& face);
     double calculate_sah(BoundingBox& parent_box, BoundingBox& left_box, BoundingBox& right_box, int left_count, int right_count);
     bool node_delete_face(const std::shared_ptr<Node>& node, const std::shared_ptr<Face>& face);

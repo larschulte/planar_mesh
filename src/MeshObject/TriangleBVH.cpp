@@ -462,47 +462,60 @@ std::shared_ptr<Node> TriangleBVH::build_node(const std::vector<std::shared_ptr<
     return node;
 }
 
-void TriangleBVH::node_add_face(const std::shared_ptr<Node>& node, const std::shared_ptr<Face>& face)
+std::shared_ptr<Node> TriangleBVH::find_best_node(const std::shared_ptr<Node>& node, const std::shared_ptr<Face>& face)
 {
-    node->box.expand_box_no_return(face->get_min(), face->get_max());
-
     if (!node->isLeaf)
-    {    
+    {
         if (face->get_first_vertex()->get_position()[node->split_axis] < node->split_value)
         {
-            node_add_face(node->left, face);
+            return find_best_node(node->left, face);
         }
-        else 
+        else
         {
-            node_add_face(node->right, face);
+            return find_best_node(node->right, face);
         }
     }
     else
     {
-        // lock before adding vertex
-        while (!omp_test_nest_lock(&node->omp_lock))
-        {
-            std::cout << "BVH lock node inside add face waiting ... " << std::endl;
-        };
-
-        // node could become branch while waiting (when other thread add to the same node), hence need a new node_add_vertex call
-        if (!node->isLeaf)
-        {
-            omp_unset_nest_lock(&node->omp_lock);
-            node_add_face(node, face);
-            return;
-        }
-
-        node->faces.push_back(face);
-
-        // store node pointer in face
-        face->node = node;
-
-        if (node->faces.size() > leaf_size) convert_leaf_to_branch(node);
-        
-        // unlock
-        node->recursive_unlock();        
+        return node;
     }
+}
+
+void TriangleBVH::node_add_face(const std::shared_ptr<Node>& node, const std::shared_ptr<Face>& face)
+{
+    // lock before adding vertex
+    while (!omp_test_nest_lock(&node->omp_lock))
+    {
+        std::cout << "BVH lock node inside add face waiting ... " << std::endl;
+    };
+
+    // node could become branch while waiting (when other thread add to the same node), hence need a new node_add_vertex call
+    if (!node->isLeaf)
+    {
+        // unlock current branch node
+        omp_unset_nest_lock(&node->omp_lock);
+
+        // continue to find the best node
+        std::shared_ptr<Node> best_node = find_best_node(node, face);
+
+        // add to best node
+        node_add_face(best_node, face);
+
+        return;
+    }
+
+    node->box.expand_box_no_return(face->get_min(), face->get_max());
+    node->recursive_expand_parent_box();
+
+    // connect to this node
+    node->faces.push_back(face);
+    face->node = node;
+
+    // convert to branch
+    if (node->faces.size() > leaf_size) convert_leaf_to_branch(node);
+    
+    // unlock
+    node->recursive_unlock();
 }
 
 double TriangleBVH::calculate_sah(BoundingBox& parent_box, BoundingBox& left_box, BoundingBox& right_box, int left_count, int right_count)
@@ -668,7 +681,11 @@ void TriangleBVH::tree_add_face(std::shared_ptr<Face> face)
     // increment face size
     face_size++;
 
-    node_add_face(root, face);
+    // find best node to add
+    std::shared_ptr<Node> best_node = find_best_node(root, face);
+
+    // add to best node
+    node_add_face(best_node, face);
 }
 
 BVHReturnType TriangleBVH::tree_intersection_search(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Face>>& faces_intersected) const
