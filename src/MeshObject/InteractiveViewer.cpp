@@ -157,7 +157,7 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
     if (event.getKeySym() == "space" && event.keyDown())
     {
         app_.loop();
-        update_display();
+        if (settings_.update_display) update_display();
 
         // log
         std::cout << "loop" << std::endl;

@@ -77,6 +77,7 @@ struct Settings
     bool turn_off_sah;
 
     // interactive viewer settings
+    bool update_display;
     bool flip_color;
     bool show_generic_points;
     bool show_interior_points;
