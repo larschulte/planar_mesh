@@ -9,61 +9,108 @@
 #include <memory>
 #include <array>
 
+#include "utilities/omp_utilities.hpp"
+#include "MeshObject/Settings.hpp"
+
+#include <set>
+
 class Face;
 class Vertex;
+class Surface;
+class GenericPoint;
 
 bool ray_triangle_intersect(const Eigen::Vector3d& orig, const Eigen::Vector3d& dir, const Eigen::Vector3d& v0, const Eigen::Vector3d& v1, const Eigen::Vector3d& v2, Eigen::Vector3d& outIntersection);
 
+struct BoundingBox 
+{
+    Eigen::Vector3d min;
+    Eigen::Vector3d max;
+    Eigen::Vector3d min_used_for_surface_area;
+    Eigen::Vector3d max_used_for_surface_area;
+    double surface_area;
+    BoundingBox();
+    BoundingBox(const Eigen::Vector3d& min, const Eigen::Vector3d& max);
+    bool expand(const Eigen::Vector3d& point);
+    void expand_box_no_return(const Eigen::Vector3d& input_min, const Eigen::Vector3d& input_max);
+    void expand_box_no_return(const BoundingBox& box);
+    bool expand_box(const Eigen::Vector3d& input_min, const Eigen::Vector3d& input_max);
+    bool expand_box(const BoundingBox& box);
+    bool intersect(const Eigen::Vector3d& orig, const Eigen::Vector3d& invdir, double& tMin, double& tMax) const;
+    bool intersect(const Eigen::Vector3d& orig, const Eigen::Vector3d& invdir) const;
+    int get_longest_axis();
+    double compute_surface_area() const;
+    const double& get_surface_area();
+};
+
+struct Node 
+{
+    BoundingBox box;
+    double split_value;
+    int split_axis;
+    std::shared_ptr<Node> parent;
+    std::shared_ptr<Node> left;
+    std::shared_ptr<Node> right;
+    std::shared_ptr<Node> sibling;
+    std::atomic<bool> isLeaf = true;
+    std::vector<std::shared_ptr<Face>> faces;
+
+    custom::custom_lock custom_lock;
+    omp_nest_lock_t omp_lock;
+
+    bool locked_children = false;
+
+    void recursive_unlock();
+    void recursive_expand_parent_box();
+    void recursive_shrink_parent_box();
+};
+
+enum class BVHReturnType
+{
+    INTERSECTED,
+    SKIP,
+    ABORT
+};
+
+// overload <<
+std::ostream& operator<<(std::ostream& os, const BVHReturnType& type);
+
 class TriangleBVH
 {
-private:
-    struct BoundingBox 
-    {
-        Eigen::Vector3d min;
-        Eigen::Vector3d max;
-        BoundingBox();
-        void expand(const Eigen::Vector3d& point);
-        bool intersect(const Eigen::Vector3d& orig, const Eigen::Vector3d& dir, double& tMin, double& tMax) const;
-        bool intersect(const Eigen::Vector3d& orig, const Eigen::Vector3d& dir) const;
-        int get_longest_axis();
-    };
-
-    struct Node 
-    {
-        BoundingBox box;
-        double split_value;
-        int split_axis;
-        std::shared_ptr<Node> left;
-        std::shared_ptr<Node> right;
-        bool isLeaf() const;
-        std::vector<std::shared_ptr<Face>> faces;
-    };
 
 private:
+    static Settings settings_;
+    
     std::shared_ptr<Node> root;
     double rebuild_threshold;
     int size_at_last_rebuild;
     int face_size;
+    unsigned int leaf_size;
 
     double sort_face_list_in_axis(std::vector<std::shared_ptr<Face>>& face_list, int axis, int start, int mid, int end);
-    void expand_node_box(const std::shared_ptr<Node>& node, const std::shared_ptr<Face>& face);
+    void sort_face_list_in_axis(std::vector<std::shared_ptr<Face>>& face_list, int axis, int start, int end);
     
     std::shared_ptr<Node> build_node(const std::vector<std::shared_ptr<Face>>& face_list, const int& start, const int& end);
     void convert_leaf_to_branch(const std::shared_ptr<Node>& node);
 
-    void node_intersection_search(const std::shared_ptr<Node>& node, const Eigen::Vector3d& orig, const Eigen::Vector3d& dir, std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& faces_intersected) const;
+    BVHReturnType node_intersection_search(const std::shared_ptr<Node>& node, const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Face>>& faces_intersected) const;
+
+    std::shared_ptr<Node> find_best_node(const std::shared_ptr<Node>& node, const std::shared_ptr<Face>& face);
     void node_add_face(const std::shared_ptr<Node>& node, const std::shared_ptr<Face>& face);
+    double calculate_sah(BoundingBox& parent_box, BoundingBox& left_box, BoundingBox& right_box, int left_count, int right_count);
     bool node_delete_face(const std::shared_ptr<Node>& node, const std::shared_ptr<Face>& face);
     void node_print(const std::shared_ptr<Node>& node, int level) const;
-    void node_flatten(const std::shared_ptr<TriangleBVH::Node>& node, std::vector<std::shared_ptr<Face>>& face_list) const;
+    void node_flatten(const std::shared_ptr<Node>& node, std::vector<std::shared_ptr<Face>>& face_list) const;
 
 public:
     TriangleBVH();
+    void check_rebuild();
     void rebuild();
     std::vector<std::shared_ptr<Face>> get_face_list() const;
 
     void tree_add_face(std::shared_ptr<Face> face);
     void tree_delete_face(std::shared_ptr<Face> face);
-    void tree_intersection_search(Eigen::Vector3d origin, Eigen::Vector3d endPoint, std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> &faces_intersected) const;
+    BVHReturnType tree_intersection_search(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Face>>& faces_intersected) const;
     void tree_print() const;
+
+    unsigned int get_size() const;
 };

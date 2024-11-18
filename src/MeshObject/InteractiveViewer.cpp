@@ -13,7 +13,14 @@ InteractiveViewer<PointT>::InteractiveViewer(Application<PointT>& app)
     viewer_(new pcl::visualization::PCLVisualizer ("3D Viewer"))
 {   
     viewer_->getRenderWindow()->GlobalWarningDisplayOff(); // Add This Line
-    viewer_->setBackgroundColor (0, 0, 0);
+    if (settings_.flip_color) 
+    {
+        viewer_->setBackgroundColor (1, 1, 1);
+    }
+    else
+    {
+        viewer_->setBackgroundColor (0, 0, 0);
+    }
     viewer_->initCameraParameters();
     viewer_->addCoordinateSystem(1);
     viewer_->registerKeyboardCallback(&InteractiveViewer::keyboard_callback, *this, nullptr);
@@ -94,7 +101,14 @@ void InteractiveViewer<PointT>::update_display()
             boundary_mesh.polygons.push_back(boundary_edge);
         }
         viewer_->addPolylineFromPolygonMesh(boundary_mesh, "boundary_edges");
-        viewer_->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, 1, 1, 1, "boundary_edges");
+        if (settings_.flip_color) 
+        {
+            viewer_->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, 0, 0, 0, "boundary_edges");
+        }
+        else
+        {
+            viewer_->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, 1, 1, 1, "boundary_edges");
+        }
         viewer_->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, 2, "boundary_edges");
     }
 
@@ -140,10 +154,18 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
         // log
         std::cout << "show_keycode: " << settings_.show_keycode << std::endl;
     }
+    if (event.getKeySym() == "Return" && event.keyDown())
+    {
+        // update display
+        update_display();
+        
+        // log
+        std::cout << "update display" << std::endl;
+    }
     if (event.getKeySym() == "space" && event.keyDown())
     {
         app_.loop();
-        update_display();
+        if (settings_.update_display) update_display();
 
         // log
         std::cout << "loop" << std::endl;
@@ -151,7 +173,7 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
     // kp number 0
     if (event.getKeySym() == "KP_Insert" && event.keyDown())
     {
-        settings_.color_mode = 0;
+        settings_.color_mode = ColorMode::ID;
         update_display();
 
         // log
@@ -160,7 +182,7 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
     // kp number 1
     if (event.getKeySym() == "KP_End" && event.keyDown())
     {
-        settings_.color_mode = 1;
+        settings_.color_mode = ColorMode::POSITIONAL_UNCERTAINTY;
         update_display();
 
         // log
@@ -169,7 +191,7 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
     // kp number 2
     if (event.getKeySym() == "KP_Down" && event.keyDown())
     {
-        settings_.color_mode = 2;
+        settings_.color_mode = ColorMode::SIBLINGS;
         update_display();
 
         // log
@@ -178,7 +200,7 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
     // kp number 3
     if (event.getKeySym() == "KP_Next" && event.keyDown())
     {
-        settings_.color_mode = 3;
+        settings_.color_mode = ColorMode::RADIUS;
         update_display();
 
         // log
@@ -187,7 +209,7 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
     // kp number 4
     if (event.getKeySym() == "KP_Left" && event.keyDown())
     {
-        settings_.color_mode = 4;
+        settings_.color_mode = ColorMode::SURFACE_UNCERTAINTY;
         update_display();
 
         // log
@@ -196,6 +218,11 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
     // kp number 5
     if (event.getKeySym() == "KP_Begin" && event.keyDown())
     {
+        settings_.color_mode = ColorMode::CONTENTION;
+        update_display();
+
+        // log
+        std::cout << "color_mode: contention" << std::endl;
     }
     // kp number 6
     if (event.getKeySym() == "KP_Right" && event.keyDown())

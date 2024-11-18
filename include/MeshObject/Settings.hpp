@@ -16,6 +16,19 @@ struct LOG
     bool can_merge;
     bool merge_surface;
     bool duplicated_point;
+    bool num_of_concurrent_processes;
+    bool total_processed_points;
+    bool show_contented_surface;
+};
+
+enum class ColorMode
+{
+    ID,
+    POSITIONAL_UNCERTAINTY,
+    RADIUS,
+    SIBLINGS,
+    SURFACE_UNCERTAINTY,
+    CONTENTION
 };
 
 struct Settings 
@@ -45,12 +58,27 @@ struct Settings
 
     unsigned int num_of_delete_before_put_to_repeated_queue;
 
+    unsigned int num_threads;
+    bool use_queue;
+
+    bool record_countent_surface_count;
+
+    unsigned int retry_threshold;
+    unsigned int num_iterations;
+
     // double min_face_angle;
 
     // log settings
     LOG log;
 
+    // output time
+    bool output_time;
+    std::string output_file_name;
+    bool turn_off_sah;
+
     // interactive viewer settings
+    bool update_display;
+    bool flip_color;
     bool show_generic_points;
     bool show_interior_points;
     bool show_pointcloud;
@@ -61,11 +89,12 @@ struct Settings
     bool show_keycode;
     bool show_singular_edge;
     bool show_singular_vertex;
-    int color_mode;
+    ColorMode color_mode;
     double surface_denominator;
     double siblings_denominator;
     double radius_denominator;
     double positional_uncertainty_denominator;
+    double contention_denominator;
     bool show_wireframe;
     bool show_sphere;
     int number_of_spheres_to_display;  

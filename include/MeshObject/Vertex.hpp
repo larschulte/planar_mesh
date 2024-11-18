@@ -10,6 +10,8 @@
 
 #include "Cache/FIFOCache.hpp"
 
+#include "MeshObject/RRSTree.hpp"
+
 // Forward declarations
 class Edge;
 class Face;
@@ -22,17 +24,23 @@ class Vertex : public std::enable_shared_from_this<Vertex>, public MeshObject
 {
 protected:
     friend class Storage;
-    void initialize_(const std::shared_ptr<Storage>& storage, const Eigen::Vector3d& position, const Eigen::Vector3d& origin);
-    void initialize_(const std::shared_ptr<Storage>& storage, const Eigen::Vector3d& position, const Eigen::Vector3d& origin, const double& radius);
-    void initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<GenericPoint>& generic_point);
+    void initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<Surface>& surface, const Eigen::Vector3d& position, const Eigen::Vector3d& origin);
+    void initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<Surface>& surface, const Eigen::Vector3d& position, const Eigen::Vector3d& origin, const double& radius);
+    void initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<Surface>& surface, const std::shared_ptr<GenericPoint>& generic_point);
     void delete_();
 
 public:
+    omp_nest_lock_t vertex_lock;
+
+    void temp_initialize(const Eigen::Vector3d& position, unsigned int id);
+    std::shared_ptr<RRSNode> node;
+
     const int& get_id() const;
     const Eigen::Vector3d& get_position() const;
     const Eigen::Vector3d& get_origin() const;
     const Eigen::Vector3d& get_direction() const;
     const std::shared_ptr<Surface>& get_surface() const;
+    const std::shared_ptr<Surface>& get_surface_check() const;
     bool has_surface() const;
     const std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& get_edges() const;
     const std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& get_faces() const;
@@ -54,6 +62,8 @@ public:
 
     bool is_expired() const;
     bool is_boundary() const;
+    bool is_searchable() const;
+    bool is_deleting() const;
 
     void connect(const std::shared_ptr<Edge>& edge);
     void connect(const std::shared_ptr<Face>& face);
@@ -86,12 +96,13 @@ public: // for reverse radius search
     void set_reverse_radius_search_radius(double radius);
     void reduce_reverse_radius_search_radius(double radius);
     void reduce_previous_radius(double radius);
-    Eigen::Vector3d get_min() const;
-    Eigen::Vector3d get_max() const;
+    const Eigen::Vector3d& get_min() const;
+    const Eigen::Vector3d& get_max() const;
     const double& get_radius() const;
     const double& get_radius(const std::shared_ptr<Surface>& surface) const;
     bool contains(const Eigen::Vector3d& point) const;
     bool approx_contains(const Eigen::Vector3d& point) const;
+    bool approx_contains(const std::shared_ptr<GenericPoint>& generic_point) const;
 
 private: // for reverse radius search
     double reverse_search_radius_;

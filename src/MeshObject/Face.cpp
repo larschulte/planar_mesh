@@ -35,6 +35,22 @@ void Face::initialize_(const std::shared_ptr<Storage>& storage, const std::share
     connect(vertex1);
     connect(vertex2);
 
+    // store vertices position
+    v0_ = vertex0->get_position();
+    v1_ = vertex1->get_position();
+    v2_ = vertex2->get_position();
+
+    // compute min and max
+    BoundingBox box;
+    box.expand(vertex0->get_position());
+    box.expand(vertex1->get_position());
+    box.expand(vertex2->get_position());
+    min_ = box.min;
+    max_ = box.max;
+
+    // first vertex
+    first_vertex_ = vertex0;
+
     // get edges
     std::shared_ptr<Edge> edge0;
     std::shared_ptr<Edge> edge1;
@@ -77,11 +93,9 @@ void Face::initialize_(const std::shared_ptr<Storage>& storage, const std::share
     center_ = (pos0 + pos1 + pos2) / 3;
 
     // add to search
-    if (!is_searchable_)
-    {
-        storage_->add_searchable_face(shared_from_this());
-        is_searchable_ = true;
-    }
+    // storage_->add_searchable_face(shared_from_this());
+    storage_->add_affected_face(shared_from_this());
+    is_searchable_ = true;
 
     // log
     if (settings_.log.initialize) std::cout << "Face " << id_ << " created between vertex " << vertex0->get_id() << ", vertex " << vertex1->get_id() << " and vertex " << vertex2->get_id() << std::endl;
@@ -105,6 +119,16 @@ void Face::update_radius(const std::shared_ptr<GenericPoint>& generic_point)
 
 void Face::delete_()
 {
+    // lock face
+    while (!omp_test_nest_lock(&face_lock)) 
+    {
+        std::cout << "waiting to lock face " << id_ << std::endl;
+    }
+
+    // add to affected faces set
+    is_searchable_ = false;
+    storage_->add_affected_face(shared_from_this());
+
     // log
     if (settings_.log.deletion) std::cout << "Destroying face " << id_ << std::endl;
 
@@ -123,18 +147,36 @@ void Face::delete_()
     if (surface_ != nullptr) disconnect(surface_);
     for (const auto& sibling_face : sibling_faces) disconnect(sibling_face);
 
-    // remove from search tree
-    if (is_searchable_)
-    {
-        storage_->remove_searchable_face(shared_from_this());
-        is_searchable_ = false;
-    }
-
     // log
     if (settings_.log.deletion) std::cout << "---------- face " << id_ << " destroyed" << std::endl;
 
     // set expired
     is_expired_ = true;
+
+    // release face lock
+    omp_unset_nest_lock(&face_lock);
+}
+
+void Face::temp_initialize(const Eigen::Vector3d& end_point)
+{
+    // temp initialize a vertex
+    std::shared_ptr<Vertex> temp0 = std::make_shared<Vertex>();
+    std::shared_ptr<Vertex> temp1 = std::make_shared<Vertex>();
+    std::shared_ptr<Vertex> temp2 = std::make_shared<Vertex>();
+    temp0->temp_initialize(end_point, 0);
+    temp1->temp_initialize(end_point, 1);
+    temp2->temp_initialize(end_point, 2);
+
+    // set the vertex as the first vertex
+    first_vertex_ = temp0;
+    vertices_.insert(temp0);
+    vertices_.insert(temp1);
+    vertices_.insert(temp2);
+
+    // set the bounding box
+    double radius = 0.001;
+    min_ = end_point - Eigen::Vector3d(radius, radius, radius);
+    max_ = end_point + Eigen::Vector3d(radius, radius, radius);
 }
 
 const int& Face::get_id() const
@@ -165,9 +207,24 @@ const std::shared_ptr<Vertex>& Face::get_vertex(int index) const
     return *it;
 }
 
+const std::shared_ptr<Vertex>& Face::get_first_vertex() const
+{
+    return first_vertex_;
+}
+
 const std::shared_ptr<Surface>& Face::get_surface() const
 {
     return surface_;
+}
+
+const Eigen::Vector3d& Face::get_min() const
+{
+    return min_;
+}
+
+const Eigen::Vector3d& Face::get_max() const
+{
+    return max_;
 }
 
 const std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& Face::get_sibling_faces() const
@@ -180,6 +237,11 @@ bool Face::is_expired() const
     return is_expired_;
 }
 
+bool Face::is_searchable() const
+{
+    return is_searchable_;
+}
+
 bool Face::has_vertex(const std::shared_ptr<Vertex>& vertex) const
 {
     return vertices_.find(vertex) != vertices_.end();
@@ -187,13 +249,9 @@ bool Face::has_vertex(const std::shared_ptr<Vertex>& vertex) const
 
 bool Face::intersects_point(const Eigen::Vector3d& origin, const Eigen::Vector3d& direction)
 {    
-    const Eigen::Vector3d& v0 = get_vertex(0)->get_position();
-    const Eigen::Vector3d& v1 = get_vertex(1)->get_position();
-    const Eigen::Vector3d& v2 = get_vertex(2)->get_position();
-
     const double EPSILON = 1e-8;
-    Eigen::Vector3d edge1 = v1 - v0;
-    Eigen::Vector3d edge2 = v2 - v0;
+    Eigen::Vector3d edge1 = v1_ - v0_;
+    Eigen::Vector3d edge2 = v2_ - v0_;
     
     Eigen::Vector3d pvec = direction.cross(edge2);
     double det = edge1.dot(pvec);
@@ -201,7 +259,7 @@ bool Face::intersects_point(const Eigen::Vector3d& origin, const Eigen::Vector3d
 
     double invDet = 1.0 / det;
 
-    Eigen::Vector3d tvec = origin - v0;
+    Eigen::Vector3d tvec = origin - v0_;
     double u = tvec.dot(pvec) * invDet;
     if (u < 0.0 || u > 1.0) return false;
     
@@ -214,6 +272,11 @@ bool Face::intersects_point(const Eigen::Vector3d& origin, const Eigen::Vector3d
 
     return true;
 }   
+
+bool Face::intersects_point(const std::shared_ptr<GenericPoint>& generic_point)
+{
+    return intersects_point(generic_point->get_origin(), generic_point->get_direction());
+}
 
 Eigen::Vector3d Face::compute_intersection_point(const Eigen::Vector3d& origin, const Eigen::Vector3d& direction)
 {
@@ -348,6 +411,13 @@ void Face::disconnect(const std::shared_ptr<Edge>& edge)
 
 void Face::disconnect(const std::shared_ptr<Surface>& surface)
 {
+    // lock node
+    std::shared_ptr<Node> node_copy = node ? node : std::make_shared<Node>(); // lock if node exists
+    while (!omp_test_nest_lock(&node_copy->omp_lock)) 
+    {
+        std::cout << "disconnect face waiting " << id_ << std::endl;
+    }
+
     // check input
     if (surface->is_expired()) return;
 
@@ -358,6 +428,9 @@ void Face::disconnect(const std::shared_ptr<Surface>& surface)
 
     // self destruct
     if (!deleting_ && erased && can_self_destruct_) storage_->delete_face(shared_from_this());
+
+    // release lock
+    omp_unset_nest_lock(&node_copy->omp_lock);
 }
 
 void Face::disconnect(const std::shared_ptr<InteriorPoint>& interior_point)
@@ -466,6 +539,6 @@ bool operator==(const std::shared_ptr<Face>& lhs, const std::shared_ptr<Face>& r
 {
     if (!lhs && !rhs) return true; // true if both are nullptr
     if (!lhs || !rhs) return false; // false if either is nullptr
-    if (lhs->is_expired() || rhs->is_expired()) throw std::runtime_error("Comparing expired faces");
+    // if (lhs->is_expired() || rhs->is_expired()) throw std::runtime_error("Comparing expired faces");
     return lhs->get_id() == rhs->get_id();
 }

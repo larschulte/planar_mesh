@@ -16,6 +16,11 @@
 #include "MeshObject/MeshObject.hpp"
 #include "MeshObject/Simulation.hpp"
 
+#include "utilities/omp_utilities.hpp"
+#include "MeshObject/RRSTree.hpp"
+
+#include "MeshObject/TriangleBVH.hpp"
+
 template class Application<VilensPointT>;
 
 template <typename PointT>
@@ -113,24 +118,295 @@ void Application<PointT>::load_point_cloud()
 template <typename PointT>
 void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& generic_point)
 {
-    double radius = settings_.radius_value;
-    if (add_point_by_intersection_search(generic_point, radius)) 
+    // tree is the main structure.
+    // two tree, one stores faces and one stores vertices.
+    // surface etc are just additional data structure that provides passage between different faces and vertices in the tree
+
+    // if each leaf node stores only one face and only one vertex. leaf node == face or vertex
+    // locking a leaf node locks the face and vertex -> removal of face requries its removal from the node, thus they are closely bonded
+
+    //
+    // for single surface
+    // 
+    // 1. traverse the BVH and try to lock the inital leaf node
+    // if can lock, that means no other thread is currently working on the surface, they could however landed on other leaf node of the same surface
+    // if can't lock, that means other thread is working on the surface, the BVH search result is not reliable, for this leaf node
+
+    // 2. after locking the initial leaf node, lock the surface lock, 
+    // if can lock, that mean no other thread has landed on the leaf node of the surface
+    // if can't lock, that means other thread has landed on the leaf node of the surface has lock the surface lock faster, if so, release the initial leaf lock to allow other thread to obtain full surface lock, the BVH search result is not reliable for this leaf node
+
+    // 3. after locking the surface lock, lock all the leaf nodes that contains the face in the surface
+    // if one of the leaf node can't be locked, that mean other thread has landed on the leaf node, but since they can't lock the surface lock, they have to release the lock, thus can simply wait
+
+    // *. not reliable -> release all locks and process next point in the queue
+    // *. during intersection search, may delete vertex as well, thus need RRS leaf node lock at the same time as well
+    
+
+    // dead lock occurs when two threads lock the same two elements in different order
+    // thus if we always lock the element in the same order, dead lock will not occur
+
+    
+    // current issues
+    // 1. if we do the radius search before the result of add by intersection, boundary point created by deletion of face will not be included in the radius search
+
+    // std::unique_lock<std::mutex> lock(process_point_mutex);
+    
+    // several previous improvement are due to reducing reverse radius search radius of points -> thus each surface is required by fewer points
+    // theoratical optimal time is the time takening to process all points that will be added to the same largest surface one by one
+    // pre locking may not be necessary ...
+
+    //
+    // find new storage leaf node
+    //
+    std::vector<std::shared_ptr<Node>> locked_bvh_nodes;
+    std::vector<std::shared_ptr<RRSNode>> locked_rrs_nodes;
+    std::vector<std::shared_ptr<Surface>> locked_surfaces;
+    std::set<std::shared_ptr<Surface>, MeshObjectCompare> prelocked_surfaces;
+
+    // get candidate prelock surfaces
+    std::vector<std::shared_ptr<Surface>> prelock_surface_candidates;
+    for (const auto& surface : generic_point->intersected_surfaces)
     {
+        prelock_surface_candidates.push_back(surface);
+    }
+    
+    // lock
+    for (const std::shared_ptr<Surface>& surface : prelock_surface_candidates)
+    {
+        const bool can_lock = omp_test_nest_lock(&surface->lock);
+        if (can_lock)
+        {
+            prelocked_surfaces.insert(surface);
+        }
+        else
+        {
+            // std::cout << "X _ _ _" << std::endl;
+
+            // increment contention count
+            generic_point->contented_surfaces[surface]++;
+
+            for (const std::shared_ptr<Surface>& surface : prelocked_surfaces) omp_unset_nested_lock_with_log(surface->lock, "unlock surface");
+            if (generic_point->get_contention_count() > settings_.retry_threshold)
+            {
+                storage_->add_to_abort_queue(generic_point);
+            }
+            else
+            {
+                storage_->add_to_queue(generic_point);
+            }
+            return;
+        }
+    }
+    // [todo]
+
+    // perhaps prelock nodes even
+
+    // even on single pass, the time taken is increasing as more points are added
+    // this is because the RRS tree kept growing. 
+
+    // interior point is not added to RRS tree
+    // every vertex point is added to RRS tree
+
+    // 
+    // RRS taking a lot of time
+    //
+    // - either reduce number of vertex point ? how
+    // - or reduce the number of silver triangle ? through adding point as inteiror then promote to vertex -> to reduce vertex points
+    // - or simply reduce reverse search radius of all points
+    // - or improve the RRS tree structure
+
+
+    // rrs takes a lot of time
+    // check if each run of rrs returns intersected or abort
+
+    // reduce locking time
+    // by locking smaller element
+
+    // for triangle intersection search, don't skip points that can't lock surface but have RRS search result -> they are boundary thus should be filled.
+
+    std::vector<std::shared_ptr<Face>> bvh_results;
+    BVHReturnType BVH_return = storage_->face_intersection_search(generic_point, bvh_results);
+    for (const std::shared_ptr<Face>& face : bvh_results) locked_bvh_nodes.emplace_back(face->node); // store the locked nodes
+    for (const std::shared_ptr<Face>& face : bvh_results) locked_surfaces.emplace_back(face->get_surface()); // store the surface
+
+    if (BVH_return == BVHReturnType::ABORT)
+    {
+        // std::cout << "_ X _ _" << std::endl;
+        for (const std::shared_ptr<Surface>& surface : prelocked_surfaces) omp_unset_nested_lock_with_log(surface->lock, "unlock surface");
+        for (const std::shared_ptr<Surface>& surface : locked_surfaces) omp_unset_nested_lock_with_log(surface->lock, "unlock surface");
+        for (const std::shared_ptr<Node>& node : locked_bvh_nodes) omp_unset_nest_lock(&node->omp_lock);
+        for (const std::shared_ptr<RRSNode>& node : locked_rrs_nodes) omp_unset_nest_lock(&node->omp_lock);
+        
+        if (generic_point->get_contention_count() > settings_.retry_threshold)
+        {
+            storage_->add_to_abort_queue(generic_point);
+        }
+        else
+        {
+            storage_->add_to_queue(generic_point);
+        }
         return;
     }
-    else if (add_point_by_radius_search(generic_point, radius))
+
+    std::vector<std::shared_ptr<Vertex>> rrs_results;
+    RRSReturnType RRS_return = storage_->reverse_radius_search(generic_point, rrs_results);    
+    for (const std::shared_ptr<Vertex>& vertex : rrs_results) locked_rrs_nodes.emplace_back(vertex->node);
+    for (const std::shared_ptr<Vertex>& vertex : rrs_results) locked_surfaces.emplace_back(vertex->get_surface());
+
+    if (RRS_return == RRSReturnType::ABORT)
     {
+        // std::cout << "_ _ _ X" << std::endl;
+        for (const std::shared_ptr<Surface>& surface : prelocked_surfaces) omp_unset_nested_lock_with_log(surface->lock, "unlock surface");
+        for (const std::shared_ptr<Surface>& surface : locked_surfaces) omp_unset_nested_lock_with_log(surface->lock, "unlock surface");
+        for (const std::shared_ptr<Node>& node : locked_bvh_nodes) omp_unset_nest_lock(&node->omp_lock);
+        for (const std::shared_ptr<RRSNode>& node : locked_rrs_nodes) omp_unset_nest_lock(&node->omp_lock);
+
+        if (generic_point->get_contention_count() > settings_.retry_threshold)
+        {
+            storage_->add_to_abort_queue(generic_point);
+        }
+        else
+        {
+            storage_->add_to_queue(generic_point);
+        }
         return;
+    }
+
+    // unlock prelocked surfaces
+    for (const std::shared_ptr<Surface>& surface : prelocked_surfaces) omp_unset_nested_lock_with_log(surface->lock, "unlock surface");
+
+    // convert surfaces vector to set to lock nodes
+    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> locked_surfaces_set(locked_surfaces.begin(), locked_surfaces.end());
+
+    // update stats
+    num_of_concurrent_processes++;
+    accumulated_points++;
+    std::chrono::time_point<std::chrono::high_resolution_clock> t_now = std::chrono::high_resolution_clock::now();
+
+    // compute duration
+    std::chrono::duration<double> duration_accumulated = t_now - t_init;
+    std::chrono::duration<double> duration_instantaneous;
+    {
+        // lock
+        std::unique_lock<std::mutex> lock(t_last_mutex);
+
+        // compute duration    
+        duration_instantaneous = t_now - t_last;
+
+        // update timestamp
+        t_last = t_now;
+    }
+
+    // compute speed
+    double speed_accumulated = accumulated_points / duration_accumulated.count();
+    double speed_instantaneous = 1.0 / duration_instantaneous.count();
+    
+    // // output number of concurrent threads that reaches this point
+    if (settings_.log.num_of_concurrent_processes)
+    {
+        std::stringstream ss;
+        ss  << " | number of concurrent processes = " << num_of_concurrent_processes
+            << " | processing point " << generic_point->get_id()
+            << " | by thread " << omp_get_thread_num()
+            << " | BVH tree size = " << storage_->get_bvh_size()
+            << std::endl;
+        std::cout << ss.str();
+    }
+
+    if (settings_.log.total_processed_points)
+    {
+        std::stringstream ss;
+        ss  << " | total processed points = " << accumulated_points
+            << " | speed accumulated = " << speed_accumulated
+            << " | speed instantaneous = " << speed_instantaneous
+            << std::endl;
+        std::cout << ss.str();
+    }
+    
+    // std::this_thread::sleep_for(std::chrono::milliseconds(10));
+
+    // process
+    double radius = settings_.radius_value;
+    std::shared_ptr<Surface> added_surface;
+    if (add_point_by_intersection_search(generic_point, radius, bvh_results, added_surface))
+    {
+        // if point added, go to end to unlock all locks
+    }
+    else if (add_point_by_radius_search(generic_point, radius, rrs_results, added_surface))
+    {
+        // if point added, go to end to unlock all locks
     }
     else
     {
-        add_point_by_new_surface(generic_point, radius);
-        return;
+        add_point_by_new_surface(generic_point, radius, added_surface);
+        // if point added, go to end to unlock all locks
     }
+
+    // throw if added_surface is nullptr
+    if (added_surface == nullptr) throw std::runtime_error("added surface is nullptr");
+
+    // reduce search radius of all points in rrs_results that are not in the added surface
+    for (const std::shared_ptr<Vertex>& vertex : rrs_results)
+    {
+        if (vertex->get_surface() != added_surface)
+        {
+            const double distance = (vertex->get_position() - generic_point->get_position()).norm();
+            vertex->reduce_reverse_radius_search_radius(distance);
+        }
+    }
+
+    // reduce search radius of all points in bvh_results that are not in the added surface
+    for (const std::shared_ptr<Face>& face : bvh_results)
+    {
+        // skip if expired
+        if (face->is_expired()) continue;
+
+        // skip if the same surface
+        if (face->get_surface() == added_surface) continue;
+
+        // get copy of all vertices and all interior points
+        std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertices = face->get_vertices();
+        std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> interior_points = face->get_interior_points();
+        
+        // for each point of the face
+        for (const std::shared_ptr<Vertex>& vertex : vertices)
+        {
+            const double distance = (vertex->get_position() - generic_point->get_position()).norm();
+            vertex->reduce_reverse_radius_search_radius(distance);
+        }
+        // for each interior point of the face
+        for (const std::shared_ptr<InteriorPoint>& interior_point : interior_points)
+        {
+            const double distance = (interior_point->get_position() - generic_point->get_position()).norm();
+            interior_point->reduce_reverse_radius_search_radius(distance);
+        }
+    }
+
+    num_of_concurrent_processes--;
+    
+    //
+    // they all lead to return, thus unlock all locks
+    //
+
+    // unlock surface
+    for (const std::shared_ptr<Surface>& surface : locked_surfaces) omp_unset_nested_lock_with_log(surface->lock, "unlock surface");
+
+    // unlock bvh nodes
+    for (const std::shared_ptr<Node>& node : locked_bvh_nodes) node->recursive_unlock();
+
+    // unlock rrs nodes
+    for (const std::shared_ptr<RRSNode>& node : locked_rrs_nodes) node->recursive_unlock();
+
+    // lock.unlock();
+
+    // after unlocking all locks, add the point in queue to the search tree
+    storage_->add_points_in_affected_vertices_set();
+    storage_->add_faces_in_affected_faces_set();
 }
 
 template <typename PointT>
-bool Application<PointT>::add_point_by_intersection_search(const std::shared_ptr<GenericPoint>& generic_point, double& radius)
+bool Application<PointT>::add_point_by_intersection_search(const std::shared_ptr<GenericPoint>& generic_point, double& radius, std::vector<std::shared_ptr<Face>>& searched_faces, std::shared_ptr<Surface>& added_surface)
 {
     // the face search provides a set of faces that are pointed by the new point
 
@@ -143,9 +419,6 @@ bool Application<PointT>::add_point_by_intersection_search(const std::shared_ptr
 
     // by adding a point to a surface, we are essentially refining the surface's plane estimate
 
-    // searched faces
-    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> searched_faces = storage_->face_intersection_search(generic_point);
-
     // skip if too close to any vertices of any faces
     for (const std::shared_ptr<Face>& face : searched_faces)
     {
@@ -155,6 +428,7 @@ bool Application<PointT>::add_point_by_intersection_search(const std::shared_ptr
             if (distance < settings_.duplicated_point_distance_threshold)
             {
                 if (settings_.log.duplicated_point) std::cout << ">> point too close to existing vertex of face, not adding" << std::endl;
+                added_surface = vertex->get_surface();
                 return true;
             }
         }
@@ -336,12 +610,13 @@ bool Application<PointT>::add_point_by_intersection_search(const std::shared_ptr
     }
     else
     {
+        added_surface = largest_surface;
         return true;
     }
 }
 
 template <typename PointT>
-bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<GenericPoint>& generic_point, double& radius)
+bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<GenericPoint>& generic_point, double& radius, std::vector<std::shared_ptr<Vertex>>& neighboring_vertices_vector, std::shared_ptr<Surface>& added_surface)
 {
     /*
 
@@ -444,18 +719,10 @@ bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
 
     // only update surface close to new observation, such that the update time will be consistant
     // otherwise the update time will be proportional to number of surface added
+
+    // convert to set
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> neighboring_vertices(neighboring_vertices_vector.begin(), neighboring_vertices_vector.end());
     
-
-    // when can not search
-    if (!storage_->can_reverse_radius_search())
-    {
-        if (settings_.log.add_point_by_radius_search) std::cout << ">> no points to search, adding new surface" << std::endl;
-        return false;
-    }
-
-    // get neighboring vertices
-    std::map<int, double> point_to_radius_map;
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> neighboring_vertices = storage_->reverse_radius_search(generic_point);
     if (settings_.log.add_point_by_radius_search) std::cout << ">> found " << neighboring_vertices.size() << " neighboring vertices" << std::endl;
 
     // when no search results
@@ -481,6 +748,7 @@ bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
         {
             // don't add the point
             if (settings_.log.duplicated_point) std::cout << ">> point too close to existing point, not adding" << std::endl;
+            added_surface = vertex->get_surface();
             return true;
         }
     }
@@ -700,12 +968,13 @@ bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
         
         // add to the smallest uncertainty surface as current surface
         std::shared_ptr<Surface> current_surface = sorted_surfaces_with_point_within[0];
-        std::shared_ptr<Vertex> current_vertex = storage_->add_vertex(generic_point);
+        std::shared_ptr<Vertex> current_vertex = storage_->add_vertex(current_surface, generic_point);
 
         current_vertex->reduce_reverse_radius_search_radius(radius);
         current_vertex->reduce_previous_radius(radius);
         current_surface->connect_by_edges_and_faces(current_vertex, neighboring_vertices);
-        current_surface->connect(current_vertex);
+
+        added_surface = current_surface;
         
         // // connect and merge to next surface if possible
         // for (std::size_t i = 1; i < sorted_surfaces_with_point_within.size(); i++)
@@ -746,11 +1015,12 @@ bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
 
         // add to the smallest uncertainty surface
         std::shared_ptr<Surface> smallest_surface = sorted_surfaces_with_low_confidence[0];
-        std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(generic_point);
+        std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(smallest_surface, generic_point);
         new_vertex->reduce_reverse_radius_search_radius(radius);
         new_vertex->reduce_previous_radius(radius);
         smallest_surface->connect_by_edges_and_faces(new_vertex, neighboring_vertices);
-        smallest_surface->connect(new_vertex);
+
+        added_surface = smallest_surface;
     }
     else
     {
@@ -819,13 +1089,14 @@ bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
 }
 
 template <typename PointT>
-void Application<PointT>::add_point_by_new_surface(const std::shared_ptr<GenericPoint>& generic_point, double& radius)
+void Application<PointT>::add_point_by_new_surface(const std::shared_ptr<GenericPoint>& generic_point, double& radius, std::shared_ptr<Surface>& added_surface)
 {
     std::shared_ptr<Surface> new_surface = storage_->add_surface();
-    std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(generic_point);
+    std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(new_surface, generic_point);
     new_vertex->reduce_reverse_radius_search_radius(radius);
     new_vertex->reduce_previous_radius(radius);
-    new_surface->connect(new_vertex);
+    
+    added_surface = new_surface;
 }
 
 template <typename PointT>
@@ -883,24 +1154,90 @@ void Application<PointT>::loop()
         Eigen::Vector3d thisPointVEC = pointcloud->points[i].getVector3fMap().cast<double>();
         Eigen::Vector3d thisPointOriginVEC = this->origin;
 
-        storage_->add_to_queue(thisPointVEC, thisPointOriginVEC);
+        storage_->add_to_main_queue(thisPointVEC, thisPointOriginVEC);
     }
 
     // add points from repeated queue to queue
-    storage_->add_points_in_repeated_queue_to_queue();
+    storage_->add_points_in_smaller_repeated_queues_to_main_queue();
+
+    // split the queue into smaller queues
+    storage_->split_main_queue_into_smaller_queues();
+
+    // reset stats
+    t_init = std::chrono::high_resolution_clock::now();
+    accumulated_points = 0;
 
     // process all points in the queue
-    while (storage_->get_queue_size() > 0)
+    unsigned int num_iteration = 0;
+    while (true)
     {
-        unsigned int total_points_in_queue = storage_->get_queue_size();
-        if (settings_.log.step) std::cout << "==================================================================== Processing 1 / " << total_points_in_queue << " in queue of " << ith_cloud << " cloud" << std::endl;
+        #pragma omp parallel num_threads(settings_.num_threads)
+        {
+            while (true)
+            {
+                std::shared_ptr<GenericPoint> generic_point = nullptr;
+                unsigned int total_points_in_queue = 0;
 
-        std::shared_ptr<GenericPoint> generic_point = storage_->pop_from_queue();
-        process_point(generic_point);
+                total_points_in_queue = storage_->get_queue_size();
+                if (total_points_in_queue > 0)
+                {
+                    generic_point = storage_->pop_from_queue();
+                    if (settings_.log.step) 
+                    {
+                        std::stringstream ss;
+                        ss << " | remaining point " << total_points_in_queue << " | Processing point " << generic_point->get_id() << " | by thread " << omp_get_thread_num() << std::endl;
+                        std::cout << ss.str();
+                    }
+                }
+
+                // If the queue is empty, break the loop
+                if (!generic_point) break;
+
+                // Process the point (outside the critical section)
+                process_point(generic_point);
+            }
+        }
+        num_iteration ++;
+
+        // std::chrono::high_resolution_clock::time_point t_end = std::chrono::high_resolution_clock::now();
+        // std::chrono::duration<double> duration = t_end - t_init;
+        // std::cout << "==================================================================== Processed " << accumulated_points << " points in " << duration.count() << " s" << std::endl;
+
+        // add all points from the abort queue to the main queue
+        storage_->add_points_in_smaller_abort_queues_to_main_queue();
+
+        storage_->print_main_queue_stats();
+
+        // print aborted point stats
+        storage_->split_main_queue_into_smaller_queues_by_contention();
+
+        // break loop
+        if (num_iteration >= settings_.num_iterations)
+        {
+            // clear queue before loading next point cloud
+            storage_->clear_queues();
+            break;
+        }
+    }
+
+    std::chrono::high_resolution_clock::time_point t_end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> duration = t_end - t_init;
+    std::cout << "==================================================================== Processed " << accumulated_points << " points in " << duration.count() << " s" << std::endl;
+
+    // store time and ith_cloud into file
+    if (settings_.output_time)
+    {
+        std::ofstream file;
+        file.open(settings_.output_file_name, std::ios_base::app);
+        file << ith_cloud << " " << duration.count() << std::endl;
+        file.close();
     }
 
     // print repeated queue size
     if (settings_.log.step) std::cout << "==================================================================== repeated queue size: " << storage_->get_repeated_queue_size() << std::endl;
+
+    // // check tree rebuild
+    // storage_->check_tree_rebuild();
 
     // load next cloud
     ith_cloud += 1;
@@ -962,14 +1299,14 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_interior_poi
             point.y = interior_point->get_position()[1];
             point.z = interior_point->get_position()[2];
         }
-        if (settings.color_mode == 0)
+        if (settings.color_mode == ColorMode::ID)
         {
             const std::tuple<int, int, int>& color = interior_point->get_surface()->get_color();
             point.r = std::get<0>(color);
             point.g = std::get<1>(color);
             point.b = std::get<2>(color);
         }
-        else if (settings.color_mode == 1)
+        else if (settings.color_mode == ColorMode::POSITIONAL_UNCERTAINTY)
         {
             double distance = std::fabs(interior_point->buffer_compute_projected_distance() / 0.05);
             std::tuple<int, int, int> color = valueToJet(distance);
@@ -977,7 +1314,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_interior_poi
             point.g = std::get<1>(color);
             point.b = std::get<2>(color);
         }
-        else if (settings.color_mode == 2)
+        else if (settings.color_mode == ColorMode::SIBLINGS)
         {
             double distance = interior_point->get_sibling_interior_points().size() / settings.siblings_denominator;
             std::tuple<int, int, int> color = valueToJet(distance);
@@ -985,17 +1322,25 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_interior_poi
             point.g = std::get<1>(color);
             point.b = std::get<2>(color);
         }
-        else if (settings.color_mode == 3)
+        else if (settings.color_mode == ColorMode::RADIUS)
         {
-            double distance = interior_point->get_radius() / settings.radius_denominator;
+            double ratio = interior_point->get_radius() / settings.radius_denominator;
+            std::tuple<int, int, int> color = valueToJet(1.0-ratio);
+            point.r = std::get<0>(color);
+            point.g = std::get<1>(color);
+            point.b = std::get<2>(color);
+        }
+        else if (settings.color_mode == ColorMode::SURFACE_UNCERTAINTY)
+        {
+            double distance = interior_point->get_surface()->get_surface_position_std_in_normal_direction() / settings.positional_uncertainty_denominator;
             std::tuple<int, int, int> color = valueToJet(distance);
             point.r = std::get<0>(color);
             point.g = std::get<1>(color);
             point.b = std::get<2>(color);
         }
-        else if (settings.color_mode == 4)
+        else if (settings.color_mode == ColorMode::CONTENTION)
         {
-            double distance = interior_point->get_surface()->get_surface_position_std_in_normal_direction() / settings.positional_uncertainty_denominator;
+            double distance = surface_to_contention_count[interior_point->get_surface()] / settings.contention_denominator;
             std::tuple<int, int, int> color = valueToJet(distance);
             point.r = std::get<0>(color);
             point.g = std::get<1>(color);
@@ -1083,14 +1428,14 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_vertex_point
             point.y = vertex->get_position()[1];
             point.z = vertex->get_position()[2];
         }
-        if (setting.color_mode == 0)
+        if (setting.color_mode == ColorMode::ID)
         {
             const std::tuple<int, int, int>& color = vertex->get_surface()->get_color();
             point.r = std::get<0>(color);
             point.g = std::get<1>(color);
             point.b = std::get<2>(color);
         }
-        else if (setting.color_mode == 1)
+        else if (setting.color_mode == ColorMode::POSITIONAL_UNCERTAINTY)
         {
             double distance = std::abs(vertex->buffer_compute_projected_distance() / 0.05);
             std::tuple<int, int, int> color = valueToJet(distance);
@@ -1098,7 +1443,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_vertex_point
             point.g = std::get<1>(color);
             point.b = std::get<2>(color);
         }
-        else if (setting.color_mode == 2)
+        else if (setting.color_mode == ColorMode::SIBLINGS)
         {
             double distance = vertex->get_sibling_vertices().size() / setting.siblings_denominator;
             std::tuple<int, int, int> color = valueToJet(distance);
@@ -1106,17 +1451,25 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_vertex_point
             point.g = std::get<1>(color);
             point.b = std::get<2>(color);
         }
-        else if (setting.color_mode == 3)
+        else if (setting.color_mode == ColorMode::RADIUS)
         {
-            double distance = vertex->get_radius() / setting.radius_denominator;
+            double ratio = vertex->get_radius() / setting.radius_denominator;
+            std::tuple<int, int, int> color = valueToJet(1.0-ratio);
+            point.r = std::get<0>(color);
+            point.g = std::get<1>(color);
+            point.b = std::get<2>(color);
+        }
+        else if (setting.color_mode == ColorMode::SURFACE_UNCERTAINTY)
+        {
+            double distance = vertex->get_surface()->get_surface_position_std_in_normal_direction() / setting.positional_uncertainty_denominator;
             std::tuple<int, int, int> color = valueToJet(distance);
             point.r = std::get<0>(color);
             point.g = std::get<1>(color);
             point.b = std::get<2>(color);
         }
-        else if (setting.color_mode == 4)
+        else if (setting.color_mode == ColorMode::CONTENTION)
         {
-            double distance = vertex->get_surface()->get_surface_position_std_in_normal_direction() / setting.positional_uncertainty_denominator;
+            double distance = surface_to_contention_count[vertex->get_surface()] / setting.contention_denominator;
             std::tuple<int, int, int> color = valueToJet(distance);
             point.r = std::get<0>(color);
             point.g = std::get<1>(color);

@@ -6,6 +6,7 @@
 
 #include "MeshObject/MeshObject.hpp"
 #include "MeshObject/Settings.hpp"
+#include "MeshObject/TriangleBVH.hpp"
 
 // Forward declarations
 class Vertex;
@@ -23,17 +24,28 @@ protected:
     void delete_();
 
 public:
+    omp_nest_lock_t face_lock;
+
+    void temp_initialize(const Eigen::Vector3d& end_point);
+
+    std::shared_ptr<Node> node;
+
     const int& get_id() const;
     const Eigen::Vector3d& get_center() const;
     const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& get_vertices() const;
     const std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash>& get_interior_points() const;
     const std::shared_ptr<Vertex>& get_vertex(int index) const;
+    const std::shared_ptr<Vertex>& get_first_vertex() const;
     const std::shared_ptr<Surface>& get_surface() const;
+    const Eigen::Vector3d& get_min() const;
+    const Eigen::Vector3d& get_max() const;
     const std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& get_sibling_faces() const;
     bool is_expired() const;
+    bool is_searchable() const;
     bool has_vertex(const std::shared_ptr<Vertex>& vertex) const;
 
     bool intersects_point(const Eigen::Vector3d& origin, const Eigen::Vector3d& direction);
+    bool intersects_point(const std::shared_ptr<GenericPoint>& generic_point);
     Eigen::Vector3d compute_intersection_point(const Eigen::Vector3d& origin, const Eigen::Vector3d& direction);
 
     void connect(const std::shared_ptr<Vertex>& vertex);
@@ -68,6 +80,12 @@ private:
 
     bool can_self_destruct_ = true;
 
+    Eigen::Vector3d min_;
+    Eigen::Vector3d max_;
+    Eigen::Vector3d v0_;
+    Eigen::Vector3d v1_;
+    Eigen::Vector3d v2_;
+
     int id_;
     std::shared_ptr<Storage> storage_;
 
@@ -77,6 +95,8 @@ private:
     std::shared_ptr<Surface> surface_;
 
     std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> sibling_faces_;
+
+    std::shared_ptr<Vertex> first_vertex_;
 };
 
 bool operator<(const std::shared_ptr<Face>& lhs, const std::shared_ptr<Face>& rhs);

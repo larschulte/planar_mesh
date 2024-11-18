@@ -10,6 +10,8 @@
 #include "MeshObject/MeshObject.hpp"
 #include "MeshObject/Settings.hpp"
 
+#include <mutex>
+
 class Vertex;
 class Edge;
 class Face;
@@ -31,9 +33,9 @@ public:
     
     // algorithm
     void process_point(const std::shared_ptr<GenericPoint>& generic_point);
-    bool add_point_by_intersection_search(const std::shared_ptr<GenericPoint>& generic_point, double& radius);
-    bool add_point_by_radius_search(const std::shared_ptr<GenericPoint>& generic_point, double& radius);
-    void add_point_by_new_surface(const std::shared_ptr<GenericPoint>& generic_point, double& radius);
+    bool add_point_by_intersection_search(const std::shared_ptr<GenericPoint>& generic_point, double& radius, std::vector<std::shared_ptr<Face>>& searched_faces, std::shared_ptr<Surface>& added_surface);
+    bool add_point_by_radius_search(const std::shared_ptr<GenericPoint>& generic_point, double& radius, std::vector<std::shared_ptr<Vertex>>& neighboring_vertices_vector, std::shared_ptr<Surface>& added_surface);
+    void add_point_by_new_surface(const std::shared_ptr<GenericPoint>& generic_point, double& radius, std::shared_ptr<Surface>& added_surface);
     
     // interaction
     void refine_surfaces();
@@ -76,4 +78,14 @@ private:
 
     // viewer related
     std::map<std::shared_ptr<Vertex>, int> vertex_to_cloud_indices_map;
+
+    std::atomic<unsigned int> num_of_concurrent_processes = 0;
+    std::atomic<unsigned int> accumulated_points = 0;
+    std::mutex process_point_mutex;
+
+    std::chrono::time_point<std::chrono::high_resolution_clock> t_init;
+    std::chrono::time_point<std::chrono::high_resolution_clock> t_last;
+    std::mutex t_last_mutex;
+
+    std::unordered_map<std::shared_ptr<Surface>, unsigned int, MeshObjectHash> surface_to_contention_count;
 };

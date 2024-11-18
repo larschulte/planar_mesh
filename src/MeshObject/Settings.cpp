@@ -61,6 +61,13 @@ Settings::Settings()
     envelope_size = 3.5;
 
     num_of_delete_before_put_to_repeated_queue = 2;
+    
+    num_threads = 30;
+    record_countent_surface_count = false;
+
+    use_queue = true;
+    retry_threshold = 10;
+    num_iterations = 1;
 
     // min_face_angle = 20;
 
@@ -80,12 +87,15 @@ Settings::Settings()
         log.can_merge = true;
         log.merge_surface = true;    
         log.duplicated_point = true;
+        log.num_of_concurrent_processes = true;
+        log.total_processed_points = true;
+        log.show_contented_surface = true;
     }
     else
     {
         log.add_point_by_radius_search = false;
         log.load_point_cloud = true;
-        log.step = true;
+        log.step = false;
         log.refine_surfaces = false;
         log.process_point = false;
         log.initialize = false;
@@ -95,10 +105,19 @@ Settings::Settings()
         log.can_merge = false;
         log.merge_surface = false;
         log.duplicated_point = false;
+        log.num_of_concurrent_processes = false;
+        log.total_processed_points = false;
+        log.show_contented_surface = false;
     }
-    
+
+    // output time
+    output_time = false;
+    output_file_name = "with_sah_threads_more_iteration_" + std::to_string(num_threads) + ".txt";
+    turn_off_sah = false;
 
     // interactive viewer settings
+    update_display = false;
+    flip_color = false;
     show_generic_points = true;
     show_interior_points = true;
     show_pointcloud = true;
@@ -109,11 +128,12 @@ Settings::Settings()
     show_keycode = false;
     show_singular_edge = false;
     show_singular_vertex = false;
-    color_mode = 0;
+    color_mode = ColorMode::ID;
     surface_denominator = 10.0;
     siblings_denominator = 3.0;
     radius_denominator = radius_value;
     positional_uncertainty_denominator = 0.002;
+    contention_denominator = 500;
     show_wireframe = true;
     show_sphere = false;
     number_of_spheres_to_display = 60;

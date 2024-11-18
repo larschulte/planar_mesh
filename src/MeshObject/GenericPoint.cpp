@@ -23,6 +23,7 @@ void GenericPoint::initialize_(const std::shared_ptr<Storage>& storage, const Ei
     position_ = position;
     origin_ = origin;
     direction_ = (position - origin).normalized();
+    inv_direction_ = direction_.cwiseInverse();
     if (GenericPoint::settings_.use_radius_value)
     {
         radius_ = GenericPoint::settings_.radius_value;
@@ -91,6 +92,11 @@ const Eigen::Vector3d& GenericPoint::get_direction() const
     return direction_;
 }
 
+const Eigen::Vector3d& GenericPoint::get_inv_direction() const
+{
+    return inv_direction_;
+}
+
 const double& GenericPoint::get_radius() const
 {
     return radius_;
@@ -119,6 +125,17 @@ std::size_t GenericPoint::get_num_deletes() const
 void GenericPoint::reset_num_deletes()
 {
     num_deletes_ = 0;
+}
+
+unsigned int GenericPoint::get_contention_count() const
+{
+    unsigned int total = 0;
+    for (const auto& contented_surface : contented_surfaces)
+    {
+        total += contented_surface.second;
+    }
+
+    return total;
 }
 
 bool operator<(const std::shared_ptr<GenericPoint>& lhs, const std::shared_ptr<GenericPoint>& rhs)

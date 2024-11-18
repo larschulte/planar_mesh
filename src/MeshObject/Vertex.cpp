@@ -9,10 +9,11 @@
 #include "MeshObject/GenericPoint.hpp"
 #include <set>
 #include "utilities/covariance_math.hpp"
+#include "MeshObject/RRSTree.hpp"
 
 Settings Vertex::settings_;
 
-void Vertex::initialize_(const std::shared_ptr<Storage>& storage, const Eigen::Vector3d& position, const Eigen::Vector3d& origin, const double& radius)
+void Vertex::initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<Surface>& surface, const Eigen::Vector3d& position, const Eigen::Vector3d& origin, const double& radius)
 {
     // set expired
     is_expired_ = false;
@@ -32,33 +33,62 @@ void Vertex::initialize_(const std::shared_ptr<Storage>& storage, const Eigen::V
     // num of deletes
     num_deletes_ = 0;
 
+    // connect
+    connect(surface);
+
+    // update boundary state here, in case no edge is connected, the point is still boundary and need to add to rrs tree
+    update_boundary_state();
+
     // set reverse search radius based on input parameter
     set_reverse_radius_search_radius(radius);
-
-    // update boundary state
-    update_boundary_state();
 
     // log
     if (settings_.log.initialize) std::cout << "Vertex " << id_ << " created.\n";
 }
 
-void Vertex::initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<GenericPoint>& generic_point)
+void Vertex::initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<Surface>& surface, const std::shared_ptr<GenericPoint>& generic_point)
 {
-    initialize_(storage, generic_point->get_position(), generic_point->get_origin(), generic_point->get_radius());
+    initialize_(storage, surface, generic_point->get_position(), generic_point->get_origin(), generic_point->get_radius());
     previous_surface_ = generic_point->get_previous_surface();
     previous_radius_ = generic_point->get_previous_radius();
     num_deletes_ = generic_point->get_num_deletes();
 }
 
-void Vertex::initialize_(const std::shared_ptr<Storage>& storage, const Eigen::Vector3d& position, const Eigen::Vector3d& origin)
+void Vertex::initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<Surface>& surface, const Eigen::Vector3d& position, const Eigen::Vector3d& origin)
 {
     std::shared_ptr<GenericPoint> generic_point = storage->add_generic_point(position, origin);
-    initialize_(storage, generic_point);
+    initialize_(storage, surface, generic_point);
     storage->delete_generic_point(generic_point);
 }
 
+// [todo]
+// i initially wanted each vertex to be strongly bounded with node, so that i can use node's lock to present vertex's lock
+// however, since now each vertex may not get a node after process point
+// or since each vertex may not disconnect from node after process point
+
+// it shouldn't hurt to have a lock for each vertex
+// this prevents other thread from trying to read the vertex while it is being deleted
+
+// when adding vertex to search tree, we can postpone and add it to the tree after process point
+// when removing vertex from search tree, there are two causes
+    // when deleting vertex
+        // thus the surface will be nullptr
+        // some check need to be done before accessing its surface during search
+    // when vertex is not boundary
+        // the surface will not be null ptr
+
 void Vertex::delete_()
 {
+    // lock vertex
+    while (!omp_test_nest_lock(&vertex_lock)) 
+    {
+        std::cout << "waiting to lock vertex " << id_ << std::endl;
+    }
+
+    // add to affected vertices set
+    is_searchable_ = false;
+    storage_->add_affected_vertex(shared_from_this());
+
     // log
     if (settings_.log.deletion) std::cout << "Destroying vertex " << id_ << std::endl;
 
@@ -72,13 +102,6 @@ void Vertex::delete_()
     for (const auto& face : faces) disconnect(face);
     if (surface_) disconnect(surface_);
 
-    // remove from search tree
-    if (is_searchable_)
-    {
-        storage_->remove_searchable_vertex(shared_from_this());
-        is_searchable_ = false;
-    }
-    
     // update delete count
     num_deletes_++;
 
@@ -97,6 +120,24 @@ void Vertex::delete_()
 
     // set expired
     is_expired_ = true;
+
+    // release vertex lock
+    omp_unset_nest_lock(&vertex_lock);
+}
+
+void Vertex::temp_initialize(const Eigen::Vector3d& position, unsigned int id)
+{
+    // set expired
+    is_expired_ = false;
+
+    // set id
+    id_ = id;
+
+    // set position
+    position_ = position;
+
+    // set radius
+    set_reverse_radius_search_radius(0.001);
 }
 
 const int& Vertex::get_id() const 
@@ -160,6 +201,15 @@ const Eigen::Vector3d& Vertex::get_direction() const
 
 const std::shared_ptr<Surface>& Vertex::get_surface() const
 {    
+    return surface_;
+}
+
+const std::shared_ptr<Surface>& Vertex::get_surface_check() const
+{    
+    // check if have node lock
+    if (!omp_test_nest_lock(&node->omp_lock)) throw std::runtime_error("Can't lock node in BVH.");
+    // release
+    omp_unset_nest_lock(&node->omp_lock);
     return surface_;
 }
 
@@ -326,6 +376,16 @@ bool Vertex::is_boundary() const
     return is_boundary_;
 }
 
+bool Vertex::is_searchable() const
+{
+    return is_searchable_;
+}
+
+bool Vertex::is_deleting() const
+{
+    return deleting_;
+}
+
 void Vertex::connect(const std::shared_ptr<Edge>& edge)
 {
     // check input
@@ -336,7 +396,7 @@ void Vertex::connect(const std::shared_ptr<Edge>& edge)
     if (inserted) edge->connect(shared_from_this());
 
     // update boundary state
-    update_boundary_state();
+    if (inserted) update_boundary_state();
 }
 
 void Vertex::connect(const std::shared_ptr<Face>& face) 
@@ -374,8 +434,6 @@ void Vertex::connect(const std::shared_ptr<Surface>& surface)
         previous_radius_ = 0;
     }
     if (inserted) surface->connect(shared_from_this());
-    if (inserted) is_boundary_ = false;
-    if (inserted) update_boundary_state();
     if (inserted) is_singular_ = true;
     if (inserted) update_singular_state();
 }
@@ -437,9 +495,16 @@ void Vertex::disconnect(const std::shared_ptr<Face>& face)
 
 void Vertex::disconnect(const std::shared_ptr<Surface>& surface)
 {
+    // lock node
+    std::shared_ptr<RRSNode> node_copy = node ? node : std::make_shared<RRSNode>(); // lock if node exists
+    while (!omp_test_nest_lock(&node_copy->omp_lock)) 
+    {
+        std::cout << "disconnect vertex waiting " << id_ << std::endl;
+    }
+
     // check input
     if (surface->is_expired()) return;
-
+    
     // disconnect
     bool erased = surface_ == surface;
     if (erased) surface->disconnect(shared_from_this());
@@ -449,6 +514,9 @@ void Vertex::disconnect(const std::shared_ptr<Surface>& surface)
 
     // check self destruct
     if (!deleting_ && erased && can_self_destruct_) storage_->delete_vertex(shared_from_this());
+
+    // release lock
+    omp_unset_nest_lock(&node_copy->omp_lock);
 }
 
 void Vertex::disconnect(const std::shared_ptr<Vertex>& sibling_vertex)
@@ -753,13 +821,13 @@ void Vertex::update_searchable_state()
     // check if is boundary
     if (is_boundary() && !is_searchable_)
     {
-        storage_->add_searchable_vertex(shared_from_this());
         is_searchable_ = true;
+        storage_->add_affected_vertex(shared_from_this());
     }
     else if (!is_boundary() && is_searchable_)
     {
-        storage_->remove_searchable_vertex(shared_from_this());
         is_searchable_ = false;
+        storage_->add_affected_vertex(shared_from_this());
     }
 }
 
@@ -780,6 +848,15 @@ void Vertex::can_create_generic_point(bool state)
 
 void Vertex::set_reverse_radius_search_radius(double radius)
 {
+    if (node)
+    {
+        // lock node
+        while (!omp_test_nest_lock(&node->omp_lock)) 
+        {
+            std::cout << "set reverse radius search radius waiting " << id_ << std::endl;
+        }
+    }
+
     // set radius
     double previous_radius = reverse_search_radius_;
     reverse_search_radius_ = radius;
@@ -788,11 +865,25 @@ void Vertex::set_reverse_radius_search_radius(double radius)
     min_ = position_ - Eigen::Vector3d(radius, radius, radius);
     max_ = position_ + Eigen::Vector3d(radius, radius, radius);
 
-    // should update search tree if expand radius (if new radius is larger than old one, delete then re-add the searchable vertex if it is searchable)
-    if (reverse_search_radius_ > previous_radius && is_searchable_)
+    // update if node exists
+    if (node) 
     {
-        storage_->remove_searchable_vertex(shared_from_this());
-        storage_->add_searchable_vertex(shared_from_this());
+        if (reverse_search_radius_ > previous_radius)
+        {
+            node->box = RRSBoundingBox(min_, max_);
+            node->recursive_expand_parent_box();
+        }
+        else if (reverse_search_radius_ < previous_radius)
+        {
+            node->box = RRSBoundingBox(min_, max_);
+            node->recursive_shrink_parent_box();
+        }
+    }
+
+    if (node)
+    {
+        // release lock
+        omp_unset_nest_lock(&node->omp_lock);
     }
 }
 
@@ -850,12 +941,12 @@ void Vertex::reduce_previous_radius(double radius)
     previous_radius_ = radius;
 }
 
-Eigen::Vector3d Vertex::get_min() const
+const Eigen::Vector3d& Vertex::get_min() const
 {
     return min_;
 }
 
-Eigen::Vector3d Vertex::get_max() const
+const Eigen::Vector3d& Vertex::get_max() const
 {
     return max_;
 }
@@ -891,6 +982,11 @@ bool Vertex::approx_contains(const Eigen::Vector3d& point) const
             point.z() > min_.z() && point.z() < max_.z());
 }
 
+bool Vertex::approx_contains(const std::shared_ptr<GenericPoint>& generic_point) const
+{
+    return approx_contains(generic_point->get_position());
+}
+
 bool operator<(const std::shared_ptr<Vertex>& lhs, const std::shared_ptr<Vertex>& rhs)
 {
     // when updating the third point's boundary state (due to first point deleted), the first point is already deleted. 
@@ -909,6 +1005,6 @@ bool operator==(const std::shared_ptr<Vertex>& lhs, const std::shared_ptr<Vertex
 {
     if (!lhs && !rhs) return true; // true if both are nullptr
     if (!lhs || !rhs) return false; // false if either is nullptr
-    if (lhs->is_expired() || rhs->is_expired()) throw std::runtime_error("Comparing expired vertices");
+    // if (lhs->is_expired() || rhs->is_expired()) throw std::runtime_error("Comparing expired vertices");
     return lhs->get_id() == rhs->get_id();
 }
