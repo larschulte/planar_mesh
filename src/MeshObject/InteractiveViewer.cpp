@@ -283,11 +283,11 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
     }
     if (event.getKeySym() == "0" && event.keyDown())
     {
-        app_.loop();
+        app_.process_the_rest();
         update_display();
 
         // log
-        std::cout << "loop" << std::endl;
+        std::cout << "process the rest" << std::endl;
     }
     if (event.getKeySym() == "Tab" && event.keyDown())
     {
