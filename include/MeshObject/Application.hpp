@@ -44,6 +44,7 @@ public:
     void get_sim_data(Eigen::Vector3d& origin, Eigen::Vector3d& position);
     void step();
     void loop();
+    void process_the_rest();
     void restart();
     void rebuild_tree();
 

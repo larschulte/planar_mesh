@@ -1245,6 +1245,15 @@ void Application<PointT>::loop()
 }
 
 template <typename PointT>
+void Application<PointT>::process_the_rest()
+{
+    for (int i = ith_cloud; i < data_loader.size(); i++)
+    {
+        loop();
+    }
+}
+
+template <typename PointT>
 void Application<PointT>::restart()
 {
     storage_ = std::make_shared<Storage>();

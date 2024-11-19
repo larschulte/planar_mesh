@@ -12,7 +12,7 @@ public:
 
 private:
     // functions
-    void update_display();
+    void update_display(bool export_ply = false);
     void keyboard_callback(const pcl::visualization::KeyboardEvent &event, void*);
 
     // objects

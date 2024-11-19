@@ -26,8 +26,16 @@ Settings::Settings()
         "/home/jiahao/datasets/math/individual_clouds/",
         "/home/jiahao/datasets/math/slam_pose_graph.g2o"
     );
-    
-    std::string dataset = "math";
+    dataset_map["nottinghill"] = std::make_pair(
+        "/home/jiahao/datasets/2024-10-23_14-40-02_rec004_nottinghill-rad101/slam_clouds/",
+        "/home/jiahao/datasets/2024-10-23_14-40-02_rec004_nottinghill-rad101/slam_pose_graph.slam"
+    );
+    dataset_map["office"] = std::make_pair(
+        "/home/jiahao/datasets/2024-11-19_14-05-08_rec013/slam_clouds/",
+        "/home/jiahao/datasets/2024-11-19_14-05-08_rec013/slam_pose_graph.slam"
+    );
+
+    std::string dataset = "nottinghill";
     cloud_path = dataset_map[dataset].first;
     pose_path = dataset_map[dataset].second;
 
@@ -48,7 +56,7 @@ Settings::Settings()
     }
     process_every_n_points = 1;
     
-    start_cloud = 50;
+    start_cloud = 0;
     start_point = 0;
     fit_plane_threshold = 4;
     shuffle_pointcloud = true;
@@ -118,7 +126,7 @@ Settings::Settings()
     // interactive viewer settings
     update_display = false;
     flip_color = false;
-    show_generic_points = true;
+    show_generic_points = false;
     show_interior_points = true;
     show_pointcloud = true;
     show_triangle = true;

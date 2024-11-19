@@ -3,6 +3,7 @@
 #include "MeshObject/Edge.hpp"
 #include "MeshObject/Face.hpp"
 #include <unordered_set>
+#include <pcl/io/ply_io.h>
 
 template class InteractiveViewer<VilensPointT>;
 
@@ -28,7 +29,7 @@ InteractiveViewer<PointT>::InteractiveViewer(Application<PointT>& app)
 }
 
 template <typename PointT>
-void InteractiveViewer<PointT>::update_display()
+void InteractiveViewer<PointT>::update_display(bool export_ply)
 {
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr vertex_pointcloud = app_.compute_vertex_point_pointcloud(settings_);
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr interior_point_cloud = app_.compute_interior_point_pointcloud(settings_);
@@ -42,6 +43,12 @@ void InteractiveViewer<PointT>::update_display()
     {
         viewer_->addPointCloud<pcl::PointXYZRGB>(vertex_pointcloud, "point_cloud");
         viewer_->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 6, "point_cloud");
+
+        if (export_ply)
+        {
+            pcl::io::savePLYFile("vertex.ply", *vertex_pointcloud);
+            std::cout << "exported vertex.ply" << std::endl;
+        }
     }
 
     // interior points
@@ -50,6 +57,12 @@ void InteractiveViewer<PointT>::update_display()
     {
         viewer_->addPointCloud<pcl::PointXYZRGB>(interior_point_cloud, "interior_points");
         viewer_->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 6, "interior_points");
+
+        if (export_ply) 
+        {
+            pcl::io::savePLYFile("interior.ply", *interior_point_cloud);
+            std::cout << "exported interior.ply" << std::endl;
+        }
     }
 
     // generic points
@@ -59,6 +72,12 @@ void InteractiveViewer<PointT>::update_display()
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr generic_point_cloud = app_.compute_generic_point_pointcloud();
         viewer_->addPointCloud<pcl::PointXYZRGB>(generic_point_cloud, "generic_points");
         viewer_->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 6, "generic_points");
+
+        if (export_ply) 
+        {
+            pcl::io::savePLYFile("generic.ply", *generic_point_cloud);
+            std::cout << "exported generic.ply" << std::endl;
+        }
     }
 
     // triangle
@@ -79,6 +98,12 @@ void InteractiveViewer<PointT>::update_display()
             triangle_mesh.polygons.push_back(triangle);
         }
         viewer_->addPolygonMesh(triangle_mesh, "triangle_mesh");
+
+        if (export_ply) 
+        {
+            pcl::io::savePLYFile("triangle.ply", triangle_mesh);
+            std::cout << "exported triangle.ply" << std::endl;
+        }
     }
 
     // boundary edge
@@ -110,6 +135,12 @@ void InteractiveViewer<PointT>::update_display()
             viewer_->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, 1, 1, 1, "boundary_edges");
         }
         viewer_->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, 2, "boundary_edges");
+
+        if (export_ply) 
+        {
+            pcl::io::savePLYFile("boundary.ply", boundary_mesh);
+            std::cout << "exported boundary.ply" << std::endl;
+        }
     }
 
     // spheres
@@ -281,13 +312,20 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
         // log
         std::cout << "step 1000" << std::endl;
     }
+    if (event.getKeySym() == "9" && event.keyDown())
+    {
+        update_display(true);
+
+        // log
+        std::cout << "exported complete" << std::endl;
+    }
     if (event.getKeySym() == "0" && event.keyDown())
     {
-        app_.loop();
+        app_.process_the_rest();
         update_display();
 
         // log
-        std::cout << "loop" << std::endl;
+        std::cout << "process the rest" << std::endl;
     }
     if (event.getKeySym() == "Tab" && event.keyDown())
     {
