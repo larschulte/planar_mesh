@@ -35,7 +35,7 @@ Settings::Settings()
         "/home/jiahao/datasets/2024-11-19_14-05-08_rec013/slam_pose_graph.slam"
     );
 
-    std::string dataset = "office";
+    std::string dataset = "nottinghill";
     cloud_path = dataset_map[dataset].first;
     pose_path = dataset_map[dataset].second;
 
@@ -124,7 +124,7 @@ Settings::Settings()
     turn_off_sah = false;
 
     // interactive viewer settings
-    update_display = true;
+    update_display = false;
     flip_color = false;
     show_generic_points = false;
     show_interior_points = true;
