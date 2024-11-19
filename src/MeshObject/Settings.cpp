@@ -126,7 +126,7 @@ Settings::Settings()
     // interactive viewer settings
     update_display = true;
     flip_color = false;
-    show_generic_points = true;
+    show_generic_points = false;
     show_interior_points = true;
     show_pointcloud = true;
     show_triangle = true;
