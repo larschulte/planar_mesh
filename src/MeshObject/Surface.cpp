@@ -151,25 +151,33 @@ Eigen::Vector3d Surface::compute_point_projective_position(const Eigen::Vector3d
 
 RelativePosition Surface::check_relative_position(const Eigen::Vector3d& origin, const Eigen::Vector3d& point, const Eigen::Vector3d& direction)
 {
-    // compute
+    // projective distance
     double projective_distance = compute_point_projective_distance(origin, point);
 
+    // modified projective distance (taking into account accuracy in favor for points inside planes)
+    double projective_distance_modified = sign(projective_distance) * std::max(0.0, std::fabs(projective_distance) - settings_.range_accuracy);
+
+    // surface projective std
     double surface_position_std = get_surface_position_std_in_normal_direction();
     double surface_projective_std = surface_position_std / std::fabs(normal_.dot(direction));
 
-    // given projective_distance and surface_projective_std and range_precision and range_accuracy
-    double new_std = std::sqrt(surface_projective_std * surface_projective_std + settings_.range_precision * settings_.range_precision);
+    // point projective std
+    double point_projective_std = settings_.range_precision;
 
-    // distance is positive when in front of the surface
-    // modify projective_distance
-    projective_distance = sign(projective_distance) * std::max(0.0, std::fabs(projective_distance) - settings_.range_accuracy);
+    // combined projective std
+    double combined_projective_std = std::sqrt(surface_projective_std * surface_projective_std + point_projective_std * point_projective_std);
 
-    double threshold_in_front = settings_.envelope_size * new_std;
-    double threshold_behind = - settings_.envelope_size * new_std;
+    // multiplier for confidence interval
+    double multiplier = 1.96; // for 95% confidence interval
+    // double multiplier = settings_.envelope_size;
+
+    // confidence interval values
+    double threshold_in_front = multiplier * combined_projective_std;
+    double threshold_behind = - multiplier * combined_projective_std;
 
     // check
-    bool points_in_front_of_surface = projective_distance > threshold_in_front;
-    bool points_behind_surface = projective_distance < threshold_behind;
+    bool points_in_front_of_surface = projective_distance_modified > threshold_in_front;
+    bool points_behind_surface = projective_distance_modified < threshold_behind;
     bool points_within_surface = !points_in_front_of_surface && !points_behind_surface;
 
     // return
