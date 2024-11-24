@@ -1257,7 +1257,7 @@ template <typename PointT>
 void Application<PointT>::restart()
 {
     storage_ = std::make_shared<Storage>();
-    ith_cloud = 50;
+    ith_cloud = settings_.start_cloud;
     ith_point = 0;
     load_point_cloud();
 }
