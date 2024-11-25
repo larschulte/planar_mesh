@@ -2,7 +2,6 @@
 
 #include <pcl/point_types.h>
 #include <pcl/visualization/pcl_visualizer.h>
-#include "point_type/VilensPointT.hpp"
 
 
 #include "utilities/DataLoader.hpp"
@@ -66,12 +65,12 @@ public:
 
 private:
     // objects
-    DataLoader<VilensPointT> data_loader;
+    DataLoader<PointT> data_loader;
     std::shared_ptr<Storage> storage_;
     
     // dataset
     std::string dataset;
-    typename pcl::PointCloud<VilensPointT>::Ptr pointcloud;
+    typename pcl::PointCloud<PointT>::Ptr pointcloud;
     Eigen::Vector3d origin;
 
     // settings

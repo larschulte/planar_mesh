@@ -1,3 +1,5 @@
+#define PCL_NO_PRECOMPILE
+
 #include "MeshObject/Application.hpp"
 #include "MeshObject/Vertex.hpp"
 #include "MeshObject/Edge.hpp"
@@ -20,8 +22,14 @@
 #include "MeshObject/RRSTree.hpp"
 
 #include "MeshObject/TriangleBVH.hpp"
+#include <pcl/filters/passthrough.h>
+
+#include "point_type/VilensPointT.hpp"
+#include "point_type/BagPointT.hpp"
 
 template class Application<VilensPointT>;
+template class Application<BagPointT>;
+
 
 template <typename PointT>
 Application<PointT>::Application() 
@@ -1103,7 +1111,7 @@ template <typename PointT>
 void Application<PointT>::get_lidar_data(Eigen::Vector3d& origin, Eigen::Vector3d& position)
 {
     origin = this->origin;
-    position = pointcloud->points[ith_point].getVector3fMap().cast<double>();
+    position = pointcloud->points[ith_point].getVector3fMap().template cast<double>();
     ith_point += settings_.process_every_n_points;
 
     if (ith_point >= ith_size)
@@ -1151,7 +1159,7 @@ void Application<PointT>::loop()
     // add all points from the cloud to the storage's processing queue
     for (std::size_t i = 0; i < ith_size; i++)
     {
-        Eigen::Vector3d thisPointVEC = pointcloud->points[i].getVector3fMap().cast<double>();
+        Eigen::Vector3d thisPointVEC = pointcloud->points[i].getVector3fMap().template cast<double>();
         Eigen::Vector3d thisPointOriginVEC = this->origin;
 
         storage_->add_to_main_queue(thisPointVEC, thisPointOriginVEC);

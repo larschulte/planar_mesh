@@ -1,5 +1,6 @@
 #include "utilities/DataLoader.hpp"
 #include "point_type/VilensPointT.hpp"
+#include "point_type/BagPointT.hpp"
 
 std::vector<std::string> read_under_folder(std::string pcd_file_folder)
 {
@@ -145,3 +146,4 @@ int DataLoader<PointT>::size()
 
 // Explicit template instantiation
 template class DataLoader<VilensPointT>;
+template class DataLoader<BagPointT>;
