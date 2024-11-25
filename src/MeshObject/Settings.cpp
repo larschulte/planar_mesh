@@ -75,7 +75,7 @@ Settings::Settings()
 
     use_queue = true;
     retry_threshold = 10;
-    num_iterations = 1;
+    num_iterations = 10;
 
     // min_face_angle = 20;
 
