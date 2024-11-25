@@ -5,7 +5,11 @@
 #include <unordered_set>
 #include <pcl/io/ply_io.h>
 
+#include "point_type/VilensPointT.hpp"
+#include "point_type/BagPointT.hpp"
+
 template class InteractiveViewer<VilensPointT>;
+template class InteractiveViewer<BagPointT>;
 
 template <typename PointT>
 InteractiveViewer<PointT>::InteractiveViewer(Application<PointT>& app) 
