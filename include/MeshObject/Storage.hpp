@@ -61,6 +61,7 @@ public: // to user
     void add_to_queue(const std::shared_ptr<Vertex>& vertex);
     void add_to_abort_queue(const std::shared_ptr<GenericPoint>& generic_point);
     std::shared_ptr<GenericPoint> pop_from_queue();
+    unsigned int get_main_queue_size();
     unsigned int get_queue_size();
     unsigned int get_repeated_queue_size();
     unsigned int get_abort_queue_size();
