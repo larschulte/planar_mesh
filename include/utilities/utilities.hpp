@@ -15,4 +15,7 @@ transform_cloud_to_global(typename pcl::PointCloud<PointT>::Ptr cloud, Eigen::Af
 // is_point_in_triangle(surface_coordinate0, surface_coordinate1, surface_coordinate2, surface_coordinate)
 bool is_point_in_triangle(const Eigen::Vector2d& a, const Eigen::Vector2d& b, const Eigen::Vector2d& c, const Eigen::Vector2d& p);
 
+Eigen::Matrix3d generate_orthogonal_basis(const Eigen::Vector3d& unit_vector);
+Eigen::Matrix3d generate_unit_vector_covariance(const Eigen::Vector3d& unit_vector, double angular_uncertainty_in_radian, double epsilon);
+
 #include "utilities/utilities.tpp"
