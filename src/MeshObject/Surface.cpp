@@ -151,6 +151,71 @@ Eigen::Vector3d Surface::compute_point_projective_position(const Eigen::Vector3d
 
 RelativePosition Surface::check_relative_position(const Eigen::Vector3d& origin, const Eigen::Vector3d& point, const Eigen::Vector3d& direction)
 {
+    // compute point to plane projective distance std
+    if (get_total_point_size() > 100)
+    {
+        // compute d(range)/d(...)
+        Eigen::Vector3d d_range_d_origin = - normal_ / normal_.dot(direction);
+        Eigen::Vector3d d_range_d_mean = normal_ / normal_.dot(direction);
+        Eigen::Vector3d d_range_d_direction = (mean_ - origin).dot(normal_) / std::pow(normal_.dot(direction), 2) * normal_;
+        Eigen::Vector3d d_range_d_normal = ( (mean_ - origin) * normal_.dot(direction) - (mean_ - origin).dot(normal_) * direction ) / std::pow(normal_.dot(direction), 2);
+
+        // compute covariance of ...
+        // - settings
+        double odometry_position_uncertainty = 0.01;                    // [todo] should change to depend on distance travelled kitti sota have 0.005m/m (0.5%)
+        double odometry_angular_uncertainty = 0.01 / 180.0 * M_PI;      // [todo] should change to depend on distance travelled kitti sota have 0.001 deg/m
+        double normal_angular_uncertainty = 0.1 / 180.0 * M_PI;         // [todo] should change to depend on surface size and range precision
+        double epsilon = 1e-4;
+        // - computation
+        Eigen::Matrix3d cov_mean = Eigen::Matrix3d::Identity() * std::pow(get_surface_position_std_in_normal_direction(), 2);
+        Eigen::Matrix3d cov_origin = Eigen::Matrix3d::Identity() * std::pow(odometry_position_uncertainty, 2);
+        Eigen::Matrix3d cov_normal = generate_unit_vector_covariance(normal_, normal_angular_uncertainty, epsilon);
+        Eigen::Matrix3d cov_direction = generate_unit_vector_covariance(direction, odometry_angular_uncertainty, epsilon);
+
+        // compute variance of range due to ...
+        double variance_range_origin = d_range_d_origin.transpose() * cov_origin * d_range_d_origin;
+        double variance_range_mean = d_range_d_mean.transpose() * cov_mean * d_range_d_mean;
+        double variance_range_direction = d_range_d_direction.transpose() * cov_direction * d_range_d_direction;
+        double variance_range_normal = d_range_d_normal.transpose() * cov_normal * d_range_d_normal;
+
+        // compute std of range due to ...
+        double std_range_origin = std::sqrt(variance_range_origin);
+        double std_range_mean = std::sqrt(variance_range_mean);
+        double std_range_direction = std::sqrt(variance_range_direction);
+        double std_range_normal = std::sqrt(variance_range_normal);
+
+        // compute range and angle for logging
+        double range = (point - origin).norm();
+        double angle = std::acos(direction.dot(normal_)) * 180.0 / M_PI - 90.0;
+
+        // // print all
+        // std::cout << "d_range_d_origin: \n" << d_range_d_origin << std::endl;
+        // std::cout << "d_range_d_mean: \n" << d_range_d_mean << std::endl;
+        // std::cout << "d_range_d_direction: \n" << d_range_d_direction << std::endl;
+        // std::cout << "d_range_d_normal: \n" << d_range_d_normal << std::endl;
+
+        // std::cout << "cov_origin: \n" << cov_origin << std::endl;
+        // std::cout << "cov_mean: \n" << cov_mean << std::endl;
+        // std::cout << "cov_direction: \n" << cov_direction << std::endl;
+        // std::cout << "cov_normal: \n" << cov_normal << std::endl;
+
+        // std::cout << "variance_range_origin: \n" << variance_range_origin << std::endl;
+        // std::cout << "variance_range_mean: \n" << variance_range_mean << std::endl;
+        // std::cout << "variance_range_direction: \n" << variance_range_direction << std::endl;
+        // std::cout << "variance_range_normal: \n" << variance_range_normal << std::endl;
+
+        // std::cout << "std_range_origin: \n" << std_range_origin << std::endl;
+        // std::cout << "std_range_mean: \n" << std_range_mean << std::endl;
+        // std::cout << "std_range_direction: \n" << std_range_direction << std::endl;
+        // std::cout << "std_range_normal: \n" << std_range_normal << std::endl;
+
+        // std::cout << "range: " << range << std::endl;
+        // std::cout << "angle: " << angle << std::endl;
+
+        // print range | angle | stds
+        std::cout << range << " | " << angle << " | " << std_range_origin << " | " << std_range_mean << " | " << std_range_direction << " | " << std_range_normal << std::endl;
+    }
+
     // projective distance
     double projective_distance = compute_point_projective_distance(origin, point);
 
