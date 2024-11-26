@@ -574,6 +574,11 @@ std::shared_ptr<GenericPoint> Storage::pop_from_queue()
     return queue_point;
 }
 
+unsigned int Storage::get_main_queue_size()
+{
+    return main_queue_.size();
+}
+
 unsigned int Storage::get_queue_size()
 {
     return smaller_queues_[omp_get_thread_num()].size();

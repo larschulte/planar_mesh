@@ -1216,16 +1216,16 @@ void Application<PointT>::loop()
 
         storage_->print_main_queue_stats();
 
-        // print aborted point stats
-        storage_->split_main_queue_into_smaller_queues_by_contention();
-
-        // break loop
-        if (num_iteration >= settings_.num_iterations)
+        // break loop if no more points
+        if (storage_->get_main_queue_size() == 0)
         {
             // clear queue before loading next point cloud
             storage_->clear_queues();
             break;
         }
+
+        // print aborted point stats
+        storage_->split_main_queue_into_smaller_queues_by_contention();
     }
 
     std::chrono::high_resolution_clock::time_point t_end = std::chrono::high_resolution_clock::now();
