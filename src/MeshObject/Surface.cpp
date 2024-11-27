@@ -152,7 +152,8 @@ Eigen::Vector3d Surface::compute_point_projective_position(const Eigen::Vector3d
 RelativePosition Surface::check_relative_position(const Eigen::Vector3d& origin, const Eigen::Vector3d& point, const Eigen::Vector3d& direction)
 {
     // compute point to plane projective distance std
-    if (get_total_point_size() > 100)
+    const bool use_improved_covariance = true;
+    if (use_improved_covariance)
     {
         // compute d(range)/d(...)
         Eigen::Vector3d d_range_d_origin = - normal_ / normal_.dot(direction);
@@ -164,7 +165,7 @@ RelativePosition Surface::check_relative_position(const Eigen::Vector3d& origin,
         // - settings
         double odometry_position_uncertainty = 0.01;                    // [todo] should change to depend on distance travelled kitti sota have 0.005m/m (0.5%)
         double odometry_angular_uncertainty = 0.01 / 180.0 * M_PI;      // [todo] should change to depend on distance travelled kitti sota have 0.001 deg/m
-        double normal_angular_uncertainty = 0.1 / 180.0 * M_PI;         // [todo] should change to depend on surface size and range precision
+        double normal_angular_uncertainty = normal_uncertainty_;         // [todo] should change to depend on surface size and range precision
         double epsilon = 1e-4;
         // - computation
         Eigen::Matrix3d cov_mean = Eigen::Matrix3d::Identity() * std::pow(get_surface_position_std_in_normal_direction(), 2);
@@ -184,11 +185,36 @@ RelativePosition Surface::check_relative_position(const Eigen::Vector3d& origin,
         double std_range_direction = std::sqrt(variance_range_direction);
         double std_range_normal = std::sqrt(variance_range_normal);
 
-        // compute range and angle for logging
-        double range = (point - origin).norm();
-        double angle = std::acos(direction.dot(normal_)) * 180.0 / M_PI - 90.0;
+        // compute combined std
+        double combined_std = std::sqrt(std_range_origin * std_range_origin + std_range_mean * std_range_mean + std_range_direction * std_range_direction + std_range_normal * std_range_normal + settings_.range_precision * settings_.range_precision);
+
+        // compute point to plane projective distance
+        double projective_distance = compute_point_projective_distance(origin, point);
+
+        // multiplier for confidence interval
+        // double multiplier = 2.576; // for 99% confidence interval
+        double multiplier = 1.96; // for 95% confidence interval
+
+        // confidence interval values
+        double threshold_in_front = multiplier * combined_std;
+        double threshold_behind = - multiplier * combined_std;
+
+        // check
+        bool points_in_front_of_surface = projective_distance > threshold_in_front;
+        bool points_behind_surface = projective_distance < threshold_behind;
+        bool points_within_surface = !points_in_front_of_surface && !points_behind_surface;
+
+        // return
+        if (points_in_front_of_surface) return RelativePosition::IN_FRONT;
+        else if (points_behind_surface) return RelativePosition::BEHIND;
+        else if (points_within_surface) return RelativePosition::WITHIN;
+        else throw std::runtime_error("Invalid relative position.");
 
         // // print all
+
+        // double range = (point - origin).norm();
+        // double angle = std::acos(direction.dot(normal_)) * 180.0 / M_PI - 90.0;
+
         // std::cout << "d_range_d_origin: \n" << d_range_d_origin << std::endl;
         // std::cout << "d_range_d_mean: \n" << d_range_d_mean << std::endl;
         // std::cout << "d_range_d_direction: \n" << d_range_d_direction << std::endl;
@@ -209,11 +235,7 @@ RelativePosition Surface::check_relative_position(const Eigen::Vector3d& origin,
         // std::cout << "std_range_direction: \n" << std_range_direction << std::endl;
         // std::cout << "std_range_normal: \n" << std_range_normal << std::endl;
 
-        // std::cout << "range: " << range << std::endl;
-        // std::cout << "angle: " << angle << std::endl;
-
-        // print range | angle | stds
-        std::cout << range << " | " << angle << " | " << std_range_origin << " | " << std_range_mean << " | " << std_range_direction << " | " << std_range_normal << std::endl;
+        // std::cout << range << " | " << projective_distance << "|" << angle << " | " << std_range_origin << " | " << std_range_mean << " | " << std_range_direction << " | " << std_range_normal << " | " << combined_std << std::endl;
     }
 
     // projective distance
@@ -971,6 +993,10 @@ void Surface::add_point_to_surface_fitting(const Eigen::Vector3d& position, cons
     eigenvectors_ = new_eigenvectors;
     eigenvalues_ = new_eigenvalues;
     normal_ = new_normal;
+
+    // store characteristic length
+    characteristic_length_ = std::max(characteristic_length_, (position -  mean_).norm());
+    normal_uncertainty_ = settings_.range_precision / characteristic_length_;
 
     // update approximate uncertainty envelope
     // if approximate normal is the same as last time, incrementally update the uncertianty envelope

@@ -132,6 +132,8 @@ private:
     Eigen::Matrix3d eigenvectors_;
     Eigen::Vector3d eigenvalues_;
     Eigen::Vector3d normal_;
+    double characteristic_length_;
+    double normal_uncertainty_;
 
     std::vector<double> stored_projective_distance_stats_;
     std::vector<double> stored_point_to_plane_distance_stats_;
