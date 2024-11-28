@@ -19,14 +19,19 @@ class DataLoader
 public:
     DataLoader();
 
-    void load_dataset(std::string pcd_file_folder, std::string pose_file_path);
+    void load_dataset(std::string pcd_file_folder, std::string pose_file_path, double azimuth_resolution, double altitude_resolution);
     DataLoader(std::string pcd_file_folder, std::string pose_file_path);
 
-    typename pcl::PointCloud<PointT>::Ptr get_cloud(int i);
+    typename pcl::PointCloud<PointT>::Ptr get_cloud(int i, bool remove_double_return_flag);
     Eigen::Affine3d get_pose(int i);
     int size();
 
 private:
     std::vector<std::string> pcd_file_list_;
     std::map<std::string, Eigen::Affine3d> file_to_pose_map_;
+
+    double azimuth_resolution_;
+    double altitude_resolution_;
+
+    typename pcl::PointCloud<PointT>::Ptr remove_double_return(typename pcl::PointCloud<PointT>::Ptr input_pointcloud);
 };

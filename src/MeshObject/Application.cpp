@@ -38,7 +38,7 @@ Application<PointT>::Application()
     ith_point = settings_.start_point;
 
     storage_ = std::make_shared<Storage>();
-    data_loader.load_dataset(settings_.cloud_path, settings_.pose_path);
+    data_loader.load_dataset(settings_.cloud_path, settings_.pose_path, settings_.azimuth_resolution, settings_.altitude_resolution);
     load_point_cloud();
 }
 
@@ -109,7 +109,7 @@ void Application<PointT>::load_point_cloud()
         ith_cloud = data_loader.size() - 1;
     }
     
-    typename pcl::PointCloud<PointT>::Ptr pointcloud_local = data_loader.get_cloud(ith_cloud);
+    typename pcl::PointCloud<PointT>::Ptr pointcloud_local = data_loader.get_cloud(ith_cloud, settings_.remove_double_return);
     Eigen::Affine3d pose = data_loader.get_pose(ith_cloud);
     pointcloud = transform_cloud_to_global<PointT>(pointcloud_local, pose);
     origin = pose.translation();

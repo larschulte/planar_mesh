@@ -53,6 +53,9 @@ Settings::Settings()
         range_precision = 0.02;
         range_accuracy = 0.03; 
         radius_ratio = tan(6 * M_PI / 180);
+        remove_double_return = true;
+        azimuth_resolution = 0.6;
+        altitude_resolution = 1.5;
     }
     process_every_n_points = 1;
     
@@ -63,7 +66,7 @@ Settings::Settings()
     use_radius_value = true;
     pointcloud_fraction = 1;
     radius_value = 3;
-    duplicated_point_distance_threshold = 0.001; // if two points are closer than this distance, they are considered the same point
+    duplicated_point_distance_threshold = 0.0; // if two points are closer than this distance, they are considered the same point
 
     abnormal_size = 1.5;
     envelope_size = 3.5;

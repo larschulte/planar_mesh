@@ -113,10 +113,12 @@ template <typename PointT>
 DataLoader<PointT>::DataLoader(){}
 
 template <typename PointT>
-void DataLoader<PointT>::load_dataset(std::string pcd_file_folder, std::string pose_file_path)
+void DataLoader<PointT>::load_dataset(std::string pcd_file_folder, std::string pose_file_path, double azimuth_resolution, double altitude_resolution)
 {
     pcd_file_list_ = read_under_folder(pcd_file_folder);
     file_to_pose_map_ = create_file_to_pose_map(pcd_file_list_, pose_file_path);
+    azimuth_resolution_ = azimuth_resolution;
+    altitude_resolution_ = altitude_resolution;
 }
 
 template <typename PointT>
@@ -127,9 +129,61 @@ DataLoader<PointT>::DataLoader(std::string pcd_file_folder, std::string pose_fil
 }
 
 template <typename PointT>
-typename pcl::PointCloud<PointT>::Ptr DataLoader<PointT>::get_cloud(int i)
+typename pcl::PointCloud<PointT>::Ptr DataLoader<PointT>::remove_double_return(typename pcl::PointCloud<PointT>::Ptr input_pointcloud)
 {
-    return load_pointcloud<PointT>(pcd_file_list_[i]);
+    // initialize mapping grid
+    std::map<std::pair<double, double>, std::pair<double, int>> point_map; // key: azimuth and altitude, value: range and index
+
+    // for each point, compute azimuth and altitude and store in the map if it is closer
+    for (std::size_t i = 0; i < input_pointcloud->size(); i++)
+    {
+        // get point
+        PointT point = input_pointcloud->points[i];
+
+        // compute azimuth and altitude
+        double range = sqrt(point.x * point.x + point.y * point.y + point.z * point.z);
+        double azimuth = atan2(point.y, point.x) / M_PI * 180;
+        double altitude = asin(point.z / range) / M_PI * 180;
+
+        // round to the nearest resolution
+        azimuth = round(azimuth / azimuth_resolution_) * azimuth_resolution_;
+        altitude = round(altitude / altitude_resolution_) * altitude_resolution_;
+
+        // if same azimuth and altitude not already in the map
+        if (point_map.find(std::make_pair(azimuth, altitude)) == point_map.end())
+        {
+            // store azimuth and altitude as key, range and the index of the point as value
+            point_map[std::make_pair(azimuth, altitude)] = std::make_pair(range, i);
+        }
+        else
+        {
+            // compare range, keep the closer one
+            if (range < point_map[std::make_pair(azimuth, altitude)].first)
+            {
+                point_map[std::make_pair(azimuth, altitude)] = std::make_pair(range, i);
+            }
+        }        
+    }
+
+    // from the map, create a new pointcloud
+    typename pcl::PointCloud<PointT>::Ptr output_pointcloud(new pcl::PointCloud<PointT>);
+    for (const auto& point : point_map)
+    {
+        output_pointcloud->push_back(input_pointcloud->points[point.second.second]);
+    }
+
+    // return 
+    return output_pointcloud;
+}
+
+template <typename PointT>
+typename pcl::PointCloud<PointT>::Ptr DataLoader<PointT>::get_cloud(int i, bool remove_double_return_flag)
+{
+    typename pcl::PointCloud<PointT>::Ptr loaded_pointcloud = load_pointcloud<PointT>(pcd_file_list_[i]);
+
+    if (remove_double_return_flag) loaded_pointcloud = remove_double_return(loaded_pointcloud);
+
+    return loaded_pointcloud;
 }
 
 template <typename PointT>
