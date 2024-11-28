@@ -56,6 +56,10 @@ struct Settings
     double abnormal_size; // number of std
     double envelope_size; // number of std
 
+    bool remove_double_return;
+    double azimuth_resolution;
+    double altitude_resolution;
+
     unsigned int num_of_delete_before_put_to_repeated_queue;
 
     unsigned int num_threads;
