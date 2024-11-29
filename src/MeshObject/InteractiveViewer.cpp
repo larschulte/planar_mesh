@@ -262,6 +262,11 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
     // kp number 6
     if (event.getKeySym() == "KP_Right" && event.keyDown())
     {
+        settings_.color_mode = ColorMode::DISTANCE_TRAVELLED;
+        update_display();
+
+        // log
+        std::cout << "color_mode: distance travelled" << std::endl;
     }
     // kp number 7
     if (event.getKeySym() == "KP_Home" && event.keyDown())

@@ -28,7 +28,8 @@ enum class ColorMode
     RADIUS,
     SIBLINGS,
     SURFACE_UNCERTAINTY,
-    CONTENTION
+    CONTENTION,
+    DISTANCE_TRAVELLED
 };
 
 struct DataLoader_Settings
