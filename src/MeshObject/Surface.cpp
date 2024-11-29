@@ -149,7 +149,7 @@ Eigen::Vector3d Surface::compute_point_projective_position(const Eigen::Vector3d
     return intersection;
 }
 
-RelativePosition Surface::check_relative_position(const Eigen::Vector3d& origin, const Eigen::Vector3d& point, const Eigen::Vector3d& direction)
+RelativePosition Surface::check_relative_position(double distance_travelled, const Eigen::Vector3d& origin, const Eigen::Vector3d& point, const Eigen::Vector3d& direction)
 {
     // compute point to plane projective distance std
     const bool use_improved_covariance = true;
@@ -163,12 +163,16 @@ RelativePosition Surface::check_relative_position(const Eigen::Vector3d& origin,
 
         // compute covariance of ...
         // - settings
-        double odometry_position_uncertainty = 0.01;                    // [todo] should change to depend on distance travelled kitti sota have 0.005m/m (0.5%)
-        double odometry_angular_uncertainty = 0.01 / 180.0 * M_PI;      // [todo] should change to depend on distance travelled kitti sota have 0.001 deg/m
-        double normal_angular_uncertainty = normal_uncertainty_;         // [todo] should change to depend on surface size and range precision
-        double epsilon = 1e-4;
+        double odometry_position_uncertainty_rate = 0.001; // kitti sota 0.005m/m (0.5%)
+        double odometry_angular_uncertainty_rate = 0.001; // kitti sota 0.001 deg/m
+        double epsilon = 1e-6;
+        // - uncertainties
+        double odometry_position_uncertainty = std::abs(distance_travelled - get_smallest_distance_travelled()) * odometry_position_uncertainty_rate;
+        double odometry_angular_uncertainty = std::abs(distance_travelled - get_smallest_distance_travelled()) * odometry_angular_uncertainty_rate / 180.0 * M_PI;
+        double normal_angular_uncertainty = normal_uncertainty_;
+        double plane_position_uncertainty = get_surface_position_std_in_normal_direction();
         // - computation
-        Eigen::Matrix3d cov_mean = Eigen::Matrix3d::Identity() * std::pow(get_surface_position_std_in_normal_direction(), 2);
+        Eigen::Matrix3d cov_mean = Eigen::Matrix3d::Identity() * std::pow(plane_position_uncertainty, 2);
         Eigen::Matrix3d cov_origin = Eigen::Matrix3d::Identity() * std::pow(odometry_position_uncertainty, 2);
         Eigen::Matrix3d cov_normal = generate_unit_vector_covariance(normal_, normal_angular_uncertainty, epsilon);
         Eigen::Matrix3d cov_direction = generate_unit_vector_covariance(direction, odometry_angular_uncertainty, epsilon);
@@ -418,6 +422,16 @@ std::size_t Surface::get_total_point_size() const
     return vertices_.size() + interior_points_.size();
 }
 
+double Surface::get_average_distance_travelled() const
+{
+    return sum_of_average_distance_travelled_ / get_total_point_size();
+}
+
+double Surface::get_smallest_distance_travelled() const
+{
+    return smallest_distance_travelled_;
+}
+
 const std::tuple<int, int, int>& Surface::get_color() const
 {
     return color_;
@@ -589,7 +603,7 @@ void Surface::connect(const std::shared_ptr<Vertex>& vertex)
     if (vertices_.insert(vertex).second)
     {
         vertex->connect(shared_from_this());
-        add_point_to_surface_fitting(vertex->get_position(), vertex->get_origin());
+        add_point_to_surface_fitting(vertex->get_position(), vertex->get_origin(), vertex->get_distance_travelled());
     }
 }
 
@@ -862,7 +876,7 @@ void Surface::connect(const std::shared_ptr<InteriorPoint>& interior_point)
     if (inserted) interior_point->connect(shared_from_this());
 
     // update surface fitting
-    if (inserted) add_point_to_surface_fitting(interior_point->get_position(), interior_point->get_origin());
+    if (inserted) add_point_to_surface_fitting(interior_point->get_position(), interior_point->get_origin(), interior_point->get_distance_travelled());
 }
 
 void Surface::disconnect(const std::shared_ptr<Vertex>& vertex)
@@ -875,7 +889,7 @@ void Surface::disconnect(const std::shared_ptr<Vertex>& vertex)
     if (erased) vertex->disconnect(shared_from_this());
 
     // remove from surface fitting
-    if (erased) remove_point_from_surface_fitting(vertex->get_position(), vertex->get_origin());
+    if (erased) remove_point_from_surface_fitting(vertex->get_position(), vertex->get_origin(), vertex->get_distance_travelled());
 }
 
 void Surface::disconnect(const std::shared_ptr<Edge>& edge)
@@ -908,7 +922,7 @@ void Surface::disconnect(const std::shared_ptr<InteriorPoint>& interior_point)
     if (erased) interior_point->disconnect(shared_from_this());
 
     // remove from surface fitting
-    if (erased) remove_point_from_surface_fitting(interior_point->get_position(), interior_point->get_origin());
+    if (erased) remove_point_from_surface_fitting(interior_point->get_position(), interior_point->get_origin(), interior_point->get_distance_travelled());
 }
 
 void Surface::swap(const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2)
@@ -963,7 +977,7 @@ void Surface::print_info()
     std::cout << "======================================================================================" << std::endl;
 }
 
-void Surface::add_point_to_surface_fitting(const Eigen::Vector3d& position, const Eigen::Vector3d& origin)
+void Surface::add_point_to_surface_fitting(const Eigen::Vector3d& position, const Eigen::Vector3d& origin, double distance_travelled)
 {
     // surface
     int size1 = get_total_point_size()-1; // need to exclude the new point
@@ -993,6 +1007,9 @@ void Surface::add_point_to_surface_fitting(const Eigen::Vector3d& position, cons
     eigenvectors_ = new_eigenvectors;
     eigenvalues_ = new_eigenvalues;
     normal_ = new_normal;
+
+    sum_of_average_distance_travelled_ += distance_travelled;
+    if (distance_travelled < smallest_distance_travelled_) smallest_distance_travelled_ = distance_travelled;
 
     // store characteristic length
     characteristic_length_ = std::max(characteristic_length_, (position -  mean_).norm());
@@ -1033,7 +1050,7 @@ void Surface::add_point_to_surface_fitting(const Eigen::Vector3d& position, cons
     }
 }
 
-void Surface::remove_point_from_surface_fitting(const Eigen::Vector3d& position, const Eigen::Vector3d& origin)
+void Surface::remove_point_from_surface_fitting(const Eigen::Vector3d& position, const Eigen::Vector3d& origin, double distance_travelled)
 {
     // surface
     int combined_size = get_total_point_size()+1; // need to include the point just removed
@@ -1062,6 +1079,20 @@ void Surface::remove_point_from_surface_fitting(const Eigen::Vector3d& position,
     eigenvectors_ = eigenvectors1;
     eigenvalues_ = eigenvalues1;
     normal_ = normal1;
+
+    sum_of_average_distance_travelled_ -= distance_travelled;
+    if (distance_travelled == smallest_distance_travelled_)
+    {
+        smallest_distance_travelled_ = std::numeric_limits<double>::max();
+        for (const auto& vertex : vertices_)
+        {
+            if (vertex->get_distance_travelled() < smallest_distance_travelled_) smallest_distance_travelled_ = vertex->get_distance_travelled();
+        }
+        for (const auto& interior_point : interior_points_)
+        {
+            if (interior_point->get_distance_travelled() < smallest_distance_travelled_) smallest_distance_travelled_ = interior_point->get_distance_travelled();
+        }
+    }
 
     // update approximate uncertainty envelope
     // if approximate normal is the same as last time, incrementally update the uncertianty envelope
