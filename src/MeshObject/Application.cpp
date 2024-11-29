@@ -34,11 +34,11 @@ template class Application<BagPointT>;
 template <typename PointT>
 Application<PointT>::Application() 
 {
-    ith_cloud = settings_.start_cloud;
-    ith_point = settings_.start_point;
+    ith_cloud = settings_.data_loader_settings.start_cloud;
+    ith_point = settings_.data_loader_settings.start_point;
 
     storage_ = std::make_shared<Storage>();
-    data_loader.load_dataset(settings_.cloud_path, settings_.pose_path, settings_.azimuth_resolution, settings_.altitude_resolution);
+    data_loader.load_dataset(settings_.data_loader_settings);
     load_point_cloud();
 }
 
@@ -109,7 +109,7 @@ void Application<PointT>::load_point_cloud()
         ith_cloud = data_loader.size() - 1;
     }
     
-    typename pcl::PointCloud<PointT>::Ptr pointcloud_local = data_loader.get_cloud(ith_cloud, settings_.remove_double_return, settings_.filter_low_intensity);
+    typename pcl::PointCloud<PointT>::Ptr pointcloud_local = data_loader.get_cloud(ith_cloud);
     Eigen::Affine3d pose = data_loader.get_pose(ith_cloud);
     pointcloud = transform_cloud_to_global<PointT>(pointcloud_local, pose);
     origin = pose.translation();
@@ -1265,8 +1265,8 @@ template <typename PointT>
 void Application<PointT>::restart()
 {
     storage_ = std::make_shared<Storage>();
-    ith_cloud = settings_.start_cloud;
-    ith_point = 0;
+    ith_cloud = settings_.data_loader_settings.start_cloud;
+    ith_point = settings_.data_loader_settings.start_point;
     load_point_cloud();
 }
 

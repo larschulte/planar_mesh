@@ -36,8 +36,8 @@ Settings::Settings()
     );
 
     std::string dataset = "nottinghill";
-    cloud_path = dataset_map[dataset].first;
-    pose_path = dataset_map[dataset].second;
+    data_loader_settings.pcd_file_folder = dataset_map[dataset].first;
+    data_loader_settings.pose_file_path = dataset_map[dataset].second;
 
     use_sim_data = false;
     sim_object = 0;
@@ -53,16 +53,16 @@ Settings::Settings()
         range_precision = 0.02;
         range_accuracy = 0.03; 
         radius_ratio = tan(6 * M_PI / 180);
-        remove_double_return = true;
-        azimuth_resolution = 0.6;
-        altitude_resolution = 1.5;
+        data_loader_settings.remove_double_return_flag = true;
+        data_loader_settings.filter_low_intensity_flag = true;
+        data_loader_settings.azimuth_resolution = 0.6;
+        data_loader_settings.altitude_resolution = 1.5;
     }
-    process_every_n_points = 1;
+    data_loader_settings.start_cloud = 0;
+    data_loader_settings.start_point = 0;
 
-    filter_low_intensity = true;
+    process_every_n_points = 1;
     
-    start_cloud = 0;
-    start_point = 0;
     fit_plane_threshold = 4;
     shuffle_pointcloud = true;
     use_radius_value = true;
