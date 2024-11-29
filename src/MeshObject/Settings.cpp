@@ -129,7 +129,7 @@ Settings::Settings()
     turn_off_sah = false;
 
     // interactive viewer settings
-    update_display = false;
+    update_display = true;
     flip_color = false;
     show_generic_points = false;
     show_interior_points = true;
