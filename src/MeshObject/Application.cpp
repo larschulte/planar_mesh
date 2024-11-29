@@ -109,7 +109,7 @@ void Application<PointT>::load_point_cloud()
         ith_cloud = data_loader.size() - 1;
     }
     
-    typename pcl::PointCloud<PointT>::Ptr pointcloud_local = data_loader.get_cloud(ith_cloud, settings_.remove_double_return);
+    typename pcl::PointCloud<PointT>::Ptr pointcloud_local = data_loader.get_cloud(ith_cloud, settings_.remove_double_return, settings_.filter_low_intensity);
     Eigen::Affine3d pose = data_loader.get_pose(ith_cloud);
     pointcloud = transform_cloud_to_global<PointT>(pointcloud_local, pose);
     origin = pose.translation();

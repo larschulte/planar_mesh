@@ -1,6 +1,7 @@
 #include "utilities/DataLoader.hpp"
 #include "point_type/VilensPointT.hpp"
 #include "point_type/BagPointT.hpp"
+#include <pcl/filters/passthrough.h>
 
 std::vector<std::string> read_under_folder(std::string pcd_file_folder)
 {
@@ -177,11 +178,36 @@ typename pcl::PointCloud<PointT>::Ptr DataLoader<PointT>::remove_double_return(t
 }
 
 template <typename PointT>
-typename pcl::PointCloud<PointT>::Ptr DataLoader<PointT>::get_cloud(int i, bool remove_double_return_flag)
+typename pcl::PointCloud<PointT>::Ptr DataLoader<PointT>::filter_low_intensity(typename pcl::PointCloud<PointT>::Ptr input_pointcloud)
+{
+    // get intensity field name
+    std::string intensity_field_name;
+    if (std::is_same<PointT, VilensPointT>::value)
+    {
+        intensity_field_name = "curvature";
+    }
+    else if (std::is_same<PointT, BagPointT>::value)
+    {
+        intensity_field_name = "intensity";
+    }
+
+    // filter point cloud by intensity
+    pcl::PassThrough<PointT> filter_low_intensity_points;
+    filter_low_intensity_points.setInputCloud(input_pointcloud);
+    filter_low_intensity_points.setFilterFieldName (intensity_field_name);
+    filter_low_intensity_points.setFilterLimits(150, 255);
+    filter_low_intensity_points.filter(*input_pointcloud);
+
+    return input_pointcloud;
+}
+
+template <typename PointT>
+typename pcl::PointCloud<PointT>::Ptr DataLoader<PointT>::get_cloud(int i, bool remove_double_return_flag, bool filter_low_intensity_flag)
 {
     typename pcl::PointCloud<PointT>::Ptr loaded_pointcloud = load_pointcloud<PointT>(pcd_file_list_[i]);
 
     if (remove_double_return_flag) loaded_pointcloud = remove_double_return(loaded_pointcloud);
+    if (filter_low_intensity_flag) loaded_pointcloud = filter_low_intensity(loaded_pointcloud);
 
     return loaded_pointcloud;
 }

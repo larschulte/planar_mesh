@@ -22,7 +22,7 @@ public:
     void load_dataset(std::string pcd_file_folder, std::string pose_file_path, double azimuth_resolution, double altitude_resolution);
     DataLoader(std::string pcd_file_folder, std::string pose_file_path);
 
-    typename pcl::PointCloud<PointT>::Ptr get_cloud(int i, bool remove_double_return_flag);
+    typename pcl::PointCloud<PointT>::Ptr get_cloud(int i, bool remove_double_return_flag, bool filter_low_intensity_flag);
     Eigen::Affine3d get_pose(int i);
     int size();
 
@@ -34,4 +34,5 @@ private:
     double altitude_resolution_;
 
     typename pcl::PointCloud<PointT>::Ptr remove_double_return(typename pcl::PointCloud<PointT>::Ptr input_pointcloud);
+    typename pcl::PointCloud<PointT>::Ptr filter_low_intensity(typename pcl::PointCloud<PointT>::Ptr input_pointcloud);
 };

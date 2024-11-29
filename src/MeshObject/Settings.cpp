@@ -58,6 +58,8 @@ Settings::Settings()
         altitude_resolution = 1.5;
     }
     process_every_n_points = 1;
+
+    filter_low_intensity = true;
     
     start_cloud = 0;
     start_point = 0;

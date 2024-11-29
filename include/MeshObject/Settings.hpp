@@ -60,6 +60,8 @@ struct Settings
     double azimuth_resolution;
     double altitude_resolution;
 
+    bool filter_low_intensity;
+
     unsigned int num_of_delete_before_put_to_repeated_queue;
 
     unsigned int num_threads;
