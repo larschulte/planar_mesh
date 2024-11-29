@@ -276,12 +276,12 @@ RelativePosition Surface::check_relative_position(const Eigen::Vector3d& origin,
 
 RelativePosition Surface::check_relative_position(const std::shared_ptr<GenericPoint>& generic_point)
 {
-    return check_relative_position(generic_point->get_origin(), generic_point->get_position(), generic_point->get_direction());
+    return check_relative_position(generic_point->get_distance_travelled(), generic_point->get_origin(), generic_point->get_position(), generic_point->get_direction());
 }
 
 RelativePosition Surface::check_relative_position(const std::shared_ptr<Vertex>& vertex)
 {
-    return check_relative_position(vertex->get_origin(), vertex->get_position(), vertex->get_direction());
+    return check_relative_position(vertex->get_distance_travelled(), vertex->get_origin(), vertex->get_position(), vertex->get_direction());
 }
 
 // RelativePosition Surface::check_relative_position(const std::shared_ptr<Vertex>& vertex)
@@ -316,7 +316,7 @@ RelativePosition Surface::check_relative_position(const std::shared_ptr<Vertex>&
 
 RelativePosition Surface::check_relative_position(const std::shared_ptr<InteriorPoint>& interior_point)
 {
-    return check_relative_position(interior_point->get_origin(), interior_point->get_position(), interior_point->get_direction());
+    return check_relative_position(interior_point->get_distance_travelled(), interior_point->get_origin(), interior_point->get_position(), interior_point->get_direction());
 }
 
 // RelativePosition Surface::check_relative_position(const std::shared_ptr<InteriorPoint>& interior_point)

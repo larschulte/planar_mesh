@@ -70,7 +70,7 @@ private:
     std::size_t ith_point;
     std::size_t ith_size;
     Eigen::Vector3d origin;
-    double distance_traveled;
+    double distance_travelled_;
     typename pcl::PointCloud<PointT>::Ptr pointcloud;
 
     // settings

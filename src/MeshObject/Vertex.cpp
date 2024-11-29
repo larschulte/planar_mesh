@@ -13,7 +13,7 @@
 
 Settings Vertex::settings_;
 
-void Vertex::initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<Surface>& surface, const Eigen::Vector3d& position, const Eigen::Vector3d& origin, const double& radius)
+void Vertex::initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<Surface>& surface, const Eigen::Vector3d& position, const Eigen::Vector3d& origin, const double& radius, double distance_travelled)
 {
     // set expired
     is_expired_ = false;
@@ -28,6 +28,7 @@ void Vertex::initialize_(const std::shared_ptr<Storage>& storage, const std::sha
     storage_ = storage;
     position_ = position;
     origin_ = origin;
+    distance_travelled_ = distance_travelled;
     direction_ = (position_ - origin_).normalized();
 
     // num of deletes
@@ -48,15 +49,15 @@ void Vertex::initialize_(const std::shared_ptr<Storage>& storage, const std::sha
 
 void Vertex::initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<Surface>& surface, const std::shared_ptr<GenericPoint>& generic_point)
 {
-    initialize_(storage, surface, generic_point->get_position(), generic_point->get_origin(), generic_point->get_radius());
+    initialize_(storage, surface, generic_point->get_position(), generic_point->get_origin(), generic_point->get_radius(), generic_point->get_distance_travelled());
     previous_surface_ = generic_point->get_previous_surface();
     previous_radius_ = generic_point->get_previous_radius();
     num_deletes_ = generic_point->get_num_deletes();
 }
 
-void Vertex::initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<Surface>& surface, const Eigen::Vector3d& position, const Eigen::Vector3d& origin)
+void Vertex::initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<Surface>& surface, const Eigen::Vector3d& position, const Eigen::Vector3d& origin, double distance_travelled)
 {
-    std::shared_ptr<GenericPoint> generic_point = storage->add_generic_point(position, origin);
+    std::shared_ptr<GenericPoint> generic_point = storage->add_generic_point(position, origin, distance_travelled);
     initialize_(storage, surface, generic_point);
     storage->delete_generic_point(generic_point);
 }
@@ -192,6 +193,11 @@ const double& Vertex::buffer_compute_projected_distance() { return buffer_comput
 const Eigen::Vector3d& Vertex::get_origin() const 
 { 
     return origin_; 
+}
+
+const double& Vertex::get_distance_travelled() const 
+{ 
+    return distance_travelled_; 
 }
 
 const Eigen::Vector3d& Vertex::get_direction() const 

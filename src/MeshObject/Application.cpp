@@ -118,8 +118,8 @@ void Application<PointT>::load_point_cloud()
     // update origin and distance traveled
     Eigen::Vector3d previous_origin = origin;
     origin = pose.translation();
-    distance_traveled += (origin - previous_origin).norm();
-    std::cout << "distance traveled: " << distance_traveled << std::endl;
+    distance_travelled_ += (origin - previous_origin).norm();
+    std::cout << "distance traveled: " << distance_travelled_ << std::endl;
 
     // shuffle pointcloud
     if (settings_.shuffle_pointcloud) 
@@ -1157,7 +1157,7 @@ void Application<PointT>::step()
     if (settings_.log.step) std::cout << "==================================================================== Processing point " << ith_point << " of cloud " << ith_cloud << std::endl;
 
     std::shared_ptr<GenericPoint> generic_point = std::make_shared<GenericPoint>();
-    generic_point->initialize_(storage_, thisPointVEC, thisPointOriginVEC);
+    generic_point->initialize_(storage_, thisPointVEC, thisPointOriginVEC, distance_travelled_);
     process_point(generic_point);
 }
 
@@ -1170,7 +1170,7 @@ void Application<PointT>::loop()
         Eigen::Vector3d thisPointVEC = pointcloud->points[i].getVector3fMap().template cast<double>();
         Eigen::Vector3d thisPointOriginVEC = this->origin;
 
-        storage_->add_to_main_queue(thisPointVEC, thisPointOriginVEC);
+        storage_->add_to_main_queue(thisPointVEC, thisPointOriginVEC, distance_travelled_);
     }
 
     // add points from repeated queue to queue
@@ -1281,7 +1281,7 @@ void Application<PointT>::restart()
     ith_point = 0;
     ith_size = 0;
     origin = Eigen::Vector3d(0, 0, 0);
-    distance_traveled = 0;
+    distance_travelled_ = 0;
     
     // load point cloud
     load_point_cloud();

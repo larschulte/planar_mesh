@@ -13,7 +13,7 @@ class Storage;
 class GenericPoint : public std::enable_shared_from_this<GenericPoint>, public MeshObject
 {
 public:
-    void initialize_(const std::shared_ptr<Storage>& storage, const Eigen::Vector3d& position, const Eigen::Vector3d& origin);
+    void initialize_(const std::shared_ptr<Storage>& storage, const Eigen::Vector3d& position, const Eigen::Vector3d& origin, double distance_travelled);
 
 protected:
     friend class Storage;
@@ -25,6 +25,7 @@ public:
     const int& get_id() const;
     const Eigen::Vector3d& get_position() const;
     const Eigen::Vector3d& get_origin() const;
+    const double& get_distance_travelled() const;
     const Eigen::Vector3d& get_direction() const;
     const Eigen::Vector3d& get_inv_direction() const;
     const double& get_radius() const;
@@ -51,6 +52,7 @@ private:
     std::shared_ptr<Storage> storage_;
     Eigen::Vector3d position_;
     Eigen::Vector3d origin_;
+    double distance_travelled_;
     Eigen::Vector3d direction_;
     Eigen::Vector3d inv_direction_;
     double radius_;

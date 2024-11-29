@@ -9,7 +9,7 @@
 
 Settings InteriorPoint::settings_;
 
-void InteriorPoint::initialize_(const std::shared_ptr<Storage>& storage, const Eigen::Vector3d& position, const Eigen::Vector3d& origin, const double& radius)
+void InteriorPoint::initialize_(const std::shared_ptr<Storage>& storage, const Eigen::Vector3d& position, const Eigen::Vector3d& origin, const double& radius, double distance_travelled)
 {
     // set expired
     is_expired_ = false;
@@ -26,6 +26,7 @@ void InteriorPoint::initialize_(const std::shared_ptr<Storage>& storage, const E
     // store
     position_ = position;
     origin_ = origin;
+    distance_travelled_ = distance_travelled;
     direction_ = (position_ - origin_).normalized();
     radius_ = radius;
 
@@ -35,16 +36,16 @@ void InteriorPoint::initialize_(const std::shared_ptr<Storage>& storage, const E
     if (settings_.log.initialize) std::cout << "InteriorPoint " << id_ << " created.\n";
 }
 
-void InteriorPoint::initialize_(const std::shared_ptr<Storage>& storage, const Eigen::Vector3d& position, const Eigen::Vector3d& origin)
+void InteriorPoint::initialize_(const std::shared_ptr<Storage>& storage, const Eigen::Vector3d& position, const Eigen::Vector3d& origin, double distance_travelled)
 {
-    std::shared_ptr<GenericPoint> generic_point = storage->add_generic_point(position, origin);
+    std::shared_ptr<GenericPoint> generic_point = storage->add_generic_point(position, origin, distance_travelled);
     initialize_(storage, generic_point);
     storage->delete_generic_point(generic_point);
 }
 
 void InteriorPoint::initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<GenericPoint>& generic_point)
 {
-    initialize_(storage, generic_point->get_position(), generic_point->get_origin(), generic_point->get_radius());
+    initialize_(storage, generic_point->get_position(), generic_point->get_origin(), generic_point->get_radius(), generic_point->get_distance_travelled());
     previous_surface_ = generic_point->get_previous_surface();
     previous_radius_ = generic_point->get_previous_radius();
     num_deletes_ = generic_point->get_num_deletes();
@@ -93,6 +94,11 @@ const Eigen::Vector3d& InteriorPoint::get_position() const
 const Eigen::Vector3d& InteriorPoint::get_origin() const
 {
     return origin_;
+}
+
+const double& InteriorPoint::get_distance_travelled() const
+{
+    return distance_travelled_;
 }
 
 const Eigen::Vector3d& InteriorPoint::get_direction() const

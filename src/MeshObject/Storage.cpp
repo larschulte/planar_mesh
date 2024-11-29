@@ -42,11 +42,11 @@ Storage::~Storage()
     is_expired_ = true;
 }
 
-const std::shared_ptr<Vertex>& Storage::add_vertex(const std::shared_ptr<Surface>& surface, const Eigen::Vector3d& origin, const Eigen::Vector3d& position) 
+const std::shared_ptr<Vertex>& Storage::add_vertex(const std::shared_ptr<Surface>& surface, const Eigen::Vector3d& origin, const Eigen::Vector3d& position, double distance_travelled) 
 {
     // create
     std::shared_ptr<Vertex> vertex = std::make_shared<Vertex>();
-    vertex->initialize_(shared_from_this(), surface, position, origin);
+    vertex->initialize_(shared_from_this(), surface, position, origin, distance_travelled);
 
     // lock
     std::lock_guard<std::mutex> lock(vertices_mutex_);
@@ -55,11 +55,11 @@ const std::shared_ptr<Vertex>& Storage::add_vertex(const std::shared_ptr<Surface
     return *vertices_.insert(vertex).first;
 }
 
-const std::shared_ptr<Vertex>& Storage::add_vertex(const std::shared_ptr<Surface>& surface, const Eigen::Vector3d& origin, const Eigen::Vector3d& position, const double& radius)
+const std::shared_ptr<Vertex>& Storage::add_vertex(const std::shared_ptr<Surface>& surface, const Eigen::Vector3d& origin, const Eigen::Vector3d& position, const double& radius, double distance_travelled) 
 {
     // create
     std::shared_ptr<Vertex> vertex = std::make_shared<Vertex>();
-    vertex->initialize_(shared_from_this(), surface, position, origin, radius);
+    vertex->initialize_(shared_from_this(), surface, position, origin, radius, distance_travelled);
 
     // lock
     std::lock_guard<std::mutex> lock(vertices_mutex_);
@@ -120,11 +120,11 @@ const std::shared_ptr<Surface>& Storage::add_surface()
     return *surfaces_.insert(surface).first;
 }
 
-const std::shared_ptr<GenericPoint>& Storage::add_generic_point(const Eigen::Vector3d& position, const Eigen::Vector3d& origin) 
+const std::shared_ptr<GenericPoint>& Storage::add_generic_point(const Eigen::Vector3d& position, const Eigen::Vector3d& origin, double distance_travelled) 
 {
     // create
     std::shared_ptr<GenericPoint> genertic_point = std::make_shared<GenericPoint>();
-    genertic_point->initialize_(shared_from_this(), position, origin);
+    genertic_point->initialize_(shared_from_this(), position, origin, distance_travelled);
 
     // lock
     std::lock_guard<std::mutex> lock(genertic_points_mutex_);
@@ -159,11 +159,11 @@ const std::shared_ptr<GenericPoint>& Storage::add_generic_point(const std::share
     return *genertic_points_.insert(genertic_point).first;
 }
 
-const std::shared_ptr<InteriorPoint>& Storage::add_interior_point(const Eigen::Vector3d& position, const Eigen::Vector3d& origin) 
+const std::shared_ptr<InteriorPoint>& Storage::add_interior_point(const Eigen::Vector3d& position, const Eigen::Vector3d& origin, double distance_travelled) 
 {
     // create
     std::shared_ptr<InteriorPoint> interior_point = std::make_shared<InteriorPoint>();
-    interior_point->initialize_(shared_from_this(), position, origin);
+    interior_point->initialize_(shared_from_this(), position, origin, distance_travelled);
 
     // lock
     std::lock_guard<std::mutex> lock(interior_points_mutex_);
@@ -291,10 +291,10 @@ void Storage::delete_interior_point(const std::shared_ptr<InteriorPoint>& interi
     interior_point->delete_();
 }
 
-void Storage::add_to_main_queue(const Eigen::Vector3d& position, const Eigen::Vector3d& origin) 
+void Storage::add_to_main_queue(const Eigen::Vector3d& position, const Eigen::Vector3d& origin, double distance_travelled)
 {
     std::shared_ptr<GenericPoint> queue_point = std::make_shared<GenericPoint>();
-    queue_point->initialize_(shared_from_this(), position, origin);
+    queue_point->initialize_(shared_from_this(), position, origin, distance_travelled);
 
     main_queue_.push(queue_point);
 }
@@ -509,10 +509,10 @@ void Storage::split_main_queue_into_smaller_queues_by_contention()
     }
 }
 
-void Storage::add_to_queue(const Eigen::Vector3d& position, const Eigen::Vector3d& origin) 
+void Storage::add_to_queue(const Eigen::Vector3d& position, const Eigen::Vector3d& origin, double distance_travelled) 
 {
     std::shared_ptr<GenericPoint> queue_point = std::make_shared<GenericPoint>();
-    queue_point->initialize_(shared_from_this(), position, origin);
+    queue_point->initialize_(shared_from_this(), position, origin, distance_travelled);
 
     smaller_queues_[omp_get_thread_num()].push(queue_point);
 }
