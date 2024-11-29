@@ -93,6 +93,7 @@ double Application<PointT>::compute_eigenvalue_of_merged_surfaces(std::shared_pt
 template <typename PointT>
 void Application<PointT>::load_point_cloud()
 {
+    // fix ith_cloud
     if (ith_cloud < 0)
     {
         if (settings_.log.load_point_cloud) std::cout << "reached the first pointcloud" << std::endl;
@@ -104,21 +105,30 @@ void Application<PointT>::load_point_cloud()
         ith_cloud = data_loader.size() - 1;
     }
     
+    // get cloud and pose
     typename pcl::PointCloud<PointT>::Ptr pointcloud_local = data_loader.get_cloud(ith_cloud);
     Eigen::Affine3d pose = data_loader.get_pose(ith_cloud);
+
+    // get number of points in the current cloud
+    ith_size = pointcloud_local->size();
+
+    // transform cloud to global
     pointcloud = transform_cloud_to_global<PointT>(pointcloud_local, pose);
+
+    // update origin and distance traveled
     Eigen::Vector3d previous_origin = origin;
     origin = pose.translation();
     distance_traveled += (origin - previous_origin).norm();
     std::cout << "distance traveled: " << distance_traveled << std::endl;
-    ith_size = pointcloud->size() * settings_.pointcloud_fraction;
 
-    if (settings_.log.load_point_cloud) std::cout << "loaded pointcloud " << ith_cloud << " with " << pointcloud->size() << " points" << std::endl;
-
+    // shuffle pointcloud
     if (settings_.shuffle_pointcloud) 
     {
         std::random_shuffle(pointcloud->points.begin(), pointcloud->points.end());
     }
+
+    // log
+    if (settings_.log.load_point_cloud) std::cout << "loaded pointcloud " << ith_cloud << " with " << pointcloud->size() << " points" << std::endl;
 }
 
 template <typename PointT>
@@ -1267,10 +1277,11 @@ void Application<PointT>::restart()
     data_loader.load_dataset(settings_.data_loader_settings);
 
     // reset state
+    ith_cloud = settings_.data_loader_settings.start_cloud;
+    ith_point = 0;
+    ith_size = 0;
     origin = Eigen::Vector3d(0, 0, 0);
     distance_traveled = 0;
-    ith_cloud = settings_.data_loader_settings.start_cloud;
-    ith_point = settings_.data_loader_settings.start_point;
     
     // load point cloud
     load_point_cloud();
