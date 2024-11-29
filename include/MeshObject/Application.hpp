@@ -72,6 +72,7 @@ private:
     std::string dataset;
     typename pcl::PointCloud<PointT>::Ptr pointcloud;
     Eigen::Vector3d origin;
+    double distance_traveled;
 
     // settings
     Settings settings_;
