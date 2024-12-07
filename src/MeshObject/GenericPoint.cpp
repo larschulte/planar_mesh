@@ -123,6 +123,11 @@ bool GenericPoint::is_expired() const
     return is_expired_;
 }
 
+double& GenericPoint::get_projected_uncertainty()
+{
+    return projected_uncertainty_;
+}
+
 std::size_t GenericPoint::get_num_deletes() const
 {
     return num_deletes_;

@@ -49,6 +49,7 @@ void InteriorPoint::initialize_(const std::shared_ptr<Storage>& storage, const s
     previous_surface_ = generic_point->get_previous_surface();
     previous_radius_ = generic_point->get_previous_radius();
     num_deletes_ = generic_point->get_num_deletes();
+    projected_uncertainty_ = generic_point->get_projected_uncertainty();
 }
 
 void InteriorPoint::delete_()
@@ -163,6 +164,11 @@ const double& InteriorPoint::buffer_compute_projected_distance() { return buffer
 bool InteriorPoint::is_expired() const
 {
     return is_expired_;
+}
+
+double& InteriorPoint::get_projected_uncertainty()
+{
+    return projected_uncertainty_;
 }
 
 std::size_t InteriorPoint::get_num_deletes() const

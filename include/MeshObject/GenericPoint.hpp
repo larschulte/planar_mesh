@@ -33,6 +33,8 @@ public:
     const std::shared_ptr<Surface>& get_previous_surface() const;
     bool is_expired() const;
 
+    double& get_projected_uncertainty();
+
     std::size_t get_num_deletes() const;
     void reset_num_deletes();
 
@@ -58,6 +60,8 @@ private:
     double radius_;
     double previous_radius_;
     std::shared_ptr<Surface> previous_surface_;
+
+    double projected_uncertainty_;
 };
 
 bool operator<(const std::shared_ptr<Vertex>& lhs, const std::shared_ptr<Vertex>& rhs);

@@ -47,7 +47,7 @@ public:
     double compute_point_projective_distance_with_improved_covariance(const Eigen::Vector3d& origin, const Eigen::Vector3d& point) const;
     Eigen::Vector3d compute_point_projective_position(const Eigen::Vector3d& origin, const Eigen::Vector3d& point) const;
 
-    RelativePosition check_relative_position(double distance_travelled, const Eigen::Vector3d& origin, const Eigen::Vector3d& point, const Eigen::Vector3d& direction);
+    RelativePosition check_relative_position(double distance_travelled, const Eigen::Vector3d& origin, const Eigen::Vector3d& point, const Eigen::Vector3d& direction, double& projected_uncertainty);
     RelativePosition check_relative_position(const std::shared_ptr<GenericPoint>& generic_point);
     RelativePosition check_relative_position(const std::shared_ptr<Vertex>& vertex);
     RelativePosition check_relative_position(const std::shared_ptr<InteriorPoint>& interior_point);

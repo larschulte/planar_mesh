@@ -49,6 +49,8 @@ public:
     std::size_t get_num_deletes() const;
     double get_current_surface_uncertainty() const;
 
+    double& get_projected_uncertainty();
+
     // void try_merge_surfaces();
 
     const Eigen::Vector3d& buffer_compute_projected_position(const std::shared_ptr<Surface> surface);
@@ -150,6 +152,8 @@ private:
     Eigen::Vector3d origin_;
     double distance_travelled_;
     Eigen::Vector3d direction_;
+
+    double projected_uncertainty_;
 };
 
 bool operator<(const std::shared_ptr<Vertex>& lhs, const std::shared_ptr<Vertex>& rhs);

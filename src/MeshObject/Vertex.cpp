@@ -53,6 +53,7 @@ void Vertex::initialize_(const std::shared_ptr<Storage>& storage, const std::sha
     previous_surface_ = generic_point->get_previous_surface();
     previous_radius_ = generic_point->get_previous_radius();
     num_deletes_ = generic_point->get_num_deletes();
+    projected_uncertainty_ = generic_point->get_projected_uncertainty();
 }
 
 void Vertex::initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<Surface>& surface, const Eigen::Vector3d& position, const Eigen::Vector3d& origin, double distance_travelled)
@@ -247,6 +248,11 @@ std::size_t Vertex::get_num_deletes() const
 double Vertex::get_current_surface_uncertainty() const
 {
     return current_surface_uncertainty_;
+}
+
+double& Vertex::get_projected_uncertainty()
+{
+    return projected_uncertainty_;
 }
 
 // void Vertex::try_merge_surfaces()

@@ -34,6 +34,8 @@ public:
     const double& get_radius() const;
     bool is_expired() const;
 
+    double& get_projected_uncertainty();
+
     std::size_t get_num_deletes() const;
 
     const Eigen::Vector3d& buffer_compute_projected_position(const std::shared_ptr<Surface> surface);
@@ -84,6 +86,8 @@ private:
     double distance_travelled_;
     Eigen::Vector3d direction_;
     double radius_;
+
+    double projected_uncertainty_;
 
     FIFOCache<std::size_t, Eigen::Vector3d> buffer_projected_position_{3};
     FIFOCache<std::size_t, double> buffer_projected_distance_{3};

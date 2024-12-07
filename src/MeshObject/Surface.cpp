@@ -149,7 +149,7 @@ Eigen::Vector3d Surface::compute_point_projective_position(const Eigen::Vector3d
     return intersection;
 }
 
-RelativePosition Surface::check_relative_position(double distance_travelled, const Eigen::Vector3d& origin, const Eigen::Vector3d& point, const Eigen::Vector3d& direction)
+RelativePosition Surface::check_relative_position(double distance_travelled, const Eigen::Vector3d& origin, const Eigen::Vector3d& point, const Eigen::Vector3d& direction, double& projected_uncertainty)
 {
     // compute point to plane projective distance std
     const bool use_improved_covariance = true;
@@ -211,7 +211,11 @@ RelativePosition Surface::check_relative_position(double distance_travelled, con
         // return
         if (points_in_front_of_surface) return RelativePosition::IN_FRONT;
         else if (points_behind_surface) return RelativePosition::BEHIND;
-        else if (points_within_surface) return RelativePosition::WITHIN;
+        else if (points_within_surface)
+        {
+            projected_uncertainty = combined_std;
+            return RelativePosition::WITHIN;
+        } 
         else throw std::runtime_error("Invalid relative position.");
 
         // // print all
@@ -280,12 +284,12 @@ RelativePosition Surface::check_relative_position(double distance_travelled, con
 
 RelativePosition Surface::check_relative_position(const std::shared_ptr<GenericPoint>& generic_point)
 {
-    return check_relative_position(generic_point->get_distance_travelled(), generic_point->get_origin(), generic_point->get_position(), generic_point->get_direction());
+    return check_relative_position(generic_point->get_distance_travelled(), generic_point->get_origin(), generic_point->get_position(), generic_point->get_direction(), generic_point->get_projected_uncertainty());
 }
 
 RelativePosition Surface::check_relative_position(const std::shared_ptr<Vertex>& vertex)
 {
-    return check_relative_position(vertex->get_distance_travelled(), vertex->get_origin(), vertex->get_position(), vertex->get_direction());
+    return check_relative_position(vertex->get_distance_travelled(), vertex->get_origin(), vertex->get_position(), vertex->get_direction(), vertex->get_projected_uncertainty());
 }
 
 // RelativePosition Surface::check_relative_position(const std::shared_ptr<Vertex>& vertex)
@@ -320,7 +324,7 @@ RelativePosition Surface::check_relative_position(const std::shared_ptr<Vertex>&
 
 RelativePosition Surface::check_relative_position(const std::shared_ptr<InteriorPoint>& interior_point)
 {
-    return check_relative_position(interior_point->get_distance_travelled(), interior_point->get_origin(), interior_point->get_position(), interior_point->get_direction());
+    return check_relative_position(interior_point->get_distance_travelled(), interior_point->get_origin(), interior_point->get_position(), interior_point->get_direction(), interior_point->get_projected_uncertainty());
 }
 
 // RelativePosition Surface::check_relative_position(const std::shared_ptr<InteriorPoint>& interior_point)
