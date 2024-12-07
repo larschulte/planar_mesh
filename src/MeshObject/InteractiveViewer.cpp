@@ -226,11 +226,11 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
     // kp number 2
     if (event.getKeySym() == "KP_Down" && event.keyDown())
     {
-        settings_.color_mode = ColorMode::SIBLINGS;
+        settings_.color_mode = ColorMode::POSITIONAL_UNCERTAINTY_NORMALIZED;
         update_display();
 
         // log
-        std::cout << "color_mode: number of siblings" << std::endl;
+        std::cout << "color_mode: positional uncertainty normalized" << std::endl;
     }
     // kp number 3
     if (event.getKeySym() == "KP_Next" && event.keyDown())
@@ -271,6 +271,11 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
     // kp number 7
     if (event.getKeySym() == "KP_Home" && event.keyDown())
     { 
+        settings_.color_mode = ColorMode::PROJECTED_UNCERTAINTY;
+        update_display();
+
+        // log
+        std::cout << "color_mode: projected uncertainty" << std::endl;
     }
     // kp numebr 8
     if (event.getKeySym() == "KP_Up" && event.keyDown())

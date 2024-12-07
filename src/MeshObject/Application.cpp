@@ -1348,9 +1348,20 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_interior_poi
             point.g = std::get<1>(color);
             point.b = std::get<2>(color);
         }
-        else if (settings.color_mode == ColorMode::SIBLINGS)
+        else if (settings.color_mode == ColorMode::POSITIONAL_UNCERTAINTY_NORMALIZED)
         {
-            double distance = interior_point->get_sibling_interior_points().size() / settings.siblings_denominator;
+            // print
+            std::cout << "uncertainty: " << interior_point->get_projected_uncertainty() << std::endl;
+
+            double distance = std::abs(interior_point->buffer_compute_projected_distance()) / interior_point->get_projected_uncertainty() / 3.f;
+            std::tuple<int, int, int> color = valueToJet(distance);
+            point.r = std::get<0>(color);
+            point.g = std::get<1>(color);
+            point.b = std::get<2>(color);
+        }
+        else if (settings.color_mode == ColorMode::PROJECTED_UNCERTAINTY)
+        {
+            double distance = interior_point->get_projected_uncertainty() / 0.1f;
             std::tuple<int, int, int> color = valueToJet(distance);
             point.r = std::get<0>(color);
             point.g = std::get<1>(color);
@@ -1485,9 +1496,17 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_vertex_point
             point.g = std::get<1>(color);
             point.b = std::get<2>(color);
         }
-        else if (setting.color_mode == ColorMode::SIBLINGS)
+        else if (setting.color_mode == ColorMode::POSITIONAL_UNCERTAINTY_NORMALIZED)
         {
-            double distance = vertex->get_sibling_vertices().size() / setting.siblings_denominator;
+            double distance = std::abs(vertex->buffer_compute_projected_distance()) / vertex->get_projected_uncertainty() / 3.f;
+            std::tuple<int, int, int> color = valueToJet(distance);
+            point.r = std::get<0>(color);
+            point.g = std::get<1>(color);
+            point.b = std::get<2>(color);
+        }
+        else if (setting.color_mode == ColorMode::PROJECTED_UNCERTAINTY)
+        {
+            double distance = vertex->get_projected_uncertainty() / 0.1f;
             std::tuple<int, int, int> color = valueToJet(distance);
             point.r = std::get<0>(color);
             point.g = std::get<1>(color);
