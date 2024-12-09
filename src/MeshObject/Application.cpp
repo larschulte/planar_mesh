@@ -360,22 +360,6 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
 template <typename PointT>
 bool Application<PointT>::add_point_by_intersection_search(const std::shared_ptr<GenericPoint>& generic_point, double& radius, std::vector<std::shared_ptr<Face>>& searched_faces, std::shared_ptr<Surface>& added_surface)
 {
-    
-    // skip if too close to any vertices of any faces
-    for (const std::shared_ptr<Face>& face : searched_faces)
-    {
-        for (const std::shared_ptr<Vertex>& vertex : face->get_vertices())
-        {
-            double distance = (vertex->get_position() - generic_point->get_position()).norm();
-            if (distance < settings_.duplicated_point_distance_threshold)
-            {
-                if (settings_.log.duplicated_point) std::cout << ">> point too close to existing vertex of face, not adding" << std::endl;
-                added_surface = vertex->get_surface();
-                return true;
-            }
-        }
-    }
-
     // searched surfaces
     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> searched_surfaces;
     for (const std::shared_ptr<Face>& face : searched_faces)
@@ -535,28 +519,6 @@ bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
         if (settings_.log.add_point_by_radius_search) std::cout << ">> no search results, adding new surface" << std::endl;
         return false;
     }
-
-    // if there is search result, check if the current point is too close to existing point
-    // if too close, then the new point will not add any information to the surface
-    // thus we should not add the point
-    for (const std::shared_ptr<Vertex>& vertex : neighboring_vertices)
-    {
-        // skip if the vertex is expired
-        if (vertex->is_expired()) continue;
-
-        // compute distance
-        double distance = (vertex->get_position() - generic_point->get_position()).norm();
-
-        // update closest distance
-        if (distance < settings_.duplicated_point_distance_threshold)
-        {
-            // don't add the point
-            if (settings_.log.duplicated_point) std::cout << ">> point too close to existing point, not adding" << std::endl;
-            added_surface = vertex->get_surface();
-            return true;
-        }
-    }
-
 
     // get neighboring surfaces
     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> neighboring_surfaces; 
