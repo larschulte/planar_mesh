@@ -308,6 +308,9 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
         }
     }
 
+    // moving the reduce radius function inside add_point_by_intersection_search and add_point_by_radius_search is the same as
+    // if the new point is creates as a new surface, it does not reduce radius of nearby surface.
+
     // reduce search radius of all points in bvh_results that are not in the added surface
     for (const std::shared_ptr<Face>& face : bvh_results)
     {
@@ -506,72 +509,65 @@ bool Application<PointT>::add_point_by_intersection_search(const std::shared_ptr
 }
 
 template <typename PointT>
-bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<GenericPoint>& generic_point, double& radius, std::vector<std::shared_ptr<Vertex>>& neighboring_vertices_vector, std::shared_ptr<Surface>& added_surface)
+bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<GenericPoint>& generic_point, double& new_point_radius, std::vector<std::shared_ptr<Vertex>>& rrs_results, std::shared_ptr<Surface>& surface_to_add_to)
 {
+    // log
+    if (settings_.log.add_point_by_radius_search) std::cout << ">> found " << rrs_results.size() << " neighboring vertices" << std::endl;
+
     // convert to set
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> neighboring_vertices(neighboring_vertices_vector.begin(), neighboring_vertices_vector.end());
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> all_vertices(rrs_results.begin(), rrs_results.end());
+
+    // // add to new surface (when no search results)
+    if (all_vertices.size() == 0) return false;
     
-    if (settings_.log.add_point_by_radius_search) std::cout << ">> found " << neighboring_vertices.size() << " neighboring vertices" << std::endl;
-
-    // when no search results
-    if (neighboring_vertices.size() == 0)
-    {
-        if (settings_.log.add_point_by_radius_search) std::cout << ">> no search results, adding new surface" << std::endl;
-        return false;
-    }
-
-    // get neighboring surfaces
-    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> neighboring_surfaces; 
-    for (std::shared_ptr<Vertex> vertex : neighboring_vertices)
+    // all_surfaces
+    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> all_surfaces; 
+    for (std::shared_ptr<Vertex> vertex : all_vertices)
     {
         // only add to neighboring surface if the vertex is boundary in that surface
         if (vertex->is_boundary())
         {
-            neighboring_surfaces.insert(vertex->get_surface());
+            all_surfaces.insert(vertex->get_surface());
         }
     }
-    if (settings_.log.add_point_by_radius_search) std::cout << ">> grouped into " << neighboring_surfaces.size() << " neighboring surfaces" << std::endl;
+    if (settings_.log.add_point_by_radius_search) std::cout << ">> grouped into " << all_surfaces.size() << " neighboring surfaces" << std::endl;
 
-
-    // for each surface, check if confidence surface, then check if new point is within
-    std::set<std::shared_ptr<Surface>> surfaces_with_low_confidence;
-    std::set<std::shared_ptr<Surface>> surfaces_with_point_within;
-    std::set<std::shared_ptr<Surface>> surfaces_with_point_not_within;
-    for (std::shared_ptr<Surface> surface : neighboring_surfaces)
+    // split surfaces into seed, within, and outside
+    std::set<std::shared_ptr<Surface>> surfaces_seed;
+    std::set<std::shared_ptr<Surface>> surfaces_within;
+    std::set<std::shared_ptr<Surface>> surfaces_outside;
+    for (std::shared_ptr<Surface> surface : all_surfaces)
     {
         // skip if the surface is expired
         if (surface->is_expired()) continue;
 
-        // if low confidence surface
-        bool low_confidence = surface->get_total_point_size() < settings_.fit_plane_threshold;
-        if (low_confidence)
+        // seed surface
+        if (surface->get_total_point_size() < settings_.fit_plane_threshold)
         {
-            surfaces_with_low_confidence.insert(surface);
+            surfaces_seed.insert(surface);
+            continue;
         }
-        // else high confidence surface
+        
+        // check relative position
+        RelativePosition relative_position = surface->check_relative_position(generic_point);
+        if (relative_position == RelativePosition::WITHIN)
+        { 
+            surfaces_within.insert(surface);
+        }
         else
         {
-            // if within high confidence surface
-            bool within = surface->check_relative_position(generic_point) == RelativePosition::WITHIN;
-            if (within)
-            { 
-                surfaces_with_point_within.insert(surface);
-            }
-            else
-            {
-                surfaces_with_point_not_within.insert(surface);
-            }
+            surfaces_outside.insert(surface);
         }
     }
 
-    // for points belong to surface_with_point_not_within, update reverse search radius
-    for (std::shared_ptr<Vertex> vertex : neighboring_vertices)
+    // update radius
+    for (std::shared_ptr<Vertex> vertex : all_vertices)
     {
         // skip if the vertex is expired
         if (vertex->is_expired()) continue;
 
         // skip if the vertex is not in surfaces_with_point_not_within
-        if (surfaces_with_point_not_within.find(vertex->get_surface()) == surfaces_with_point_not_within.end()) continue;
+        if (surfaces_outside.find(vertex->get_surface()) == surfaces_outside.end()) continue;
 
         // compute distance
         double distance = (vertex->get_position() - generic_point->get_position()).norm();
@@ -579,65 +575,47 @@ bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
         // reduce reverse search radius
         vertex->reduce_reverse_radius_search_radius(distance);
 
-        // update smallest distance
-        if (distance < radius)
+        // reduce new_point_radius
+        if (distance < new_point_radius) new_point_radius = distance;
+    }
+
+    // add to new surface (when no surfaces within nor seed)
+    if (surfaces_within.size() == 0 && surfaces_seed.size() == 0) return false;
+
+    // decide surface_to_add_to
+    if (surfaces_within.size() > 0)
+    {
+        // add to largest surface
+        int largest_surface_size = 0;
+        for (std::shared_ptr<Surface> surface : surfaces_within)
         {
-            radius = distance;
+            if (surface->get_total_point_size() > largest_surface_size)
+            {
+                largest_surface_size = surface->get_total_point_size();
+                surface_to_add_to = surface;
+            }
+        }
+    }
+    else if (surfaces_seed.size() > 0)
+    {
+        // add to the closest surface
+        double smallest_distance = std::numeric_limits<double>::max();
+        for (std::shared_ptr<Surface> surface : surfaces_seed)
+        {
+            double distance = surface->compute_point_projective_distance(generic_point);
+            if (distance < smallest_distance)
+            {
+                smallest_distance = distance;
+                surface_to_add_to = surface;
+            }
         }
     }
 
-    // if there is surface with points within, add to these surfaces then do a review
-    // if there is no surface with points within, add to all low confidence surfaces
-    // if there is no surface with points within and no low confidence surfaces, add new surface
-    // [todo] if a point is within a surface, but can't connect to it dues to intersecting edge, ignore it for now
-    if (surfaces_with_point_within.size() > 0)
-    {
-        // sort by number of points ([todo] replace by better metric later)
-        std::vector<std::shared_ptr<Surface>> sorted_surfaces_with_point_within;
-        sorted_surfaces_with_point_within.insert(sorted_surfaces_with_point_within.end(), surfaces_with_point_within.begin(), surfaces_with_point_within.end());
-        std::sort(sorted_surfaces_with_point_within.begin(), sorted_surfaces_with_point_within.end(), 
-            [](const std::shared_ptr<Surface>& a, const std::shared_ptr<Surface>& b) -> bool
-            {
-                return a->get_total_point_size() > b->get_total_point_size();
-            });
-        
-        // add to the smallest uncertainty surface as current surface
-        std::shared_ptr<Surface> current_surface = sorted_surfaces_with_point_within[0];
-        std::shared_ptr<Vertex> current_vertex = storage_->add_vertex(current_surface, generic_point);
-
-        current_vertex->reduce_reverse_radius_search_radius(radius);
-        current_vertex->reduce_previous_radius(radius);
-        current_surface->connect_by_edges_and_faces(current_vertex, neighboring_vertices);
-
-        added_surface = current_surface;
-    }
-    else if (surfaces_with_low_confidence.size() > 0)
-    {
-        // add to the smallest surface with low confidence
-
-        // sort by number of points ([todo] replace by better metric later)
-        std::vector<std::shared_ptr<Surface>> sorted_surfaces_with_low_confidence;
-        sorted_surfaces_with_low_confidence.insert(sorted_surfaces_with_low_confidence.end(), surfaces_with_low_confidence.begin(), surfaces_with_low_confidence.end());
-        std::sort(sorted_surfaces_with_low_confidence.begin(), sorted_surfaces_with_low_confidence.end(), 
-            [](const std::shared_ptr<Surface>& a, const std::shared_ptr<Surface>& b) -> bool
-            {
-                return a->get_total_point_size() > b->get_total_point_size();
-            });
-
-        // add to the smallest uncertainty surface
-        std::shared_ptr<Surface> smallest_surface = sorted_surfaces_with_low_confidence[0];
-        std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(smallest_surface, generic_point);
-        new_vertex->reduce_reverse_radius_search_radius(radius);
-        new_vertex->reduce_previous_radius(radius);
-        smallest_surface->connect_by_edges_and_faces(new_vertex, neighboring_vertices);
-
-        added_surface = smallest_surface;
-    }
-    else
-    {
-        return false;
-    }
-
+    // add to surface_to_add_to
+    std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(surface_to_add_to, generic_point);
+    new_vertex->reduce_reverse_radius_search_radius(new_point_radius);
+    new_vertex->reduce_previous_radius(new_point_radius);
+    surface_to_add_to->connect_by_edges_and_faces(new_vertex, all_vertices);
     return true;
 }
 
