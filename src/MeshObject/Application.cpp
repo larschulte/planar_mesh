@@ -279,6 +279,7 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
     // std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
     // process
+    bool added_to_new_surface = false;
     double radius = settings_.radius_value;
     std::shared_ptr<Surface> added_surface;
     if (add_point_by_intersection_search(generic_point, radius, bvh_results, added_surface))
@@ -292,49 +293,51 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
     else
     {
         add_point_by_new_surface(generic_point, radius, added_surface);
+        added_to_new_surface = true;
         // if point added, go to end to unlock all locks
     }
 
     // throw if added_surface is nullptr
     if (added_surface == nullptr) throw std::runtime_error("added surface is nullptr");
 
-    // reduce search radius of all points in rrs_results that are not in the added surface
-    for (const std::shared_ptr<Vertex>& vertex : rrs_results)
+    // don't reduce radius if the point is added to a new surface
+    if (!added_to_new_surface)
     {
-        if (vertex->get_surface() != added_surface)
+        // rrs search radius reduction
+        for (const std::shared_ptr<Vertex>& vertex : rrs_results)
         {
-            const double distance = (vertex->get_position() - generic_point->get_position()).norm();
-            vertex->reduce_reverse_radius_search_radius(distance);
+            if (vertex->get_surface() != added_surface)
+            {
+                const double distance = (vertex->get_position() - generic_point->get_position()).norm();
+                vertex->reduce_reverse_radius_search_radius(distance);
+            }
         }
-    }
 
-    // moving the reduce radius function inside add_point_by_intersection_search and add_point_by_radius_search is the same as
-    // if the new point is creates as a new surface, it does not reduce radius of nearby surface.
-
-    // reduce search radius of all points in bvh_results that are not in the added surface
-    for (const std::shared_ptr<Face>& face : bvh_results)
-    {
-        // skip if expired
-        if (face->is_expired()) continue;
-
-        // skip if the same surface
-        if (face->get_surface() == added_surface) continue;
-
-        // get copy of all vertices and all interior points
-        std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertices = face->get_vertices();
-        std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> interior_points = face->get_interior_points();
-        
-        // for each point of the face
-        for (const std::shared_ptr<Vertex>& vertex : vertices)
+        // bvh search radius reduction
+        for (const std::shared_ptr<Face>& face : bvh_results)
         {
-            const double distance = (vertex->get_position() - generic_point->get_position()).norm();
-            vertex->reduce_reverse_radius_search_radius(distance);
-        }
-        // for each interior point of the face
-        for (const std::shared_ptr<InteriorPoint>& interior_point : interior_points)
-        {
-            const double distance = (interior_point->get_position() - generic_point->get_position()).norm();
-            interior_point->reduce_reverse_radius_search_radius(distance);
+            // skip if expired
+            if (face->is_expired()) continue;
+
+            // skip if the same surface
+            if (face->get_surface() == added_surface) continue;
+
+            // get copy of all vertices and all interior points
+            std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertices = face->get_vertices();
+            std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> interior_points = face->get_interior_points();
+            
+            // for each point of the face
+            for (const std::shared_ptr<Vertex>& vertex : vertices)
+            {
+                const double distance = (vertex->get_position() - generic_point->get_position()).norm();
+                vertex->reduce_reverse_radius_search_radius(distance);
+            }
+            // for each interior point of the face
+            for (const std::shared_ptr<InteriorPoint>& interior_point : interior_points)
+            {
+                const double distance = (interior_point->get_position() - generic_point->get_position()).norm();
+                interior_point->reduce_reverse_radius_search_radius(distance);
+            }
         }
     }
 
@@ -571,9 +574,6 @@ bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
 
         // compute distance
         double distance = (vertex->get_position() - generic_point->get_position()).norm();
-
-        // reduce reverse search radius
-        vertex->reduce_reverse_radius_search_radius(distance);
 
         // reduce new_point_radius
         if (distance < new_point_radius) new_point_radius = distance;
