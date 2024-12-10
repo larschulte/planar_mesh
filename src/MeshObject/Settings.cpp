@@ -144,7 +144,7 @@ Settings::Settings()
     color_mode = ColorMode::ID;
     surface_denominator = 10.0;
     siblings_denominator = 3.0;
-    radius_denominator = radius_value;
+    radius_denominator = 0.3;
     positional_uncertainty_denominator = 0.002;
     contention_denominator = 500;
     show_wireframe = true;
