@@ -454,9 +454,6 @@ bool Application<PointT>::add_point_by_intersection_search(const std::shared_ptr
         }
     }
 
-    // add point by radius search or new surface (when no surfaces within nor seed)
-    if (surfaces_within.size() == 0 && surfaces_seed.size() == 0) return false;
-
     // decide surface_to_add_to
     if (surfaces_within.size() > 0)
     {
@@ -484,6 +481,11 @@ bool Application<PointT>::add_point_by_intersection_search(const std::shared_ptr
                 surface_to_add_to = surface;
             }
         }
+    }
+    else
+    {
+        // add point by radius search or new surface (when no surfaces within nor seed)
+        return false;
     }
 
     // log
@@ -577,9 +579,6 @@ bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
         if (distance < new_point_radius) new_point_radius = distance;
     }
 
-    // add to new surface (when no surfaces within nor seed)
-    if (surfaces_within.size() == 0 && surfaces_seed.size() == 0) return false;
-
     // decide surface_to_add_to
     if (surfaces_within.size() > 0)
     {
@@ -607,6 +606,11 @@ bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
                 surface_to_add_to = surface;
             }
         }
+    }
+    else
+    {
+        // add to new surface (when no surfaces within nor seed)
+        return false;
     }
 
     // add to surface_to_add_to
