@@ -28,16 +28,16 @@ public: // to user
     Storage();
     ~Storage();
 
-    const std::shared_ptr<Vertex>& add_vertex(const std::shared_ptr<Surface>& surface, const Eigen::Vector3d& origin, const Eigen::Vector3d& position);
-    const std::shared_ptr<Vertex>& add_vertex(const std::shared_ptr<Surface>& surface, const Eigen::Vector3d& origin, const Eigen::Vector3d& position, const double& radius);
+    const std::shared_ptr<Vertex>& add_vertex(const std::shared_ptr<Surface>& surface, const Eigen::Vector3d& origin, const Eigen::Vector3d& position, double distance_travelled);
+    const std::shared_ptr<Vertex>& add_vertex(const std::shared_ptr<Surface>& surface, const Eigen::Vector3d& origin, const Eigen::Vector3d& position, const double& radius, double distance_travelled);
     const std::shared_ptr<Vertex>& add_vertex(const std::shared_ptr<Surface>& surface, const std::shared_ptr<GenericPoint>& generic_point);
     const std::shared_ptr<Edge>& add_edge(const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2);
     const std::shared_ptr<Face>& add_face(const std::shared_ptr<Surface>& surface, const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2, const std::shared_ptr<Vertex>& vertex3);
     const std::shared_ptr<Surface>& add_surface();
-    const std::shared_ptr<GenericPoint>& add_generic_point(const Eigen::Vector3d& position, const Eigen::Vector3d& origin);
+    const std::shared_ptr<GenericPoint>& add_generic_point(const Eigen::Vector3d& position, const Eigen::Vector3d& origin, double distance_travelled);
     const std::shared_ptr<GenericPoint>& add_generic_point(const std::shared_ptr<Vertex>& vertex);
     const std::shared_ptr<GenericPoint>& add_generic_point(const std::shared_ptr<InteriorPoint>& interior_point);
-    const std::shared_ptr<InteriorPoint>& add_interior_point(const Eigen::Vector3d& position, const Eigen::Vector3d& origin);
+    const std::shared_ptr<InteriorPoint>& add_interior_point(const Eigen::Vector3d& position, const Eigen::Vector3d& origin, double distance_travelled);
     const std::shared_ptr<InteriorPoint>& add_interior_point(const std::shared_ptr<GenericPoint>& generic_point);
     
     void delete_vertex(const std::shared_ptr<Vertex>& vertex);
@@ -47,7 +47,7 @@ public: // to user
     void delete_generic_point(const std::shared_ptr<GenericPoint>& genertic_point);
     void delete_interior_point(const std::shared_ptr<InteriorPoint>& interior_point);
 
-    void add_to_main_queue(const Eigen::Vector3d& position, const Eigen::Vector3d& origin);
+    void add_to_main_queue(const Eigen::Vector3d& position, const Eigen::Vector3d& origin, double distance_travelled);
     void split_main_queue_into_smaller_queues();
     void split_main_queue_into_smaller_queues_by_contention();
     void print_main_queue_stats();
@@ -55,7 +55,7 @@ public: // to user
     void add_points_in_smaller_repeated_queues_to_main_queue();
     void add_points_in_smaller_abort_queues_to_main_queue();
 
-    void add_to_queue(const Eigen::Vector3d& position, const Eigen::Vector3d& origin);
+    void add_to_queue(const Eigen::Vector3d& position, const Eigen::Vector3d& origin, double distance_travelled);
     void add_to_queue(const std::shared_ptr<GenericPoint>& generic_point);
     void add_to_queue(const std::shared_ptr<InteriorPoint>& interior_point);
     void add_to_queue(const std::shared_ptr<Vertex>& vertex);

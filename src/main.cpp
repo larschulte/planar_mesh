@@ -4,8 +4,8 @@
 #include "point_type/VilensPointT.hpp"
 #include "point_type/BagPointT.hpp"
 
-// using InputPointT = VilensPointT;
-using InputPointT = BagPointT;
+using InputPointT = VilensPointT;
+// using InputPointT = BagPointT;
 int main()
 {
     std::srand(30); // Fixed seed

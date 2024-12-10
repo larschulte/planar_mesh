@@ -13,7 +13,7 @@ class Storage;
 class GenericPoint : public std::enable_shared_from_this<GenericPoint>, public MeshObject
 {
 public:
-    void initialize_(const std::shared_ptr<Storage>& storage, const Eigen::Vector3d& position, const Eigen::Vector3d& origin);
+    void initialize_(const std::shared_ptr<Storage>& storage, const Eigen::Vector3d& position, const Eigen::Vector3d& origin, double distance_travelled);
 
 protected:
     friend class Storage;
@@ -25,12 +25,15 @@ public:
     const int& get_id() const;
     const Eigen::Vector3d& get_position() const;
     const Eigen::Vector3d& get_origin() const;
+    const double& get_distance_travelled() const;
     const Eigen::Vector3d& get_direction() const;
     const Eigen::Vector3d& get_inv_direction() const;
     const double& get_radius() const;
     const double& get_previous_radius() const;
     const std::shared_ptr<Surface>& get_previous_surface() const;
     bool is_expired() const;
+
+    double& get_projected_uncertainty();
 
     std::size_t get_num_deletes() const;
     void reset_num_deletes();
@@ -51,11 +54,14 @@ private:
     std::shared_ptr<Storage> storage_;
     Eigen::Vector3d position_;
     Eigen::Vector3d origin_;
+    double distance_travelled_;
     Eigen::Vector3d direction_;
     Eigen::Vector3d inv_direction_;
     double radius_;
     double previous_radius_;
     std::shared_ptr<Surface> previous_surface_;
+
+    double projected_uncertainty_;
 };
 
 bool operator<(const std::shared_ptr<Vertex>& lhs, const std::shared_ptr<Vertex>& rhs);

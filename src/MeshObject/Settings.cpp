@@ -36,8 +36,8 @@ Settings::Settings()
     );
 
     std::string dataset = "nottinghill";
-    cloud_path = dataset_map[dataset].first;
-    pose_path = dataset_map[dataset].second;
+    data_loader_settings.pcd_file_folder = dataset_map[dataset].first;
+    data_loader_settings.pose_file_path = dataset_map[dataset].second;
 
     use_sim_data = false;
     sim_object = 0;
@@ -53,14 +53,16 @@ Settings::Settings()
         range_precision = 0.02;
         range_accuracy = 0.03; 
         radius_ratio = tan(6 * M_PI / 180);
-        remove_double_return = true;
-        azimuth_resolution = 0.6;
-        altitude_resolution = 1.5;
+        data_loader_settings.remove_double_return_flag = true;
+        data_loader_settings.filter_low_intensity_flag = true;
+        data_loader_settings.azimuth_resolution = 0.6;
+        data_loader_settings.altitude_resolution = 1.5;
     }
+    data_loader_settings.start_cloud = 0;
+    data_loader_settings.start_point = 0;
+
     process_every_n_points = 1;
     
-    start_cloud = 0;
-    start_point = 0;
     fit_plane_threshold = 4;
     shuffle_pointcloud = true;
     use_radius_value = true;
@@ -127,7 +129,7 @@ Settings::Settings()
     turn_off_sah = false;
 
     // interactive viewer settings
-    update_display = false;
+    update_display = true;
     flip_color = false;
     show_generic_points = false;
     show_interior_points = true;
@@ -142,7 +144,7 @@ Settings::Settings()
     color_mode = ColorMode::ID;
     surface_denominator = 10.0;
     siblings_denominator = 3.0;
-    radius_denominator = radius_value;
+    radius_denominator = 0.3;
     positional_uncertainty_denominator = 0.002;
     contention_denominator = 500;
     show_wireframe = true;

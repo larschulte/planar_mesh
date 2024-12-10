@@ -18,20 +18,23 @@ class InteriorPoint : public std::enable_shared_from_this<InteriorPoint>, public
 {
 protected:
     friend class Storage;
-    void initialize_(const std::shared_ptr<Storage>& storage, const Eigen::Vector3d& position, const Eigen::Vector3d& origin, const double& radius);
+    void initialize_(const std::shared_ptr<Storage>& storage, const Eigen::Vector3d& position, const Eigen::Vector3d& origin, const double& radius, double distance_travelled);
     void initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<GenericPoint>& generic_point);
-    void initialize_(const std::shared_ptr<Storage>& storage, const Eigen::Vector3d& position, const Eigen::Vector3d& origin);
+    void initialize_(const std::shared_ptr<Storage>& storage, const Eigen::Vector3d& position, const Eigen::Vector3d& origin, double distance_travelled);
     void delete_(); 
 
 public:
     const int& get_id() const;
     const Eigen::Vector3d& get_position() const;
     const Eigen::Vector3d& get_origin() const;
+    const double& get_distance_travelled() const;
     const Eigen::Vector3d& get_direction() const;
     const std::shared_ptr<Surface>& get_surface() const;
     const std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash>& get_sibling_interior_points() const;
     const double& get_radius() const;
     bool is_expired() const;
+
+    double& get_projected_uncertainty();
 
     std::size_t get_num_deletes() const;
 
@@ -48,6 +51,7 @@ public:
     void disconnect(const std::shared_ptr<InteriorPoint>& sibling_interior_point);
 
     void reduce_reverse_radius_search_radius(double radius);
+    void reduce_previous_radius(double radius);
     void set_reverse_radius_search_radius(double radius);
 
     void update_confirmed_status();
@@ -80,8 +84,11 @@ private:
 
     Eigen::Vector3d position_;
     Eigen::Vector3d origin_;
+    double distance_travelled_;
     Eigen::Vector3d direction_;
     double radius_;
+
+    double projected_uncertainty_;
 
     FIFOCache<std::size_t, Eigen::Vector3d> buffer_projected_position_{3};
     FIFOCache<std::size_t, double> buffer_projected_distance_{3};

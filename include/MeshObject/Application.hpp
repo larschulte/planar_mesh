@@ -59,19 +59,19 @@ public:
     
     // data
     void load_point_cloud();
-    int ith_cloud;
-    std::size_t ith_point = 0;
-    std::size_t ith_size = 0;
 
 private:
     // objects
     DataLoader<PointT> data_loader;
     std::shared_ptr<Storage> storage_;
-    
-    // dataset
-    std::string dataset;
-    typename pcl::PointCloud<PointT>::Ptr pointcloud;
+        
+    // state
+    int ith_cloud;
+    std::size_t ith_point;
+    std::size_t ith_size;
     Eigen::Vector3d origin;
+    double distance_travelled_;
+    typename pcl::PointCloud<PointT>::Ptr pointcloud;
 
     // settings
     Settings settings_;

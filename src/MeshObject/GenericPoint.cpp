@@ -5,7 +5,7 @@
 
 Settings GenericPoint::settings_;
 
-void GenericPoint::initialize_(const std::shared_ptr<Storage>& storage, const Eigen::Vector3d& position, const Eigen::Vector3d& origin)
+void GenericPoint::initialize_(const std::shared_ptr<Storage>& storage, const Eigen::Vector3d& position, const Eigen::Vector3d& origin, double distance_travelled)
 {
     // set expired
     is_expired_ = false;
@@ -22,6 +22,7 @@ void GenericPoint::initialize_(const std::shared_ptr<Storage>& storage, const Ei
     // store
     position_ = position;
     origin_ = origin;
+    distance_travelled_ = distance_travelled;
     direction_ = (position - origin).normalized();
     inv_direction_ = direction_.cwiseInverse();
     if (GenericPoint::settings_.use_radius_value)
@@ -41,7 +42,7 @@ void GenericPoint::initialize_(const std::shared_ptr<Storage>& storage, const Ei
 
 void GenericPoint::initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<Vertex>& vertex)
 {
-    initialize_(storage, vertex->get_position(), vertex->get_origin());
+    initialize_(storage, vertex->get_position(), vertex->get_origin(), vertex->get_distance_travelled());
     previous_surface_ = vertex->get_surface();
     previous_radius_ = vertex->get_radius();
 
@@ -50,7 +51,7 @@ void GenericPoint::initialize_(const std::shared_ptr<Storage>& storage, const st
 
 void GenericPoint::initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<InteriorPoint>& interior_point)
 {
-    initialize_(storage, interior_point->get_position(), interior_point->get_origin());
+    initialize_(storage, interior_point->get_position(), interior_point->get_origin(), interior_point->get_distance_travelled());
     previous_surface_ = interior_point->get_surface();
     previous_radius_ = interior_point->get_radius();
 
@@ -87,6 +88,11 @@ const Eigen::Vector3d& GenericPoint::get_origin() const
     return origin_;
 }
 
+const double& GenericPoint::get_distance_travelled() const
+{
+    return distance_travelled_;
+}
+
 const Eigen::Vector3d& GenericPoint::get_direction() const
 {
     return direction_;
@@ -115,6 +121,11 @@ const std::shared_ptr<Surface>& GenericPoint::get_previous_surface() const
 bool GenericPoint::is_expired() const
 {
     return is_expired_;
+}
+
+double& GenericPoint::get_projected_uncertainty()
+{
+    return projected_uncertainty_;
 }
 
 std::size_t GenericPoint::get_num_deletes() const

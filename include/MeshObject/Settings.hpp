@@ -25,25 +25,39 @@ enum class ColorMode
 {
     ID,
     POSITIONAL_UNCERTAINTY,
+    POSITIONAL_UNCERTAINTY_NORMALIZED,
+    PROJECTED_UNCERTAINTY,
     RADIUS,
     SIBLINGS,
     SURFACE_UNCERTAINTY,
-    CONTENTION
+    CONTENTION,
+    DISTANCE_TRAVELLED
+};
+
+struct DataLoader_Settings
+{
+    std::string pcd_file_folder; 
+    std::string pose_file_path; 
+    double azimuth_resolution; 
+    double altitude_resolution;
+    bool remove_double_return_flag;
+    bool filter_low_intensity_flag;
+    int start_cloud;
+    int start_point;
 };
 
 struct Settings 
 {
     Settings();
 
+    // data loader settings
+    DataLoader_Settings data_loader_settings;
+
     // application settings
     bool use_sim_data;
     int sim_object;
     double range_precision;
-    double range_accuracy;
-    std::string cloud_path;
-    std::string pose_path;
-    int start_cloud;
-    std::size_t start_point;
+    double range_accuracy;    
     std::size_t fit_plane_threshold;
     bool shuffle_pointcloud;
     bool use_radius_value;
@@ -55,10 +69,6 @@ struct Settings
 
     double abnormal_size; // number of std
     double envelope_size; // number of std
-
-    bool remove_double_return;
-    double azimuth_resolution;
-    double altitude_resolution;
 
     unsigned int num_of_delete_before_put_to_repeated_queue;
 
