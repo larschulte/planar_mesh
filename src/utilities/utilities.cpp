@@ -102,3 +102,37 @@ Eigen::Matrix3d generate_unit_vector_covariance(const Eigen::Vector3d& unit_vect
     // rotated covariance matrix
     return basis * cov * basis.transpose();
 }
+
+
+double shortest_distance_to_line_segment(const Eigen::Vector3d& rayOrigin, const Eigen::Vector3d& rayEnd, const Eigen::Vector3d& targetPoint) 
+{
+    // Ray direction vector
+    Eigen::Vector3d rayDir = rayEnd - rayOrigin;
+
+    // Vector from ray origin to the target point
+    Eigen::Vector3d toTarget = targetPoint - rayOrigin;
+
+    // Projection factor t
+    double t = toTarget.dot(rayDir) / rayDir.squaredNorm();
+
+    // Closest point on the ray
+    Eigen::Vector3d closestPoint;
+    if (t < 0) 
+    {
+        // Closest point is the ray origin
+        closestPoint = rayOrigin;
+    } 
+    else if (t > 1) 
+    {
+        // Closest point is the ray end
+        closestPoint = rayEnd;
+    }
+    else 
+    {
+        // Closest point lies on the ray
+        closestPoint = rayOrigin + t * rayDir;
+    }
+
+    // Compute the distance from the target point to the closest point
+    return (targetPoint - closestPoint).norm();
+}

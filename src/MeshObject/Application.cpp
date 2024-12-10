@@ -312,22 +312,9 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
             // skip if the same surface
             if (vertex->get_surface() == added_surface) continue;
 
-            // reduce by point first
-            const double distance = (vertex->get_position() - generic_point->get_position()).norm();
+            // reduce using shortest distance to ray
+            const double distance = shortest_distance_to_line_segment(generic_point->get_origin(), generic_point->get_position(), vertex->get_position());
             vertex->reduce_reverse_radius_search_radius(distance);
-
-            // skip if expired
-            if (vertex->is_expired()) continue;
-
-            // skip if if point is in front (no need to reduce by ray then)
-            std::shared_ptr<Surface> this_surface = vertex->get_surface();
-            RelativePosition relative_position = this_surface->check_relative_position(generic_point);
-            if (relative_position == RelativePosition::IN_FRONT) continue;
-
-            // reduce by ray
-            Eigen::Vector3d projected_point = this_surface->compute_point_projective_position(generic_point->get_origin(), generic_point->get_position());
-            const double distance_ray = (vertex->get_position() - projected_point).norm();
-            vertex->reduce_reverse_radius_search_radius(distance_ray);            
         }
 
         // bvh search radius reduction
@@ -343,14 +330,14 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
             std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertices = face->get_vertices();
             std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> interior_points = face->get_interior_points();
 
-            // reduce by point first
+            // reduce using shortest distance to ray
             for (const std::shared_ptr<Vertex>& vertex : vertices)
             {
                 // skip if expired
                 if (vertex->is_expired()) continue;
 
-                // reduce by point
-                const double distance = (vertex->get_position() - generic_point->get_position()).norm();
+                // reduce using shortest distance to ray
+                const double distance = shortest_distance_to_line_segment(generic_point->get_origin(), generic_point->get_position(), vertex->get_position());
                 vertex->reduce_reverse_radius_search_radius(distance);
             }
             for (const std::shared_ptr<InteriorPoint>& interior_point : interior_points)
@@ -358,37 +345,8 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
                 // skip if expired
                 if (interior_point->is_expired()) continue;
 
-                // reduce by point
-                const double distance = (interior_point->get_position() - generic_point->get_position()).norm();
-                interior_point->reduce_reverse_radius_search_radius(distance);
-            }
-
-            // skip if expired
-            if (face->is_expired()) continue;
-
-            // skip if if point is in front (no need to reduce by ray then)
-            std::shared_ptr<Surface> this_surface = face->get_surface();
-            RelativePosition relative_position = this_surface->check_relative_position(generic_point);
-            if (relative_position == RelativePosition::IN_FRONT) continue;
-
-            // reduce by ray
-            Eigen::Vector3d projected_point = this_surface->compute_point_projective_position(generic_point->get_origin(), generic_point->get_position());
-            for (const std::shared_ptr<Vertex>& vertex : vertices)
-            {
-                // skip if expired
-                if (vertex->is_expired()) continue;
-
-                // reduce by ray
-                const double distance = (vertex->get_position() - projected_point).norm();
-                vertex->reduce_reverse_radius_search_radius(distance);
-            }
-            for (const std::shared_ptr<InteriorPoint>& interior_point : interior_points)
-            {
-                // skip if expired
-                if (interior_point->is_expired()) continue;
-
-                // reduce by ray
-                const double distance = (interior_point->get_position() - projected_point).norm();
+                // reduce using shortest distance to ray
+                const double distance = shortest_distance_to_line_segment(generic_point->get_origin(), generic_point->get_position(), interior_point->get_position());
                 interior_point->reduce_reverse_radius_search_radius(distance);
             }
         }
