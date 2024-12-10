@@ -364,62 +364,78 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
 }
 
 template <typename PointT>
-bool Application<PointT>::add_point_by_intersection_search(const std::shared_ptr<GenericPoint>& generic_point, double& radius, std::vector<std::shared_ptr<Face>>& searched_faces, std::shared_ptr<Surface>& added_surface)
+bool Application<PointT>::add_point_by_intersection_search(const std::shared_ptr<GenericPoint>& generic_point, double& new_point_radius, std::vector<std::shared_ptr<Face>>& bvh_results, std::shared_ptr<Surface>& surface_to_add_to)
 {
-    // searched surfaces
-    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> searched_surfaces;
-    for (const std::shared_ptr<Face>& face : searched_faces)
+    // don't reduce radius if the point is added as new surface, thus need to move the reduce radius part outside this function.
+
+    // // add point by radius search or add to new surface (when no search results)
+    if (bvh_results.size() == 0) return false;
+
+    // all surfaces
+    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> all_surfaces;
+    for (const std::shared_ptr<Face>& face : bvh_results)
     {
-        searched_surfaces.insert(face->get_surface());
+        all_surfaces.insert(face->get_surface());
     }
 
     // check relative position with the searched surfaces
     // update the smallest distance to surface not within
-    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_with_point_within;
-    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_with_point_behind;
-    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_with_point_infront;
-    for (const std::shared_ptr<Surface>& surface : searched_surfaces)
+    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_seed;
+    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_in_front;
+    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_within;
+    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_behind;
+    for (const std::shared_ptr<Surface>& surface : all_surfaces)
     {
         // skip if the surface is expired
         if (surface->is_expired()) continue;
 
-        // if within surface
-        if (surface->check_relative_position(generic_point) == RelativePosition::WITHIN)
+        // seed surface
+        if (surface->get_total_point_size() < settings_.fit_plane_threshold)
         {
-            surfaces_with_point_within.insert(surface);
+            surfaces_seed.insert(surface);
         }
-        // if behind surface
-        else if (surface->check_relative_position(generic_point) == RelativePosition::BEHIND)
+
+        // relative position
+        RelativePosition relative_position = surface->check_relative_position(generic_point);
+        if (relative_position == RelativePosition::WITHIN)
         {
-            surfaces_with_point_behind.insert(surface);
-            double projective_distance = surface->compute_point_projective_distance(generic_point);
-            if (projective_distance < radius)
-            {
-                radius = projective_distance;
-            }
+            surfaces_within.insert(surface);
         }
-        else
+        else if (relative_position == RelativePosition::BEHIND)
         {
-            surfaces_with_point_infront.insert(surface);
-            double projective_distance = surface->compute_point_projective_distance(generic_point);
-            if (projective_distance < radius)
-            {
-                radius = projective_distance;
-            }
+            surfaces_behind.insert(surface);
         }
+        else if (relative_position == RelativePosition::IN_FRONT)
+        {
+            surfaces_in_front.insert(surface);
+        }
+    }
+
+    // update new point radius
+    for (const std::shared_ptr<Surface>& surface : surfaces_in_front)
+    {
+        // update radius
+        double distance = surface->compute_point_projective_distance(generic_point);
+        if (distance < new_point_radius) new_point_radius = distance;
+    }
+    for (const std::shared_ptr<Surface>& surface : surfaces_behind)
+    {
+        // update radius
+        double distance = surface->compute_point_projective_distance(generic_point);
+        if (distance < new_point_radius) new_point_radius = distance;
     }
     
     // log
-    if (settings_.log.process_point) std::cout << ">> found " << searched_faces.size() << " searched faces grouped into " << searched_surfaces.size() << " searched surfaces" << std::endl;
+    if (settings_.log.process_point) std::cout << ">> found " << bvh_results.size() << " searched faces grouped into " << all_surfaces.size() << " searched surfaces" << std::endl;
 
     // process point behind surface
-    for (const std::shared_ptr<Surface>& surface : surfaces_with_point_behind)
+    for (const std::shared_ptr<Surface>& surface : surfaces_behind)
     {
         // log
         if (settings_.log.process_point) std::cout << "========================== behind surface " << surface->get_id() << std::endl;
 
         // delete penetrated faces
-        for (const std::shared_ptr<Face>& face : searched_faces)
+        for (const std::shared_ptr<Face>& face : bvh_results)
         {
             // skip if face is not from the surface
             if (face->get_surface() != surface) continue;
@@ -438,77 +454,58 @@ bool Application<PointT>::add_point_by_intersection_search(const std::shared_ptr
         }
     }
 
-    // process points within surface
-    // find the surface with the largest size
-    bool added_as_interior_point = false;
-    std::shared_ptr<Surface> largest_surface;
-    std::size_t largest_surface_size = 0;
-    for (const std::shared_ptr<Surface>& surface : surfaces_with_point_within)
-    {
-        // skip if the surface is expired
-        if (surface->is_expired()) continue;
+    // add point by radius search or new surface (when no surfaces within nor seed)
+    if (surfaces_within.size() == 0 && surfaces_seed.size() == 0) return false;
 
-        // update largest surface
-        std::size_t surface_size = surface->get_total_point_size();
-        if (surface_size > largest_surface_size)
+    // decide surface_to_add_to
+    if (surfaces_within.size() > 0)
+    {
+        // add to largest surface
+        unsigned int largest_surface_size = 0;
+        for (std::shared_ptr<Surface> surface : surfaces_within)
         {
-            largest_surface = surface;
-            largest_surface_size = surface_size;
+            if (surface->get_total_point_size() > largest_surface_size)
+            {
+                largest_surface_size = surface->get_total_point_size();
+                surface_to_add_to = surface;
+            }
+        }
+    }
+    else if (surfaces_seed.size() > 0)
+    {
+        // add to the closest surface
+        double smallest_distance = std::numeric_limits<double>::max();
+        for (std::shared_ptr<Surface> surface : surfaces_seed)
+        {
+            double distance = surface->compute_point_projective_distance(generic_point);
+            if (distance < smallest_distance)
+            {
+                smallest_distance = distance;
+                surface_to_add_to = surface;
+            }
         }
     }
 
-    // add to the largest surface
-    if (largest_surface != nullptr)
+    // log
+    if (settings_.log.process_point) std::cout << "========================== within surface " << surface_to_add_to->get_id() << std::endl;
+
+    // add to surface_to_add_to
+    const std::shared_ptr<InteriorPoint>& new_interior_point = storage_->add_interior_point(generic_point);
+    new_interior_point->reduce_reverse_radius_search_radius(new_point_radius);
+    new_interior_point->connect(surface_to_add_to);
+    for (const std::shared_ptr<Face>& face : bvh_results)
     {
-        // log
-        if (settings_.log.process_point) std::cout << "========================== within surface " << largest_surface->get_id() << std::endl;
+        // skip if the face is not from the surface
+        if (face->get_surface() != surface_to_add_to) continue;
 
-        // add as interior point
-        const std::shared_ptr<InteriorPoint>& temp_interior_point = storage_->add_interior_point(generic_point);
-        temp_interior_point->connect(largest_surface);
-        temp_interior_point->reduce_reverse_radius_search_radius(radius);
+        // skip if the face is expired
+        if (face->is_expired()) continue;
 
-        // get faces with points within
-        std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces_with_points_within;
-        for (const std::shared_ptr<Face>& face : searched_faces)
-        {
-            // skip if the face is not from the surface
-            if (face->get_surface() != largest_surface) continue;
-
-            // skip if the face is expired
-            if (face->is_expired()) continue;
-
-            // insert
-            faces_with_points_within.insert(face);
-        }
-
-        // connect to the first face
-        for (const std::shared_ptr<Face>& face : faces_with_points_within)
-        {
-            // log
-            if (settings_.log.process_point) std::cout << ">> adding interior point to face " << face->get_id() << std::endl;
-
-            // connect
-            temp_interior_point->connect(face);
-
-            // update flag
-            added_as_interior_point = true;
-
-            // break so only added to the first surface
-            break;
-        }
-    }
-
-    // if can't be added as interior point, add as vertex
-    if (!added_as_interior_point)
-    {
-        return false;
-    }
-    else
-    {
-        added_surface = largest_surface;
-        return true;
-    }
+        // connect
+        new_interior_point->connect(face);
+        break;
+    }    
+    return true;
 }
 
 template <typename PointT>
