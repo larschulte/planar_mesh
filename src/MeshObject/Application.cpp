@@ -428,32 +428,6 @@ bool Application<PointT>::add_point_by_intersection_search(const std::shared_ptr
     // log
     if (settings_.log.process_point) std::cout << ">> found " << bvh_results.size() << " searched faces grouped into " << all_surfaces.size() << " searched surfaces" << std::endl;
 
-    // process point behind surface
-    for (const std::shared_ptr<Surface>& surface : surfaces_behind)
-    {
-        // log
-        if (settings_.log.process_point) std::cout << "========================== behind surface " << surface->get_id() << std::endl;
-
-        // delete penetrated faces
-        for (const std::shared_ptr<Face>& face : bvh_results)
-        {
-            // skip if face is not from the surface
-            if (face->get_surface() != surface) continue;
-
-            // skip if face is expired from previous delete face operation
-            if (face->is_expired()) continue;
-
-            // log
-            if (settings_.log.process_point) std::cout << ">> disconnect penetrated face " << face->get_id() << " from surface " << surface->get_id() << std::endl;
-            
-            // update radius of points in the face
-            face->update_radius(generic_point);
-
-            // delete face
-            storage_->delete_face(face);
-        }
-    }
-
     // decide surface_to_add_to
     if (surfaces_within.size() > 0)
     {
