@@ -286,6 +286,11 @@ void InteriorPoint::reduce_reverse_radius_search_radius(double radius)
     if (radius < radius_) set_reverse_radius_search_radius(radius);
 }
 
+void InteriorPoint::reduce_previous_radius(double radius)
+{
+    if (radius < previous_radius_) previous_radius_ = radius;
+}
+
 void InteriorPoint::set_reverse_radius_search_radius(double radius)
 {
     radius_ = radius;

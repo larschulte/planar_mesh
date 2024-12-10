@@ -492,6 +492,7 @@ bool Application<PointT>::add_point_by_intersection_search(const std::shared_ptr
     // add to surface_to_add_to
     const std::shared_ptr<InteriorPoint>& new_interior_point = storage_->add_interior_point(generic_point);
     new_interior_point->reduce_reverse_radius_search_radius(new_point_radius);
+    new_interior_point->reduce_previous_radius(new_point_radius);
     new_interior_point->connect(surface_to_add_to);
     for (const std::shared_ptr<Face>& face : bvh_results)
     {
