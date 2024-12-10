@@ -326,6 +326,13 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
             // skip if the same surface
             if (face->get_surface() == added_surface) continue;
 
+            // don't reduce radius of face if counter is not zero
+            if (face->get_reduce_radius_counter() > 0)
+            {
+                face->decrement_reduce_radius_counter();
+                continue;
+            }
+
             // get copy of vertices and interior points (as they might be deleted)
             std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertices = face->get_vertices();
             std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> interior_points = face->get_interior_points();
@@ -507,6 +514,10 @@ bool Application<PointT>::add_point_by_intersection_search(const std::shared_ptr
 
         // connect
         new_interior_point->connect(face);
+
+        // increment reduce radius counter
+        face->increment_reduce_radius_counter();
+        
         break;
     }    
     return true;
