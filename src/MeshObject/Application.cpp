@@ -497,15 +497,31 @@ bool Application<PointT>::add_point_by_intersection_search(const std::shared_ptr
     }
     else if (surfaces_seed.size() > 0)
     {
-        // add to the closest surface
+        // add to the closest surface measured by point to point distance
         double smallest_distance = std::numeric_limits<double>::max();
-        for (std::shared_ptr<Surface> surface : surfaces_seed)
+
+        // for each face
+        for (std::shared_ptr<Face> face : bvh_results)
         {
-            double distance = surface->compute_point_projective_distance(generic_point);
-            if (distance < smallest_distance)
+            // skip if expired
+            if (face->is_expired()) continue;
+
+            // this surface
+            std::shared_ptr<Surface> this_surface = face->get_surface();
+            
+            // skip if the face is not in surfaces_seed
+            if (surfaces_seed.find(this_surface) == surfaces_seed.end()) continue;
+
+            // for each vertex of the face
+            for (std::shared_ptr<Vertex> vertex : face->get_vertices())
             {
-                smallest_distance = distance;
-                surface_to_add_to = surface;
+                // compute distance
+                double distance = (vertex->get_position() - generic_point->get_position()).norm();
+                if (distance < smallest_distance)
+                {
+                    smallest_distance = distance;
+                    surface_to_add_to = this_surface;
+                }
             }
         }
     }
@@ -622,15 +638,27 @@ bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
     }
     else if (surfaces_seed.size() > 0)
     {
-        // add to the closest surface
+        // add to the closest surface measured by point to point distance
         double smallest_distance = std::numeric_limits<double>::max();
-        for (std::shared_ptr<Surface> surface : surfaces_seed)
+        
+        // for each vertex
+        for (std::shared_ptr<Vertex> vertex : all_vertices)
         {
-            double distance = surface->compute_point_projective_distance(generic_point);
+            // skip if expired
+            if (vertex->is_expired()) continue;
+
+            // this surface
+            std::shared_ptr<Surface> this_surface = vertex->get_surface();
+            
+            // skip if the face is not in surfaces_seed
+            if (surfaces_seed.find(this_surface) == surfaces_seed.end()) continue;
+
+            // compute distance
+            double distance = (vertex->get_position() - generic_point->get_position()).norm();
             if (distance < smallest_distance)
             {
                 smallest_distance = distance;
-                surface_to_add_to = surface;
+                surface_to_add_to = this_surface;
             }
         }
     }
