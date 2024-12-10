@@ -584,7 +584,7 @@ bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
     if (surfaces_within.size() > 0)
     {
         // add to largest surface
-        int largest_surface_size = 0;
+        unsigned int largest_surface_size = 0;
         for (std::shared_ptr<Surface> surface : surfaces_within)
         {
             if (surface->get_total_point_size() > largest_surface_size)
