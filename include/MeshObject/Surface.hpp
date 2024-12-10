@@ -41,6 +41,7 @@ public:
 
     omp_nest_lock_t lock;
 
+    double compute_point_to_plane_distance(const Eigen::Vector3d& point) const;
     double compute_point_projective_distance(const Eigen::Vector3d& origin, const Eigen::Vector3d& point) const;
     double compute_point_projective_distance(const std::shared_ptr<GenericPoint>& generic_point) const;
     double compute_point_projective_distance(const std::shared_ptr<Vertex>& vertex) const;

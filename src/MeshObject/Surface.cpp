@@ -87,6 +87,11 @@ const int& Surface::get_id() const
     return id_;
 }
 
+double Surface::compute_point_to_plane_distance(const Eigen::Vector3d& point) const
+{
+    return (point - mean_).dot(normal_);
+}
+
 double Surface::compute_point_projective_distance(const Eigen::Vector3d& origin, const Eigen::Vector3d& position) const
 {
     // if perpendicular, return NaN
