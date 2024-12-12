@@ -612,7 +612,8 @@ void Surface::connect(const std::shared_ptr<Vertex>& vertex)
     if (vertices_.insert(vertex).second)
     {
         vertex->connect(shared_from_this());
-        add_point_to_surface_fitting(vertex->get_position(), vertex->get_origin(), vertex->get_distance_travelled());
+        double projection_uncertainty = settings_.range_precision;
+        add_point_to_surface_fitting(vertex->get_position(), vertex->get_origin(), vertex->get_distance_travelled(), projection_uncertainty);
     }
 }
 
@@ -885,7 +886,11 @@ void Surface::connect(const std::shared_ptr<InteriorPoint>& interior_point)
     if (inserted) interior_point->connect(shared_from_this());
 
     // update surface fitting
-    if (inserted) add_point_to_surface_fitting(interior_point->get_position(), interior_point->get_origin(), interior_point->get_distance_travelled());
+    if (inserted) 
+    {
+        double projection_uncertainty = settings_.range_precision;
+        add_point_to_surface_fitting(interior_point->get_position(), interior_point->get_origin(), interior_point->get_distance_travelled(), projection_uncertainty);
+    }
 }
 
 void Surface::disconnect(const std::shared_ptr<Vertex>& vertex)
@@ -898,7 +903,11 @@ void Surface::disconnect(const std::shared_ptr<Vertex>& vertex)
     if (erased) vertex->disconnect(shared_from_this());
 
     // remove from surface fitting
-    if (erased) remove_point_from_surface_fitting(vertex->get_position(), vertex->get_origin(), vertex->get_distance_travelled());
+    if (erased) 
+    {
+        double projection_uncertainty = settings_.range_precision;
+        remove_point_from_surface_fitting(vertex->get_position(), vertex->get_origin(), vertex->get_distance_travelled(), projection_uncertainty);
+    }
 }
 
 void Surface::disconnect(const std::shared_ptr<Edge>& edge)
@@ -931,7 +940,11 @@ void Surface::disconnect(const std::shared_ptr<InteriorPoint>& interior_point)
     if (erased) interior_point->disconnect(shared_from_this());
 
     // remove from surface fitting
-    if (erased) remove_point_from_surface_fitting(interior_point->get_position(), interior_point->get_origin(), interior_point->get_distance_travelled());
+    if (erased) 
+    {
+        double projection_uncertainty = settings_.range_precision;
+        remove_point_from_surface_fitting(interior_point->get_position(), interior_point->get_origin(), interior_point->get_distance_travelled(), projection_uncertainty);
+    }
 }
 
 void Surface::swap(const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2)
@@ -986,7 +999,7 @@ void Surface::print_info()
     std::cout << "======================================================================================" << std::endl;
 }
 
-void Surface::add_point_to_surface_fitting(const Eigen::Vector3d& position, const Eigen::Vector3d& origin, double distance_travelled)
+void Surface::add_point_to_surface_fitting(const Eigen::Vector3d& position, const Eigen::Vector3d& origin, double distance_travelled, double projection_uncertainty)
 {
     // surface
     int size1 = get_total_point_size()-1; // need to exclude the new point
@@ -996,7 +1009,7 @@ void Surface::add_point_to_surface_fitting(const Eigen::Vector3d& position, cons
     // point
     int size2 = 1;
     Eigen::Vector3d mean2 = position;
-    Eigen::Matrix3d cov2 = Eigen::Matrix3d::Zero();
+    Eigen::Matrix3d cov2 = Eigen::Matrix3d::Identity() * std::pow(projection_uncertainty, 2);
 
     // set + point
     Eigen::Vector3d new_mean = merge_mean(mean1, mean2, size1, size2);
@@ -1059,7 +1072,7 @@ void Surface::add_point_to_surface_fitting(const Eigen::Vector3d& position, cons
     }
 }
 
-void Surface::remove_point_from_surface_fitting(const Eigen::Vector3d& position, const Eigen::Vector3d& origin, double distance_travelled)
+void Surface::remove_point_from_surface_fitting(const Eigen::Vector3d& position, const Eigen::Vector3d& origin, double distance_travelled, double projection_uncertainty)
 {
     // surface
     int combined_size = get_total_point_size()+1; // need to include the point just removed
@@ -1069,7 +1082,7 @@ void Surface::remove_point_from_surface_fitting(const Eigen::Vector3d& position,
     // point
     int size2 = 1;
     Eigen::Vector3d mean2 = position;
-    Eigen::Matrix3d cov2 = Eigen::Matrix3d::Zero();
+    Eigen::Matrix3d cov2 = Eigen::Matrix3d::Identity() * std::pow(projection_uncertainty, 2);
 
     // set + point
     Eigen::Vector3d mean1 = remove_mean(combined_mean, mean2, combined_size, size2);

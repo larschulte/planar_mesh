@@ -128,8 +128,8 @@ private:
     std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces_;
     std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> interior_points_;
 
-    void add_point_to_surface_fitting(const Eigen::Vector3d& point, const Eigen::Vector3d& origin, double distance_travelled);
-    void remove_point_from_surface_fitting(const Eigen::Vector3d& position, const Eigen::Vector3d& origin, double distance_travelled);
+    void add_point_to_surface_fitting(const Eigen::Vector3d& point, const Eigen::Vector3d& origin, double distance_travelled, double projection_uncertainty);
+    void remove_point_from_surface_fitting(const Eigen::Vector3d& position, const Eigen::Vector3d& origin, double distance_travelled, double projection_uncertainty);
     Eigen::Vector3d mean_;
     Eigen::Matrix3d covariance_;
     Eigen::Matrix3d eigenvectors_;
