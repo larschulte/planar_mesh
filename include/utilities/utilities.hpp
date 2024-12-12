@@ -17,6 +17,7 @@ bool is_point_in_triangle(const Eigen::Vector2d& a, const Eigen::Vector2d& b, co
 
 Eigen::Matrix3d generate_orthogonal_basis(const Eigen::Vector3d& unit_vector);
 Eigen::Matrix3d generate_unit_vector_covariance(const Eigen::Vector3d& unit_vector, double angular_uncertainty_in_radian, double epsilon);
+Eigen::Matrix3d generate_directional_covariance(const Eigen::Vector3d& direction_vector, double uncertainty_in_direction, double epsilon);
 
 double shortest_distance_to_line_segment(const Eigen::Vector3d& rayOrigin, const Eigen::Vector3d& rayEnd, const Eigen::Vector3d& targetPoint);
 

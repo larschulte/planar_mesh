@@ -103,6 +103,10 @@ Eigen::Matrix3d generate_unit_vector_covariance(const Eigen::Vector3d& unit_vect
     return basis * cov * basis.transpose();
 }
 
+Eigen::Matrix3d generate_directional_covariance(const Eigen::Vector3d& direction_vector, double uncertainty_in_direction, double epsilon)
+{
+    return generate_unit_vector_covariance(direction_vector, epsilon, uncertainty_in_direction);
+}
 
 double shortest_distance_to_line_segment(const Eigen::Vector3d& rayOrigin, const Eigen::Vector3d& rayEnd, const Eigen::Vector3d& targetPoint) 
 {
