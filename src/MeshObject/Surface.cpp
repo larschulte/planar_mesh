@@ -1009,8 +1009,7 @@ void Surface::add_point_to_surface_fitting(const Eigen::Vector3d& position, cons
     // point
     int size2 = 1;
     Eigen::Vector3d mean2 = position;
-    Eigen::Vector3d direction2 = (position - origin).normalized();
-    Eigen::Matrix3d cov2 = generate_directional_covariance(direction2, projection_uncertainty, 1e-6);
+    Eigen::Matrix3d cov2 = Eigen::Matrix3d::Zero();
 
     // set + point
     Eigen::Vector3d new_mean = merge_mean(mean1, mean2, size1, size2);
@@ -1083,8 +1082,7 @@ void Surface::remove_point_from_surface_fitting(const Eigen::Vector3d& position,
     // point
     int size2 = 1;
     Eigen::Vector3d mean2 = position;
-    Eigen::Vector3d direction2 = (position - origin).normalized();
-    Eigen::Matrix3d cov2 = generate_directional_covariance(direction2, projection_uncertainty, 1e-6);
+    Eigen::Matrix3d cov2 = Eigen::Matrix3d::Zero();
 
     // set + point
     Eigen::Vector3d mean1 = remove_mean(combined_mean, mean2, combined_size, size2);
