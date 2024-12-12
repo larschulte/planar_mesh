@@ -1002,7 +1002,7 @@ void Surface::print_info()
 void Surface::add_point_to_surface_fitting(const Eigen::Vector3d& position, const Eigen::Vector3d& origin, double distance_travelled, double projection_uncertainty)
 {
     // surface
-    int size1 = get_total_point_size()-1; // need to exclude the new point
+    int size1 = size_;
     Eigen::Vector3d mean1 = mean_;
     Eigen::Matrix3d cov1 = covariance_;
 
@@ -1014,6 +1014,7 @@ void Surface::add_point_to_surface_fitting(const Eigen::Vector3d& position, cons
     // set + point
     Eigen::Vector3d new_mean = merge_mean(mean1, mean2, size1, size2);
     Eigen::Matrix3d new_cov = merge_covariance(cov1, cov2, mean1, mean2, size1, size2);
+    int new_size = size1 + size2;
 
     // plane estimate
     Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> solver(new_cov);
@@ -1024,6 +1025,7 @@ void Surface::add_point_to_surface_fitting(const Eigen::Vector3d& position, cons
     if (new_normal.dot(vector_towards_origin) < 0) new_normal *= -1; // normal should points towards the origin
 
     // store
+    size_ = new_size;
     mean_ = new_mean;
     covariance_ = new_cov;
     eigenvectors_ = new_eigenvectors;
@@ -1075,7 +1077,7 @@ void Surface::add_point_to_surface_fitting(const Eigen::Vector3d& position, cons
 void Surface::remove_point_from_surface_fitting(const Eigen::Vector3d& position, const Eigen::Vector3d& origin, double distance_travelled, double projection_uncertainty)
 {
     // surface
-    int combined_size = get_total_point_size()+1; // need to include the point just removed
+    int combined_size = size_;
     Eigen::Vector3d combined_mean = mean_;
     Eigen::Matrix3d combined_cov = covariance_;
 
@@ -1087,6 +1089,7 @@ void Surface::remove_point_from_surface_fitting(const Eigen::Vector3d& position,
     // set + point
     Eigen::Vector3d mean1 = remove_mean(combined_mean, mean2, combined_size, size2);
     Eigen::Matrix3d cov1 = remove_covariance(combined_cov, cov2, combined_mean, mean2, combined_size, size2);
+    int size1 = combined_size - size2;
 
     // plane estimate
     Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> solver(cov1);
@@ -1096,6 +1099,8 @@ void Surface::remove_point_from_surface_fitting(const Eigen::Vector3d& position,
     Eigen::Vector3d vector_towards_origin = origin - position;
     if (normal1.dot(vector_towards_origin) < 0) normal1 *= -1; // normal should points towards the origin
 
+    // store
+    size_ = size1;
     mean_ = mean1;
     covariance_ = cov1;
     eigenvectors_ = eigenvectors1;
