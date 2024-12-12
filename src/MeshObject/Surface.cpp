@@ -613,7 +613,8 @@ void Surface::connect(const std::shared_ptr<Vertex>& vertex)
     {
         vertex->connect(shared_from_this());
         double projection_uncertainty = settings_.range_precision;
-        add_point_to_surface_fitting(vertex->get_position(), vertex->get_origin(), vertex->get_distance_travelled(), projection_uncertainty);
+        double weight = 1.0 / (projection_uncertainty * projection_uncertainty);
+        add_point_to_surface_fitting(vertex->get_position(), vertex->get_origin(), vertex->get_distance_travelled(), weight);
     }
 }
 
@@ -889,7 +890,8 @@ void Surface::connect(const std::shared_ptr<InteriorPoint>& interior_point)
     if (inserted) 
     {
         double projection_uncertainty = settings_.range_precision;
-        add_point_to_surface_fitting(interior_point->get_position(), interior_point->get_origin(), interior_point->get_distance_travelled(), projection_uncertainty);
+        double weight = 1.0 / (projection_uncertainty * projection_uncertainty);
+        add_point_to_surface_fitting(interior_point->get_position(), interior_point->get_origin(), interior_point->get_distance_travelled(), weight);
     }
 }
 
@@ -906,7 +908,8 @@ void Surface::disconnect(const std::shared_ptr<Vertex>& vertex)
     if (erased) 
     {
         double projection_uncertainty = settings_.range_precision;
-        remove_point_from_surface_fitting(vertex->get_position(), vertex->get_origin(), vertex->get_distance_travelled(), projection_uncertainty);
+        double weight = 1.0 / (projection_uncertainty * projection_uncertainty);
+        remove_point_from_surface_fitting(vertex->get_position(), vertex->get_origin(), vertex->get_distance_travelled(), weight);
     }
 }
 
@@ -943,7 +946,8 @@ void Surface::disconnect(const std::shared_ptr<InteriorPoint>& interior_point)
     if (erased) 
     {
         double projection_uncertainty = settings_.range_precision;
-        remove_point_from_surface_fitting(interior_point->get_position(), interior_point->get_origin(), interior_point->get_distance_travelled(), projection_uncertainty);
+        double weight = 1.0 / (projection_uncertainty * projection_uncertainty);
+        remove_point_from_surface_fitting(interior_point->get_position(), interior_point->get_origin(), interior_point->get_distance_travelled(), weight);
     }
 }
 
@@ -999,22 +1003,22 @@ void Surface::print_info()
     std::cout << "======================================================================================" << std::endl;
 }
 
-void Surface::add_point_to_surface_fitting(const Eigen::Vector3d& position, const Eigen::Vector3d& origin, double distance_travelled, double projection_uncertainty)
+void Surface::add_point_to_surface_fitting(const Eigen::Vector3d& position, const Eigen::Vector3d& origin, double distance_travelled, double weight)
 {
     // surface
-    int size1 = size_;
+    double weight1 = weight_;
     Eigen::Vector3d mean1 = mean_;
     Eigen::Matrix3d cov1 = covariance_;
 
     // point
-    int size2 = 1;
+    double weight2 = weight;
     Eigen::Vector3d mean2 = position;
     Eigen::Matrix3d cov2 = Eigen::Matrix3d::Zero();
 
     // set + point
-    Eigen::Vector3d new_mean = merge_mean(mean1, mean2, size1, size2);
-    Eigen::Matrix3d new_cov = merge_covariance(cov1, cov2, mean1, mean2, size1, size2);
-    int new_size = size1 + size2;
+    Eigen::Vector3d new_mean = weighted_merge_mean(mean1, mean2, weight1, weight2);
+    Eigen::Matrix3d new_cov = weighted_merge_covariance(cov1, cov2, mean1, mean2, weight1, weight2);
+    double new_weight = weight1 + weight2;
 
     // plane estimate
     Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> solver(new_cov);
@@ -1025,7 +1029,7 @@ void Surface::add_point_to_surface_fitting(const Eigen::Vector3d& position, cons
     if (new_normal.dot(vector_towards_origin) < 0) new_normal *= -1; // normal should points towards the origin
 
     // store
-    size_ = new_size;
+    weight_ = new_weight;
     mean_ = new_mean;
     covariance_ = new_cov;
     eigenvectors_ = new_eigenvectors;
@@ -1074,22 +1078,22 @@ void Surface::add_point_to_surface_fitting(const Eigen::Vector3d& position, cons
     }
 }
 
-void Surface::remove_point_from_surface_fitting(const Eigen::Vector3d& position, const Eigen::Vector3d& origin, double distance_travelled, double projection_uncertainty)
+void Surface::remove_point_from_surface_fitting(const Eigen::Vector3d& position, const Eigen::Vector3d& origin, double distance_travelled, double weight)
 {
     // surface
-    int combined_size = size_;
+    double combined_weight = weight_;
     Eigen::Vector3d combined_mean = mean_;
     Eigen::Matrix3d combined_cov = covariance_;
 
     // point
-    int size2 = 1;
+    double weight2 = weight;
     Eigen::Vector3d mean2 = position;
     Eigen::Matrix3d cov2 = Eigen::Matrix3d::Zero();
 
     // set + point
-    Eigen::Vector3d mean1 = remove_mean(combined_mean, mean2, combined_size, size2);
-    Eigen::Matrix3d cov1 = remove_covariance(combined_cov, cov2, combined_mean, mean2, combined_size, size2);
-    int size1 = combined_size - size2;
+    Eigen::Vector3d mean1 = remove_mean(combined_mean, mean2, combined_weight, weight2);
+    Eigen::Matrix3d cov1 = remove_covariance(combined_cov, cov2, combined_mean, mean2, combined_weight, weight2);
+    double weight1 = combined_weight - weight2;
 
     // plane estimate
     Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> solver(cov1);
@@ -1100,7 +1104,7 @@ void Surface::remove_point_from_surface_fitting(const Eigen::Vector3d& position,
     if (normal1.dot(vector_towards_origin) < 0) normal1 *= -1; // normal should points towards the origin
 
     // store
-    size_ = size1;
+    weight_ = weight1;
     mean_ = mean1;
     covariance_ = cov1;
     eigenvectors_ = eigenvectors1;
