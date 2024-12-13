@@ -848,7 +848,11 @@ void Surface::connect(const std::shared_ptr<Edge>& edge)
 
     // connect
     bool inserted = edges_.insert(edge).second;
-    if (inserted) edge->connect(shared_from_this());
+    if (inserted) 
+    {
+        add_searchable_edge(edge);
+        edge->connect(shared_from_this());
+    }
 }
 
 void Surface::connect(const std::shared_ptr<Face>& face)
@@ -914,7 +918,11 @@ void Surface::disconnect(const std::shared_ptr<Edge>& edge)
 
     // disconnect
     bool erased = edges_.erase(edge);
-    if (erased) edge->disconnect(shared_from_this());
+    if (erased) 
+    {
+        remove_searchable_edge(edge);
+        edge->disconnect(shared_from_this());
+    }
 }
 
 void Surface::disconnect(const std::shared_ptr<Face>& face)

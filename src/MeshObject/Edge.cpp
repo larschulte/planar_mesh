@@ -355,13 +355,13 @@ void Edge::update_searchable_state()
     // add
     if (is_boundary_ && !is_searchable_)
     {
-        surface_->add_searchable_edge(shared_from_this());
+        // surface_->add_searchable_edge(shared_from_this());
         is_searchable_ = true;
     }
     // remove
     if (!is_boundary_ && is_searchable_)
     {   
-        surface_->remove_searchable_edge(shared_from_this());
+        // surface_->remove_searchable_edge(shared_from_this());
         is_searchable_ = false;
     }
 }
@@ -370,7 +370,7 @@ void Edge::remove_searchable_state()
 {
     if (is_searchable_)
     {
-        surface_->remove_searchable_edge(shared_from_this());
+        // surface_->remove_searchable_edge(shared_from_this());
         is_searchable_ = false;
     }
 }
