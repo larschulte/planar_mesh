@@ -188,14 +188,14 @@ RelativePosition Surface::check_relative_position(double distance_travelled, con
         double variance_range_direction = d_range_d_direction.transpose() * cov_direction * d_range_d_direction;
         double variance_range_normal = d_range_d_normal.transpose() * cov_normal * d_range_d_normal;
 
-        // compute std of range due to ...
-        double std_range_origin = std::sqrt(variance_range_origin);
-        double std_range_mean = std::sqrt(variance_range_mean);
-        double std_range_direction = std::sqrt(variance_range_direction);
-        double std_range_normal = std::sqrt(variance_range_normal);
+        // // compute std of range due to ...
+        // double std_range_origin = std::sqrt(variance_range_origin);
+        // double std_range_mean = std::sqrt(variance_range_mean);
+        // double std_range_direction = std::sqrt(variance_range_direction);
+        // double std_range_normal = std::sqrt(variance_range_normal);
 
         // compute combined std
-        double combined_std = std::sqrt(std_range_origin * std_range_origin + std_range_mean * std_range_mean + std_range_direction * std_range_direction + std_range_normal * std_range_normal + settings_.range_precision * settings_.range_precision);
+        double combined_std = std::sqrt(variance_range_origin + variance_range_mean + variance_range_direction + variance_range_normal + settings_.range_precision * settings_.range_precision);
 
         // compute point to plane projective distance
         double projective_distance = compute_point_projective_distance(origin, point);
@@ -612,7 +612,20 @@ void Surface::connect(const std::shared_ptr<Vertex>& vertex)
     if (vertices_.insert(vertex).second)
     {
         vertex->connect(shared_from_this());
-        add_point_to_surface_fitting(vertex->get_position(), vertex->get_origin(), vertex->get_distance_travelled());
+
+        // update uncertainty
+        if (get_total_point_size() <= settings_.fit_plane_threshold) 
+        {
+            vertex->weight_ = 1.0 / (settings_.range_precision * settings_.range_precision);
+        }
+        else
+        {
+            // within the check relative position, the uncertainty will be updated
+            if (check_relative_position(vertex) != RelativePosition::WITHIN) throw std::runtime_error("Vertex is not within the surface.");
+            vertex->weight_ = 1.0 / (vertex->get_projected_uncertainty() * vertex->get_projected_uncertainty());
+        }
+
+        add_point_to_surface_fitting(vertex->get_position(), vertex->get_origin(), vertex->get_distance_travelled(), vertex->weight_);
     }
 }
 
@@ -885,7 +898,23 @@ void Surface::connect(const std::shared_ptr<InteriorPoint>& interior_point)
     if (inserted) interior_point->connect(shared_from_this());
 
     // update surface fitting
-    if (inserted) add_point_to_surface_fitting(interior_point->get_position(), interior_point->get_origin(), interior_point->get_distance_travelled());
+    if (inserted) 
+    {
+
+        // update uncertainty
+        if (get_total_point_size() <= settings_.fit_plane_threshold) 
+        {
+            interior_point->weight_ = 1.0 / (settings_.range_precision * settings_.range_precision);
+        }
+        else
+        {
+            // within the check relative position, the uncertainty will be updated
+            if (check_relative_position(interior_point) != RelativePosition::WITHIN) throw std::runtime_error("Vertex is not within the surface.");
+            interior_point->weight_ = 1.0 / (interior_point->get_projected_uncertainty() * interior_point->get_projected_uncertainty());
+        }
+
+        add_point_to_surface_fitting(interior_point->get_position(), interior_point->get_origin(), interior_point->get_distance_travelled(), interior_point->weight_);
+    }
 }
 
 void Surface::disconnect(const std::shared_ptr<Vertex>& vertex)
@@ -898,7 +927,11 @@ void Surface::disconnect(const std::shared_ptr<Vertex>& vertex)
     if (erased) vertex->disconnect(shared_from_this());
 
     // remove from surface fitting
-    if (erased) remove_point_from_surface_fitting(vertex->get_position(), vertex->get_origin(), vertex->get_distance_travelled());
+    if (erased) 
+    {
+
+        remove_point_from_surface_fitting(vertex->get_position(), vertex->get_origin(), vertex->get_distance_travelled(), vertex->weight_);
+    }
 }
 
 void Surface::disconnect(const std::shared_ptr<Edge>& edge)
@@ -931,7 +964,11 @@ void Surface::disconnect(const std::shared_ptr<InteriorPoint>& interior_point)
     if (erased) interior_point->disconnect(shared_from_this());
 
     // remove from surface fitting
-    if (erased) remove_point_from_surface_fitting(interior_point->get_position(), interior_point->get_origin(), interior_point->get_distance_travelled());
+    if (erased) 
+    {
+
+        remove_point_from_surface_fitting(interior_point->get_position(), interior_point->get_origin(), interior_point->get_distance_travelled(), interior_point->weight_);
+    }
 }
 
 void Surface::swap(const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2)
@@ -986,21 +1023,22 @@ void Surface::print_info()
     std::cout << "======================================================================================" << std::endl;
 }
 
-void Surface::add_point_to_surface_fitting(const Eigen::Vector3d& position, const Eigen::Vector3d& origin, double distance_travelled)
+void Surface::add_point_to_surface_fitting(const Eigen::Vector3d& position, const Eigen::Vector3d& origin, double distance_travelled, double weight)
 {
     // surface
-    int size1 = get_total_point_size()-1; // need to exclude the new point
+    double weight1 = weight_;
     Eigen::Vector3d mean1 = mean_;
     Eigen::Matrix3d cov1 = covariance_;
 
     // point
-    int size2 = 1;
+    double weight2 = weight;
     Eigen::Vector3d mean2 = position;
     Eigen::Matrix3d cov2 = Eigen::Matrix3d::Zero();
 
     // set + point
-    Eigen::Vector3d new_mean = merge_mean(mean1, mean2, size1, size2);
-    Eigen::Matrix3d new_cov = merge_covariance(cov1, cov2, mean1, mean2, size1, size2);
+    Eigen::Vector3d new_mean = weighted_merge_mean(mean1, mean2, weight1, weight2);
+    Eigen::Matrix3d new_cov = weighted_merge_covariance(cov1, cov2, mean1, mean2, weight1, weight2);
+    double new_weight = weight1 + weight2;
 
     // plane estimate
     Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> solver(new_cov);
@@ -1011,6 +1049,7 @@ void Surface::add_point_to_surface_fitting(const Eigen::Vector3d& position, cons
     if (new_normal.dot(vector_towards_origin) < 0) new_normal *= -1; // normal should points towards the origin
 
     // store
+    weight_ = new_weight;
     mean_ = new_mean;
     covariance_ = new_cov;
     eigenvectors_ = new_eigenvectors;
@@ -1059,21 +1098,22 @@ void Surface::add_point_to_surface_fitting(const Eigen::Vector3d& position, cons
     }
 }
 
-void Surface::remove_point_from_surface_fitting(const Eigen::Vector3d& position, const Eigen::Vector3d& origin, double distance_travelled)
+void Surface::remove_point_from_surface_fitting(const Eigen::Vector3d& position, const Eigen::Vector3d& origin, double distance_travelled, double weight)
 {
     // surface
-    int combined_size = get_total_point_size()+1; // need to include the point just removed
+    double combined_weight = weight_;
     Eigen::Vector3d combined_mean = mean_;
     Eigen::Matrix3d combined_cov = covariance_;
 
     // point
-    int size2 = 1;
+    double weight2 = weight;
     Eigen::Vector3d mean2 = position;
     Eigen::Matrix3d cov2 = Eigen::Matrix3d::Zero();
 
     // set + point
-    Eigen::Vector3d mean1 = remove_mean(combined_mean, mean2, combined_size, size2);
-    Eigen::Matrix3d cov1 = remove_covariance(combined_cov, cov2, combined_mean, mean2, combined_size, size2);
+    Eigen::Vector3d mean1 = weighted_remove_mean(combined_mean, mean2, combined_weight, weight2);
+    Eigen::Matrix3d cov1 = weighted_remove_covariance(combined_cov, cov2, combined_mean, mean2, combined_weight, weight2);
+    double weight1 = combined_weight - weight2;
 
     // plane estimate
     Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> solver(cov1);
@@ -1083,6 +1123,8 @@ void Surface::remove_point_from_surface_fitting(const Eigen::Vector3d& position,
     Eigen::Vector3d vector_towards_origin = origin - position;
     if (normal1.dot(vector_towards_origin) < 0) normal1 *= -1; // normal should points towards the origin
 
+    // store
+    weight_ = weight1;
     mean_ = mean1;
     covariance_ = cov1;
     eigenvectors_ = eigenvectors1;

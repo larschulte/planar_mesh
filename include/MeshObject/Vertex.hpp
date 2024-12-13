@@ -154,6 +154,9 @@ private:
     Eigen::Vector3d direction_;
 
     double projected_uncertainty_;
+
+public:
+    double weight_;
 };
 
 bool operator<(const std::shared_ptr<Vertex>& lhs, const std::shared_ptr<Vertex>& rhs);
