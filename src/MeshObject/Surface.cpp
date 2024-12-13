@@ -929,7 +929,6 @@ void Surface::disconnect(const std::shared_ptr<Vertex>& vertex)
     // remove from surface fitting
     if (erased) 
     {
-        std::cout << "projective uncertainty of vertex: " << vertex->weight_ << std::endl;
 
         remove_point_from_surface_fitting(vertex->get_position(), vertex->get_origin(), vertex->get_distance_travelled(), vertex->weight_);
     }
@@ -967,7 +966,6 @@ void Surface::disconnect(const std::shared_ptr<InteriorPoint>& interior_point)
     // remove from surface fitting
     if (erased) 
     {
-        std::cout << "weight of interior_point: " << interior_point->weight_ << std::endl;
 
         remove_point_from_surface_fitting(interior_point->get_position(), interior_point->get_origin(), interior_point->get_distance_travelled(), interior_point->weight_);
     }
