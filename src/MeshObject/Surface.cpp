@@ -612,9 +612,20 @@ void Surface::connect(const std::shared_ptr<Vertex>& vertex)
     if (vertices_.insert(vertex).second)
     {
         vertex->connect(shared_from_this());
-        double projection_uncertainty = settings_.range_precision;
-        double weight = 1.0 / (projection_uncertainty * projection_uncertainty);
-        add_point_to_surface_fitting(vertex->get_position(), vertex->get_origin(), vertex->get_distance_travelled(), weight);
+
+        // update uncertainty
+        if (get_total_point_size() <= settings_.fit_plane_threshold) 
+        {
+            vertex->weight_ = 1.0 / (settings_.range_precision * settings_.range_precision);
+        }
+        else
+        {
+            // within the check relative position, the uncertainty will be updated
+            if (check_relative_position(vertex) != RelativePosition::WITHIN) throw std::runtime_error("Vertex is not within the surface.");
+            vertex->weight_ = 1.0 / (vertex->get_projected_uncertainty() * vertex->get_projected_uncertainty());
+        }
+
+        add_point_to_surface_fitting(vertex->get_position(), vertex->get_origin(), vertex->get_distance_travelled(), vertex->weight_);
     }
 }
 
@@ -889,9 +900,20 @@ void Surface::connect(const std::shared_ptr<InteriorPoint>& interior_point)
     // update surface fitting
     if (inserted) 
     {
-        double projection_uncertainty = settings_.range_precision;
-        double weight = 1.0 / (projection_uncertainty * projection_uncertainty);
-        add_point_to_surface_fitting(interior_point->get_position(), interior_point->get_origin(), interior_point->get_distance_travelled(), weight);
+
+        // update uncertainty
+        if (get_total_point_size() <= settings_.fit_plane_threshold) 
+        {
+            interior_point->weight_ = 1.0 / (settings_.range_precision * settings_.range_precision);
+        }
+        else
+        {
+            // within the check relative position, the uncertainty will be updated
+            if (check_relative_position(interior_point) != RelativePosition::WITHIN) throw std::runtime_error("Vertex is not within the surface.");
+            interior_point->weight_ = 1.0 / (interior_point->get_projected_uncertainty() * interior_point->get_projected_uncertainty());
+        }
+
+        add_point_to_surface_fitting(interior_point->get_position(), interior_point->get_origin(), interior_point->get_distance_travelled(), interior_point->weight_);
     }
 }
 
@@ -907,9 +929,9 @@ void Surface::disconnect(const std::shared_ptr<Vertex>& vertex)
     // remove from surface fitting
     if (erased) 
     {
-        double projection_uncertainty = settings_.range_precision;
-        double weight = 1.0 / (projection_uncertainty * projection_uncertainty);
-        remove_point_from_surface_fitting(vertex->get_position(), vertex->get_origin(), vertex->get_distance_travelled(), weight);
+        std::cout << "projective uncertainty of vertex: " << vertex->weight_ << std::endl;
+
+        remove_point_from_surface_fitting(vertex->get_position(), vertex->get_origin(), vertex->get_distance_travelled(), vertex->weight_);
     }
 }
 
@@ -945,9 +967,9 @@ void Surface::disconnect(const std::shared_ptr<InteriorPoint>& interior_point)
     // remove from surface fitting
     if (erased) 
     {
-        double projection_uncertainty = settings_.range_precision;
-        double weight = 1.0 / (projection_uncertainty * projection_uncertainty);
-        remove_point_from_surface_fitting(interior_point->get_position(), interior_point->get_origin(), interior_point->get_distance_travelled(), weight);
+        std::cout << "weight of interior_point: " << interior_point->weight_ << std::endl;
+
+        remove_point_from_surface_fitting(interior_point->get_position(), interior_point->get_origin(), interior_point->get_distance_travelled(), interior_point->weight_);
     }
 }
 

@@ -92,6 +92,9 @@ private:
 
     FIFOCache<std::size_t, Eigen::Vector3d> buffer_projected_position_{3};
     FIFOCache<std::size_t, double> buffer_projected_distance_{3};
+
+public:
+    double weight_;
 };
 
 bool operator<(const std::shared_ptr<InteriorPoint>& lhs, const std::shared_ptr<InteriorPoint>& rhs);
