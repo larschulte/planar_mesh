@@ -70,7 +70,7 @@ Eigen::Matrix3d weighted_merge_covariance(const Eigen::Matrix3d& cov1, const Eig
     if (weight1 == 0) return cov2;
     if (weight2 == 0) return cov1;
 
-    Eigen::Vector3d combined_mean = merge_mean(mean1, mean2, weight1, weight2);
+    Eigen::Vector3d combined_mean = weighted_merge_mean(mean1, mean2, weight1, weight2);
     Eigen::Matrix3d mean_diff1 = (mean1 - combined_mean) * (mean1 - combined_mean).transpose();
     Eigen::Matrix3d mean_diff2 = (mean2 - combined_mean) * (mean2 - combined_mean).transpose();
     Eigen::Matrix3d combined_covariance = (weight1 * cov1 + weight2 * cov2 + weight1 * mean_diff1 + weight2 * mean_diff2) / (weight1 + weight2);
@@ -101,7 +101,7 @@ Eigen::Matrix3d weighted_remove_covariance(const Eigen::Matrix3d& combined_covar
     double weight1 = combined_weight - weight2;
     if (std::abs(weight1) < epsilon) return Eigen::Matrix3d::Zero();
 
-    Eigen::Vector3d mean1 = remove_mean(combined_mean, mean2, combined_weight, weight2);
+    Eigen::Vector3d mean1 = weighted_remove_mean(combined_mean, mean2, combined_weight, weight2);
 
     Eigen::Matrix3d mean_diff1 = (mean1 - combined_mean) * (mean1 - combined_mean).transpose();
     Eigen::Matrix3d mean_diff2 = (mean2 - combined_mean) * (mean2 - combined_mean).transpose();
