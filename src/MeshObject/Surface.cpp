@@ -1091,8 +1091,8 @@ void Surface::remove_point_from_surface_fitting(const Eigen::Vector3d& position,
     Eigen::Matrix3d cov2 = Eigen::Matrix3d::Zero();
 
     // set + point
-    Eigen::Vector3d mean1 = remove_mean(combined_mean, mean2, combined_weight, weight2);
-    Eigen::Matrix3d cov1 = remove_covariance(combined_cov, cov2, combined_mean, mean2, combined_weight, weight2);
+    Eigen::Vector3d mean1 = weighted_remove_mean(combined_mean, mean2, combined_weight, weight2);
+    Eigen::Matrix3d cov1 = weighted_remove_covariance(combined_cov, cov2, combined_mean, mean2, combined_weight, weight2);
     double weight1 = combined_weight - weight2;
 
     // plane estimate

@@ -81,9 +81,11 @@ Eigen::Matrix3d weighted_merge_covariance(const Eigen::Matrix3d& cov1, const Eig
 // weighted remove mean2 from combined_mean
 Eigen::Vector3d weighted_remove_mean(const Eigen::Vector3d& combined_mean, const Eigen::Vector3d& mean2, double combined_weight, double weight2) 
 {
-    if (combined_weight < weight2) throw std::invalid_argument("Size of the combined_mean must be greater than size of mean2");
+    double epsilon = 1e-6;
+
+    if (combined_weight - weight2 < -epsilon) throw std::invalid_argument("Size of the combined_weight " + std::to_string(combined_weight) + " must be greater than size of weight2 " + std::to_string(weight2));
     double weight1 = combined_weight - weight2;
-    if (weight1 == 0) return Eigen::Vector3d::Zero();
+    if (std::abs(weight1) < epsilon) return Eigen::Vector3d::Zero();
     
     return (combined_weight * combined_mean - weight2 * mean2) / weight1;
 }
@@ -93,9 +95,11 @@ Eigen::Matrix3d weighted_remove_covariance(const Eigen::Matrix3d& combined_covar
                                 const Eigen::Vector3d& combined_mean, const Eigen::Vector3d& mean2, 
                                 double combined_weight, double weight2) 
 {
-    if (combined_weight < weight2) throw std::invalid_argument("Size of the combined_cov must be greater than size of the cov2");
+    double epsilon = 1e-6;
+
+    if (combined_weight - weight2 < -epsilon) throw std::invalid_argument("Size of the combined_weight " + std::to_string(combined_weight) + " must be greater than size of weight2 " + std::to_string(weight2));
     double weight1 = combined_weight - weight2;
-    if (weight1 == 0) return Eigen::Matrix3d::Zero();
+    if (std::abs(weight1) < epsilon) return Eigen::Matrix3d::Zero();
 
     Eigen::Vector3d mean1 = remove_mean(combined_mean, mean2, combined_weight, weight2);
 
