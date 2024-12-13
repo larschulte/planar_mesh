@@ -188,14 +188,14 @@ RelativePosition Surface::check_relative_position(double distance_travelled, con
         double variance_range_direction = d_range_d_direction.transpose() * cov_direction * d_range_d_direction;
         double variance_range_normal = d_range_d_normal.transpose() * cov_normal * d_range_d_normal;
 
-        // compute std of range due to ...
-        double std_range_origin = std::sqrt(variance_range_origin);
-        double std_range_mean = std::sqrt(variance_range_mean);
-        double std_range_direction = std::sqrt(variance_range_direction);
-        double std_range_normal = std::sqrt(variance_range_normal);
+        // // compute std of range due to ...
+        // double std_range_origin = std::sqrt(variance_range_origin);
+        // double std_range_mean = std::sqrt(variance_range_mean);
+        // double std_range_direction = std::sqrt(variance_range_direction);
+        // double std_range_normal = std::sqrt(variance_range_normal);
 
         // compute combined std
-        double combined_std = std::sqrt(std_range_origin * std_range_origin + std_range_mean * std_range_mean + std_range_direction * std_range_direction + std_range_normal * std_range_normal + settings_.range_precision * settings_.range_precision);
+        double combined_std = std::sqrt(variance_range_origin + variance_range_mean + variance_range_direction + variance_range_normal + settings_.range_precision * settings_.range_precision);
 
         // compute point to plane projective distance
         double projective_distance = compute_point_projective_distance(origin, point);

@@ -137,7 +137,7 @@ private:
     Eigen::Vector3d eigenvalues_;
     Eigen::Vector3d normal_;
     double characteristic_length_;
-    double normal_uncertainty_;
+    double normal_uncertainty_ = 0;
     double sum_of_average_distance_travelled_;
     double smallest_distance_travelled_ = std::numeric_limits<double>::max();
 
