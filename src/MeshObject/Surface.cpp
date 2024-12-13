@@ -665,8 +665,6 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
     {
         // skip if edge is longer than any of the radius of vertices
         double distance = (vertex->get_position() - nearby_vertex->get_position()).norm();
-        
-        // skip if edge is longer than either vertices radius
         if (distance > vertex->get_radius(shared_from_this()) || distance > nearby_vertex->get_radius()) continue;
 
         // if edge intersects
@@ -688,23 +686,10 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
             // create edge
             std::shared_ptr<Edge> new_edge = storage_->add_edge(vertex, nearby_vertex);
             connect(new_edge);
-            connect(vertex);
             used_vertices.insert(nearby_vertex);
             new_edges.insert(new_edge);
 
             connected = true;
-
-            // check if the new edge have any sibling edges
-            for (const auto& sibling_vertex : vertex->get_sibling_vertices())
-            {
-                for (const auto& edge : sibling_vertex->get_edges())
-                {
-                    if (edge->has_vertex(nearby_vertex))
-                    {
-                        new_edge->connect(edge);
-                    }
-                }
-            }
         }
     }
 
@@ -788,18 +773,6 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
             // if face not already exists, create face
             std::shared_ptr<Face> new_face = storage_->add_face(shared_from_this(), vertex, nearby_vertex0, nearby_vertex1);
             new_faces.insert(new_face);
-
-            // connnect new face to its sibling faces
-            for (const auto& sibling_edge : existing_edge->get_sibling_edges())
-            {
-                for (const auto& sibling_face : sibling_edge->get_faces())
-                {
-                    if (sibling_face->has_vertex(vertex))
-                    {
-                        new_face->connect(sibling_face);
-                    }
-                }
-            }
         }
     }
 
