@@ -280,6 +280,11 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
     // kp numebr 8
     if (event.getKeySym() == "KP_Up" && event.keyDown())
     {
+        settings_.color_mode = ColorMode::WEIGHT;
+        update_display();
+
+        // log
+        std::cout << "color_mode: weight" << std::endl;
     }
     // kp numebr 9
     if (event.getKeySym() == "KP_Prior" && event.keyDown())

@@ -940,6 +940,14 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_interior_poi
             point.g = std::get<1>(color);
             point.b = std::get<2>(color);
         }
+        else if (settings.color_mode == ColorMode::WEIGHT)
+        {
+            double distance = interior_point->weight_ / 10000.f;
+            std::tuple<int, int, int> color = valueToJet(distance);
+            point.r = std::get<0>(color);
+            point.g = std::get<1>(color);
+            point.b = std::get<2>(color);
+        }
         cloud->push_back(point);
     }
     return cloud;
@@ -1080,6 +1088,14 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_vertex_point
         else if (setting.color_mode == ColorMode::DISTANCE_TRAVELLED)
         {
             double distance = vertex->get_distance_travelled() / 20.f;
+            std::tuple<int, int, int> color = valueToJet(distance);
+            point.r = std::get<0>(color);
+            point.g = std::get<1>(color);
+            point.b = std::get<2>(color);
+        }
+        else if (setting.color_mode == ColorMode::WEIGHT)
+        {
+            double distance = vertex->weight_ / 10000.f;
             std::tuple<int, int, int> color = valueToJet(distance);
             point.r = std::get<0>(color);
             point.g = std::get<1>(color);
