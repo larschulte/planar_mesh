@@ -642,7 +642,18 @@ bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
     std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(surface_to_add_to, generic_point);
     new_vertex->reduce_reverse_radius_search_radius(new_point_radius);
     new_vertex->reduce_previous_radius(new_point_radius);
-    surface_to_add_to->connect_by_edges_and_faces(new_vertex, all_vertices);
+    const bool connected = surface_to_add_to->connect_by_edges_and_faces(new_vertex, all_vertices);
+    
+    // there are singular points of a surface that are not connected to any other points
+    // perhaps this is the cause.
+    // if not connected, delete this point 
+    if (!connected)
+    {
+        storage_->delete_vertex(new_vertex);
+        return false;
+    }
+
+    // else
     return true;
 }
 
