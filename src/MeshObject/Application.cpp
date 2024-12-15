@@ -361,6 +361,10 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
 
     num_of_concurrent_processes--;
     
+    // after unlocking all locks, add the point in queue to the search tree
+    storage_->add_points_in_affected_vertices_set();
+    storage_->add_faces_in_affected_faces_set();
+
     //
     // they all lead to return, thus unlock all locks
     //
@@ -375,10 +379,6 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
     for (const std::shared_ptr<RRSNode>& node : locked_rrs_nodes) node->recursive_unlock();
 
     // lock.unlock();
-
-    // after unlocking all locks, add the point in queue to the search tree
-    storage_->add_points_in_affected_vertices_set();
-    storage_->add_faces_in_affected_faces_set();
 }
 
 template <typename PointT>
