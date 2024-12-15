@@ -411,6 +411,7 @@ bool Application<PointT>::add_point_by_intersection_search(const std::shared_ptr
         if (surface->get_total_point_size() < settings_.fit_plane_threshold)
         {
             surfaces_seed.insert(surface);
+            continue;
         }
 
         // relative position
