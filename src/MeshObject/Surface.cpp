@@ -89,6 +89,8 @@ const int& Surface::get_id() const
 
 double Surface::compute_point_to_plane_distance(const Eigen::Vector3d& point) const
 {
+    if (get_total_point_size() < settings_.fit_plane_threshold) throw std::runtime_error("Surface is seed surface.");
+
     return (point - mean_).dot(normal_);
 }
 
@@ -145,6 +147,9 @@ double Surface::compute_point_projective_distance_with_improved_covariance(const
 
 Eigen::Vector3d Surface::compute_point_projective_position(const Eigen::Vector3d& origin, const Eigen::Vector3d& point) const
 {
+    // if surface is seed surface, return original point as projected point
+    if (get_total_point_size() < settings_.fit_plane_threshold) return point;
+
     // compute
     Eigen::Vector3d rayDirection = (point - origin).normalized();
     double distance = (mean_ - point).dot(normal_) / rayDirection.dot(normal_);
@@ -294,7 +299,7 @@ RelativePosition Surface::check_relative_position(const std::shared_ptr<GenericP
 
 RelativePosition Surface::check_relative_position(const std::shared_ptr<Vertex>& vertex)
 {
-    return check_relative_position(vertex->get_distance_travelled(), vertex->get_origin(), vertex->get_position(), vertex->get_direction(), vertex->get_projected_uncertainty());
+    return check_relative_position(vertex->get_distance_travelled(), vertex->get_origin(), vertex->get_original_position(), vertex->get_direction(), vertex->get_projected_uncertainty());
 }
 
 // RelativePosition Surface::check_relative_position(const std::shared_ptr<Vertex>& vertex)
@@ -329,7 +334,7 @@ RelativePosition Surface::check_relative_position(const std::shared_ptr<Vertex>&
 
 RelativePosition Surface::check_relative_position(const std::shared_ptr<InteriorPoint>& interior_point)
 {
-    return check_relative_position(interior_point->get_distance_travelled(), interior_point->get_origin(), interior_point->get_position(), interior_point->get_direction(), interior_point->get_projected_uncertainty());
+    return check_relative_position(interior_point->get_distance_travelled(), interior_point->get_origin(), interior_point->get_original_position(), interior_point->get_direction(), interior_point->get_projected_uncertainty());
 }
 
 // RelativePosition Surface::check_relative_position(const std::shared_ptr<InteriorPoint>& interior_point)
@@ -457,12 +462,12 @@ const std::vector<double>& Surface::get_point_to_plane_distance_stats()
         // add
         for (const auto& vertex : vertices_)
         {
-            double point2plane_distance = (vertex->get_position() - get_mean()).dot(get_normal());
+            double point2plane_distance = (vertex->get_original_position() - get_mean()).dot(get_normal());
             stored_point_to_plane_distance_stats_.push_back(point2plane_distance);
         }
         for (const auto& interior_point : interior_points_)
         {
-            double point2plane_distance = (interior_point->get_position() - get_mean()).dot(get_normal());
+            double point2plane_distance = (interior_point->get_original_position() - get_mean()).dot(get_normal());
             stored_point_to_plane_distance_stats_.push_back(point2plane_distance);
         }
 
@@ -577,10 +582,10 @@ bool Surface::can_merge(const std::shared_ptr<Surface>& surface) const
 
     // compute projective distance stats for the combined surface
     std::vector<double> projective_distance_list;
-    for (const auto& vertex : vertices_)                            projective_distance_list.push_back((new_mean - vertex->get_position()).dot(new_normal) / vertex->get_direction().dot(new_normal));
-    for (const auto& interior_point : interior_points_)             projective_distance_list.push_back((new_mean - interior_point->get_position()).dot(new_normal) / interior_point->get_direction().dot(new_normal));
-    for (const auto& vertex : surface->vertices_)                   projective_distance_list.push_back((new_mean - vertex->get_position()).dot(new_normal) / vertex->get_direction().dot(new_normal));
-    for (const auto& interior_point : surface->interior_points_)    projective_distance_list.push_back((new_mean - interior_point->get_position()).dot(new_normal) / interior_point->get_direction().dot(new_normal));
+    for (const auto& vertex : vertices_)                            projective_distance_list.push_back((new_mean - vertex->get_original_position()).dot(new_normal) / vertex->get_direction().dot(new_normal));
+    for (const auto& interior_point : interior_points_)             projective_distance_list.push_back((new_mean - interior_point->get_original_position()).dot(new_normal) / interior_point->get_direction().dot(new_normal));
+    for (const auto& vertex : surface->vertices_)                   projective_distance_list.push_back((new_mean - vertex->get_original_position()).dot(new_normal) / vertex->get_direction().dot(new_normal));
+    for (const auto& interior_point : surface->interior_points_)    projective_distance_list.push_back((new_mean - interior_point->get_original_position()).dot(new_normal) / interior_point->get_direction().dot(new_normal));
 
     // subtract accuracy from each distance
     std::vector<double> projective_distance_list_modified = projective_distance_list;
@@ -625,7 +630,7 @@ void Surface::connect(const std::shared_ptr<Vertex>& vertex)
             vertex->weight_ = 1.0 / (vertex->get_projected_uncertainty() * vertex->get_projected_uncertainty());
         }
 
-        add_point_to_surface_fitting(vertex->get_position(), vertex->get_origin(), vertex->get_distance_travelled(), vertex->weight_);
+        add_point_to_surface_fitting(vertex->get_original_position(), vertex->get_origin(), vertex->get_distance_travelled(), vertex->weight_);
     }
 }
 
@@ -665,8 +670,6 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
     {
         // skip if edge is longer than any of the radius of vertices
         double distance = (vertex->get_position() - nearby_vertex->get_position()).norm();
-        
-        // skip if edge is longer than either vertices radius
         if (distance > vertex->get_radius(shared_from_this()) || distance > nearby_vertex->get_radius()) continue;
 
         // if edge intersects
@@ -688,23 +691,10 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
             // create edge
             std::shared_ptr<Edge> new_edge = storage_->add_edge(vertex, nearby_vertex);
             connect(new_edge);
-            connect(vertex);
             used_vertices.insert(nearby_vertex);
             new_edges.insert(new_edge);
 
             connected = true;
-
-            // check if the new edge have any sibling edges
-            for (const auto& sibling_vertex : vertex->get_sibling_vertices())
-            {
-                for (const auto& edge : sibling_vertex->get_edges())
-                {
-                    if (edge->has_vertex(nearby_vertex))
-                    {
-                        new_edge->connect(edge);
-                    }
-                }
-            }
         }
     }
 
@@ -788,18 +778,6 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
             // if face not already exists, create face
             std::shared_ptr<Face> new_face = storage_->add_face(shared_from_this(), vertex, nearby_vertex0, nearby_vertex1);
             new_faces.insert(new_face);
-
-            // connnect new face to its sibling faces
-            for (const auto& sibling_edge : existing_edge->get_sibling_edges())
-            {
-                for (const auto& sibling_face : sibling_edge->get_faces())
-                {
-                    if (sibling_face->has_vertex(vertex))
-                    {
-                        new_face->connect(sibling_face);
-                    }
-                }
-            }
         }
     }
 
@@ -875,7 +853,11 @@ void Surface::connect(const std::shared_ptr<Edge>& edge)
 
     // connect
     bool inserted = edges_.insert(edge).second;
-    if (inserted) edge->connect(shared_from_this());
+    if (inserted) 
+    {
+        add_searchable_edge(edge);
+        edge->connect(shared_from_this());
+    }
 }
 
 void Surface::connect(const std::shared_ptr<Face>& face)
@@ -913,7 +895,7 @@ void Surface::connect(const std::shared_ptr<InteriorPoint>& interior_point)
             interior_point->weight_ = 1.0 / (interior_point->get_projected_uncertainty() * interior_point->get_projected_uncertainty());
         }
 
-        add_point_to_surface_fitting(interior_point->get_position(), interior_point->get_origin(), interior_point->get_distance_travelled(), interior_point->weight_);
+        add_point_to_surface_fitting(interior_point->get_original_position(), interior_point->get_origin(), interior_point->get_distance_travelled(), interior_point->weight_);
     }
 }
 
@@ -930,7 +912,7 @@ void Surface::disconnect(const std::shared_ptr<Vertex>& vertex)
     if (erased) 
     {
 
-        remove_point_from_surface_fitting(vertex->get_position(), vertex->get_origin(), vertex->get_distance_travelled(), vertex->weight_);
+        remove_point_from_surface_fitting(vertex->get_original_position(), vertex->get_origin(), vertex->get_distance_travelled(), vertex->weight_);
     }
 }
 
@@ -941,7 +923,11 @@ void Surface::disconnect(const std::shared_ptr<Edge>& edge)
 
     // disconnect
     bool erased = edges_.erase(edge);
-    if (erased) edge->disconnect(shared_from_this());
+    if (erased) 
+    {
+        remove_searchable_edge(edge);
+        edge->disconnect(shared_from_this());
+    }
 }
 
 void Surface::disconnect(const std::shared_ptr<Face>& face)
@@ -967,7 +953,7 @@ void Surface::disconnect(const std::shared_ptr<InteriorPoint>& interior_point)
     if (erased) 
     {
 
-        remove_point_from_surface_fitting(interior_point->get_position(), interior_point->get_origin(), interior_point->get_distance_travelled(), interior_point->weight_);
+        remove_point_from_surface_fitting(interior_point->get_original_position(), interior_point->get_origin(), interior_point->get_distance_travelled(), interior_point->weight_);
     }
 }
 
@@ -1196,11 +1182,11 @@ void Surface::optimize_surface_normal()
     std::vector<std::pair<Eigen::Vector3d, Eigen::Vector3d>> dataset;
     for (const auto& vertex : vertices_)
     {
-        dataset.push_back(std::make_pair(vertex->get_origin(), vertex->get_position()));
+        dataset.push_back(std::make_pair(vertex->get_origin(), vertex->get_original_position()));
     }
     for (const auto& interior_point : interior_points_)
     {
-        dataset.push_back(std::make_pair(interior_point->get_origin(), interior_point->get_position()));
+        dataset.push_back(std::make_pair(interior_point->get_origin(), interior_point->get_original_position()));
     }
 
     fit_plane_to_points(dataset, mean_, normal_, bearing_noise, range_noise);

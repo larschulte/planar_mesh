@@ -361,6 +361,10 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
 
     num_of_concurrent_processes--;
     
+    // after unlocking all locks, add the point in queue to the search tree
+    storage_->add_points_in_affected_vertices_set();
+    storage_->add_faces_in_affected_faces_set();
+
     //
     // they all lead to return, thus unlock all locks
     //
@@ -375,10 +379,6 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
     for (const std::shared_ptr<RRSNode>& node : locked_rrs_nodes) node->recursive_unlock();
 
     // lock.unlock();
-
-    // after unlocking all locks, add the point in queue to the search tree
-    storage_->add_points_in_affected_vertices_set();
-    storage_->add_faces_in_affected_faces_set();
 }
 
 template <typename PointT>
@@ -411,6 +411,7 @@ bool Application<PointT>::add_point_by_intersection_search(const std::shared_ptr
         if (surface->get_total_point_size() < settings_.fit_plane_threshold)
         {
             surfaces_seed.insert(surface);
+            continue;
         }
 
         // relative position
@@ -641,7 +642,18 @@ bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
     std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(surface_to_add_to, generic_point);
     new_vertex->reduce_reverse_radius_search_radius(new_point_radius);
     new_vertex->reduce_previous_radius(new_point_radius);
-    surface_to_add_to->connect_by_edges_and_faces(new_vertex, all_vertices);
+    const bool connected = surface_to_add_to->connect_by_edges_and_faces(new_vertex, all_vertices);
+    
+    // there are singular points of a surface that are not connected to any other points
+    // perhaps this is the cause.
+    // if not connected, delete this point 
+    if (!connected)
+    {
+        storage_->delete_vertex(new_vertex);
+        return false;
+    }
+
+    // else
     return true;
 }
 

@@ -36,6 +36,7 @@ public:
     std::shared_ptr<RRSNode> node;
 
     const int& get_id() const;
+    const Eigen::Vector3d& get_original_position() const;
     const Eigen::Vector3d& get_position() const;
     const Eigen::Vector3d& get_origin() const;
     const double& get_distance_travelled() const;
@@ -154,6 +155,8 @@ private:
     Eigen::Vector3d direction_;
 
     double projected_uncertainty_;
+
+    Eigen::Vector3d projected_position_ = Eigen::Vector3d::Zero();
 
 public:
     double weight_;

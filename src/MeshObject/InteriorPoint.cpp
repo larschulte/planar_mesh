@@ -87,9 +87,17 @@ const int& InteriorPoint::get_id() const
     return id_;
 }
 
-const Eigen::Vector3d& InteriorPoint::get_position() const
+const Eigen::Vector3d& InteriorPoint::get_original_position() const
 {
     return position_;
+}
+
+const Eigen::Vector3d& InteriorPoint::get_position() const
+{
+    if (projected_position_.isZero()) throw std::runtime_error("Interior projected position is not set.");
+
+    return projected_position_;
+    // return position_;
 }
 
 const Eigen::Vector3d& InteriorPoint::get_origin() const
@@ -132,7 +140,7 @@ const Eigen::Vector3d& InteriorPoint::buffer_compute_projected_position(const st
     // add to cache if not exist
     if (!buffer_projected_position_.exists(hash)) 
     {
-        const Eigen::Vector3d computedResult = surface->compute_point_projective_position(get_origin(), get_position());
+        const Eigen::Vector3d computedResult = surface->compute_point_projective_position(get_origin(), get_original_position());
         buffer_projected_position_.put(hash, computedResult);
     }
 
@@ -150,7 +158,7 @@ const double& InteriorPoint::buffer_compute_projected_distance(const std::shared
     // add to cache if not exist
     if (!buffer_projected_distance_.exists(hash)) 
     {
-        const double computedResult = surface->compute_point_projective_distance(get_origin(), get_position());
+        const double computedResult = surface->compute_point_projective_distance(get_origin(), get_original_position());
         buffer_projected_distance_.put(hash, computedResult);
     }
 
@@ -208,6 +216,9 @@ void InteriorPoint::connect(const std::shared_ptr<Surface>& surface)
     if (inserted) surface_ = surface;
     if (inserted) 
     {
+        // update projected position
+        projected_position_ = surface->compute_point_projective_position(get_origin(), get_original_position());
+
         // if new surface is the same as the previous surface, set the radius to the updated previous radius
         if (surface == previous_surface_) 
         {
@@ -266,6 +277,7 @@ void InteriorPoint::disconnect(const std::shared_ptr<Surface>& surface)
     bool erased = surface_ == surface;
     if (erased) surface->disconnect(shared_from_this());
     if (erased) surface_ = nullptr;
+    if (erased) projected_position_ = Eigen::Vector3d::Zero();
 
     // self destruct
     if (!deleting_ && erased && can_self_destruct_) storage_->delete_interior_point(shared_from_this());

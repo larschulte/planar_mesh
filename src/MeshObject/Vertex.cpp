@@ -147,9 +147,16 @@ const int& Vertex::get_id() const
     return id_; 
 }
 
-const Eigen::Vector3d& Vertex::get_position() const 
+const Eigen::Vector3d& Vertex::get_original_position() const 
 { 
     return position_; 
+}
+
+const Eigen::Vector3d& Vertex::get_position() const 
+{ 
+    if (projected_position_.isZero()) throw std::runtime_error("Vertex projected position is not set.");
+    
+    return projected_position_;
 }
 
 const Eigen::Vector3d& Vertex::buffer_compute_projected_position(const std::shared_ptr<Surface> surface)
@@ -162,7 +169,7 @@ const Eigen::Vector3d& Vertex::buffer_compute_projected_position(const std::shar
     // add to cache if not exist
     if (!buffer_projected_position_.exists(hash)) 
     {
-        const Eigen::Vector3d computedResult = surface->compute_point_projective_position(get_origin(), get_position());
+        const Eigen::Vector3d computedResult = surface->compute_point_projective_position(get_origin(), get_original_position());
         buffer_projected_position_.put(hash, computedResult);
     }
 
@@ -180,7 +187,7 @@ const double& Vertex::buffer_compute_projected_distance(const std::shared_ptr<Su
     // add to cache if not exist
     if (!buffer_projected_distance_.exists(hash)) 
     {
-        const double computedResult = surface->compute_point_projective_distance(get_origin(), get_position());
+        const double computedResult = surface->compute_point_projective_distance(get_origin(), get_original_position());
         buffer_projected_distance_.put(hash, computedResult);
     }
 
@@ -333,7 +340,7 @@ const Eigen::Vector2d& Vertex::get_surface_coordinate(const std::shared_ptr<Surf
     {
         // compute new coordinate
         Eigen::Matrix<double, 3, 2> projection_matrix = eigenvectors.rightCols<2>();
-        Eigen::Vector3d projected_position = surface->compute_point_projective_position(get_origin(), get_position());
+        Eigen::Vector3d projected_position = surface->compute_point_projective_position(get_origin(), get_original_position());
         surface_coordinate_ = (projection_matrix.transpose() * projected_position).head<2>();
         eigenvectors_used_ = eigenvectors;
         return surface_coordinate_;
@@ -435,6 +442,9 @@ void Vertex::connect(const std::shared_ptr<Surface>& surface)
     if (inserted) surface_ = surface;
     if (inserted) 
     {
+        // update projected position
+        projected_position_ = surface->compute_point_projective_position(get_origin(), get_original_position());
+
         // if new surface is the same as the previous surface, set the radius to the updated previous radius
         if (surface == previous_surface_) 
         {
@@ -523,6 +533,7 @@ void Vertex::disconnect(const std::shared_ptr<Surface>& surface)
     if (erased) is_boundary_ = false;
     if (erased) is_singular_ = false;
     if (erased) surface_ = nullptr;
+    if (erased) projected_position_ = Eigen::Vector3d::Zero();
 
     // check self destruct
     if (!deleting_ && erased && can_self_destruct_) storage_->delete_vertex(shared_from_this());
@@ -911,6 +922,10 @@ void Vertex::reduce_reverse_radius_search_radius(double radius)
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> connected_vertices = compute_connected_vertices();
     for (const std::shared_ptr<Vertex>& vertex : connected_vertices)
     {
+        // this vertex and or connected vertices could be expired during the process
+        if (vertex->is_expired()) continue;
+        if (is_expired()) return;
+
         // distance
         double distance = (vertex->get_position() - get_position()).norm();
         

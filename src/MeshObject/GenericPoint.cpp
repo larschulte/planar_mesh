@@ -42,7 +42,7 @@ void GenericPoint::initialize_(const std::shared_ptr<Storage>& storage, const Ei
 
 void GenericPoint::initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<Vertex>& vertex)
 {
-    initialize_(storage, vertex->get_position(), vertex->get_origin(), vertex->get_distance_travelled());
+    initialize_(storage, vertex->get_original_position(), vertex->get_origin(), vertex->get_distance_travelled());
     previous_surface_ = vertex->get_surface();
     previous_radius_ = vertex->get_radius();
 
@@ -51,7 +51,7 @@ void GenericPoint::initialize_(const std::shared_ptr<Storage>& storage, const st
 
 void GenericPoint::initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<InteriorPoint>& interior_point)
 {
-    initialize_(storage, interior_point->get_position(), interior_point->get_origin(), interior_point->get_distance_travelled());
+    initialize_(storage, interior_point->get_original_position(), interior_point->get_origin(), interior_point->get_distance_travelled());
     previous_surface_ = interior_point->get_surface();
     previous_radius_ = interior_point->get_radius();
 
