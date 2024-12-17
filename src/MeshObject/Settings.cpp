@@ -136,12 +136,12 @@ Settings::Settings()
     show_pointcloud = true;
     show_triangle = true;
     show_edge = true;
-    show_projected_point = false;
     show_confirmed_only = false;
     show_keycode = false;
     show_singular_edge = false;
     show_singular_vertex = false;
     color_mode = ColorMode::ID;
+    point_mode = PointMode::USED;
     surface_denominator = 10.0;
     siblings_denominator = 3.0;
     radius_denominator = 0.3;

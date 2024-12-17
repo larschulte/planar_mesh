@@ -908,13 +908,19 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_interior_poi
         if (settings.show_confirmed_only && !interior_point->is_confirmed()) continue;
         
         pcl::PointXYZRGB point;
-        if (settings.show_projected_point)
+        if (settings.point_mode == PointMode::PROJECTED)
         {
             point.x = interior_point->buffer_compute_projected_position()[0];
             point.y = interior_point->buffer_compute_projected_position()[1];
             point.z = interior_point->buffer_compute_projected_position()[2];
         }
-        else
+        else if (settings.point_mode == PointMode::ORIGINAL)
+        {
+            point.x = interior_point->get_original_position()[0];
+            point.y = interior_point->get_original_position()[1];
+            point.z = interior_point->get_original_position()[2];
+        }
+        else if (settings.point_mode == PointMode::USED)
         {
             point.x = interior_point->get_position()[0];
             point.y = interior_point->get_position()[1];
@@ -1064,13 +1070,19 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_vertex_point
         if (!setting.show_singular_vertex && vertex->is_singular()) continue;
 
         pcl::PointXYZRGB point;
-        if (setting.show_projected_point)
+        if (setting.point_mode == PointMode::PROJECTED)
         {
             point.x = vertex->buffer_compute_projected_position()[0];
             point.y = vertex->buffer_compute_projected_position()[1];
             point.z = vertex->buffer_compute_projected_position()[2];
         }
-        else
+        else if (setting.point_mode == PointMode::ORIGINAL)
+        {
+            point.x = vertex->get_original_position()[0];
+            point.y = vertex->get_original_position()[1];
+            point.z = vertex->get_original_position()[2];
+        }
+        else if (setting.point_mode == PointMode::USED)
         {
             point.x = vertex->get_position()[0];
             point.y = vertex->get_position()[1];

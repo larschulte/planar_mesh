@@ -380,11 +380,23 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
     }
     if (event.getKeySym() == "a" && event.keyDown())
     {
-        settings_.show_projected_point = !settings_.show_projected_point;
+        // loop around the point mode
+        if (settings_.point_mode == PointMode::USED)
+        {
+            settings_.point_mode = PointMode::ORIGINAL;
+        }
+        else if (settings_.point_mode == PointMode::ORIGINAL)
+        {
+            settings_.point_mode = PointMode::PROJECTED;
+        }
+        else if (settings_.point_mode == PointMode::PROJECTED)
+        {
+            settings_.point_mode = PointMode::USED;
+        }
         update_display();
 
         // log
-        std::cout << "show_projected_point: " << settings_.show_projected_point << std::endl;
+        std::cout << "point mode: " << settings_.point_mode << std::endl;
     }
     if (event.getKeySym() == "z" && event.keyDown())
     {

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <ostream>
 
 struct LOG
 {
@@ -34,6 +35,33 @@ enum class ColorMode
     DISTANCE_TRAVELLED,
     WEIGHT
 };
+
+enum class PointMode
+{
+    USED,
+    ORIGINAL,
+    PROJECTED
+};
+
+inline std::ostream& operator<<(std::ostream& os, const PointMode& mode)
+{
+    switch (mode)
+    {
+        case PointMode::USED:
+            os << "   USED   |          |           |";
+            break;
+        case PointMode::ORIGINAL:
+            os << "          | ORIGINAL |           |";
+            break;
+        case PointMode::PROJECTED:
+            os << "          |          | PROJECTED |";
+            break;
+        default:
+            os << "not set";
+            break;
+    }
+    return os;
+}
 
 struct DataLoader_Settings
 {
@@ -99,12 +127,12 @@ struct Settings
     bool show_pointcloud;
     bool show_triangle;
     bool show_edge;
-    bool show_projected_point;
     bool show_confirmed_only;
     bool show_keycode;
     bool show_singular_edge;
     bool show_singular_vertex;
     ColorMode color_mode;
+    PointMode point_mode;
     double surface_denominator;
     double siblings_denominator;
     double radius_denominator;
