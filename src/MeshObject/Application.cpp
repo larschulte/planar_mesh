@@ -791,7 +791,9 @@ void Application<PointT>::loop()
 
     std::chrono::high_resolution_clock::time_point t_end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = t_end - t_init;
-    std::cout << "==================================================================== Processed " << accumulated_points << " points in " << duration.count() << " s" << std::endl;
+    total_duration += duration.count();
+    total_loops += 1;
+    std::cout << "==================================================================== Processed " << accumulated_points << " points in " << duration.count() << " s, " << "average duration: " << total_duration / total_loops << std::endl;
 
     // store time and ith_cloud into file
     if (settings_.output_time)
@@ -835,6 +837,9 @@ void Application<PointT>::restart()
     ith_size = 0;
     origin = Eigen::Vector3d(0, 0, 0);
     distance_travelled_ = 0;
+
+    total_duration = 0;
+    total_loops = 0;
     
     // load point cloud
     load_point_cloud();
