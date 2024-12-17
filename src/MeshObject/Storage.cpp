@@ -693,24 +693,27 @@ void Storage::add_faces_in_affected_faces_set()
         // // skip if face is expired, but really there should not have been any expired face in the set
         // if (face->is_expired()) continue;
 
-        // i need a explicit flag that indicates if the vertex is added to the rrs tree or not, instead of just a is_searchable flag
-
-        // check if vertex needs to be added or removed or unchanged from rrs_tree
-        if (face->is_searchable() && face->node == nullptr)
+        if (face->is_expired())
         {
-            // add to rrs_tree
-            triangle_bvh_.tree_add_face(face);
+            if (face->is_searchable())
+            {
+                // remove from rrs_tree
+                triangle_bvh_.tree_delete_face(face);
+            }
+            else
+            {
+                // do nothing
+            }
         }
-        else if (!face->is_searchable() && face->node != nullptr)
+        else
         {
-            // remove from rrs_tree
-            triangle_bvh_.tree_delete_face(face);
+            // face should always be searchable
+            if (!face->is_searchable())
+            {
+                // add to rrs_tree
+                triangle_bvh_.tree_add_face(face);
+            }
         }
-
-        // else
-        // {
-        //     // do nothing
-        // }
     }
 
     // clear

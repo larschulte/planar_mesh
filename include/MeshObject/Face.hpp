@@ -78,7 +78,6 @@ private:
     Eigen::Vector3d center_;
 
     bool deleting_ = false;
-    bool is_searchable_ = false;
     bool is_expired_ = true;
     bool is_confirmed_ = false;
 
