@@ -689,8 +689,9 @@ void Storage::add_faces_in_affected_faces_set()
 {
     for (const std::shared_ptr<Face>& face : smaller_affected_faces_sets_[omp_get_thread_num()])
     {
-        // skip if face is expired, but really there should not have been any expired face in the set
-        if (face->is_expired()) continue;
+        // this should allow face to be expired. since when deleting face, it will become expired.
+        // // skip if face is expired, but really there should not have been any expired face in the set
+        // if (face->is_expired()) continue;
 
         // i need a explicit flag that indicates if the vertex is added to the rrs tree or not, instead of just a is_searchable flag
 
