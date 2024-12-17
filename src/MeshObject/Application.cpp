@@ -618,6 +618,8 @@ bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
             }
             else
             {
+                // need to prevent this vertex from generating a new generic point
+                new_vertex->can_create_generic_point(false);
                 storage_->delete_vertex(new_vertex);
                 continue;
             }
@@ -672,6 +674,8 @@ bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
             }
             else
             {
+                // need to prevent this vertex from generating a new generic point
+                new_vertex->can_create_generic_point(false);
                 storage_->delete_vertex(new_vertex);
                 continue;
             }
