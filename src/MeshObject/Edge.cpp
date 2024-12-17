@@ -332,7 +332,7 @@ void Edge::update_boundary_state()
         // update connected vertices
         for (const std::shared_ptr<Vertex>& vertex : vertices_)
         {
-            vertex->update_boundary_state();
+            vertex->check_if_update_search_tree();
         }
     }
 }

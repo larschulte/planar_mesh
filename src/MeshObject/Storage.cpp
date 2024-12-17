@@ -656,21 +656,29 @@ void Storage::add_points_in_affected_vertices_set()
         // if (vertex->is_expired()) continue;
 
         // check if vertex needs to be added or removed or unchanged from rrs_tree
-        if (vertex->is_boundary() && vertex->node == nullptr)
+        if (vertex->is_expired())
         {
-            // add to rrs_tree
-            rrs_tree_.tree_add_vertex(vertex);
+            if (vertex->is_searchable())
+            {
+                rrs_tree_.tree_delete_vertex(vertex);
+            }
+            else
+            {
+                // do nothing
+            }
         }
-        else if (!vertex->is_boundary() && vertex->node != nullptr)
+        else
         {
-            // remove from rrs_tree
-            rrs_tree_.tree_delete_vertex(vertex);
-        }
+            if (vertex->is_boundary() && !vertex->is_searchable())
+            {
+                rrs_tree_.tree_add_vertex(vertex);
+            }
 
-        // else
-        // {
-        //     // do nothing
-        // }
+            if (!vertex->is_boundary() && vertex->is_searchable())
+            {
+                rrs_tree_.tree_delete_vertex(vertex);
+            }
+        }
     }
 
     // clear
