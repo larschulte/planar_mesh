@@ -362,8 +362,8 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
     num_of_concurrent_processes--;
     
     // after unlocking all locks, add the point in queue to the search tree
-    storage_->add_points_in_affected_vertices_set();
-    storage_->add_faces_in_affected_faces_set();
+    storage_->add_or_remove_vertices_from_rrs_tree();
+    storage_->add_or_remove_faces_from_bvh_tree();
 
     //
     // they all lead to return, thus unlock all locks

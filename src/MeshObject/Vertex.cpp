@@ -88,7 +88,7 @@ void Vertex::delete_()
     }
 
     // add to update rrs tree vertex set
-    storage_->add_affected_vertex(shared_from_this());
+    storage_->add_to_set_of_vertices_to_update_rrs_tree(shared_from_this());
 
     // log
     if (settings_.log.deletion) std::cout << "Destroying vertex " << id_ << std::endl;
@@ -834,11 +834,11 @@ void Vertex::check_if_update_search_tree()
     // check if is boundary
     if (is_boundary() && !is_searchable())
     {
-        storage_->add_affected_vertex(shared_from_this());
+        storage_->add_to_set_of_vertices_to_update_rrs_tree(shared_from_this());
     }
     else if (!is_boundary() && is_searchable())
     {
-        storage_->add_affected_vertex(shared_from_this());
+        storage_->add_to_set_of_vertices_to_update_rrs_tree(shared_from_this());
     }
 }
 

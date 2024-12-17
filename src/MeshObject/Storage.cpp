@@ -25,8 +25,8 @@ Storage::Storage()
     smaller_repeated_queues_.resize(settings_.num_threads);
     smaller_abort_queues_.resize(settings_.num_threads);
     smaller_add_searchable_vertices_queue_.resize(settings_.num_threads);
-    smaller_affected_vertices_sets_.resize(settings_.num_threads);
-    smaller_affected_faces_sets_.resize(settings_.num_threads);
+    smaller_set_of_vertices_to_update_rrs_tree.resize(settings_.num_threads);
+    smaller_set_of_faces_to_update_rrs_tree.resize(settings_.num_threads);
     
     // initialize with queue or stack
     for (size_t i = 0; i < settings_.num_threads; ++i)
@@ -647,9 +647,9 @@ void Storage::add_points_in_add_searchable_vertex_queue()
     }
 }
 
-void Storage::add_points_in_affected_vertices_set()
+void Storage::add_or_remove_vertices_from_rrs_tree()
 {
-    for (const std::shared_ptr<Vertex>& vertex : smaller_affected_vertices_sets_[omp_get_thread_num()])
+    for (const std::shared_ptr<Vertex>& vertex : smaller_set_of_vertices_to_update_rrs_tree[omp_get_thread_num()])
     {
         // this should allow vertex to be expired. since when deleting vertex, it will become expired.
         // // skip if vertex is expired, but really we should reduce the number of expired vertex in the set
@@ -682,12 +682,12 @@ void Storage::add_points_in_affected_vertices_set()
     }
 
     // clear
-    smaller_affected_vertices_sets_[omp_get_thread_num()].clear();
+    smaller_set_of_vertices_to_update_rrs_tree[omp_get_thread_num()].clear();
 }
 
-void Storage::add_faces_in_affected_faces_set()
+void Storage::add_or_remove_faces_from_bvh_tree()
 {
-    for (const std::shared_ptr<Face>& face : smaller_affected_faces_sets_[omp_get_thread_num()])
+    for (const std::shared_ptr<Face>& face : smaller_set_of_faces_to_update_rrs_tree[omp_get_thread_num()])
     {
         // this should allow face to be expired. since when deleting face, it will become expired.
         // // skip if face is expired, but really there should not have been any expired face in the set
@@ -717,7 +717,7 @@ void Storage::add_faces_in_affected_faces_set()
     }
 
     // clear
-    smaller_affected_faces_sets_[omp_get_thread_num()].clear();
+    smaller_set_of_faces_to_update_rrs_tree[omp_get_thread_num()].clear();
 }
 
 
@@ -727,16 +727,16 @@ void Storage::remove_searchable_vertex(const std::shared_ptr<Vertex>& vertex)
     rrs_tree_.tree_delete_vertex(vertex);
 }
 
-void Storage::add_affected_vertex(const std::shared_ptr<Vertex>& vertex)
+void Storage::add_to_set_of_vertices_to_update_rrs_tree(const std::shared_ptr<Vertex>& vertex)
 {
     // add to affected vertices set
-    smaller_affected_vertices_sets_[omp_get_thread_num()].insert(vertex);
+    smaller_set_of_vertices_to_update_rrs_tree[omp_get_thread_num()].insert(vertex);
 }
 
-void Storage::add_affected_face(const std::shared_ptr<Face>& face)
+void Storage::add_to_set_of_faces_to_update_bvh_tree(const std::shared_ptr<Face>& face)
 {
     // add to affected vertices set
-    smaller_affected_faces_sets_[omp_get_thread_num()].insert(face);
+    smaller_set_of_faces_to_update_rrs_tree[omp_get_thread_num()].insert(face);
 }
 
 void Storage::add_searchable_face(const std::shared_ptr<Face>& face)
