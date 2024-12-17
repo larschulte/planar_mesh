@@ -651,10 +651,9 @@ void Storage::add_points_in_affected_vertices_set()
 {
     for (const std::shared_ptr<Vertex>& vertex : smaller_affected_vertices_sets_[omp_get_thread_num()])
     {
-        // skip if vertex is expired, but really we should reduce the number of expired vertex in the set
-        if (vertex->is_expired()) continue;
-
-        // i need a explicit flag that indicates if the vertex is added to the rrs tree or not, instead of just a is_searchable flag
+        // this should allow vertex to be expired. since when deleting vertex, it will become expired.
+        // // skip if vertex is expired, but really we should reduce the number of expired vertex in the set
+        // if (vertex->is_expired()) continue;
 
         // check if vertex needs to be added or removed or unchanged from rrs_tree
         if (vertex->is_boundary() && vertex->node == nullptr)
