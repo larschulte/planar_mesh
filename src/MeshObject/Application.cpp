@@ -574,21 +574,8 @@ bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
         }
     }
 
-    // update radius
-    for (std::shared_ptr<Vertex> vertex : all_vertices)
-    {
-        // skip if the vertex is expired
-        if (vertex->is_expired()) continue;
-
-        // skip if the vertex is not in surfaces_with_point_not_within
-        if (surfaces_outside.find(vertex->get_surface()) == surfaces_outside.end()) continue;
-
-        // compute distance
-        double distance = (vertex->get_position() - generic_point->get_position()).norm();
-
-        // reduce new_point_radius
-        if (distance < new_point_radius) new_point_radius = distance;
-    }
+    // make a copy of the radius
+    double new_point_radius_copy = new_point_radius;
 
     // try add to surfaces_within
     if (surfaces_within.size() > 0)
@@ -606,6 +593,24 @@ bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
 
             // add to surface_to_add_to
             std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(surface_to_add_to, generic_point);
+
+            // update radius
+            new_point_radius = new_point_radius_copy;
+            for (std::shared_ptr<Vertex> vertex : all_vertices)
+            {
+                // skip if the vertex is expired
+                if (vertex->is_expired()) continue;
+
+                // skip if the vertex is not in surfaces_with_point_not_within
+                if (surfaces_outside.find(vertex->get_surface()) == surfaces_outside.end()) continue;
+
+                // compute distance
+                double distance = (vertex->get_position() - new_vertex->get_position()).norm();
+
+                // reduce new_point_radius
+                if (distance < new_point_radius) new_point_radius = distance;
+            }
+
             new_vertex->reduce_reverse_radius_search_radius(new_point_radius);
             new_vertex->reduce_previous_radius(new_point_radius);
             const bool connected = surface_to_add_to->connect_by_edges_and_faces(new_vertex, all_vertices);
@@ -622,6 +627,23 @@ bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
                 continue;
             }
         }
+    }
+
+    // update radius
+    new_point_radius = new_point_radius_copy;
+    for (std::shared_ptr<Vertex> vertex : all_vertices)
+    {
+        // skip if the vertex is expired
+        if (vertex->is_expired()) continue;
+
+        // skip if the vertex is not in surfaces_with_point_not_within
+        if (surfaces_outside.find(vertex->get_surface()) == surfaces_outside.end()) continue;
+
+        // compute distance
+        double distance = (vertex->get_position() - generic_point->get_position()).norm();
+
+        // reduce new_point_radius
+        if (distance < new_point_radius) new_point_radius = distance;
     }
 
     // try add to surfaces_seed
