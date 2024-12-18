@@ -994,7 +994,12 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_interior_poi
         }
         else if (settings.color_mode == ColorMode::WEIGHT)
         {
-            double distance = interior_point->weight_ / 10000.f;
+            // the lowest uncertainty is 0.02 which is the range precision
+            // 1/(0.02*0.02) = 2500
+            // the best weight is 2500
+            // all weight should be lower than this number
+            const double best_weight = 1.f / (settings.range_precision * settings.range_precision);
+            double distance = interior_point->weight_ / best_weight; 
             std::tuple<int, int, int> color = valueToJet(distance);
             point.r = std::get<0>(color);
             point.g = std::get<1>(color);
@@ -1153,7 +1158,8 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_vertex_point
         }
         else if (setting.color_mode == ColorMode::WEIGHT)
         {
-            double distance = vertex->weight_ / 10000.f;
+            const double best_weight = 1.f / (settings_.range_precision * settings_.range_precision);
+            double distance = vertex->weight_ / best_weight;
             std::tuple<int, int, int> color = valueToJet(distance);
             point.r = std::get<0>(color);
             point.g = std::get<1>(color);
