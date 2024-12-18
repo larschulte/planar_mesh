@@ -900,6 +900,9 @@ void Vertex::set_reverse_radius_search_radius(double radius)
 
 void Vertex::reduce_reverse_radius_search_radius(double radius)
 {
+    // throw if radius is negative
+    if (radius < 0) throw std::runtime_error("Negative radius for vertex point.");
+
     if (radius >= reverse_search_radius_) return;
 
     // update radius

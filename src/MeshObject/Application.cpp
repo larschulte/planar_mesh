@@ -434,14 +434,16 @@ bool Application<PointT>::add_point_by_intersection_search(const std::shared_ptr
     for (const std::shared_ptr<Surface>& surface : surfaces_in_front)
     {
         // update radius
-        double distance = surface->compute_point_to_plane_distance(generic_point->get_position());
-        if (distance < new_point_radius) new_point_radius = distance;
+        const double distance = surface->compute_point_to_plane_distance(generic_point->get_position());
+        const double abs_distance = std::abs(distance);
+        if (abs_distance < new_point_radius) new_point_radius = abs_distance;
     }
     for (const std::shared_ptr<Surface>& surface : surfaces_behind)
     {
         // update radius
-        double distance = surface->compute_point_to_plane_distance(generic_point->get_position());
-        if (distance < new_point_radius) new_point_radius = distance;
+        const double distance = surface->compute_point_to_plane_distance(generic_point->get_position());
+        const double abs_distance = std::abs(distance);
+        if (abs_distance < new_point_radius) new_point_radius = abs_distance;
     }
     
     // log

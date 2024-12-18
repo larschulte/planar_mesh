@@ -295,6 +295,9 @@ void InteriorPoint::disconnect(const std::shared_ptr<InteriorPoint>& sibling_int
 
 void InteriorPoint::reduce_reverse_radius_search_radius(double radius)
 {
+    // throw if radius is negative
+    if (radius < 0) throw std::runtime_error("Negative radius for interior point.");
+
     if (radius < radius_) set_reverse_radius_search_radius(radius);
 }
 
