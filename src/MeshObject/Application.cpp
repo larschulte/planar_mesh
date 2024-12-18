@@ -303,6 +303,9 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
     // don't reduce radius if the point is added to a new surface
     if (!added_to_new_surface)
     {
+        // projected generic point to the surface it is added to
+        Eigen::Vector3d projected_generic_point = added_surface->compute_point_projective_position(generic_point->get_origin(), generic_point->get_position());
+
         // rrs search radius reduction
         for (const std::shared_ptr<Vertex>& vertex : rrs_results)
         {
@@ -312,9 +315,9 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
             // skip if the same surface
             if (vertex->get_surface() == added_surface) continue;
 
-            // reduce using shortest distance to ray
-            const double distance = shortest_distance_to_line_segment(generic_point->get_origin(), generic_point->get_position(), vertex->get_position());
-            vertex->reduce_reverse_radius_search_radius(distance);
+            // use the projected position of the generic point on the surface it is added to
+            const double point_to_point_distance = (projected_generic_point - vertex->get_position()).norm();
+            vertex->reduce_reverse_radius_search_radius(point_to_point_distance);
         }
 
         // bvh search radius reduction
@@ -343,18 +346,18 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
                 // skip if expired
                 if (vertex->is_expired()) continue;
 
-                // reduce using shortest distance to ray
-                const double distance = shortest_distance_to_line_segment(generic_point->get_origin(), generic_point->get_position(), vertex->get_position());
-                vertex->reduce_reverse_radius_search_radius(distance);
+                // use the projected position of the generic point on the surface it is added to
+                const double point_to_point_distance = (projected_generic_point - vertex->get_position()).norm();
+                vertex->reduce_reverse_radius_search_radius(point_to_point_distance);
             }
             for (const std::shared_ptr<InteriorPoint>& interior_point : interior_points)
             {
                 // skip if expired
                 if (interior_point->is_expired()) continue;
 
-                // reduce using shortest distance to ray
-                const double distance = shortest_distance_to_line_segment(generic_point->get_origin(), generic_point->get_position(), interior_point->get_position());
-                interior_point->reduce_reverse_radius_search_radius(distance);
+                // use the projected position of the generic point on the surface it is added to
+                const double point_to_point_distance = (projected_generic_point - interior_point->get_position()).norm();
+                interior_point->reduce_reverse_radius_search_radius(point_to_point_distance);
             }
         }
     }
