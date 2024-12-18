@@ -402,9 +402,8 @@ bool Application<PointT>::add_point_by_intersection_search(const std::shared_ptr
     // check relative position with the searched surfaces
     // update the smallest distance to surface not within
     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_seed;
-    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_in_front;
     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_within;
-    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_behind;
+    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_not_within;
     for (const std::shared_ptr<Surface>& surface : all_surfaces)
     {
         // skip if the surface is expired
@@ -423,13 +422,9 @@ bool Application<PointT>::add_point_by_intersection_search(const std::shared_ptr
         {
             surfaces_within.insert(surface);
         }
-        else if (relative_position == RelativePosition::BEHIND)
+        else
         {
-            surfaces_behind.insert(surface);
-        }
-        else if (relative_position == RelativePosition::IN_FRONT)
-        {
-            surfaces_in_front.insert(surface);
+            surfaces_not_within.insert(surface);
         }
     }
 
@@ -490,13 +485,7 @@ bool Application<PointT>::add_point_by_intersection_search(const std::shared_ptr
     // update new point radius 
     const bool surface_to_add_to_is_within = surfaces_within.size() > 0;
     Eigen::Vector3d position_to_use = surface_to_add_to_is_within ? surface_to_add_to->compute_point_projective_position(generic_point->get_origin(), generic_point->get_position()) : generic_point->get_position();
-    for (const std::shared_ptr<Surface>& surface : surfaces_in_front)
-    {
-        const double distance = surface->compute_point_to_plane_distance(position_to_use);
-        const double abs_distance = std::abs(distance);
-        if (abs_distance < new_point_radius) new_point_radius = abs_distance;
-    }
-    for (const std::shared_ptr<Surface>& surface : surfaces_behind)
+    for (const std::shared_ptr<Surface>& surface : surfaces_not_within)
     {
         const double distance = surface->compute_point_to_plane_distance(position_to_use);
         const double abs_distance = std::abs(distance);
