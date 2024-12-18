@@ -433,22 +433,6 @@ bool Application<PointT>::add_point_by_intersection_search(const std::shared_ptr
         }
     }
 
-    // update new point radius
-    for (const std::shared_ptr<Surface>& surface : surfaces_in_front)
-    {
-        // update radius
-        const double distance = surface->compute_point_to_plane_distance(generic_point->get_position());
-        const double abs_distance = std::abs(distance);
-        if (abs_distance < new_point_radius) new_point_radius = abs_distance;
-    }
-    for (const std::shared_ptr<Surface>& surface : surfaces_behind)
-    {
-        // update radius
-        const double distance = surface->compute_point_to_plane_distance(generic_point->get_position());
-        const double abs_distance = std::abs(distance);
-        if (abs_distance < new_point_radius) new_point_radius = abs_distance;
-    }
-    
     // log
     if (settings_.log.process_point) std::cout << ">> found " << bvh_results.size() << " searched faces grouped into " << all_surfaces.size() << " searched surfaces" << std::endl;
 
@@ -499,8 +483,28 @@ bool Application<PointT>::add_point_by_intersection_search(const std::shared_ptr
     else
     {
         // add point by radius search or new surface (when no surfaces within nor seed)
-        return false;
+        // don't return right now
+        // return false;
     }
+
+    // update new point radius 
+    const bool surface_to_add_to_is_within = surfaces_within.size() > 0;
+    Eigen::Vector3d position_to_use = surface_to_add_to_is_within ? surface_to_add_to->compute_point_projective_position(generic_point->get_origin(), generic_point->get_position()) : generic_point->get_position();
+    for (const std::shared_ptr<Surface>& surface : surfaces_in_front)
+    {
+        const double distance = surface->compute_point_to_plane_distance(position_to_use);
+        const double abs_distance = std::abs(distance);
+        if (abs_distance < new_point_radius) new_point_radius = abs_distance;
+    }
+    for (const std::shared_ptr<Surface>& surface : surfaces_behind)
+    {
+        const double distance = surface->compute_point_to_plane_distance(position_to_use);
+        const double abs_distance = std::abs(distance);
+        if (abs_distance < new_point_radius) new_point_radius = abs_distance;
+    }
+
+    // if the point is not to be added to any surface, return false
+    if (surface_to_add_to == nullptr) return false;
 
     // log
     if (settings_.log.process_point) std::cout << "========================== within surface " << surface_to_add_to->get_id() << std::endl;
