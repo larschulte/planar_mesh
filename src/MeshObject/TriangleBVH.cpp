@@ -293,8 +293,11 @@ BVHReturnType TriangleBVH::node_intersection_search(const std::shared_ptr<Node>&
             return BVHReturnType::ABORT;
         }
 
-        // skip if face is not searchable
-        if (!node->faces[0]->is_searchable())
+        // we lock the face during face->delete_() call, and then release it before locking it again when removing it from the bvh tree
+        // thus this thread may have lock this face during the gap
+        // and see an expired face in the search tree
+        // thus we need to check if the face is expired and skip if it is
+        if (face->is_expired())
         {
             omp_unset_nest_lock(&face->face_lock);
             omp_unset_nest_lock(&node->omp_lock);

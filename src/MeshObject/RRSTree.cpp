@@ -611,8 +611,11 @@ RRSReturnType RRSTree::node_reverse_radius_search(const std::shared_ptr<RRSNode>
             return RRSReturnType::ABORT;
         }
         
-        // skip if boundary vertex is not searchable ( this mean the vertex should be removed from node but has not been removed yet)
-        if (!node->boundary_vertices[0]->is_searchable())
+        // we lock the vertex during vertex->delete_() call, and then release it before locking it again when removing it from the rrs tree
+        // thus this thread may have lock this vertex during the gap
+        // and see an expired vertex in the search tree
+        // thus we need to check if the vertex is expired and skip if it is
+        if (node->boundary_vertices[0]->is_expired())
         {
             omp_unset_nest_lock(&boundary_vertex->vertex_lock);
             omp_unset_nest_lock(&node->omp_lock);

@@ -89,8 +89,7 @@ public:
     void swap(const std::shared_ptr<Surface>& surface1, const std::shared_ptr<Surface>& surface2);
     void absorbs(const std::shared_ptr<Vertex>& input_vertex);
 
-    void update_boundary_state();
-    void update_searchable_state();
+    void check_if_update_search_tree();
 
     void print_info();
 
@@ -118,8 +117,6 @@ private:
 
     bool deleting_ = false;
     bool under_review_ = false;
-    bool is_boundary_;
-    bool is_searchable_ = false;
     bool is_expired_ = true;
     bool is_singular_;
     bool can_self_destruct_ = true;

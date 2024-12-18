@@ -37,8 +37,8 @@ void Vertex::initialize_(const std::shared_ptr<Storage>& storage, const std::sha
     // connect
     connect(surface);
 
-    // update boundary state here, in case no edge is connected, the point is still boundary and need to add to rrs tree
-    update_boundary_state();
+    // check if update search tree
+    check_if_update_search_tree();
 
     // set reverse search radius based on input parameter
     set_reverse_radius_search_radius(radius);
@@ -87,9 +87,8 @@ void Vertex::delete_()
         std::cout << "waiting to lock vertex " << id_ << std::endl;
     }
 
-    // add to affected vertices set
-    is_searchable_ = false;
-    storage_->add_affected_vertex(shared_from_this());
+    // add to update rrs tree vertex set
+    storage_->add_to_set_of_vertices_to_update_rrs_tree(shared_from_this());
 
     // log
     if (settings_.log.deletion) std::cout << "Destroying vertex " << id_ << std::endl;
@@ -392,12 +391,24 @@ bool Vertex::is_expired() const
 
 bool Vertex::is_boundary() const
 {
-    return is_boundary_;
+    // becomes boundary when one of the connected edges is boundary, or when the point is alone
+    bool is_boundary_flag = false;
+    for (const std::shared_ptr<Edge>& edge : edges_)
+    {
+        if (edge->is_boundary())
+        {
+            is_boundary_flag = true;
+            break;
+        }
+    }
+    if (edges_.empty()) is_boundary_flag = true;
+
+    return is_boundary_flag;
 }
 
 bool Vertex::is_searchable() const
 {
-    return is_searchable_;
+    return node != nullptr;
 }
 
 bool Vertex::is_deleting() const
@@ -415,7 +426,7 @@ void Vertex::connect(const std::shared_ptr<Edge>& edge)
     if (inserted) edge->connect(shared_from_this());
 
     // update boundary state
-    if (inserted) update_boundary_state();
+    if (inserted) check_if_update_search_tree();
 }
 
 void Vertex::connect(const std::shared_ptr<Face>& face) 
@@ -491,7 +502,7 @@ void Vertex::disconnect(const std::shared_ptr<Edge>& edge)
     if (erased) edge->disconnect(shared_from_this());
 
     // update boundary state
-    update_boundary_state();
+    check_if_update_search_tree();
 
     // check self destruct
     if (!deleting_ && edges_.empty()) storage_->delete_vertex(shared_from_this());
@@ -530,7 +541,6 @@ void Vertex::disconnect(const std::shared_ptr<Surface>& surface)
     // disconnect
     bool erased = surface_ == surface;
     if (erased) surface->disconnect(shared_from_this());
-    if (erased) is_boundary_ = false;
     if (erased) is_singular_ = false;
     if (erased) surface_ = nullptr;
     if (erased) projected_position_ = Eigen::Vector3d::Zero();
@@ -819,38 +829,16 @@ void Vertex::absorbs(const std::shared_ptr<Vertex>& input_vertex)
     for (const std::shared_ptr<Edge>& edge : edges_copy) edge->swap(input_vertex, shared_from_this());
 }
 
-void Vertex::update_boundary_state()
-{
-    if (deleting_) return;
-
-    // becomes boundary when one of the connected edges is boundary, or when the point is alone
-    is_boundary_ = false;
-    for (const std::shared_ptr<Edge>& edge : edges_)
-    {
-        if (edge->is_boundary())
-        {
-            is_boundary_ = true;
-            break;
-        }
-    }
-    if (edges_.empty()) is_boundary_ = true;
-
-    // update searchable state
-    update_searchable_state();
-}
-
-void Vertex::update_searchable_state()
+void Vertex::check_if_update_search_tree()
 {
     // check if is boundary
-    if (is_boundary() && !is_searchable_)
+    if (is_boundary() && !is_searchable())
     {
-        is_searchable_ = true;
-        storage_->add_affected_vertex(shared_from_this());
+        storage_->add_to_set_of_vertices_to_update_rrs_tree(shared_from_this());
     }
-    else if (!is_boundary() && is_searchable_)
+    else if (!is_boundary() && is_searchable())
     {
-        is_searchable_ = false;
-        storage_->add_affected_vertex(shared_from_this());
+        storage_->add_to_set_of_vertices_to_update_rrs_tree(shared_from_this());
     }
 }
 
@@ -858,9 +846,9 @@ void Vertex::print_info()
 {
     std::cout << "Vertex " << id_ << " at " << position_.transpose() << std::endl;
     std::cout << "Connected to " << edges_.size() << " edges, " << faces_.size() << " faces, 1 surface, " << sibling_vertices_.size() << " sibling vertices." << std::endl;
-    std::cout << "Boundary state: " << is_boundary_ << std::endl;
+    std::cout << "Boundary state: " << is_boundary() << std::endl;
     std::cout << "Singular state: " << is_singular_ << std::endl;
-    std::cout << "Searchable state: " << is_searchable_ << std::endl;
+    std::cout << "Searchable state: " << is_searchable() << std::endl;
     std::cout << "Expired: " << is_expired_ << std::endl;
 }
 

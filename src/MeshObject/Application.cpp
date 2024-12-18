@@ -362,8 +362,8 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
     num_of_concurrent_processes--;
     
     // after unlocking all locks, add the point in queue to the search tree
-    storage_->add_points_in_affected_vertices_set();
-    storage_->add_faces_in_affected_faces_set();
+    storage_->add_or_remove_vertices_from_rrs_tree();
+    storage_->add_or_remove_faces_from_bvh_tree();
 
     //
     // they all lead to return, thus unlock all locks
@@ -592,69 +592,98 @@ bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
         if (distance < new_point_radius) new_point_radius = distance;
     }
 
-    // decide surface_to_add_to
+    // try add to surfaces_within
     if (surfaces_within.size() > 0)
     {
-        // add to largest surface
-        unsigned int largest_surface_size = 0;
-        for (std::shared_ptr<Surface> surface : surfaces_within)
-        {
-            if (surface->get_total_point_size() > largest_surface_size)
-            {
-                largest_surface_size = surface->get_total_point_size();
-                surface_to_add_to = surface;
-            }
-        }
-    }
-    else if (surfaces_seed.size() > 0)
-    {
-        // add to the closest surface measured by point to point distance
-        double smallest_distance = std::numeric_limits<double>::max();
-        
-        // for each vertex
-        for (std::shared_ptr<Vertex> vertex : all_vertices)
-        {
-            // skip if expired
-            if (vertex->is_expired()) continue;
+        // sort by surface size
+        std::vector<std::shared_ptr<Surface>> surfaces_within_sorted(surfaces_within.begin(), surfaces_within.end());
+        std::sort(surfaces_within_sorted.begin(), surfaces_within_sorted.end(), 
+            [](const std::shared_ptr<Surface>& a, const std::shared_ptr<Surface>& b) { return a->get_total_point_size() > b->get_total_point_size(); });
 
-            // this surface
-            std::shared_ptr<Surface> this_surface = vertex->get_surface();
+        // for each surface
+        for (std::shared_ptr<Surface> surface : surfaces_within_sorted)
+        {
+            // try to add to the surface
+            surface_to_add_to = surface;
+
+            // add to surface_to_add_to
+            std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(surface_to_add_to, generic_point);
+            new_vertex->reduce_reverse_radius_search_radius(new_point_radius);
+            new_vertex->reduce_previous_radius(new_point_radius);
+            const bool connected = surface_to_add_to->connect_by_edges_and_faces(new_vertex, all_vertices);
             
-            // skip if the face is not in surfaces_seed
-            if (surfaces_seed.find(this_surface) == surfaces_seed.end()) continue;
-
-            // compute distance
-            double distance = (vertex->get_position() - generic_point->get_position()).norm();
-            if (distance < smallest_distance)
+            if (connected)
             {
-                smallest_distance = distance;
-                surface_to_add_to = this_surface;
+                return true;
+            }
+            else
+            {
+                // need to prevent this vertex from generating a new generic point
+                new_vertex->can_create_generic_point(false);
+                storage_->delete_vertex(new_vertex);
+                continue;
             }
         }
     }
-    else
-    {
-        // add to new surface (when no surfaces within nor seed)
-        return false;
-    }
 
-    // add to surface_to_add_to
-    std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(surface_to_add_to, generic_point);
-    new_vertex->reduce_reverse_radius_search_radius(new_point_radius);
-    new_vertex->reduce_previous_radius(new_point_radius);
-    const bool connected = surface_to_add_to->connect_by_edges_and_faces(new_vertex, all_vertices);
+    // try add to surfaces_seed
+    if (surfaces_seed.size() > 0)
+    {        
+        // compute surfaces_seed distances
+        std::unordered_map<std::shared_ptr<Surface>, double, MeshObjectHash> surfaces_seed_distances;
+        for (std::shared_ptr<Surface> surface : surfaces_seed)
+        {
+            for (std::shared_ptr<Vertex> vertex : all_vertices)
+            {
+                // skip if the vertex is expired
+                if (vertex->is_expired()) continue;
+
+                // skip if the vertex is not in surfaces_seed
+                if (vertex->get_surface() != surface) continue;
+
+                // compute distance
+                double distance_vertex = (vertex->get_position() - generic_point->get_position()).norm();
+                if (distance_vertex < surfaces_seed_distances[surface])
+                {
+                    surfaces_seed_distances[surface] = distance_vertex;
+                }
+            }
+        }
+
+        // sort by surface closeness
+        std::vector<std::shared_ptr<Surface>> surfaces_seed_sorted(surfaces_seed.begin(), surfaces_seed.end());
+        std::sort(surfaces_seed_sorted.begin(), surfaces_seed_sorted.end(), 
+            [&surfaces_seed_distances](const std::shared_ptr<Surface>& a, const std::shared_ptr<Surface>& b) { return surfaces_seed_distances[a] < surfaces_seed_distances[b]; });
+
+
+        // for each surface
+        for (std::shared_ptr<Surface> surface : surfaces_seed_sorted)
+        {
+            // try to add to the surface
+            surface_to_add_to = surface;
+
+            // add to surface_to_add_to
+            std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(surface_to_add_to, generic_point);
+            new_vertex->reduce_reverse_radius_search_radius(new_point_radius);
+            new_vertex->reduce_previous_radius(new_point_radius);
+            const bool connected = surface_to_add_to->connect_by_edges_and_faces(new_vertex, all_vertices);
+            
+            if (connected)
+            {
+                return true;
+            }
+            else
+            {
+                // need to prevent this vertex from generating a new generic point
+                new_vertex->can_create_generic_point(false);
+                storage_->delete_vertex(new_vertex);
+                continue;
+            }
+        }
+    }
     
-    // there are singular points of a surface that are not connected to any other points
-    // perhaps this is the cause.
-    // if not connected, delete this point 
-    if (!connected)
-    {
-        storage_->delete_vertex(new_vertex);
-        return false;
-    }
-
-    // else
-    return true;
+    // add to new surface (when no surfaces within nor seed)
+    return false;
 }
 
 template <typename PointT>
@@ -791,7 +820,9 @@ void Application<PointT>::loop()
 
     std::chrono::high_resolution_clock::time_point t_end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = t_end - t_init;
-    std::cout << "==================================================================== Processed " << accumulated_points << " points in " << duration.count() << " s" << std::endl;
+    total_duration += duration.count();
+    total_loops += 1;
+    std::cout << "==================================================================== Processed " << accumulated_points << " points in " << duration.count() << " s, " << "average duration: " << total_duration / total_loops << std::endl;
 
     // store time and ith_cloud into file
     if (settings_.output_time)
@@ -835,6 +866,9 @@ void Application<PointT>::restart()
     ith_size = 0;
     origin = Eigen::Vector3d(0, 0, 0);
     distance_travelled_ = 0;
+
+    total_duration = 0;
+    total_loops = 0;
     
     // load point cloud
     load_point_cloud();
@@ -874,13 +908,19 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_interior_poi
         if (settings.show_confirmed_only && !interior_point->is_confirmed()) continue;
         
         pcl::PointXYZRGB point;
-        if (settings.show_projected_point)
+        if (settings.point_mode == PointMode::PROJECTED)
         {
             point.x = interior_point->buffer_compute_projected_position()[0];
             point.y = interior_point->buffer_compute_projected_position()[1];
             point.z = interior_point->buffer_compute_projected_position()[2];
         }
-        else
+        else if (settings.point_mode == PointMode::ORIGINAL)
+        {
+            point.x = interior_point->get_original_position()[0];
+            point.y = interior_point->get_original_position()[1];
+            point.z = interior_point->get_original_position()[2];
+        }
+        else if (settings.point_mode == PointMode::USED)
         {
             point.x = interior_point->get_position()[0];
             point.y = interior_point->get_position()[1];
@@ -1030,13 +1070,19 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_vertex_point
         if (!setting.show_singular_vertex && vertex->is_singular()) continue;
 
         pcl::PointXYZRGB point;
-        if (setting.show_projected_point)
+        if (setting.point_mode == PointMode::PROJECTED)
         {
             point.x = vertex->buffer_compute_projected_position()[0];
             point.y = vertex->buffer_compute_projected_position()[1];
             point.z = vertex->buffer_compute_projected_position()[2];
         }
-        else
+        else if (setting.point_mode == PointMode::ORIGINAL)
+        {
+            point.x = vertex->get_original_position()[0];
+            point.y = vertex->get_original_position()[1];
+            point.z = vertex->get_original_position()[2];
+        }
+        else if (setting.point_mode == PointMode::USED)
         {
             point.x = vertex->get_position()[0];
             point.y = vertex->get_position()[1];

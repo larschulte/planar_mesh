@@ -94,8 +94,7 @@ void Face::initialize_(const std::shared_ptr<Storage>& storage, const std::share
 
     // add to search
     // storage_->add_searchable_face(shared_from_this());
-    storage_->add_affected_face(shared_from_this());
-    is_searchable_ = true;
+    storage_->add_to_set_of_faces_to_update_bvh_tree(shared_from_this());
 
     // log
     if (settings_.log.initialize) std::cout << "Face " << id_ << " created between vertex " << vertex0->get_id() << ", vertex " << vertex1->get_id() << " and vertex " << vertex2->get_id() << std::endl;
@@ -141,8 +140,7 @@ void Face::delete_()
     }
 
     // add to affected faces set
-    is_searchable_ = false;
-    storage_->add_affected_face(shared_from_this());
+    storage_->add_to_set_of_faces_to_update_bvh_tree(shared_from_this());
 
     // log
     if (settings_.log.deletion) std::cout << "Destroying face " << id_ << std::endl;
@@ -254,7 +252,7 @@ bool Face::is_expired() const
 
 bool Face::is_searchable() const
 {
-    return is_searchable_;
+    return node != nullptr;
 }
 
 bool Face::has_vertex(const std::shared_ptr<Vertex>& vertex) const

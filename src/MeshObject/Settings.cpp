@@ -75,7 +75,7 @@ Settings::Settings()
 
     num_of_delete_before_put_to_repeated_queue = 2;
     
-    num_threads = 30;
+    num_threads = 4;
     record_countent_surface_count = false;
 
     use_queue = true;
@@ -136,12 +136,12 @@ Settings::Settings()
     show_pointcloud = true;
     show_triangle = true;
     show_edge = true;
-    show_projected_point = false;
     show_confirmed_only = false;
     show_keycode = false;
     show_singular_edge = false;
     show_singular_vertex = false;
     color_mode = ColorMode::ID;
+    point_mode = PointMode::USED;
     surface_denominator = 10.0;
     siblings_denominator = 3.0;
     radius_denominator = 0.3;
