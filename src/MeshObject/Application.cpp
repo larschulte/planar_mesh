@@ -350,15 +350,6 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
                 const double point_to_point_distance = (projected_generic_point - vertex->get_position()).norm();
                 vertex->reduce_reverse_radius_search_radius(point_to_point_distance);
             }
-            for (const std::shared_ptr<InteriorPoint>& interior_point : interior_points)
-            {
-                // skip if expired
-                if (interior_point->is_expired()) continue;
-
-                // use the projected position of the generic point on the surface it is added to
-                const double point_to_point_distance = (projected_generic_point - interior_point->get_position()).norm();
-                interior_point->reduce_reverse_radius_search_radius(point_to_point_distance);
-            }
         }
     }
 
