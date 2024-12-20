@@ -280,16 +280,15 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
 
     // process
     bool added_to_new_surface = false;
-    double radius = settings_.radius_value;
     std::shared_ptr<Surface> added_surface;
 
     std::shared_ptr<Vertex> vertex_added_by_radius_search;
 
-    if (add_point_by_intersection_search(generic_point, radius, bvh_results, added_surface))
+    if (add_point_by_intersection_search(generic_point, bvh_results, added_surface))
     {
         // if point added, go to end to unlock all locks
     }
-    else if (add_point_by_radius_search(generic_point, radius, rrs_results, added_surface, vertex_added_by_radius_search))
+    else if (add_point_by_radius_search(generic_point, rrs_results, added_surface, vertex_added_by_radius_search))
     {
         // rrs search radius reduction
         for (const std::shared_ptr<Vertex>& vertex : rrs_results)
@@ -340,7 +339,7 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
     }
     else
     {
-        add_point_by_new_surface(generic_point, radius, added_surface);
+        add_point_by_new_surface(generic_point, added_surface);
         added_to_new_surface = true;
         // if point added, go to end to unlock all locks
     }
@@ -371,7 +370,7 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
 }
 
 template <typename PointT>
-bool Application<PointT>::add_point_by_intersection_search(const std::shared_ptr<GenericPoint>& generic_point, double& new_point_radius, std::vector<std::shared_ptr<Face>>& bvh_results, std::shared_ptr<Surface>& surface_to_add_to)
+bool Application<PointT>::add_point_by_intersection_search(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Face>>& bvh_results, std::shared_ptr<Surface>& surface_to_add_to)
 {
     // don't reduce radius if the point is added as new surface, thus need to move the reduce radius part outside this function.
 
@@ -468,16 +467,6 @@ bool Application<PointT>::add_point_by_intersection_search(const std::shared_ptr
         // return false;
     }
 
-    // // update new point radius 
-    // const bool surface_to_add_to_is_within = surfaces_within.size() > 0;
-    // Eigen::Vector3d position_to_use = surface_to_add_to_is_within ? surface_to_add_to->compute_point_projective_position(generic_point->get_origin(), generic_point->get_position()) : generic_point->get_position();
-    // for (const std::shared_ptr<Surface>& surface : surfaces_not_within)
-    // {
-    //     const double distance = surface->compute_point_to_plane_distance(position_to_use);
-    //     const double abs_distance = std::abs(distance);
-    //     if (abs_distance < new_point_radius) new_point_radius = abs_distance;
-    // }
-
     // if the point is not to be added to any surface, return false
     if (surface_to_add_to == nullptr) return false;
 
@@ -507,7 +496,7 @@ bool Application<PointT>::add_point_by_intersection_search(const std::shared_ptr
 }
 
 template <typename PointT>
-bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<GenericPoint>& generic_point, double& new_point_radius, std::vector<std::shared_ptr<Vertex>>& rrs_results, std::shared_ptr<Surface>& surface_to_add_to, std::shared_ptr<Vertex>& new_vertex)
+bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Vertex>>& rrs_results, std::shared_ptr<Surface>& surface_to_add_to, std::shared_ptr<Vertex>& new_vertex)
 {
     // log
     if (settings_.log.add_point_by_radius_search) std::cout << ">> found " << rrs_results.size() << " neighboring vertices" << std::endl;
@@ -558,9 +547,6 @@ bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
         }
     }
 
-    // make a copy of the radius
-    double new_point_radius_copy = new_point_radius;
-
     // try add to surfaces_within
     if (surfaces_within.size() > 0)
     {
@@ -577,23 +563,6 @@ bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
 
             // add to surface_to_add_to
             new_vertex = storage_->add_vertex(surface_to_add_to, generic_point);
-
-            // // update radius
-            // new_point_radius = new_point_radius_copy;
-            // for (std::shared_ptr<Vertex> vertex : all_vertices)
-            // {
-            //     // skip if the vertex is expired
-            //     if (vertex->is_expired()) continue;
-
-            //     // skip if the vertex is not in surfaces_with_point_not_within
-            //     if (surfaces_outside.find(vertex->get_surface()) == surfaces_outside.end()) continue;
-
-            //     // compute distance
-            //     double distance = (vertex->get_position() - new_vertex->get_position()).norm();
-
-            //     // reduce new_point_radius
-            //     if (distance < new_point_radius) new_point_radius = distance;
-            // }
 
             const bool connected = surface_to_add_to->connect_by_edges_and_faces(new_vertex, all_vertices);
             
@@ -614,23 +583,6 @@ bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
             }
         }
     }
-
-    // // update radius
-    // new_point_radius = new_point_radius_copy;
-    // for (std::shared_ptr<Vertex> vertex : all_vertices)
-    // {
-    //     // skip if the vertex is expired
-    //     if (vertex->is_expired()) continue;
-
-    //     // skip if the vertex is not in surfaces_with_point_not_within
-    //     if (surfaces_outside.find(vertex->get_surface()) == surfaces_outside.end()) continue;
-
-    //     // compute distance
-    //     double distance = (vertex->get_position() - generic_point->get_position()).norm();
-
-    //     // reduce new_point_radius
-    //     if (distance < new_point_radius) new_point_radius = distance;
-    // }
 
     // try add to surfaces_seed
     if (surfaces_seed.size() > 0)
@@ -691,7 +643,7 @@ bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
 }
 
 template <typename PointT>
-void Application<PointT>::add_point_by_new_surface(const std::shared_ptr<GenericPoint>& generic_point, double& radius, std::shared_ptr<Surface>& added_surface)
+void Application<PointT>::add_point_by_new_surface(const std::shared_ptr<GenericPoint>& generic_point, std::shared_ptr<Surface>& added_surface)
 {
     std::shared_ptr<Surface> new_surface = storage_->add_surface();
     std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(new_surface, generic_point);
