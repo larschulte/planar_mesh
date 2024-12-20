@@ -608,6 +608,10 @@ bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
             }
             else
             {
+                // still could be disconnected
+                // 1. since the distance between PROJECTED vertex and boundary vertex could exceed radius of boundary vertex
+                // 2. since there could be intersection
+
                 // need to prevent this vertex from generating a new generic point
                 new_vertex->can_create_generic_point(false);
                 storage_->delete_vertex(new_vertex);
