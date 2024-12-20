@@ -305,37 +305,37 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
             vertex->reduce_reverse_radius_search_radius(point_to_point_distance);
         }
 
-        // bvh search radius reduction
-        for (const std::shared_ptr<Face>& face : bvh_results)
-        {
-            // skip if expired
-            if (face->is_expired()) continue;
+        // // bvh search radius reduction
+        // for (const std::shared_ptr<Face>& face : bvh_results)
+        // {
+        //     // skip if expired
+        //     if (face->is_expired()) continue;
 
-            // skip if the same surface
-            if (face->get_surface() == added_surface) continue;
+        //     // skip if the same surface
+        //     if (face->get_surface() == added_surface) continue;
 
-            // don't reduce radius of face if counter is not zero
-            if (face->get_reduce_radius_counter() > 0)
-            {
-                face->decrement_reduce_radius_counter();
-                continue;
-            }
+        //     // don't reduce radius of face if counter is not zero
+        //     if (face->get_reduce_radius_counter() > 0)
+        //     {
+        //         face->decrement_reduce_radius_counter();
+        //         continue;
+        //     }
 
-            // get copy of vertices and interior points (as they might be deleted)
-            std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertices = face->get_vertices();
-            std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> interior_points = face->get_interior_points();
+        //     // get copy of vertices and interior points (as they might be deleted)
+        //     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertices = face->get_vertices();
+        //     std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> interior_points = face->get_interior_points();
 
-            // reduce using shortest distance to ray
-            for (const std::shared_ptr<Vertex>& vertex : vertices)
-            {
-                // skip if expired
-                if (vertex->is_expired()) continue;
+        //     // reduce using shortest distance to ray
+        //     for (const std::shared_ptr<Vertex>& vertex : vertices)
+        //     {
+        //         // skip if expired
+        //         if (vertex->is_expired()) continue;
 
-                // use the projected position of the generic point on the surface it is added to
-                const double point_to_point_distance = (vertex_added_by_radius_search->get_position() - vertex->get_position()).norm();
-                vertex->reduce_reverse_radius_search_radius(point_to_point_distance);
-            }
-        }
+        //         // use the projected position of the generic point on the surface it is added to
+        //         const double point_to_point_distance = (vertex_added_by_radius_search->get_position() - vertex->get_position()).norm();
+        //         vertex->reduce_reverse_radius_search_radius(point_to_point_distance);
+        //     }
+        // }
     }
     else
     {
