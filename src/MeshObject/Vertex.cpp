@@ -966,33 +966,33 @@ void Vertex::reduce_reverse_radius_search_radius(double radius)
     // update radius
     set_reverse_radius_search_radius(radius);
 
-    // cascade to connected vertices
-    // get connected vertices
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> connected_vertices = compute_connected_vertices();
-    for (const std::shared_ptr<Vertex>& vertex : connected_vertices)
-    {
-        // this vertex and or connected vertices could be expired during the process
-        if (vertex->is_expired()) continue;
-        if (is_expired()) return;
+    // // cascade to connected vertices
+    // // get connected vertices
+    // std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> connected_vertices = compute_connected_vertices();
+    // for (const std::shared_ptr<Vertex>& vertex : connected_vertices)
+    // {
+    //     // this vertex and or connected vertices could be expired during the process
+    //     if (vertex->is_expired()) continue;
+    //     if (is_expired()) return;
 
-        // distance
-        double distance = (vertex->get_position() - get_position()).norm();
+    //     // distance
+    //     double distance = (vertex->get_position() - get_position()).norm();
         
-        // reduce the search radius of the searched vertex
-        vertex->reduce_reverse_radius_search_radius(distance+radius);
-    }
+    //     // reduce the search radius of the searched vertex
+    //     vertex->reduce_reverse_radius_search_radius(distance+radius);
+    // }
 
-    // cascade to interior point of connected faces
-    // get connected interior points
-    std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> connected_interior_points = compute_connected_interior_points();
-    for (const std::shared_ptr<InteriorPoint>& interior_point : connected_interior_points)
-    {
-        // distance
-        double distance = (interior_point->get_position() - get_position()).norm();
+    // // cascade to interior point of connected faces
+    // // get connected interior points
+    // std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> connected_interior_points = compute_connected_interior_points();
+    // for (const std::shared_ptr<InteriorPoint>& interior_point : connected_interior_points)
+    // {
+    //     // distance
+    //     double distance = (interior_point->get_position() - get_position()).norm();
         
-        // reduce the search radius of the searched interior point
-        interior_point->reduce_reverse_radius_search_radius(distance+radius);
-    }
+    //     // reduce the search radius of the searched interior point
+    //     interior_point->reduce_reverse_radius_search_radius(distance+radius);
+    // }
 
 
     // if for an edge, any vertices have smaller radius than the length of the edge, delete the edge
