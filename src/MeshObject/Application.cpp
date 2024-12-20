@@ -288,21 +288,6 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
     }
     else if (add_point_by_radius_search(generic_point, radius, rrs_results, added_surface))
     {
-        // if point added, go to end to unlock all locks
-    }
-    else
-    {
-        add_point_by_new_surface(generic_point, radius, added_surface);
-        added_to_new_surface = true;
-        // if point added, go to end to unlock all locks
-    }
-
-    // throw if added_surface is nullptr
-    if (added_surface == nullptr) throw std::runtime_error("added surface is nullptr");
-
-    // don't reduce radius if the point is added to a new surface
-    if (!added_to_new_surface)
-    {
         // projected generic point to the surface it is added to
         Eigen::Vector3d projected_generic_point = added_surface->compute_point_projective_position(generic_point->get_origin(), generic_point->get_position());
 
@@ -352,6 +337,15 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
             }
         }
     }
+    else
+    {
+        add_point_by_new_surface(generic_point, radius, added_surface);
+        added_to_new_surface = true;
+        // if point added, go to end to unlock all locks
+    }
+
+    // throw if added_surface is nullptr
+    if (added_surface == nullptr) throw std::runtime_error("added surface is nullptr");
 
     num_of_concurrent_processes--;
     
