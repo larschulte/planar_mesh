@@ -657,13 +657,6 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
         nearby_vertices.insert(nearby_vertex);
     }
 
-    // update search radius of the vertex
-    for (const auto& nearby_vertex : nearby_vertices)
-    {
-        double distance = (vertex->get_position() - nearby_vertex->get_position()).norm();
-        vertex->reduce_reverse_radius_search_radius(distance + nearby_vertex->get_radius());
-    }
-
     // create edges
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> used_vertices;
     std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> new_edges;
@@ -678,14 +671,6 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
         {   
             // log
             if (settings_.log.connect_by_edges_and_faces) std::cout << "Try to create edge between " << vertex->get_id() << " and " << nearby_vertex->get_id() << " but is intersected." << std::endl;
-
-            // should not reduce search radius!!!
-            // radius represents extends of flat surface -> edge intersection within the same plane is still flat surface!
-
-            // // that means the nearby_vertex have too large of search radius
-            // // so we should reduce it
-            // double distance = (vertex->get_position() - nearby_vertex->get_position()).norm();
-            // nearby_vertex->reduce_reverse_radius_search_radius(distance);
         }
         else // if edge does not intersect
         {

@@ -101,7 +101,6 @@ public:
 
 public: // for reverse radius search
     void set_reverse_radius_search_radius(double radius);
-    void reduce_reverse_radius_search_radius(double radius);
     const Eigen::Vector3d& get_min() const;
     const Eigen::Vector3d& get_max() const;
     const double& get_radius() const;

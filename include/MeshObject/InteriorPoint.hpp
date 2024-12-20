@@ -51,7 +51,6 @@ public:
     void disconnect(const std::shared_ptr<Surface>& surface);
     void disconnect(const std::shared_ptr<InteriorPoint>& sibling_interior_point);
 
-    void reduce_reverse_radius_search_radius(double radius);
     void set_reverse_radius_search_radius(double radius);
 
     void update_confirmed_status();

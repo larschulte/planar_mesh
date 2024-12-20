@@ -666,28 +666,6 @@ void Vertex::review_surfaces()
             // find connected interior points
             std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> connected_interior_points = compute_connected_interior_points();
 
-            // reduce the search radius of the connected vertices
-            for (std::shared_ptr<Vertex> vertex : connected_vertices)
-            {
-                // distance
-                double distance = (vertex->get_position() - get_position()).norm();
-                
-                // reduce the search radius of the searched vertex
-                if (settings_.log.review_surfaces) std::cout << ">>   reducing search radius of vertex " << vertex->get_id() << std::endl;
-                vertex->reduce_reverse_radius_search_radius(distance);
-            }
-
-            // reduce the search radius of the connected interior points
-            for (std::shared_ptr<InteriorPoint> interior_point : connected_interior_points)
-            {
-                // distance
-                double distance = (interior_point->get_position() - get_position()).norm();
-                
-                // reduce the search radius of the searched interior point
-                if (settings_.log.review_surfaces) std::cout << ">>   reducing search radius of interior point " << interior_point->get_id() << std::endl;
-                interior_point->reduce_reverse_radius_search_radius(distance);
-            }
-
             storage_->delete_vertex(shared_from_this());
             under_review_ = false;
             return;
@@ -954,59 +932,6 @@ void Vertex::set_reverse_radius_search_radius(double radius)
     {
         // release lock
         omp_unset_nest_lock(&node->omp_lock);
-    }
-}
-
-void Vertex::reduce_reverse_radius_search_radius(double radius)
-{
-    // throw if radius is negative
-    if (radius < 0) throw std::runtime_error("Negative radius for vertex point.");
-
-    if (radius >= reverse_search_radius_) return;
-
-    // update radius
-    set_reverse_radius_search_radius(radius);
-
-    // // cascade to connected vertices
-    // // get connected vertices
-    // std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> connected_vertices = compute_connected_vertices();
-    // for (const std::shared_ptr<Vertex>& vertex : connected_vertices)
-    // {
-    //     // this vertex and or connected vertices could be expired during the process
-    //     if (vertex->is_expired()) continue;
-    //     if (is_expired()) return;
-
-    //     // distance
-    //     double distance = (vertex->get_position() - get_position()).norm();
-        
-    //     // reduce the search radius of the searched vertex
-    //     vertex->reduce_reverse_radius_search_radius(distance+radius);
-    // }
-
-    // // cascade to interior point of connected faces
-    // // get connected interior points
-    // std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> connected_interior_points = compute_connected_interior_points();
-    // for (const std::shared_ptr<InteriorPoint>& interior_point : connected_interior_points)
-    // {
-    //     // distance
-    //     double distance = (interior_point->get_position() - get_position()).norm();
-        
-    //     // reduce the search radius of the searched interior point
-    //     interior_point->reduce_reverse_radius_search_radius(distance+radius);
-    // }
-
-
-    // if for an edge, any vertices have smaller radius than the length of the edge, delete the edge
-    std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges_copy = edges_;
-    for (const std::shared_ptr<Edge>& edge : edges_copy)
-    {
-        if (edge->is_expired()) continue; // could turn expired if below deletes an edge which then deletes a face
-        if (edge->is_deleting()) continue; // could be deleting
-
-        if (edge->get_length() > edge->get_vertex(0)->get_radius() || edge->get_length() > edge->get_vertex(1)->get_radius())
-        {
-            storage_->delete_edge(edge);
-        }
     }
 }
 

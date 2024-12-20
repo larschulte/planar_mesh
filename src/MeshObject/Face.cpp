@@ -102,18 +102,6 @@ void Face::initialize_(const std::shared_ptr<Storage>& storage, const std::share
 
 void Face::update_radius(const std::shared_ptr<GenericPoint>& generic_point)
 {
-    // update radius of interior points
-    for (const auto& interior_point : interior_points_)
-    {
-        interior_point->reduce_reverse_radius_search_radius((interior_point->get_position() - generic_point->get_position()).norm());
-    }
-
-    // update radius of vertices
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> copy_vertices = vertices_; // copy as reduce_reverse_radius_search_radius will modify the set
-    for (const auto& vertex : copy_vertices)
-    {
-        vertex->reduce_reverse_radius_search_radius((vertex->get_position() - generic_point->get_position()).norm());
-    }
 }
 
 unsigned int Face::get_reduce_radius_counter() const

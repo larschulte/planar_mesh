@@ -190,15 +190,6 @@ void InteriorPoint::connect(const std::shared_ptr<Face>& face)
     // connect
     bool inserted = faces_.insert(face).second;
     if (inserted) face->connect(shared_from_this());
-    if (inserted)
-    {
-        // reduce radius to be consistent with vertices of the face
-        for (const std::shared_ptr<Vertex>& vertex : face->get_vertices())
-        {
-            double distance = (vertex->get_position() - get_position()).norm();
-            reduce_reverse_radius_search_radius(distance + vertex->get_radius());
-        }
-    }
 
     // update confirmed status
     if (inserted) update_confirmed_status();
@@ -280,14 +271,6 @@ void InteriorPoint::disconnect(const std::shared_ptr<InteriorPoint>& sibling_int
     // disconnect
     bool erased = sibling_interior_points_.erase(sibling_interior_point);
     if (erased) sibling_interior_point->disconnect(shared_from_this());
-}
-
-void InteriorPoint::reduce_reverse_radius_search_radius(double radius)
-{
-    // throw if radius is negative
-    if (radius < 0) throw std::runtime_error("Negative radius for interior point.");
-
-    if (radius < radius_) set_reverse_radius_search_radius(radius);
 }
 
 void InteriorPoint::set_reverse_radius_search_radius(double radius)
