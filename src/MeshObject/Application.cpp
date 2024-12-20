@@ -294,15 +294,17 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
         // rrs search radius reduction
         for (const std::shared_ptr<Vertex>& vertex : rrs_results)
         {
+            // skip if main vertex becomes expired during radius reduction
+            if (vertex_added_by_radius_search->is_expired()) continue;
+
             // skip if expired
             if (vertex->is_expired()) continue;
 
             // skip if the same surface
             if (vertex->get_surface() == added_surface) continue;
 
-            // use the projected position of the generic point on the surface it is added to
-            const double point_to_point_distance = (vertex_added_by_radius_search->get_position() - vertex->get_position()).norm();
-            vertex->reduce_reverse_radius_search_radius(point_to_point_distance);
+            // connect neighboring vertex to reduce radius
+            vertex_added_by_radius_search->connect_neighboring_vertex(vertex);
         }
 
         // // bvh search radius reduction
