@@ -616,6 +616,19 @@ void Vertex::recompute_and_update_radius()
     if (new_radius != current_radius) 
     {
         set_reverse_radius_search_radius(new_radius);
+
+        // if for an edge, any vertices have smaller radius than the length of the edge, delete the edge
+        std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges_copy = edges_;
+        for (const std::shared_ptr<Edge>& edge : edges_copy)
+        {
+            if (edge->is_expired()) continue; // could turn expired if below deletes an edge which then deletes a face
+            if (edge->is_deleting()) continue; // could be deleting
+
+            if (edge->get_length() > edge->get_vertex(0)->get_radius() || edge->get_length() > edge->get_vertex(1)->get_radius())
+            {
+                storage_->delete_edge(edge);
+            }
+        }
     }
 }
 
