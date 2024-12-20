@@ -282,15 +282,15 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
     bool added_to_new_surface = false;
     double radius = settings_.radius_value;
     std::shared_ptr<Surface> added_surface;
+
+    std::shared_ptr<Vertex> vertex_added_by_radius_search;
+
     if (add_point_by_intersection_search(generic_point, radius, bvh_results, added_surface))
     {
         // if point added, go to end to unlock all locks
     }
-    else if (add_point_by_radius_search(generic_point, radius, rrs_results, added_surface))
+    else if (add_point_by_radius_search(generic_point, radius, rrs_results, added_surface, vertex_added_by_radius_search))
     {
-        // projected generic point to the surface it is added to
-        Eigen::Vector3d projected_generic_point = added_surface->compute_point_projective_position(generic_point->get_origin(), generic_point->get_position());
-
         // rrs search radius reduction
         for (const std::shared_ptr<Vertex>& vertex : rrs_results)
         {
@@ -301,7 +301,7 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
             if (vertex->get_surface() == added_surface) continue;
 
             // use the projected position of the generic point on the surface it is added to
-            const double point_to_point_distance = (projected_generic_point - vertex->get_position()).norm();
+            const double point_to_point_distance = (vertex_added_by_radius_search->get_position() - vertex->get_position()).norm();
             vertex->reduce_reverse_radius_search_radius(point_to_point_distance);
         }
 
@@ -332,7 +332,7 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
                 if (vertex->is_expired()) continue;
 
                 // use the projected position of the generic point on the surface it is added to
-                const double point_to_point_distance = (projected_generic_point - vertex->get_position()).norm();
+                const double point_to_point_distance = (vertex_added_by_radius_search->get_position() - vertex->get_position()).norm();
                 vertex->reduce_reverse_radius_search_radius(point_to_point_distance);
             }
         }
@@ -508,7 +508,7 @@ bool Application<PointT>::add_point_by_intersection_search(const std::shared_ptr
 }
 
 template <typename PointT>
-bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<GenericPoint>& generic_point, double& new_point_radius, std::vector<std::shared_ptr<Vertex>>& rrs_results, std::shared_ptr<Surface>& surface_to_add_to)
+bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<GenericPoint>& generic_point, double& new_point_radius, std::vector<std::shared_ptr<Vertex>>& rrs_results, std::shared_ptr<Surface>& surface_to_add_to, std::shared_ptr<Vertex>& new_vertex)
 {
     // log
     if (settings_.log.add_point_by_radius_search) std::cout << ">> found " << rrs_results.size() << " neighboring vertices" << std::endl;
@@ -577,7 +577,7 @@ bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
             surface_to_add_to = surface;
 
             // add to surface_to_add_to
-            std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(surface_to_add_to, generic_point);
+            new_vertex = storage_->add_vertex(surface_to_add_to, generic_point);
 
             // update radius
             new_point_radius = new_point_radius_copy;
@@ -668,7 +668,7 @@ bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
             surface_to_add_to = surface;
 
             // add to surface_to_add_to
-            std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(surface_to_add_to, generic_point);
+            new_vertex = storage_->add_vertex(surface_to_add_to, generic_point);
             new_vertex->reduce_reverse_radius_search_radius(new_point_radius);
             new_vertex->reduce_previous_radius(new_point_radius);
             const bool connected = surface_to_add_to->connect_by_edges_and_faces(new_vertex, all_vertices);
