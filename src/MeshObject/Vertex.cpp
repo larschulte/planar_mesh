@@ -99,8 +99,10 @@ void Vertex::delete_()
     // disconnect
     std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges = edges_;
     std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces = faces_;
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> neighboring_vertices_that_affect_radius = neighboring_vertices_that_affect_radius_;
     for (const auto& edge : edges) disconnect(edge);
     for (const auto& face : faces) disconnect(face);
+    for (const auto& neighboring_vertex : neighboring_vertices_that_affect_radius) disconnect_neighboring_vertex(neighboring_vertex);
     if (surface_) disconnect(surface_);
 
     // update delete count
@@ -492,6 +494,24 @@ void Vertex::connect(const std::shared_ptr<Vertex>& sibling_vertex)
     }
 }
 
+void Vertex::connect_neighboring_vertex(const std::shared_ptr<Vertex>& neighboring_vertex)
+{
+    // check input
+    if (neighboring_vertex->is_expired()) throw std::runtime_error("Attempts to connect vertex with invalid neighboring vertex.");
+
+    // skip if try to connect to itself
+    if (neighboring_vertex == shared_from_this()) return;
+
+    // connect
+    bool inserted = neighboring_vertices_that_affect_radius_.insert(neighboring_vertex).second;
+    if (inserted) 
+    {
+        neighboring_vertex->connect_neighboring_vertex(shared_from_this());
+
+        recompute_and_update_radius();
+    }
+}
+
 void Vertex::disconnect(const std::shared_ptr<Edge>& edge) 
 {
     // check input
@@ -561,6 +581,44 @@ void Vertex::disconnect(const std::shared_ptr<Vertex>& sibling_vertex)
     bool erased = sibling_vertices_.erase(sibling_vertex);
     if (erased) sibling_vertex->disconnect(shared_from_this());
 }
+
+void Vertex::disconnect_neighboring_vertex(const std::shared_ptr<Vertex>& neighboring_vertex)
+{
+    // check input
+    if (neighboring_vertex->is_expired()) return;
+
+    // disconnect
+    bool erased = neighboring_vertices_that_affect_radius_.erase(neighboring_vertex);
+    
+    if (erased) 
+    {
+        neighboring_vertex->disconnect_neighboring_vertex(shared_from_this());
+
+        recompute_and_update_radius();
+    }
+}
+
+void Vertex::recompute_and_update_radius()
+{
+    const double current_radius = reverse_search_radius_;
+    double new_radius = std::numeric_limits<double>::max();
+
+    // recompute radius
+    for (const std::shared_ptr<Vertex>& neighboring_vertex : neighboring_vertices_that_affect_radius_)
+    {
+        // some other thread may delete the neighboring vertex during the process ...
+
+        double distance = (neighboring_vertex->get_position() - get_position()).norm();
+        if (distance < new_radius) new_radius = distance;
+    }
+
+    // update radius
+    if (new_radius != current_radius) 
+    {
+        set_reverse_radius_search_radius(new_radius);
+    }
+}
+
 
 void Vertex::review_surfaces()
 {
