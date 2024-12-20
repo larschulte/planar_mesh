@@ -582,7 +582,33 @@ void Vertex::disconnect_neighboring_vertex(const std::shared_ptr<Vertex>& neighb
     {
         neighboring_vertex->disconnect_neighboring_vertex(shared_from_this());
 
-        recompute_and_update_radius();
+        // When disconnecting neighboring vertices from the list, there is a potential issue:
+        // The neighboring vertices might belong to a surface currently being processed by another thread.
+        // This means we do not hold a lock on the neighboring vertex, and thus:
+        // - We can recompute and update the radius of the current vertex safely.
+        // - However, we cannot request the neighboring vertex to recompute and update its radius, 
+        //   as it might be deleted by another thread during this process, causing a segmentation fault.
+
+        // The goal is to recompute and update the radius of the neighboring vertex when the current vertex
+        // is being deleted, allowing the neighboring vertex to expand its search radius accordingly.
+
+        // Attempting to lock the neighboring vertex:
+        // - If the lock acquisition fails, we skip processing the vertex, as it is already being handled
+        //   by another thread and is likely to be updated in due course.
+        // - If the lock acquisition succeeds, we proceed to safely update the radius.
+
+        // lock vertex to prevent vertex being deleted
+        if (omp_test_nest_lock(&vertex_lock)) 
+        {
+            // lock node in case other thread locked the node first and tried to lock the vertex, causing deadlock
+            std::shared_ptr<RRSNode> node_copy = node ? node : std::make_shared<RRSNode>(); // lock if node exists
+            if (omp_test_nest_lock(&node_copy->omp_lock)) 
+            {
+                recompute_and_update_radius();
+                omp_unset_nest_lock(&node_copy->omp_lock);
+            }
+            omp_unset_nest_lock(&vertex_lock);
+        }
     }
 }
 
