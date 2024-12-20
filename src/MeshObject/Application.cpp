@@ -467,15 +467,15 @@ bool Application<PointT>::add_point_by_intersection_search(const std::shared_ptr
         // return false;
     }
 
-    // update new point radius 
-    const bool surface_to_add_to_is_within = surfaces_within.size() > 0;
-    Eigen::Vector3d position_to_use = surface_to_add_to_is_within ? surface_to_add_to->compute_point_projective_position(generic_point->get_origin(), generic_point->get_position()) : generic_point->get_position();
-    for (const std::shared_ptr<Surface>& surface : surfaces_not_within)
-    {
-        const double distance = surface->compute_point_to_plane_distance(position_to_use);
-        const double abs_distance = std::abs(distance);
-        if (abs_distance < new_point_radius) new_point_radius = abs_distance;
-    }
+    // // update new point radius 
+    // const bool surface_to_add_to_is_within = surfaces_within.size() > 0;
+    // Eigen::Vector3d position_to_use = surface_to_add_to_is_within ? surface_to_add_to->compute_point_projective_position(generic_point->get_origin(), generic_point->get_position()) : generic_point->get_position();
+    // for (const std::shared_ptr<Surface>& surface : surfaces_not_within)
+    // {
+    //     const double distance = surface->compute_point_to_plane_distance(position_to_use);
+    //     const double abs_distance = std::abs(distance);
+    //     if (abs_distance < new_point_radius) new_point_radius = abs_distance;
+    // }
 
     // if the point is not to be added to any surface, return false
     if (surface_to_add_to == nullptr) return false;
@@ -485,8 +485,8 @@ bool Application<PointT>::add_point_by_intersection_search(const std::shared_ptr
 
     // add to surface_to_add_to
     const std::shared_ptr<InteriorPoint>& new_interior_point = storage_->add_interior_point(generic_point);
-    new_interior_point->reduce_reverse_radius_search_radius(new_point_radius);
-    new_interior_point->reduce_previous_radius(new_point_radius);
+    // new_interior_point->reduce_reverse_radius_search_radius(new_point_radius);
+    // new_interior_point->reduce_previous_radius(new_point_radius);
     new_interior_point->connect(surface_to_add_to);
     for (const std::shared_ptr<Face>& face : bvh_results)
     {
