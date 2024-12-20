@@ -601,7 +601,7 @@ void Vertex::disconnect_neighboring_vertex(const std::shared_ptr<Vertex>& neighb
 void Vertex::recompute_and_update_radius()
 {
     const double current_radius = reverse_search_radius_;
-    double new_radius = std::numeric_limits<double>::max();
+    double new_radius = settings_.radius_value;
 
     // recompute radius
     for (const std::shared_ptr<Vertex>& neighboring_vertex : neighboring_vertices_that_affect_radius_)
