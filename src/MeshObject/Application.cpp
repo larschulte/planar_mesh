@@ -488,7 +488,6 @@ bool Application<PointT>::add_point_by_intersection_search(const std::shared_ptr
     // add to surface_to_add_to
     const std::shared_ptr<InteriorPoint>& new_interior_point = storage_->add_interior_point(generic_point);
     // new_interior_point->reduce_reverse_radius_search_radius(new_point_radius);
-    // new_interior_point->reduce_previous_radius(new_point_radius);
     new_interior_point->connect(surface_to_add_to);
     for (const std::shared_ptr<Face>& face : bvh_results)
     {
@@ -599,7 +598,6 @@ bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
             // }
 
             // new_vertex->reduce_reverse_radius_search_radius(new_point_radius);
-            // new_vertex->reduce_previous_radius(new_point_radius);
             const bool connected = surface_to_add_to->connect_by_edges_and_faces(new_vertex, all_vertices);
             
             if (connected)
@@ -676,7 +674,6 @@ bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
             // add to surface_to_add_to
             new_vertex = storage_->add_vertex(surface_to_add_to, generic_point);
             // new_vertex->reduce_reverse_radius_search_radius(new_point_radius);
-            // new_vertex->reduce_previous_radius(new_point_radius);
             const bool connected = surface_to_add_to->connect_by_edges_and_faces(new_vertex, all_vertices);
             
             if (connected)
@@ -703,7 +700,6 @@ void Application<PointT>::add_point_by_new_surface(const std::shared_ptr<Generic
     std::shared_ptr<Surface> new_surface = storage_->add_surface();
     std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(new_surface, generic_point);
     new_vertex->reduce_reverse_radius_search_radius(radius);
-    new_vertex->reduce_previous_radius(radius);
     
     added_surface = new_surface;
 }

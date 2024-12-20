@@ -50,8 +50,6 @@ void Vertex::initialize_(const std::shared_ptr<Storage>& storage, const std::sha
 void Vertex::initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<Surface>& surface, const std::shared_ptr<GenericPoint>& generic_point)
 {
     initialize_(storage, surface, generic_point->get_position(), generic_point->get_origin(), generic_point->get_radius(), generic_point->get_distance_travelled());
-    previous_surface_ = generic_point->get_previous_surface();
-    previous_radius_ = generic_point->get_previous_radius();
     num_deletes_ = generic_point->get_num_deletes();
     projected_uncertainty_ = generic_point->get_projected_uncertainty();
 }
@@ -457,16 +455,6 @@ void Vertex::connect(const std::shared_ptr<Surface>& surface)
     {
         // update projected position
         projected_position_ = surface->compute_point_projective_position(get_origin(), get_original_position());
-
-        // if new surface is the same as the previous surface, set the radius to the updated previous radius
-        if (surface == previous_surface_) 
-        {
-            // set radius to the previous radius
-            reduce_reverse_radius_search_radius(previous_radius_);
-        }
-
-        previous_surface_ = nullptr;
-        previous_radius_ = 0;
     }
     if (inserted) surface->connect(shared_from_this());
     if (inserted) is_singular_ = true;
@@ -1022,14 +1010,6 @@ void Vertex::reduce_reverse_radius_search_radius(double radius)
     }
 }
 
-void Vertex::reduce_previous_radius(double radius)
-{
-    if (radius >= previous_radius_) return;
-
-    // update radius
-    previous_radius_ = radius;
-}
-
 const Eigen::Vector3d& Vertex::get_min() const
 {
     return min_;
@@ -1048,14 +1028,7 @@ const double& Vertex::get_radius() const
 const double& Vertex::get_radius(const std::shared_ptr<Surface>& surface) const
 {
     // only used when being connected to a surface by edge and faces
-    if (surface == previous_surface_)
-    {
-        return previous_radius_;
-    }
-    else
-    {
-        return reverse_search_radius_;
-    }
+    return reverse_search_radius_;
 }
 
 bool Vertex::contains(const Eigen::Vector3d& point) const

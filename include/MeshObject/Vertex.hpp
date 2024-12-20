@@ -102,7 +102,6 @@ public:
 public: // for reverse radius search
     void set_reverse_radius_search_radius(double radius);
     void reduce_reverse_radius_search_radius(double radius);
-    void reduce_previous_radius(double radius);
     const Eigen::Vector3d& get_min() const;
     const Eigen::Vector3d& get_max() const;
     const double& get_radius() const;
@@ -138,8 +137,6 @@ private:
     std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges_;
     std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces_;
     std::shared_ptr<Surface> surface_;
-    std::shared_ptr<Surface> previous_surface_;
-    double previous_radius_;
 
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> sibling_vertices_;
 

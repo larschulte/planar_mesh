@@ -46,8 +46,6 @@ void InteriorPoint::initialize_(const std::shared_ptr<Storage>& storage, const E
 void InteriorPoint::initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<GenericPoint>& generic_point)
 {
     initialize_(storage, generic_point->get_position(), generic_point->get_origin(), generic_point->get_radius(), generic_point->get_distance_travelled());
-    previous_surface_ = generic_point->get_previous_surface();
-    previous_radius_ = generic_point->get_previous_radius();
     num_deletes_ = generic_point->get_num_deletes();
     projected_uncertainty_ = generic_point->get_projected_uncertainty();
 }
@@ -218,15 +216,6 @@ void InteriorPoint::connect(const std::shared_ptr<Surface>& surface)
     {
         // update projected position
         projected_position_ = surface->compute_point_projective_position(get_origin(), get_original_position());
-
-        // if new surface is the same as the previous surface, set the radius to the updated previous radius
-        if (surface == previous_surface_) 
-        {
-            reduce_reverse_radius_search_radius(previous_radius_);
-        }
-
-        previous_surface_ = nullptr;
-        previous_radius_ = 0;
     }
     if (inserted) surface->connect(shared_from_this());    
 }
@@ -299,11 +288,6 @@ void InteriorPoint::reduce_reverse_radius_search_radius(double radius)
     if (radius < 0) throw std::runtime_error("Negative radius for interior point.");
 
     if (radius < radius_) set_reverse_radius_search_radius(radius);
-}
-
-void InteriorPoint::reduce_previous_radius(double radius)
-{
-    if (radius < previous_radius_) previous_radius_ = radius;
 }
 
 void InteriorPoint::set_reverse_radius_search_radius(double radius)
