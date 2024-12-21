@@ -283,8 +283,9 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
     std::shared_ptr<Surface> added_surface;
 
     std::shared_ptr<Vertex> vertex_added_by_radius_search;
+    std::shared_ptr<Face> face_added_by_intersection_search;
 
-    if (add_point_by_intersection_search(generic_point, bvh_results, added_surface))
+    if (add_point_by_intersection_search(generic_point, bvh_results, added_surface, face_added_by_intersection_search))
     {
         // if point added, go to end to unlock all locks
     }
@@ -370,7 +371,7 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
 }
 
 template <typename PointT>
-bool Application<PointT>::add_point_by_intersection_search(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Face>>& bvh_results, std::shared_ptr<Surface>& surface_to_add_to)
+bool Application<PointT>::add_point_by_intersection_search(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Face>>& bvh_results, std::shared_ptr<Surface>& surface_to_add_to, std::shared_ptr<Face>& face_added_by_intersection_search)
 {
     // don't reduce radius if the point is added as new surface, thus need to move the reduce radius part outside this function.
 
@@ -489,6 +490,9 @@ bool Application<PointT>::add_point_by_intersection_search(const std::shared_ptr
 
         // increment reduce radius counter
         face->increment_reduce_radius_counter();
+
+        // set face
+        face_added_by_intersection_search = face;
         
         break;
     }    
