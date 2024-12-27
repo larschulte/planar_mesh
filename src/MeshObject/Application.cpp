@@ -414,7 +414,8 @@ bool Application<PointT>::add_point_by_intersection_search(const std::shared_ptr
         face_added_by_intersection_search = face_to_add_to;        
         return true;
     }
-    else if (surfaces_seed.size() > 0)
+    
+    if (surfaces_seed.size() > 0)
     {
         // add to the closest surface measured by point to point distance
         // add to the closest face
@@ -460,11 +461,9 @@ bool Application<PointT>::add_point_by_intersection_search(const std::shared_ptr
         face_added_by_intersection_search = face_to_add_to;
         return true;
     }
-    else
-    {
-        // add point by radius search or new surface (when no surfaces within nor seed)
-        return false;
-    }
+    
+    // at last, add point by radius search or new surface (when no surfaces within nor seed)
+    return false;
 
     // log
     if (settings_.log.process_point) std::cout << "========================== within surface " << surface_to_add_to->get_id() << std::endl;
