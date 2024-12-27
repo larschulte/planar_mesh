@@ -289,7 +289,7 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
     {
         // if point added, go to end to unlock all locks
     }
-    else if (add_point_by_radius_search(generic_point, rrs_results, added_surface, vertex_added_by_radius_search))
+    else if (add_point_by_radius_search(generic_point, rrs_results, bvh_results, added_surface, vertex_added_by_radius_search))
     {
         // if point added, go to end to unlock all locks
     }
@@ -455,7 +455,7 @@ bool Application<PointT>::add_point_by_intersection_search(const std::shared_ptr
 }
 
 template <typename PointT>
-bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Vertex>>& rrs_results, std::shared_ptr<Surface>& surface_to_add_to, std::shared_ptr<Vertex>& new_vertex)
+bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Vertex>>& rrs_results, std::vector<std::shared_ptr<Face>>& bvh_results, std::shared_ptr<Surface>& surface_to_add_to, std::shared_ptr<Vertex>& new_vertex)
 {
     // log
     if (settings_.log.add_point_by_radius_search) std::cout << ">> found " << rrs_results.size() << " neighboring vertices" << std::endl;
@@ -524,7 +524,31 @@ bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
             new_vertex = storage_->add_vertex(surface_to_add_to, generic_point);
 
             // add neighboring bvh vertices to the new vertex
-            // [todo]
+            for (std::shared_ptr<Face> face : bvh_results)
+            {
+                // skip if the face is expired
+                if (face->is_expired()) continue;
+
+                // skip if the face has the same surface as the new vertex
+                if (face->get_surface() == surface_to_add_to) continue;
+
+                // skip if the face is seed
+                if (face->get_surface()->get_total_point_size() < settings_.fit_plane_threshold) continue;
+
+                // add neighboring vertex
+                for (std::shared_ptr<Vertex> vertex : face->get_vertices())
+                {
+                    // skip if the vertex is expired
+                    if (vertex->is_expired()) continue;
+
+                    // skip if the vertex is the same as the new vertex
+                    if (vertex->get_surface() == surface_to_add_to) continue;
+
+                    // add neighboring vertex
+                    const double distance = (vertex->get_position() - new_vertex->get_position()).norm();
+                    new_vertex->add_neighboring_rrs_vertex(vertex, distance);
+                }
+            }
 
             // add neighboring rrs vertices to the new vertex
             for (std::shared_ptr<Vertex> vertex : all_vertices)
