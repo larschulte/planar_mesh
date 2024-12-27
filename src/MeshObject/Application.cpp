@@ -385,6 +385,29 @@ bool Application<PointT>::add_point_by_intersection_search(const std::shared_ptr
                 surface_to_add_to = surface;
             }
         }
+
+        // add to surface_to_add_to
+        const std::shared_ptr<InteriorPoint>& new_interior_point = storage_->add_interior_point(generic_point);
+        new_interior_point->connect(surface_to_add_to);
+        for (const std::shared_ptr<Face>& face : bvh_results)
+        {
+            // skip if the face is not from the surface
+            if (face->get_surface() != surface_to_add_to) continue;
+
+            // skip if the face is expired
+            if (face->is_expired()) continue;
+
+            // connect
+            new_interior_point->connect(face);
+
+            // increment reduce radius counter
+            face->increment_reduce_radius_counter();
+
+            // set face
+            face_added_by_intersection_search = face;
+            
+            return true;
+        }    
     }
     else if (surfaces_seed.size() > 0)
     {
@@ -415,43 +438,38 @@ bool Application<PointT>::add_point_by_intersection_search(const std::shared_ptr
                 }
             }
         }
+
+        // add to surface_to_add_to
+        const std::shared_ptr<InteriorPoint>& new_interior_point = storage_->add_interior_point(generic_point);
+        new_interior_point->connect(surface_to_add_to);
+        for (const std::shared_ptr<Face>& face : bvh_results)
+        {
+            // skip if the face is not from the surface
+            if (face->get_surface() != surface_to_add_to) continue;
+
+            // skip if the face is expired
+            if (face->is_expired()) continue;
+
+            // connect
+            new_interior_point->connect(face);
+
+            // increment reduce radius counter
+            face->increment_reduce_radius_counter();
+
+            // set face
+            face_added_by_intersection_search = face;
+            
+            return true;
+        }    
     }
     else
     {
         // add point by radius search or new surface (when no surfaces within nor seed)
-        // don't return right now
-        // return false;
+        return false;
     }
-
-    // if the point is not to be added to any surface, return false
-    if (surface_to_add_to == nullptr) return false;
 
     // log
     if (settings_.log.process_point) std::cout << "========================== within surface " << surface_to_add_to->get_id() << std::endl;
-
-    // add to surface_to_add_to
-    const std::shared_ptr<InteriorPoint>& new_interior_point = storage_->add_interior_point(generic_point);
-    new_interior_point->connect(surface_to_add_to);
-    for (const std::shared_ptr<Face>& face : bvh_results)
-    {
-        // skip if the face is not from the surface
-        if (face->get_surface() != surface_to_add_to) continue;
-
-        // skip if the face is expired
-        if (face->is_expired()) continue;
-
-        // connect
-        new_interior_point->connect(face);
-
-        // increment reduce radius counter
-        face->increment_reduce_radius_counter();
-
-        // set face
-        face_added_by_intersection_search = face;
-        
-        break;
-    }    
-    return true;
 }
 
 template <typename PointT>
