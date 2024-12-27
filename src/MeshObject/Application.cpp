@@ -385,10 +385,9 @@ bool Application<PointT>::add_point_by_intersection_search(const std::shared_ptr
                 surface_to_add_to = surface;
             }
         }
-
-        // add to surface_to_add_to
-        const std::shared_ptr<InteriorPoint>& new_interior_point = storage_->add_interior_point(generic_point);
-        new_interior_point->connect(surface_to_add_to);
+        
+        // add to the first face
+        std::shared_ptr<Face> face_to_add_to;
         for (const std::shared_ptr<Face>& face : bvh_results)
         {
             // skip if the face is not from the surface
@@ -397,24 +396,30 @@ bool Application<PointT>::add_point_by_intersection_search(const std::shared_ptr
             // skip if the face is expired
             if (face->is_expired()) continue;
 
-            // connect
-            new_interior_point->connect(face);
+            // set face_to_add_to
+            face_to_add_to = face;
+            break;
+        }
 
-            // increment reduce radius counter
-            face->increment_reduce_radius_counter();
+        // throw if face to add to is not set
+        if (face_to_add_to == nullptr) throw std::runtime_error("face to add to is not set");
 
-            // set face
-            face_added_by_intersection_search = face;
-            
-            return true;
-        }    
+        // add to surface_to_add_to and face_to_add_to
+        const std::shared_ptr<InteriorPoint>& new_interior_point = storage_->add_interior_point(generic_point);
+        new_interior_point->connect(surface_to_add_to);
+        new_interior_point->connect(face_to_add_to);
+        face_to_add_to->increment_reduce_radius_counter();
+
+        // set face
+        face_added_by_intersection_search = face_to_add_to;        
+        return true;
     }
     else if (surfaces_seed.size() > 0)
     {
         // add to the closest surface measured by point to point distance
+        // add to the closest face
+        std::shared_ptr<Face> face_to_add_to;
         double smallest_distance = std::numeric_limits<double>::max();
-
-        // for each face
         for (std::shared_ptr<Face> face : bvh_results)
         {
             // skip if expired
@@ -435,32 +440,25 @@ bool Application<PointT>::add_point_by_intersection_search(const std::shared_ptr
                 {
                     smallest_distance = distance;
                     surface_to_add_to = this_surface;
+                    face_to_add_to = face;
                 }
             }
         }
 
+        // throw if face to add to is not set
+        if (face_to_add_to == nullptr) throw std::runtime_error("face to add to is not set");
+        // throw if face to add to have different surface
+        if (face_to_add_to->get_surface() != surface_to_add_to) throw std::runtime_error("face to add to have different surface");
+
         // add to surface_to_add_to
         const std::shared_ptr<InteriorPoint>& new_interior_point = storage_->add_interior_point(generic_point);
         new_interior_point->connect(surface_to_add_to);
-        for (const std::shared_ptr<Face>& face : bvh_results)
-        {
-            // skip if the face is not from the surface
-            if (face->get_surface() != surface_to_add_to) continue;
+        new_interior_point->connect(face_to_add_to);
+        face_to_add_to->increment_reduce_radius_counter();
 
-            // skip if the face is expired
-            if (face->is_expired()) continue;
-
-            // connect
-            new_interior_point->connect(face);
-
-            // increment reduce radius counter
-            face->increment_reduce_radius_counter();
-
-            // set face
-            face_added_by_intersection_search = face;
-            
-            return true;
-        }    
+        // set face
+        face_added_by_intersection_search = face_to_add_to;
+        return true;
     }
     else
     {
