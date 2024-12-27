@@ -483,24 +483,6 @@ void Vertex::connect(const std::shared_ptr<Vertex>& sibling_vertex)
     }
 }
 
-void Vertex::connect_neighboring_vertex(const std::shared_ptr<Vertex>& neighboring_vertex)
-{
-    // check input
-    if (neighboring_vertex->is_expired()) throw std::runtime_error("Attempts to connect vertex with invalid neighboring vertex.");
-
-    // skip if try to connect to itself
-    if (neighboring_vertex == shared_from_this()) return;
-
-    // connect
-    bool inserted = neighboring_vertices_that_affect_radius_.insert(neighboring_vertex).second;
-    if (inserted) 
-    {
-        neighboring_vertex->connect_neighboring_vertex(shared_from_this());
-
-        recompute_and_update_radius();
-    }
-}
-
 void Vertex::disconnect(const std::shared_ptr<Edge>& edge) 
 {
     // check input
@@ -569,48 +551,6 @@ void Vertex::disconnect(const std::shared_ptr<Vertex>& sibling_vertex)
     // disconnect
     bool erased = sibling_vertices_.erase(sibling_vertex);
     if (erased) sibling_vertex->disconnect(shared_from_this());
-}
-
-void Vertex::disconnect_neighboring_vertex(const std::shared_ptr<Vertex>& neighboring_vertex)
-{
-    // check input
-    if (neighboring_vertex->is_expired()) return;
-
-    // disconnect
-    bool erased = neighboring_vertices_that_affect_radius_.erase(neighboring_vertex);
-    
-    if (erased) 
-    {
-        neighboring_vertex->disconnect_neighboring_vertex(shared_from_this());
-
-        // When disconnecting neighboring vertices from the list, there is a potential issue:
-        // The neighboring vertices might belong to a surface currently being processed by another thread.
-        // This means we do not hold a lock on the neighboring vertex, and thus:
-        // - We can recompute and update the radius of the current vertex safely.
-        // - However, we cannot request the neighboring vertex to recompute and update its radius, 
-        //   as it might be deleted by another thread during this process, causing a segmentation fault.
-
-        // The goal is to recompute and update the radius of the neighboring vertex when the current vertex
-        // is being deleted, allowing the neighboring vertex to expand its search radius accordingly.
-
-        // Attempting to lock the neighboring vertex:
-        // - If the lock acquisition fails, we skip processing the vertex, as it is already being handled
-        //   by another thread and is likely to be updated in due course.
-        // - If the lock acquisition succeeds, we proceed to safely update the radius.
-
-        // lock vertex to prevent vertex being deleted
-        if (omp_test_nest_lock(&vertex_lock)) 
-        {
-            // lock node in case other thread locked the node first and tried to lock the vertex, causing deadlock
-            std::shared_ptr<RRSNode> node_copy = node ? node : std::make_shared<RRSNode>(); // lock if node exists
-            if (omp_test_nest_lock(&node_copy->omp_lock)) 
-            {
-                recompute_and_update_radius();
-                omp_unset_nest_lock(&node_copy->omp_lock);
-            }
-            omp_unset_nest_lock(&vertex_lock);
-        }
-    }
 }
 
 void Vertex::add_neighboring_rrs_vertex(const std::shared_ptr<Vertex>& rrs_vertex, const double& distance)
@@ -742,41 +682,6 @@ void Vertex::try_update_node_box()
         omp_unset_nest_lock(&node->omp_lock);
     }
 }
-
-void Vertex::recompute_and_update_radius()
-{
-    const double current_radius = reverse_search_radius_;
-    double new_radius = settings_.radius_value;
-
-    // recompute radius
-    for (const std::shared_ptr<Vertex>& neighboring_vertex : neighboring_vertices_that_affect_radius_)
-    {
-        // some other thread may delete the neighboring vertex during the process ...
-
-        double distance = (neighboring_vertex->get_position() - get_position()).norm();
-        if (distance < new_radius) new_radius = distance;
-    }
-
-    // update radius
-    if (new_radius != current_radius) 
-    {
-        set_reverse_radius_search_radius(new_radius);
-
-        // if for an edge, any vertices have smaller radius than the length of the edge, delete the edge
-        std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges_copy = edges_;
-        for (const std::shared_ptr<Edge>& edge : edges_copy)
-        {
-            if (edge->is_expired()) continue; // could turn expired if below deletes an edge which then deletes a face
-            if (edge->is_deleting()) continue; // could be deleting
-
-            if (edge->get_length() > edge->get_vertex(0)->get_radius() || edge->get_length() > edge->get_vertex(1)->get_radius())
-            {
-                storage_->delete_edge(edge);
-            }
-        }
-    }
-}
-
 
 void Vertex::review_surfaces()
 {

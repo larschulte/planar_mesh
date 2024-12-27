@@ -291,52 +291,7 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
     }
     else if (add_point_by_radius_search(generic_point, rrs_results, added_surface, vertex_added_by_radius_search))
     {
-        // // rrs search radius reduction
-        // for (const std::shared_ptr<Vertex>& vertex : rrs_results)
-        // {
-        //     // skip if main vertex becomes expired during radius reduction
-        //     if (vertex_added_by_radius_search->is_expired()) continue;
-
-        //     // skip if expired
-        //     if (vertex->is_expired()) continue;
-
-        //     // skip if the same surface
-        //     if (vertex->get_surface() == added_surface) continue;
-
-        //     // connect neighboring vertex to reduce radius
-        //     vertex_added_by_radius_search->connect_neighboring_vertex(vertex);
-        // }
-
-        // // bvh search radius reduction
-        // for (const std::shared_ptr<Face>& face : bvh_results)
-        // {
-        //     // skip if expired
-        //     if (face->is_expired()) continue;
-
-        //     // skip if the same surface
-        //     if (face->get_surface() == added_surface) continue;
-
-        //     // don't reduce radius of face if counter is not zero
-        //     if (face->get_reduce_radius_counter() > 0)
-        //     {
-        //         face->decrement_reduce_radius_counter();
-        //         continue;
-        //     }
-
-        //     // get copy of vertices and interior points (as they might be deleted)
-        //     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertices = face->get_vertices();
-        //     std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> interior_points = face->get_interior_points();
-
-        //     // reduce using shortest distance to ray
-        //     for (const std::shared_ptr<Vertex>& vertex : vertices)
-        //     {
-        //         // skip if expired
-        //         if (vertex->is_expired()) continue;
-
-        //         // use the projected position of the generic point on the surface it is added to
-        //         const double point_to_point_distance = (vertex_added_by_radius_search->get_position() - vertex->get_position()).norm();
-        //     }
-        // }
+        // if point added, go to end to unlock all locks
     }
     else
     {

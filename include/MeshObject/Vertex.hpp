@@ -73,12 +73,10 @@ public:
     void connect(const std::shared_ptr<Face>& face);
     void connect(const std::shared_ptr<Surface>& surface);
     void connect(const std::shared_ptr<Vertex>& sibling_vertex);
-    void connect_neighboring_vertex(const std::shared_ptr<Vertex>& neighboring_vertex);
     void disconnect(const std::shared_ptr<Edge>& edge);
     void disconnect(const std::shared_ptr<Face>& face);
     void disconnect(const std::shared_ptr<Surface>& surface);
     void disconnect(const std::shared_ptr<Vertex>& sibling_vertex);
-    void disconnect_neighboring_vertex(const std::shared_ptr<Vertex>& neighboring_vertex);
 
     void add_neighboring_rrs_vertex(const std::shared_ptr<Vertex>& rrs_vertex, const double& distance);
     void add_self_to_neighboring_rrs_vertices();
@@ -88,8 +86,6 @@ public:
     void try_update_radius();
     void try_break_edges();
     void try_update_node_box();
-
-    void recompute_and_update_radius();
 
     void review_surfaces();
     bool is_under_review() const;
@@ -163,8 +159,6 @@ private:
     double projected_uncertainty_;
 
     Eigen::Vector3d projected_position_ = Eigen::Vector3d::Zero();
-
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> neighboring_vertices_that_affect_radius_;
 
     std::unordered_map<std::shared_ptr<Vertex>, double, MeshObjectHash> distance_to_neighboring_rrs_vertices_;
 
