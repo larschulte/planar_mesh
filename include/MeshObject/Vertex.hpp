@@ -79,7 +79,16 @@ public:
     void disconnect(const std::shared_ptr<Surface>& surface);
     void disconnect(const std::shared_ptr<Vertex>& sibling_vertex);
     void disconnect_neighboring_vertex(const std::shared_ptr<Vertex>& neighboring_vertex);
-    
+
+    void add_neighboring_rrs_vertex(const std::shared_ptr<Vertex>& rrs_vertex, const double& distance);
+    void add_self_to_neighboring_rrs_vertices();
+    void delete_neighboring_rrs_vertex(const std::shared_ptr<Vertex>& rrs_vertex);
+    void delete_self_from_neighboring_rrs_vertices();
+    double compute_radius();
+    void try_update_radius();
+    void try_break_edges();
+    void try_update_node_box();
+
     void recompute_and_update_radius();
 
     void review_surfaces();
@@ -156,6 +165,8 @@ private:
     Eigen::Vector3d projected_position_ = Eigen::Vector3d::Zero();
 
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> neighboring_vertices_that_affect_radius_;
+
+    std::unordered_map<std::shared_ptr<Vertex>, double, MeshObjectHash> distance_to_neighboring_rrs_vertices_;
 
 public:
     double weight_;

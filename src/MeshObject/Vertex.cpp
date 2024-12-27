@@ -97,10 +97,11 @@ void Vertex::delete_()
     // disconnect
     std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges = edges_;
     std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces = faces_;
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> neighboring_vertices_that_affect_radius = neighboring_vertices_that_affect_radius_;
+    // std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> neighboring_vertices_that_affect_radius = neighboring_vertices_that_affect_radius_;
     for (const auto& edge : edges) disconnect(edge);
     for (const auto& face : faces) disconnect(face);
-    for (const auto& neighboring_vertex : neighboring_vertices_that_affect_radius) disconnect_neighboring_vertex(neighboring_vertex);
+    // for (const auto& neighboring_vertex : neighboring_vertices_that_affect_radius) disconnect_neighboring_vertex(neighboring_vertex);
+    delete_self_from_neighboring_rrs_vertices();
     if (surface_) disconnect(surface_);
 
     // update delete count
@@ -609,6 +610,136 @@ void Vertex::disconnect_neighboring_vertex(const std::shared_ptr<Vertex>& neighb
             }
             omp_unset_nest_lock(&vertex_lock);
         }
+    }
+}
+
+void Vertex::add_neighboring_rrs_vertex(const std::shared_ptr<Vertex>& rrs_vertex, const double& distance)
+{
+    distance_to_neighboring_rrs_vertices_[rrs_vertex] = distance;
+}
+
+void Vertex::add_self_to_neighboring_rrs_vertices()
+{
+    // make copy as list may change
+    std::unordered_map<std::shared_ptr<Vertex>, double, MeshObjectHash> distance_to_neighboring_rrs_vertices_copy = distance_to_neighboring_rrs_vertices_;
+
+    // update
+    for (const auto& [neighboring_vertex, distance] : distance_to_neighboring_rrs_vertices_copy)
+    {
+        // skip if expired
+        if (neighboring_vertex->is_expired()) continue;
+
+        // add to neighboring vertex
+        neighboring_vertex->add_neighboring_rrs_vertex(shared_from_this(), distance);
+
+        // try update
+        neighboring_vertex->try_update_radius();
+        neighboring_vertex->try_break_edges();
+
+        // skip if expired
+        if (neighboring_vertex->is_expired()) continue;
+
+        // try update
+        neighboring_vertex->try_update_node_box();
+    }
+}
+
+void Vertex::delete_neighboring_rrs_vertex(const std::shared_ptr<Vertex>& rrs_vertex)
+{
+    distance_to_neighboring_rrs_vertices_.erase(rrs_vertex);
+}
+
+void Vertex::delete_self_from_neighboring_rrs_vertices()
+{
+    // make copy as list may change
+    std::unordered_map<std::shared_ptr<Vertex>, double, MeshObjectHash> distance_to_neighboring_rrs_vertices_copy = distance_to_neighboring_rrs_vertices_;
+
+    // update
+    for (const auto& [neighboring_vertex, distance] : distance_to_neighboring_rrs_vertices_copy)
+    {
+        // skip if expired
+        if (neighboring_vertex->is_expired()) continue;
+
+        // delete from neighboring vertex
+        neighboring_vertex->delete_neighboring_rrs_vertex(shared_from_this());        
+
+        // try update
+        neighboring_vertex->try_update_radius();
+        neighboring_vertex->try_break_edges();
+        
+        // skip if expired
+        if (neighboring_vertex->is_expired()) continue;
+
+        // try update
+        neighboring_vertex->try_update_node_box();
+    }
+}
+
+double Vertex::compute_radius()
+{
+    // reset to default
+    double new_radius = settings_.radius_value;
+
+    // reduce value
+    for (const auto& [neighboring_vertex, distance] : distance_to_neighboring_rrs_vertices_)
+    {
+        if (distance < new_radius) new_radius = distance;
+    }
+
+    // optional return radius
+    return new_radius;
+}
+
+void Vertex::try_update_radius()
+{
+    reverse_search_radius_ = compute_radius();
+}
+
+void Vertex::try_break_edges()
+{
+    // if for an edge, any vertices have smaller radius than the length of the edge, delete the edge
+    std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges_copy = edges_;
+    for (const std::shared_ptr<Edge>& edge : edges_copy)
+    {
+        if (edge->is_expired()) continue; // could turn expired if below deletes an edge which then deletes a face
+        if (edge->is_deleting()) continue; // could be deleting
+
+        if (edge->get_length() > edge->get_vertex(0)->get_radius() || edge->get_length() > edge->get_vertex(1)->get_radius())
+        {
+            storage_->delete_edge(edge);
+        }
+    }
+}
+
+void Vertex::try_update_node_box()
+{
+    // previous radius
+    const double previous_radius = (max_.x() - min_.x()) / 2.0;
+
+    // update min and max
+    const Eigen::Vector3d radius_vector = Eigen::Vector3d(reverse_search_radius_, reverse_search_radius_, reverse_search_radius_);
+    min_ = get_position() - radius_vector;
+    max_ = get_position() + radius_vector;
+
+    if (node)
+    {
+        // skip if can't lock node
+        if (!omp_test_nest_lock(&node->omp_lock)) return;
+
+        // update node
+        if (reverse_search_radius_ > previous_radius)
+        {
+            node->box = RRSBoundingBox(min_, max_);
+            node->recursive_expand_parent_box();
+        }
+        else if (reverse_search_radius_ < previous_radius)
+        {
+            node->box = RRSBoundingBox(min_, max_);
+            node->recursive_shrink_parent_box();
+        }
+
+        // release lock
+        omp_unset_nest_lock(&node->omp_lock);
     }
 }
 

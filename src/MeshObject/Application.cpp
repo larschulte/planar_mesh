@@ -291,21 +291,21 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
     }
     else if (add_point_by_radius_search(generic_point, rrs_results, added_surface, vertex_added_by_radius_search))
     {
-        // rrs search radius reduction
-        for (const std::shared_ptr<Vertex>& vertex : rrs_results)
-        {
-            // skip if main vertex becomes expired during radius reduction
-            if (vertex_added_by_radius_search->is_expired()) continue;
+        // // rrs search radius reduction
+        // for (const std::shared_ptr<Vertex>& vertex : rrs_results)
+        // {
+        //     // skip if main vertex becomes expired during radius reduction
+        //     if (vertex_added_by_radius_search->is_expired()) continue;
 
-            // skip if expired
-            if (vertex->is_expired()) continue;
+        //     // skip if expired
+        //     if (vertex->is_expired()) continue;
 
-            // skip if the same surface
-            if (vertex->get_surface() == added_surface) continue;
+        //     // skip if the same surface
+        //     if (vertex->get_surface() == added_surface) continue;
 
-            // connect neighboring vertex to reduce radius
-            vertex_added_by_radius_search->connect_neighboring_vertex(vertex);
-        }
+        //     // connect neighboring vertex to reduce radius
+        //     vertex_added_by_radius_search->connect_neighboring_vertex(vertex);
+        // }
 
         // // bvh search radius reduction
         // for (const std::shared_ptr<Face>& face : bvh_results)
@@ -568,10 +568,35 @@ bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
             // add to surface_to_add_to
             new_vertex = storage_->add_vertex(surface_to_add_to, generic_point);
 
+            // add neighboring bvh vertices to the new vertex
+            // [todo]
+
+            // add neighboring rrs vertices to the new vertex
+            for (std::shared_ptr<Vertex> vertex : all_vertices)
+            {
+                // skip if the vertex is expired
+                if (vertex->is_expired()) continue;
+
+                // skip if the vertex is the same as the new vertex
+                if (vertex->get_surface() == surface_to_add_to) continue;
+
+                // skip if in surface seed
+                if (surfaces_seed.find(vertex->get_surface()) != surfaces_seed.end()) continue;
+
+                // add neighboring vertex
+                const double distance = (vertex->get_position() - new_vertex->get_position()).norm();
+                new_vertex->add_neighboring_rrs_vertex(vertex, distance);
+            }
+
+            new_vertex->try_update_radius();
+
             const bool connected = surface_to_add_to->connect_by_edges_and_faces(new_vertex, all_vertices);
             
             if (connected)
             {
+                new_vertex->add_self_to_neighboring_rrs_vertices();
+                new_vertex->try_update_radius();
+                new_vertex->try_update_node_box();
                 return true;
             }
             else
