@@ -101,7 +101,7 @@ void Vertex::delete_()
     for (const auto& edge : edges) disconnect(edge);
     for (const auto& face : faces) disconnect(face);
     // for (const auto& neighboring_vertex : neighboring_vertices_that_affect_radius) disconnect_neighboring_vertex(neighboring_vertex);
-    delete_self_from_neighboring_rrs_vertices();
+    delete_self_from_nearby_vertices();
     if (surface_) disconnect(surface_);
 
     // update delete count
@@ -553,15 +553,15 @@ void Vertex::disconnect(const std::shared_ptr<Vertex>& sibling_vertex)
     if (erased) sibling_vertex->disconnect(shared_from_this());
 }
 
-void Vertex::add_neighboring_rrs_vertex(const std::shared_ptr<Vertex>& rrs_vertex, const double& distance)
+void Vertex::add_nearby_vertex(const std::shared_ptr<Vertex>& rrs_vertex, const double& distance)
 {
-    distance_to_neighboring_rrs_vertices_[rrs_vertex] = distance;
+    distances_to_nearby_vertices_[rrs_vertex] = distance;
 }
 
-void Vertex::add_self_to_neighboring_rrs_vertices()
+void Vertex::add_self_to_nearby_vertices()
 {
     // make copy as list may change
-    std::unordered_map<std::shared_ptr<Vertex>, double, MeshObjectHash> distance_to_neighboring_rrs_vertices_copy = distance_to_neighboring_rrs_vertices_;
+    std::unordered_map<std::shared_ptr<Vertex>, double, MeshObjectHash> distance_to_neighboring_rrs_vertices_copy = distances_to_nearby_vertices_;
 
     // update
     for (const auto& [neighboring_vertex, distance] : distance_to_neighboring_rrs_vertices_copy)
@@ -570,7 +570,7 @@ void Vertex::add_self_to_neighboring_rrs_vertices()
         if (neighboring_vertex->is_expired()) continue;
 
         // add to neighboring vertex
-        neighboring_vertex->add_neighboring_rrs_vertex(shared_from_this(), distance);
+        neighboring_vertex->add_nearby_vertex(shared_from_this(), distance);
 
         // try update
         neighboring_vertex->try_update_radius();
@@ -584,15 +584,15 @@ void Vertex::add_self_to_neighboring_rrs_vertices()
     }
 }
 
-void Vertex::delete_neighboring_rrs_vertex(const std::shared_ptr<Vertex>& rrs_vertex)
+void Vertex::delete_nearby_vertex(const std::shared_ptr<Vertex>& rrs_vertex)
 {
-    distance_to_neighboring_rrs_vertices_.erase(rrs_vertex);
+    distances_to_nearby_vertices_.erase(rrs_vertex);
 }
 
-void Vertex::delete_self_from_neighboring_rrs_vertices()
+void Vertex::delete_self_from_nearby_vertices()
 {
     // make copy as list may change
-    std::unordered_map<std::shared_ptr<Vertex>, double, MeshObjectHash> distance_to_neighboring_rrs_vertices_copy = distance_to_neighboring_rrs_vertices_;
+    std::unordered_map<std::shared_ptr<Vertex>, double, MeshObjectHash> distance_to_neighboring_rrs_vertices_copy = distances_to_nearby_vertices_;
 
     // update
     for (const auto& [neighboring_vertex, distance] : distance_to_neighboring_rrs_vertices_copy)
@@ -601,7 +601,7 @@ void Vertex::delete_self_from_neighboring_rrs_vertices()
         if (neighboring_vertex->is_expired()) continue;
 
         // delete from neighboring vertex
-        neighboring_vertex->delete_neighboring_rrs_vertex(shared_from_this());        
+        neighboring_vertex->delete_nearby_vertex(shared_from_this());        
 
         // try update
         neighboring_vertex->try_update_radius();
@@ -621,7 +621,7 @@ double Vertex::compute_radius()
     double new_radius = settings_.radius_value;
 
     // reduce value
-    for (const auto& [neighboring_vertex, distance] : distance_to_neighboring_rrs_vertices_)
+    for (const auto& [neighboring_vertex, distance] : distances_to_nearby_vertices_)
     {
         if (distance < new_radius) new_radius = distance;
     }

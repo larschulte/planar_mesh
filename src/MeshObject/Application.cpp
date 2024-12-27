@@ -546,7 +546,7 @@ bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
 
                     // add neighboring vertex
                     const double distance = (vertex->get_position() - new_vertex->get_position()).norm();
-                    new_vertex->add_neighboring_rrs_vertex(vertex, distance);
+                    new_vertex->add_nearby_vertex(vertex, distance);
                 }
             }
 
@@ -564,7 +564,7 @@ bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
 
                 // add neighboring vertex
                 const double distance = (vertex->get_position() - new_vertex->get_position()).norm();
-                new_vertex->add_neighboring_rrs_vertex(vertex, distance);
+                new_vertex->add_nearby_vertex(vertex, distance);
             }
 
             new_vertex->try_update_radius();
@@ -573,7 +573,7 @@ bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
             
             if (connected)
             {
-                new_vertex->add_self_to_neighboring_rrs_vertices();
+                new_vertex->add_self_to_nearby_vertices();
                 new_vertex->try_update_radius();
                 new_vertex->try_update_node_box();
                 return true;
