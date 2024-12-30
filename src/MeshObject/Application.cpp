@@ -285,7 +285,7 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
     std::shared_ptr<Vertex> vertex_added_by_radius_search;
     std::shared_ptr<Face> face_added_by_intersection_search;
 
-    if (add_point_by_intersection_search(generic_point, bvh_results, added_surface, face_added_by_intersection_search))
+    if (add_point_by_intersection_search(generic_point, bvh_results, rrs_results, added_surface, face_added_by_intersection_search))
     {
         // if point added, go to end to unlock all locks
     }
@@ -326,7 +326,7 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
 }
 
 template <typename PointT>
-bool Application<PointT>::add_point_by_intersection_search(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Face>>& bvh_results, std::shared_ptr<Surface>& surface_to_add_to, std::shared_ptr<Face>& face_added_by_intersection_search)
+bool Application<PointT>::add_point_by_intersection_search(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Face>>& bvh_results, std::vector<std::shared_ptr<Vertex>>& rrs_results, std::shared_ptr<Surface>& surface_to_add_to, std::shared_ptr<Face>& face_added_by_intersection_search)
 {
     // don't reduce radius if the point is added as new surface, thus need to move the reduce radius part outside this function.
 
@@ -403,6 +403,48 @@ bool Application<PointT>::add_point_by_intersection_search(const std::shared_ptr
 
         // throw if face to add to is not set
         if (face_to_add_to == nullptr) throw std::runtime_error("face to add to is not set");
+
+        // add neighboring rrs vertices to the vertex of the face
+        const std::shared_ptr<Vertex> vertex0 = face_to_add_to->get_vertex(0);
+        const std::shared_ptr<Vertex> vertex1 = face_to_add_to->get_vertex(1);
+        const std::shared_ptr<Vertex> vertex2 = face_to_add_to->get_vertex(2);
+        for (const std::shared_ptr<Vertex>& vertex : rrs_results)
+        {
+            // skip if the vertex is expired
+            if (vertex->is_expired()) continue;
+
+            // skip if on the same surface
+            if (vertex->get_surface() == surface_to_add_to) continue;
+
+            // skip if surface seed
+            if (vertex->get_surface()->get_total_point_size() < settings_.fit_plane_threshold) continue;
+
+            // add neighboring vertex
+            const double distance0 = (vertex->get_position() - vertex0->get_position()).norm(); 
+            const double distance1 = (vertex->get_position() - vertex1->get_position()).norm();
+            const double distance2 = (vertex->get_position() - vertex2->get_position()).norm();
+            vertex0->add_nearby_vertex(vertex, distance0);
+            vertex1->add_nearby_vertex(vertex, distance1);
+            vertex2->add_nearby_vertex(vertex, distance2);
+        }
+
+        vertex0->try_update_radius();
+        vertex1->try_update_radius();
+        vertex2->try_update_radius();
+
+        if (!vertex0->is_expired()) vertex0->try_break_edges();
+        if (!vertex1->is_expired()) vertex1->try_break_edges();
+        if (!vertex2->is_expired()) vertex2->try_break_edges();
+
+        if (face_to_add_to->is_expired()) return false;
+
+        vertex0->try_update_node_box();
+        vertex1->try_update_node_box();
+        vertex2->try_update_node_box();
+
+        vertex0->add_self_to_nearby_vertices();
+        vertex1->add_self_to_nearby_vertices();
+        vertex2->add_self_to_nearby_vertices();
 
         // add to surface_to_add_to and face_to_add_to
         const std::shared_ptr<InteriorPoint>& new_interior_point = storage_->add_interior_point(generic_point);
@@ -485,6 +527,9 @@ bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> all_surfaces; 
     for (std::shared_ptr<Vertex> vertex : all_vertices)
     {
+        // skip if expired
+        if (vertex->is_expired()) continue;
+
         // only add to neighboring surface if the vertex is boundary in that surface
         if (vertex->is_boundary())
         {
