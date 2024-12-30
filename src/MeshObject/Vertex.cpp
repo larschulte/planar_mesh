@@ -597,8 +597,16 @@ void Vertex::delete_self_from_nearby_vertices()
     // update
     for (const auto& [neighboring_vertex, distance] : distance_to_neighboring_rrs_vertices_copy)
     {
+        // try lock the vertex
+        if (!omp_test_nest_lock(&neighboring_vertex->vertex_lock)) continue;
+
         // skip if expired
-        if (neighboring_vertex->is_expired()) continue;
+        if (neighboring_vertex->is_expired()) 
+        {
+            // release lock
+            omp_unset_nest_lock(&neighboring_vertex->vertex_lock);
+            continue;
+        }
 
         // delete from neighboring vertex
         neighboring_vertex->delete_nearby_vertex(shared_from_this());        
@@ -608,10 +616,18 @@ void Vertex::delete_self_from_nearby_vertices()
         neighboring_vertex->try_break_edges();
         
         // skip if expired
-        if (neighboring_vertex->is_expired()) continue;
+        if (neighboring_vertex->is_expired()) 
+        {
+            // release lock
+            omp_unset_nest_lock(&neighboring_vertex->vertex_lock);
+            continue;
+        }
 
         // try update
         neighboring_vertex->try_update_node_box();
+
+        // release lock
+        omp_unset_nest_lock(&neighboring_vertex->vertex_lock);
     }
 }
 
