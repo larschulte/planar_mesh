@@ -78,7 +78,7 @@ public:
     void disconnect(const std::shared_ptr<Surface>& surface);
     void disconnect(const std::shared_ptr<Vertex>& sibling_vertex);
 
-    void add_nearby_vertex(const std::shared_ptr<Vertex>& rrs_vertex, const double& distance);
+    void add_nearby_vertex(const std::shared_ptr<Vertex>& rrs_vertex);
     void add_penetrating_interior_point(const std::shared_ptr<InteriorPoint>& interior_point);
     void add_self_to_nearby_vertices();
     void delete_nearby_vertex(const std::shared_ptr<Vertex>& rrs_vertex);

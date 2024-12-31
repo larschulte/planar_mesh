@@ -425,12 +425,9 @@ bool Application<PointT>::add_point_by_intersection_search(const std::shared_ptr
             if (vertex->get_surface()->get_total_point_size() < settings_.fit_plane_threshold) continue;
 
             // add neighboring vertex
-            const double distance0 = (vertex->get_position() - vertex0->get_position()).norm(); 
-            const double distance1 = (vertex->get_position() - vertex1->get_position()).norm();
-            const double distance2 = (vertex->get_position() - vertex2->get_position()).norm();
-            vertex0->add_nearby_vertex(vertex, distance0);
-            vertex1->add_nearby_vertex(vertex, distance1);
-            vertex2->add_nearby_vertex(vertex, distance2);
+            vertex0->add_nearby_vertex(vertex);
+            vertex1->add_nearby_vertex(vertex);
+            vertex2->add_nearby_vertex(vertex);
         }
 
         vertex0->try_update_radius();
@@ -641,8 +638,7 @@ bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
                     if (vertex->get_surface() == surface_to_add_to) continue;
 
                     // add neighboring vertex
-                    const double distance = (vertex->get_position() - new_vertex->get_position()).norm() + settings_.extra_radius;
-                    new_vertex->add_nearby_vertex(vertex, distance);
+                    new_vertex->add_nearby_vertex(vertex);
                 }
             }
 
@@ -659,8 +655,7 @@ bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
                 if (surfaces_seed.find(vertex->get_surface()) != surfaces_seed.end()) continue;
 
                 // add neighboring vertex
-                const double distance = (vertex->get_position() - new_vertex->get_position()).norm() + settings_.extra_radius;
-                new_vertex->add_nearby_vertex(vertex, distance);
+                new_vertex->add_nearby_vertex(vertex);
             }
 
             new_vertex->try_update_radius();

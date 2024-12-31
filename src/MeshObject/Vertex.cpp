@@ -553,8 +553,15 @@ void Vertex::disconnect(const std::shared_ptr<Vertex>& sibling_vertex)
     if (erased) sibling_vertex->disconnect(shared_from_this());
 }
 
-void Vertex::add_nearby_vertex(const std::shared_ptr<Vertex>& rrs_vertex, const double& distance)
+void Vertex::add_nearby_vertex(const std::shared_ptr<Vertex>& rrs_vertex)
 {
+    // check input 
+    if (rrs_vertex->is_expired()) return;
+
+    // compute distance
+    const double distance = (get_position() - rrs_vertex->get_position()).norm() + settings_.extra_radius; 
+
+    // add to map
     distances_to_nearby_vertices_[rrs_vertex] = distance;
 }
 
@@ -585,7 +592,7 @@ void Vertex::add_self_to_nearby_vertices()
         if (neighboring_vertex->is_expired()) continue;
 
         // add to neighboring vertex
-        neighboring_vertex->add_nearby_vertex(shared_from_this(), distance);
+        neighboring_vertex->add_nearby_vertex(shared_from_this());
 
         // try update
         neighboring_vertex->try_update_radius();
