@@ -616,31 +616,31 @@ bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
             // add to surface_to_add_to
             new_vertex = storage_->add_vertex(surface_to_add_to, generic_point);
 
-            // add neighboring bvh vertices to the new vertex
-            for (std::shared_ptr<Face> face : bvh_results)
-            {
-                // skip if the face is expired
-                if (face->is_expired()) continue;
+            // // add neighboring bvh vertices to the new vertex
+            // for (std::shared_ptr<Face> face : bvh_results)
+            // {
+            //     // skip if the face is expired
+            //     if (face->is_expired()) continue;
 
-                // skip if the face has the same surface as the new vertex
-                if (face->get_surface() == surface_to_add_to) continue;
+            //     // skip if the face has the same surface as the new vertex
+            //     if (face->get_surface() == surface_to_add_to) continue;
 
-                // skip if the face is seed
-                if (face->get_surface()->get_total_point_size() < settings_.fit_plane_threshold) continue;
+            //     // skip if the face is seed
+            //     if (face->get_surface()->get_total_point_size() < settings_.fit_plane_threshold) continue;
 
-                // add neighboring vertex
-                for (std::shared_ptr<Vertex> vertex : face->get_vertices())
-                {
-                    // skip if the vertex is expired
-                    if (vertex->is_expired()) continue;
+            //     // add neighboring vertex
+            //     for (std::shared_ptr<Vertex> vertex : face->get_vertices())
+            //     {
+            //         // skip if the vertex is expired
+            //         if (vertex->is_expired()) continue;
 
-                    // skip if the vertex is the same as the new vertex
-                    if (vertex->get_surface() == surface_to_add_to) continue;
+            //         // skip if the vertex is the same as the new vertex
+            //         if (vertex->get_surface() == surface_to_add_to) continue;
 
-                    // add neighboring vertex
-                    new_vertex->add_nearby_vertex(vertex);
-                }
-            }
+            //         // add neighboring vertex
+            //         new_vertex->add_nearby_vertex(vertex);
+            //     }
+            // }
 
             // add neighboring rrs vertices to the new vertex
             for (std::shared_ptr<Vertex> vertex : all_vertices)
