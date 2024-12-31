@@ -558,6 +558,21 @@ void Vertex::add_nearby_vertex(const std::shared_ptr<Vertex>& rrs_vertex, const 
     distances_to_nearby_vertices_[rrs_vertex] = distance;
 }
 
+void Vertex::add_penetrating_interior_point(const std::shared_ptr<InteriorPoint>& interior_point)
+{
+    // check input
+    if (interior_point->is_expired()) return;
+
+    // compute projected position of interior point
+    const Eigen::Vector3d projected_position = get_surface()->compute_point_projective_position(interior_point->get_origin(), interior_point->get_original_position());
+
+    // compute distance
+    const double distance = (projected_position - get_position()).norm();
+
+    // add to list
+    distances_to_ray_of_penetrating_interior_points_[interior_point] = distance;
+}
+
 void Vertex::add_self_to_nearby_vertices()
 {
     // make copy as list may change
@@ -587,6 +602,11 @@ void Vertex::add_self_to_nearby_vertices()
 void Vertex::delete_nearby_vertex(const std::shared_ptr<Vertex>& rrs_vertex)
 {
     distances_to_nearby_vertices_.erase(rrs_vertex);
+}
+
+void Vertex::delete_penetrating_interior_point(const std::shared_ptr<InteriorPoint>& interior_point)
+{
+    distances_to_ray_of_penetrating_interior_points_.erase(interior_point);
 }
 
 void Vertex::delete_self_from_nearby_vertices()
@@ -638,6 +658,12 @@ double Vertex::compute_radius()
 
     // reduce value
     for (const auto& [neighboring_vertex, distance] : distances_to_nearby_vertices_)
+    {
+        if (distance < new_radius) new_radius = distance;
+    }
+
+    // reduce value
+    for (const auto& [interior_point, distance] : distances_to_ray_of_penetrating_interior_points_)
     {
         if (distance < new_radius) new_radius = distance;
     }

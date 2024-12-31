@@ -79,8 +79,10 @@ public:
     void disconnect(const std::shared_ptr<Vertex>& sibling_vertex);
 
     void add_nearby_vertex(const std::shared_ptr<Vertex>& rrs_vertex, const double& distance);
+    void add_penetrating_interior_point(const std::shared_ptr<InteriorPoint>& interior_point);
     void add_self_to_nearby_vertices();
     void delete_nearby_vertex(const std::shared_ptr<Vertex>& rrs_vertex);
+    void delete_penetrating_interior_point(const std::shared_ptr<InteriorPoint>& interior_point);
     void delete_self_from_nearby_vertices();
     double compute_radius();
     void try_update_radius();
@@ -161,6 +163,7 @@ private:
     Eigen::Vector3d projected_position_ = Eigen::Vector3d::Zero();
 
     std::unordered_map<std::shared_ptr<Vertex>, double, MeshObjectHash> distances_to_nearby_vertices_;
+    std::unordered_map<std::shared_ptr<InteriorPoint>, double, MeshObjectHash> distances_to_ray_of_penetrating_interior_points_;
 
 public:
     double weight_;

@@ -344,7 +344,8 @@ bool Application<PointT>::add_point_by_intersection_search(const std::shared_ptr
     // update the smallest distance to surface not within
     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_seed;
     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_within;
-    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_not_within;
+    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_behind;
+    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_in_front;
     for (const std::shared_ptr<Surface>& surface : all_surfaces)
     {
         // skip if the surface is expired
@@ -363,9 +364,13 @@ bool Application<PointT>::add_point_by_intersection_search(const std::shared_ptr
         {
             surfaces_within.insert(surface);
         }
-        else
+        else if (relative_position == RelativePosition::BEHIND)
         {
-            surfaces_not_within.insert(surface);
+            surfaces_behind.insert(surface);
+        }
+        else if (relative_position == RelativePosition::IN_FRONT)
+        {
+            surfaces_in_front.insert(surface);
         }
     }
 
@@ -454,6 +459,37 @@ bool Application<PointT>::add_point_by_intersection_search(const std::shared_ptr
 
         // set face
         face_added_by_intersection_search = face_to_add_to;        
+
+        // add penetrated vertex to interior point
+        for (const std::shared_ptr<Face>& face : bvh_results)
+        {
+            // skip if expired
+            if (face->is_expired()) continue;
+
+            // skip if in front 
+            if (surfaces_in_front.find(face->get_surface()) != surfaces_in_front.end()) continue;
+
+            // skip if seed surface
+            if (surfaces_seed.find(face->get_surface()) != surfaces_seed.end()) continue;
+
+            // skip if same surface
+            if (face->get_surface() == surface_to_add_to) continue;
+
+            // reduce counter
+            face->decrement_reduce_radius_counter();
+
+            // don't add if counter is not zero
+            if (face->get_reduce_radius_counter() > 0) continue;
+
+            // add penetrated vertex point
+            new_interior_point->add_penetrated_vertex(face->get_vertex(0));
+            new_interior_point->add_penetrated_vertex(face->get_vertex(1));
+            new_interior_point->add_penetrated_vertex(face->get_vertex(2));
+        }
+
+        // try update
+        new_interior_point->add_self_to_penetrated_vertices();
+
         return true;
     }
     
