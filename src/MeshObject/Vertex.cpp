@@ -573,6 +573,9 @@ void Vertex::add_penetrating_interior_point(const std::shared_ptr<InteriorPoint>
     // check input
     if (interior_point->is_expired()) return;
 
+    // add self to interior point as well
+    interior_point->add_penetrated_vertex(shared_from_this());
+
     // compute projected position of interior point
     const Eigen::Vector3d projected_position = get_surface()->compute_point_projective_position(interior_point->get_origin(), interior_point->get_original_position());
 
