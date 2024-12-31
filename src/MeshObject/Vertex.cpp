@@ -93,6 +93,9 @@ void Vertex::delete_()
 
     // set deletion flag
     deleting_ = true;
+    
+    // cascade radius reduction
+    cascade_radius_reduction_to_connected_vertices();
 
     // disconnect
     std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges = edges_;
@@ -729,6 +732,41 @@ void Vertex::try_update_node_box()
 
         // release lock
         omp_unset_nest_lock(&node->omp_lock);
+    }
+}
+
+void Vertex::cascade_radius_reduction_to_connected_vertices()
+{
+    // get connected vertices
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> connected_vertices = compute_connected_vertices();
+
+    // update
+    for (const std::shared_ptr<Vertex>& connected_vertex : connected_vertices)
+    {
+        // skip if expired
+        if (connected_vertex->is_expired()) continue;
+
+        // add nearby vertices to connected vertex
+        for (const auto& [nearby_vertex, distance] : distances_to_nearby_vertices_)
+        {
+            connected_vertex->add_nearby_vertex(nearby_vertex);
+        }
+
+        // add penetrating interior points to connected vertex
+        for (const auto& [interior_point, distance] : distances_to_ray_of_penetrating_interior_points_)
+        {
+            connected_vertex->add_penetrating_interior_point(interior_point);
+        }
+
+        // try update
+        connected_vertex->try_update_radius();
+        connected_vertex->try_break_edges();
+        
+        // skip if expired
+        if (connected_vertex->is_expired()) continue;
+
+        // try update
+        connected_vertex->try_update_node_box();
     }
 }
 

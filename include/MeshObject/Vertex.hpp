@@ -89,6 +89,8 @@ public:
     void try_break_edges();
     void try_update_node_box();
 
+    void cascade_radius_reduction_to_connected_vertices();
+
     void review_surfaces();
     bool is_under_review() const;
 
