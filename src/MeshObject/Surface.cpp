@@ -98,7 +98,11 @@ double Surface::compute_point_projective_distance(const Eigen::Vector3d& origin,
 {
     // if perpendicular, return NaN
     Eigen::Vector3d rayDirection = (position - origin).normalized();
-    double distance = (mean_ - position).dot(normal_) / rayDirection.dot(normal_);
+    double distance = std::abs( (mean_ - position).dot(normal_) / rayDirection.dot(normal_) );
+
+    // negative distance if origin and position are on the opposite side of the plane
+    const bool opposite_side = (origin - mean_).dot(normal_) * (position - mean_).dot(normal_) < 0;
+    if (opposite_side) distance *= -1;
 
     // return
     return distance;
