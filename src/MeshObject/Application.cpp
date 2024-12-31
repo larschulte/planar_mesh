@@ -409,44 +409,44 @@ bool Application<PointT>::add_point_by_intersection_search(const std::shared_ptr
         // throw if face to add to is not set
         if (face_to_add_to == nullptr) throw std::runtime_error("face to add to is not set");
 
-        // add neighboring rrs vertices to the vertex of the face
-        const std::shared_ptr<Vertex> vertex0 = face_to_add_to->get_vertex(0);
-        const std::shared_ptr<Vertex> vertex1 = face_to_add_to->get_vertex(1);
-        const std::shared_ptr<Vertex> vertex2 = face_to_add_to->get_vertex(2);
-        for (const std::shared_ptr<Vertex>& vertex : rrs_results)
-        {
-            // skip if the vertex is expired
-            if (vertex->is_expired()) continue;
+        // // add neighboring rrs vertices to the vertex of the face
+        // const std::shared_ptr<Vertex> vertex0 = face_to_add_to->get_vertex(0);
+        // const std::shared_ptr<Vertex> vertex1 = face_to_add_to->get_vertex(1);
+        // const std::shared_ptr<Vertex> vertex2 = face_to_add_to->get_vertex(2);
+        // for (const std::shared_ptr<Vertex>& vertex : rrs_results)
+        // {
+        //     // skip if the vertex is expired
+        //     if (vertex->is_expired()) continue;
 
-            // skip if on the same surface
-            if (vertex->get_surface() == surface_to_add_to) continue;
+        //     // skip if on the same surface
+        //     if (vertex->get_surface() == surface_to_add_to) continue;
 
-            // skip if surface seed
-            if (vertex->get_surface()->get_total_point_size() < settings_.fit_plane_threshold) continue;
+        //     // skip if surface seed
+        //     if (vertex->get_surface()->get_total_point_size() < settings_.fit_plane_threshold) continue;
 
-            // add neighboring vertex
-            vertex0->add_nearby_vertex(vertex);
-            vertex1->add_nearby_vertex(vertex);
-            vertex2->add_nearby_vertex(vertex);
-        }
+        //     // add neighboring vertex
+        //     vertex0->add_nearby_vertex(vertex);
+        //     vertex1->add_nearby_vertex(vertex);
+        //     vertex2->add_nearby_vertex(vertex);
+        // }
 
-        vertex0->try_update_radius();
-        vertex1->try_update_radius();
-        vertex2->try_update_radius();
+        // vertex0->try_update_radius();
+        // vertex1->try_update_radius();
+        // vertex2->try_update_radius();
 
-        if (!vertex0->is_expired()) vertex0->try_break_edges();
-        if (!vertex1->is_expired()) vertex1->try_break_edges();
-        if (!vertex2->is_expired()) vertex2->try_break_edges();
+        // if (!vertex0->is_expired()) vertex0->try_break_edges();
+        // if (!vertex1->is_expired()) vertex1->try_break_edges();
+        // if (!vertex2->is_expired()) vertex2->try_break_edges();
 
-        if (face_to_add_to->is_expired()) return false;
+        // if (face_to_add_to->is_expired()) return false;
 
-        vertex0->try_update_node_box();
-        vertex1->try_update_node_box();
-        vertex2->try_update_node_box();
+        // vertex0->try_update_node_box();
+        // vertex1->try_update_node_box();
+        // vertex2->try_update_node_box();
 
-        vertex0->add_self_to_nearby_vertices();
-        vertex1->add_self_to_nearby_vertices();
-        vertex2->add_self_to_nearby_vertices();
+        // vertex0->add_self_to_nearby_vertices();
+        // vertex1->add_self_to_nearby_vertices();
+        // vertex2->add_self_to_nearby_vertices();
 
         // add to surface_to_add_to and face_to_add_to
         const std::shared_ptr<InteriorPoint>& new_interior_point = storage_->add_interior_point(generic_point);
