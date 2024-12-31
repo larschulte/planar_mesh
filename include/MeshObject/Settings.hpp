@@ -92,6 +92,7 @@ struct Settings
     bool use_radius_value;
     double pointcloud_fraction;
     double radius_value;
+    double extra_radius;
     double radius_ratio; // distance to radius ratio
     std::size_t process_every_n_points;
     double duplicated_point_distance_threshold;

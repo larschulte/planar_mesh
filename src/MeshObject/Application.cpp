@@ -605,7 +605,7 @@ bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
                     if (vertex->get_surface() == surface_to_add_to) continue;
 
                     // add neighboring vertex
-                    const double distance = (vertex->get_position() - new_vertex->get_position()).norm();
+                    const double distance = (vertex->get_position() - new_vertex->get_position()).norm() + settings_.extra_radius;
                     new_vertex->add_nearby_vertex(vertex, distance);
                 }
             }
@@ -623,7 +623,7 @@ bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
                 if (surfaces_seed.find(vertex->get_surface()) != surfaces_seed.end()) continue;
 
                 // add neighboring vertex
-                const double distance = (vertex->get_position() - new_vertex->get_position()).norm();
+                const double distance = (vertex->get_position() - new_vertex->get_position()).norm() + settings_.extra_radius;
                 new_vertex->add_nearby_vertex(vertex, distance);
             }
 
