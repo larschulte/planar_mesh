@@ -457,6 +457,28 @@ bool Application<PointT>::add_point_by_intersection_search(const std::shared_ptr
         // set face
         face_added_by_intersection_search = face_to_add_to;        
 
+        // interior point reduce radius of rrs vertex as ray
+        for (const std::shared_ptr<Vertex>& vertex : rrs_results)
+        {
+            // skip if expired
+            if (vertex->is_expired()) continue;
+
+            // check relative position
+            RelativePosition relative_position = vertex->get_surface()->check_relative_position(generic_point);
+
+            // skip if in front
+            if (relative_position == RelativePosition::IN_FRONT) continue;
+
+            // skip if same surface
+            if (vertex->get_surface() == surface_to_add_to) continue;
+
+            // skip if surface seed
+            if (vertex->get_surface()->get_total_point_size() < settings_.fit_plane_threshold) continue;
+
+            // add as penetrated vertex
+            new_interior_point->add_penetrated_vertex(vertex);
+        }
+
         // add penetrated vertex to interior point
         for (const std::shared_ptr<Face>& face : bvh_results)
         {
