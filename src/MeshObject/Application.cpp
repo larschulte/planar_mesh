@@ -774,10 +774,29 @@ bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
 
             // add to surface_to_add_to
             new_vertex = storage_->add_vertex(surface_to_add_to, generic_point);
+
+            // reduce radius of nearby vertices as point
+            for (std::shared_ptr<Vertex> vertex : all_vertices)
+            {
+                // skip if the vertex is expired
+                if (vertex->is_expired()) continue;
+
+                // skip if the vertex is the same as the new vertex
+                if (vertex->get_surface() == surface_to_add_to) continue;
+
+                // add neighboring vertex
+                new_vertex->add_nearby_vertex(vertex);
+            }
+
+            new_vertex->try_update_radius();
+
             const bool connected = surface_to_add_to->connect_by_edges_and_faces(new_vertex, all_vertices);
             
             if (connected)
             {
+                new_vertex->add_self_to_nearby_vertices();
+                new_vertex->try_update_radius();
+                new_vertex->try_update_node_box();
                 return true;
             }
             else
