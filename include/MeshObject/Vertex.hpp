@@ -80,14 +80,20 @@ public:
 
     void add_nearby_vertex(const std::shared_ptr<Vertex>& rrs_vertex);
     void add_penetrating_interior_point(const std::shared_ptr<InteriorPoint>& interior_point);
+    void add_penetrating_vertex_point(const std::shared_ptr<Vertex>& vertex_point);
     void add_self_to_nearby_vertices();
     void delete_nearby_vertex(const std::shared_ptr<Vertex>& rrs_vertex);
     void delete_penetrating_interior_point(const std::shared_ptr<InteriorPoint>& interior_point);
+    void delete_penetrating_vertex_point(const std::shared_ptr<Vertex>& vertex_point);
     void delete_self_from_nearby_vertices();
     double compute_radius();
     void try_update_radius();
     void try_break_edges();
     void try_update_node_box();
+
+    void add_penetrated_vertex(const std::shared_ptr<Vertex>& vertex);
+    void add_self_to_penetrated_vertices();
+    void delete_self_from_penetrated_vertices();
 
     void cascade_radius_reduction_to_connected_vertices();
 
@@ -166,6 +172,8 @@ private:
 
     std::unordered_map<std::shared_ptr<Vertex>, double, MeshObjectHash> distances_to_nearby_vertices_;
     std::unordered_map<std::shared_ptr<InteriorPoint>, double, MeshObjectHash> distances_to_ray_of_penetrating_interior_points_;
+    std::unordered_map<std::shared_ptr<Vertex>, double, MeshObjectHash> distances_to_ray_of_penetrating_vertex_points_;
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> penetrated_vertices_;
 
 public:
     double weight_;
