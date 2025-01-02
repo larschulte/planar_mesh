@@ -479,7 +479,7 @@ bool Application<PointT>::add_point_by_intersection_search(const std::shared_ptr
             new_interior_point->add_penetrated_vertex(vertex);
         }
 
-        // add penetrated vertex to interior point
+        // interior point reduce radius of vertices of face as ray
         for (const std::shared_ptr<Face>& face : bvh_results)
         {
             // skip if expired
@@ -664,7 +664,7 @@ bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
             //     }
             // }
 
-            // add penetrated vertex to interior point
+            // new vertex reduce radius of vertcies of face as ray
             for (const std::shared_ptr<Face>& face : bvh_results)
             {
                 // skip if expired
@@ -695,7 +695,7 @@ bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
             }
             new_vertex->add_self_to_penetrated_vertices();
 
-            // add neighboring rrs vertices to the new vertex
+            // new vertex reduce radius of nearby vertex as point
             for (std::shared_ptr<Vertex> vertex : all_vertices)
             {
                 // skip if the vertex is expired
@@ -775,7 +775,7 @@ bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
             // add to surface_to_add_to
             new_vertex = storage_->add_vertex(surface_to_add_to, generic_point);
 
-            // reduce radius of nearby vertices as point
+            // new vertex reduce radius of nearby vertices as point
             for (std::shared_ptr<Vertex> vertex : all_vertices)
             {
                 // skip if the vertex is expired
