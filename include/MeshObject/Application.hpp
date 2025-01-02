@@ -34,7 +34,7 @@ public:
     void process_point(const std::shared_ptr<GenericPoint>& generic_point);
     bool add_point_by_intersection_search(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Face>>& searched_faces, std::vector<std::shared_ptr<Vertex>>& rrs_results, std::shared_ptr<Surface>& added_surface, std::shared_ptr<Face>& face_added_by_intersection_search);
     bool add_point_by_radius_search(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Vertex>>& neighboring_vertices_vector, std::vector<std::shared_ptr<Face>>& bvh_results, std::shared_ptr<Surface>& added_surface, std::shared_ptr<Vertex>& vertex_added_by_radius_search);
-    void add_point_by_new_surface(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Vertex>>& rrs_results, std::shared_ptr<Surface>& added_surface);
+    void add_point_by_new_surface(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Vertex>>& rrs_results, std::vector<std::shared_ptr<Face>>& bvh_results, std::shared_ptr<Surface>& added_surface);
     
     // interaction
     void refine_surfaces();

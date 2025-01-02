@@ -329,7 +329,7 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
     }
     else
     {
-        add_point_by_new_surface(generic_point, rrs_results, added_surface);
+        add_point_by_new_surface(generic_point, rrs_results, bvh_results, added_surface);
         added_to_new_surface = true;
         // if point added, go to end to unlock all locks
     }
@@ -584,6 +584,53 @@ bool Application<PointT>::add_point_by_intersection_search(const std::shared_ptr
 
         // set face
         face_added_by_intersection_search = face_to_add_to;
+
+        // interior point reduce radius of rrs vertex as ray
+        for (const std::shared_ptr<Vertex>& vertex : rrs_results)
+        {
+            // skip if expired
+            if (vertex->is_expired()) continue;
+
+            // check relative position
+            RelativePosition relative_position = vertex->get_surface()->check_relative_position(generic_point);
+
+            // skip if in front
+            if (relative_position == RelativePosition::IN_FRONT) continue;
+
+            // skip if same surface
+            if (vertex->get_surface() == surface_to_add_to) continue;
+
+            // add as penetrated vertex
+            new_interior_point->add_penetrated_vertex(vertex);
+        }
+
+        // interior point reduce radius of vertices of face as ray
+        for (const std::shared_ptr<Face>& face : bvh_results)
+        {
+            // skip if expired
+            if (face->is_expired()) continue;
+
+            // skip if in front 
+            if (surfaces_in_front.find(face->get_surface()) != surfaces_in_front.end()) continue;
+
+            // skip if same surface
+            if (face->get_surface() == surface_to_add_to) continue;
+
+            // reduce counter
+            face->decrement_reduce_radius_counter();
+
+            // don't add if counter is not zero
+            if (face->get_reduce_radius_counter() > 0) continue;
+
+            // add penetrated vertex point
+            new_interior_point->add_penetrated_vertex(face->get_vertex(0));
+            new_interior_point->add_penetrated_vertex(face->get_vertex(1));
+            new_interior_point->add_penetrated_vertex(face->get_vertex(2));
+        }
+
+        // try update
+        new_interior_point->add_self_to_penetrated_vertices();
+
         return true;
     }
     
@@ -797,6 +844,34 @@ bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
             // add to surface_to_add_to
             new_vertex = storage_->add_vertex(surface_to_add_to, generic_point);
 
+            // new vertex reduce radius of vertcies of face as ray
+            for (const std::shared_ptr<Face>& face : bvh_results)
+            {
+                // skip if expired
+                if (face->is_expired()) continue;
+
+                // compute relative position
+                RelativePosition relative_position = face->get_surface()->check_relative_position(generic_point);
+
+                // skip if in front 
+                if (relative_position == RelativePosition::IN_FRONT) continue;
+
+                // skip if same surface
+                if (face->get_surface() == surface_to_add_to) continue;
+
+                // reduce counter
+                face->decrement_reduce_radius_counter();
+
+                // don't add if counter is not zero
+                if (face->get_reduce_radius_counter() > 0) continue;
+
+                // add penetrated vertex point
+                new_vertex->add_penetrated_vertex(face->get_vertex(0));
+                new_vertex->add_penetrated_vertex(face->get_vertex(1));
+                new_vertex->add_penetrated_vertex(face->get_vertex(2));
+            }
+            new_vertex->add_self_to_penetrated_vertices();
+
             // new vertex reduce radius of nearby vertices as point
             for (std::shared_ptr<Vertex> vertex : all_vertices)
             {
@@ -836,11 +911,36 @@ bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
 }
 
 template <typename PointT>
-void Application<PointT>::add_point_by_new_surface(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Vertex>>& rrs_results, std::shared_ptr<Surface>& added_surface)
+void Application<PointT>::add_point_by_new_surface(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Vertex>>& rrs_results, std::vector<std::shared_ptr<Face>>& bvh_results, std::shared_ptr<Surface>& added_surface)
 {
     std::shared_ptr<Surface> new_surface = storage_->add_surface();
     std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(new_surface, generic_point);
     added_surface = new_surface;
+
+    // new vertex reduce radius of vertcies of face as ray
+    for (const std::shared_ptr<Face>& face : bvh_results)
+    {
+        // skip if expired
+        if (face->is_expired()) continue;
+
+        // compute relative position
+        RelativePosition relative_position = face->get_surface()->check_relative_position(generic_point);
+
+        // skip if in front 
+        if (relative_position == RelativePosition::IN_FRONT) continue;
+
+        // reduce counter
+        face->decrement_reduce_radius_counter();
+
+        // don't add if counter is not zero
+        if (face->get_reduce_radius_counter() > 0) continue;
+
+        // add penetrated vertex point
+        new_vertex->add_penetrated_vertex(face->get_vertex(0));
+        new_vertex->add_penetrated_vertex(face->get_vertex(1));
+        new_vertex->add_penetrated_vertex(face->get_vertex(2));
+    }
+    new_vertex->add_self_to_penetrated_vertices();
 
     // pass in rrs result and reduce radius of rrs as point
     for (std::shared_ptr<Vertex> vertex : rrs_results)
