@@ -472,9 +472,6 @@ bool Application<PointT>::add_point_by_intersection_search(const std::shared_ptr
             // skip if same surface
             if (vertex->get_surface() == surface_to_add_to) continue;
 
-            // skip if surface seed
-            if (vertex->get_surface()->get_total_point_size() < settings_.fit_plane_threshold) continue;
-
             // add as penetrated vertex
             new_interior_point->add_penetrated_vertex(vertex);
         }
@@ -487,9 +484,6 @@ bool Application<PointT>::add_point_by_intersection_search(const std::shared_ptr
 
             // skip if in front 
             if (surfaces_in_front.find(face->get_surface()) != surfaces_in_front.end()) continue;
-
-            // skip if seed surface
-            if (surfaces_seed.find(face->get_surface()) != surfaces_seed.end()) continue;
 
             // skip if same surface
             if (face->get_surface() == surface_to_add_to) continue;
@@ -676,9 +670,6 @@ bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
                 // skip if in front 
                 if (relative_position == RelativePosition::IN_FRONT) continue;
 
-                // skip if seed surface
-                if (face->get_surface()->get_total_point_size() < settings_.fit_plane_threshold) continue;
-
                 // skip if same surface
                 if (face->get_surface() == surface_to_add_to) continue;
 
@@ -703,9 +694,6 @@ bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
 
                 // skip if the vertex is the same as the new vertex
                 if (vertex->get_surface() == surface_to_add_to) continue;
-
-                // skip if in surface seed
-                if (surfaces_seed.find(vertex->get_surface()) != surfaces_seed.end()) continue;
 
                 // add neighboring vertex
                 new_vertex->add_nearby_vertex(vertex);
