@@ -693,6 +693,32 @@ double Vertex::compute_radius()
     // reset to default
     double new_radius = settings_.radius_value;
 
+    // remove expired entries
+    for (auto it = distances_to_nearby_vertices_.begin(); it != distances_to_nearby_vertices_.end();)
+    {
+        if (it->first->is_expired())
+        {
+            it = distances_to_nearby_vertices_.erase(it);
+        }
+        else
+        {
+            ++it;
+        }
+    }
+
+    // remove expired entries
+    for (auto it = distances_to_ray_of_penetrating_interior_points_.begin(); it != distances_to_ray_of_penetrating_interior_points_.end();)
+    {
+        if (it->first->is_expired())
+        {
+            it = distances_to_ray_of_penetrating_interior_points_.erase(it);
+        }
+        else
+        {
+            ++it;
+        }
+    }
+
     // reduce value
     for (const auto& [neighboring_vertex, distance] : distances_to_nearby_vertices_)
     {

@@ -285,6 +285,40 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
     std::shared_ptr<Vertex> vertex_added_by_radius_search;
     std::shared_ptr<Face> face_added_by_intersection_search;
 
+    // clean up bvh and rrs results by recomputing their radius and try breaking edges
+    for (const std::shared_ptr<Face>& face : bvh_results) 
+    {
+        // skip if the face is expired
+        if (face->is_expired()) continue;
+
+        for (const std::shared_ptr<Vertex>& vertex : face->get_vertices())
+        {
+            // skip if the vertex is expired
+            if (vertex->is_expired()) continue;
+
+            vertex->try_update_radius();
+            vertex->try_break_edges();
+
+            // skip if the vertex is expired
+            if (vertex->is_expired()) continue;
+
+            vertex->try_update_node_box();
+        }
+    }
+    for (const std::shared_ptr<Vertex>& vertex : rrs_results) 
+    {
+        // skip if the vertex is expired
+        if (vertex->is_expired()) continue;
+
+        vertex->try_update_radius();
+        vertex->try_break_edges();
+
+        // skip if the vertex is expired
+        if (vertex->is_expired()) continue;
+
+        vertex->try_update_node_box();
+    }
+
     if (add_point_by_intersection_search(generic_point, bvh_results, rrs_results, added_surface, face_added_by_intersection_search))
     {
         // if point added, go to end to unlock all locks
