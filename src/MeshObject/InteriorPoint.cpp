@@ -289,7 +289,7 @@ void InteriorPoint::add_self_to_penetrated_vertices()
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> nearby_penetrated_vertices_copy = penetrated_vertices_;
 
     // update
-    for (const std::shared_ptr<Vertex>& vertex : penetrated_vertices_)
+    for (const std::shared_ptr<Vertex>& vertex : nearby_penetrated_vertices_copy)
     {
         // skip if expired
         if (vertex->is_expired()) continue;
