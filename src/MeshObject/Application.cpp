@@ -295,7 +295,7 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
     }
     else
     {
-        add_point_by_new_surface(generic_point, added_surface);
+        add_point_by_new_surface(generic_point, rrs_results, added_surface);
         added_to_new_surface = true;
         // if point added, go to end to unlock all locks
     }
@@ -814,12 +814,24 @@ bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
 }
 
 template <typename PointT>
-void Application<PointT>::add_point_by_new_surface(const std::shared_ptr<GenericPoint>& generic_point, std::shared_ptr<Surface>& added_surface)
+void Application<PointT>::add_point_by_new_surface(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Vertex>>& rrs_results, std::shared_ptr<Surface>& added_surface)
 {
     std::shared_ptr<Surface> new_surface = storage_->add_surface();
     std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(new_surface, generic_point);
-    
     added_surface = new_surface;
+
+    // pass in rrs result and reduce radius of rrs as point
+    for (std::shared_ptr<Vertex> vertex : rrs_results)
+    {
+        // skip if the vertex is expired
+        if (vertex->is_expired()) continue;
+
+        // add neighboring vertex
+        new_vertex->add_nearby_vertex(vertex);
+    }
+    new_vertex->add_self_to_nearby_vertices();
+    new_vertex->try_update_radius();
+    new_vertex->try_update_node_box();
 }
 
 template <typename PointT>
