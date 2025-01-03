@@ -562,6 +562,9 @@ void Vertex::add_nearby_vertex(const std::shared_ptr<Vertex>& rrs_vertex)
     // check input 
     if (rrs_vertex->is_expired()) return;
 
+    // skip if already exists
+    if (distances_to_nearby_vertices_.find(rrs_vertex) != distances_to_nearby_vertices_.end()) return;
+
     // compute distance
     const double distance = (get_position() - rrs_vertex->get_position()).norm() + settings_.extra_radius; 
 
@@ -887,6 +890,13 @@ void Vertex::cascade_radius_reduction_to_connected_vertices()
         for (const auto& [nearby_vertex, distance] : distances_to_nearby_vertices_)
         {
             connected_vertex->add_nearby_vertex(nearby_vertex);
+
+            // don't use add self, just use normal add nearby
+            if (omp_test_nest_lock(&nearby_vertex->vertex_lock))
+            {
+                nearby_vertex->add_nearby_vertex(connected_vertex);
+                omp_unset_nest_lock(&nearby_vertex->vertex_lock);
+            }
         }
 
         // add penetrating interior points to connected vertex
