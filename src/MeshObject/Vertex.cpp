@@ -832,6 +832,20 @@ double Vertex::compute_radius()
         }
     }
 
+    // remove expired entries
+    for (auto it = distances_to_ray_of_penetrating_vertex_points_.begin(); it != distances_to_ray_of_penetrating_vertex_points_.end();)
+    {
+        if (it->first->is_expired())
+        {
+            it = distances_to_ray_of_penetrating_vertex_points_.erase(it);
+        }
+        else
+        {
+            ++it;
+        }
+    }
+
+
     // reduce value
     for (const auto& [neighboring_vertex, distance] : distances_to_nearby_vertices_)
     {
