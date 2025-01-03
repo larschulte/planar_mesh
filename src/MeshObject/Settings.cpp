@@ -63,7 +63,7 @@ Settings::Settings()
 
     process_every_n_points = 1;
     
-    fit_plane_threshold = 4;
+    fit_plane_threshold = 3;
     shuffle_pointcloud = true;
     use_radius_value = true;
     pointcloud_fraction = 1;
