@@ -169,6 +169,9 @@ RelativePosition Surface::check_relative_position(double distance_travelled, con
     const bool use_improved_covariance = true;
     if (use_improved_covariance)
     {
+        // return no_relative_position if not enough points
+        if (get_total_point_size() < settings_.fit_plane_threshold) return RelativePosition::NO_RELATIVE_POSITION;
+
         // compute d(range)/d(...)
         Eigen::Vector3d d_range_d_origin = - normal_ / normal_.dot(direction);
         Eigen::Vector3d d_range_d_mean = normal_ / normal_.dot(direction);

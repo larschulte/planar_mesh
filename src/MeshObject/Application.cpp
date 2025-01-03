@@ -498,6 +498,9 @@ bool Application<PointT>::add_point_by_intersection_search(const std::shared_ptr
             // check relative position
             RelativePosition relative_position = vertex->get_surface()->check_relative_position(generic_point);
 
+            // skip if no relative position
+            if (relative_position == RelativePosition::NO_RELATIVE_POSITION) continue;
+
             // skip if in front
             if (relative_position == RelativePosition::IN_FRONT) continue;
 
@@ -671,6 +674,9 @@ bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
 
             // compute relative position
             RelativePosition relative_position = face->get_surface()->check_relative_position(generic_point);
+
+            // skip if no relative position
+            if (relative_position == RelativePosition::NO_RELATIVE_POSITION) continue;
 
             // skip if in front 
             if (relative_position == RelativePosition::IN_FRONT) continue;
