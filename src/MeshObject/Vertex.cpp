@@ -564,7 +564,7 @@ void Vertex::add_nearby_vertex(const std::shared_ptr<Vertex>& rrs_vertex)
     if (rrs_vertex->is_expired()) return;
 
     // compute distance
-    const double distance = (get_position() - rrs_vertex->get_position()).norm() + settings_.extra_radius; 
+    const double distance = (get_position() - rrs_vertex->get_position()).norm(); 
 
     // add to map
     distances_to_nearby_vertices_[rrs_vertex] = distance;
@@ -916,7 +916,10 @@ double Vertex::compute_radius()
     // reduce value
     for (const auto& [neighboring_vertex, distance] : distances_to_nearby_vertices_)
     {
-        if (distance < new_radius) new_radius = distance;
+        // with extra radius
+        const double corrected_distance = distance + settings_.extra_radius;
+
+        if (corrected_distance < new_radius) new_radius = corrected_distance;
     }
 
     // reduce value
@@ -937,7 +940,7 @@ double Vertex::compute_radius()
         if (distance < new_radius) new_radius = distance;
     }
 
-    // optional return radius
+    // return radius
     return new_radius;
 }
 
