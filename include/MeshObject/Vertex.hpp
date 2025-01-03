@@ -91,9 +91,11 @@ public:
     // ray - being penetrated by vertex point
     void add_penetrating_vertex_point(const std::shared_ptr<Vertex>& vertex_point);
     void delete_penetrating_vertex_point(const std::shared_ptr<Vertex>& vertex_point);
+    void delete_self_from_penetrating_vertex_points();
 
     // ray - penetrating vertex
     void add_penetrated_vertex(const std::shared_ptr<Vertex>& vertex);
+    void delete_penetrated_vertex(const std::shared_ptr<Vertex>& vertex);
     void add_self_to_penetrated_vertices();
     void delete_self_from_penetrated_vertices();
 
@@ -180,7 +182,7 @@ private:
     std::unordered_map<std::shared_ptr<Vertex>, double, MeshObjectHash> distances_to_nearby_vertices_;
     std::unordered_map<std::shared_ptr<InteriorPoint>, double, MeshObjectHash> distances_to_ray_of_penetrating_interior_points_;
     std::unordered_map<std::shared_ptr<Vertex>, double, MeshObjectHash> distances_to_ray_of_penetrating_vertex_points_;
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> penetrated_vertices_;
+    std::unordered_map<std::shared_ptr<Vertex>, double, MeshObjectHash> distances_to_plane_of_penetrated_vertex_points_;
 
 public:
     double weight_;

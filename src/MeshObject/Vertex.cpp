@@ -106,6 +106,7 @@ void Vertex::delete_()
     // for (const auto& neighboring_vertex : neighboring_vertices_that_affect_radius) disconnect_neighboring_vertex(neighboring_vertex);
     delete_self_from_nearby_vertices();
     delete_self_from_penetrated_vertices();
+    delete_self_from_penetrating_vertex_points();
     if (surface_) disconnect(surface_);
 
     // update delete count
@@ -689,22 +690,76 @@ void Vertex::delete_penetrating_vertex_point(const std::shared_ptr<Vertex>& vert
     distances_to_ray_of_penetrating_vertex_points_.erase(vertex_point);
 }
 
+void Vertex::delete_self_from_penetrating_vertex_points()
+{
+    // make copy as list may change
+    std::unordered_map<std::shared_ptr<Vertex>, double, MeshObjectHash> distances_to_ray_of_penetrating_vertex_points_copy = distances_to_ray_of_penetrating_vertex_points_;
+
+    // update
+    for (const auto& [vertex, distance] : distances_to_ray_of_penetrating_vertex_points_copy)
+    {
+        // try lock the vertex
+        if (!omp_test_nest_lock(&vertex->vertex_lock)) continue;
+
+        // skip if expired
+        if (vertex->is_expired()) 
+        {
+            // release lock
+            omp_unset_nest_lock(&vertex->vertex_lock);
+            continue;
+        }
+
+        // delete from neighboring vertex
+        vertex->delete_penetrated_vertex(shared_from_this());
+
+        // try update
+        vertex->try_update_radius();
+        vertex->try_break_edges();
+        
+        // skip if expired
+        if (vertex->is_expired()) 
+        {
+            // release lock
+            omp_unset_nest_lock(&vertex->vertex_lock);
+            continue;
+        }
+
+        // try update
+        vertex->try_update_node_box();
+
+        // release lock
+        omp_unset_nest_lock(&vertex->vertex_lock);
+    }
+}
+
 void Vertex::add_penetrated_vertex(const std::shared_ptr<Vertex>& vertex)
 {
     // check input
     if (vertex->is_expired()) return;
 
-    // add
-    penetrated_vertices_.insert(vertex);
+    // if enough points, compute point to plane distance
+    double distance = settings_.radius_value;
+    if (vertex->get_surface()->get_total_point_size() >= settings_.fit_plane_threshold)
+    {
+        distance = vertex->get_surface()->compute_point_to_plane_distance(get_position());
+    }
+
+    // add to list
+    distances_to_plane_of_penetrated_vertex_points_[vertex] = distance;
+}
+
+void Vertex::delete_penetrated_vertex(const std::shared_ptr<Vertex>& vertex)
+{
+    distances_to_plane_of_penetrated_vertex_points_.erase(vertex);
 }
 
 void Vertex::add_self_to_penetrated_vertices()
 {
     // make copy as list may change
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> nearby_penetrated_vertices_copy = penetrated_vertices_;
+    std::unordered_map<std::shared_ptr<Vertex>, double, MeshObjectHash> distances_to_plane_of_penetrated_vertex_points_copy = distances_to_plane_of_penetrated_vertex_points_;
 
     // update
-    for (const std::shared_ptr<Vertex>& vertex : penetrated_vertices_)
+    for (const auto& [vertex, distance] : distances_to_plane_of_penetrated_vertex_points_copy)
     {
         // skip if expired
         if (vertex->is_expired()) continue;
@@ -727,10 +782,10 @@ void Vertex::add_self_to_penetrated_vertices()
 void Vertex::delete_self_from_penetrated_vertices()
 {
     // make copy as list may change
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> nearby_penetrated_vertices_copy = penetrated_vertices_;
+    std::unordered_map<std::shared_ptr<Vertex>, double, MeshObjectHash> distances_to_plane_of_penetrated_vertex_points_copy = distances_to_plane_of_penetrated_vertex_points_;
 
     // update
-    for (const std::shared_ptr<Vertex>& vertex : penetrated_vertices_)
+    for (const auto& [vertex, distance] : distances_to_plane_of_penetrated_vertex_points_copy)
     {
         // try lock the vertex
         if (!omp_test_nest_lock(&vertex->vertex_lock)) continue;
@@ -845,6 +900,18 @@ double Vertex::compute_radius()
         }
     }
 
+    // remove expired entries
+    for (auto it = distances_to_plane_of_penetrated_vertex_points_.begin(); it != distances_to_plane_of_penetrated_vertex_points_.end();)
+    {
+        if (it->first->is_expired())
+        {
+            it = distances_to_plane_of_penetrated_vertex_points_.erase(it);
+        }
+        else
+        {
+            ++it;
+        }
+    }
 
     // reduce value
     for (const auto& [neighboring_vertex, distance] : distances_to_nearby_vertices_)
@@ -860,6 +927,12 @@ double Vertex::compute_radius()
 
     // reduce value
     for (const auto& [vertex_point, distance] : distances_to_ray_of_penetrating_vertex_points_)
+    {
+        if (distance < new_radius) new_radius = distance;
+    }
+
+    // reduce value
+    for (const auto& [vertex_point, distance] : distances_to_plane_of_penetrated_vertex_points_)
     {
         if (distance < new_radius) new_radius = distance;
     }

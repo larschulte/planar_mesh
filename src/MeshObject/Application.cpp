@@ -621,6 +621,32 @@ bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
                 // add neighboring vertex
                 new_vertex->add_nearby_vertex(vertex);
             }
+            // reduce radius of vertcies of bvh_results as ray
+            for (const std::shared_ptr<Face>& face : bvh_results)
+            {
+                // skip if expired
+                if (face->is_expired()) continue;
+
+                // compute relative position
+                RelativePosition relative_position = face->get_surface()->check_relative_position(generic_point);
+
+                // skip if in front 
+                if (relative_position == RelativePosition::IN_FRONT) continue;
+
+                // skip if same surface
+                if (face->get_surface() == surface_to_add_to) continue;
+
+                // reduce counter
+                face->decrement_reduce_radius_counter();
+
+                // don't add if counter is not zero
+                if (face->get_reduce_radius_counter() > 0) continue;
+
+                // add penetrated vertex point
+                new_vertex->add_penetrated_vertex(face->get_vertex(0));
+                new_vertex->add_penetrated_vertex(face->get_vertex(1));
+                new_vertex->add_penetrated_vertex(face->get_vertex(2));
+            }
             new_vertex->try_update_radius();
 
             // connect to surface
@@ -686,6 +712,32 @@ bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
                 // add neighboring vertex
                 new_vertex->add_nearby_vertex(vertex);
             }
+            // reduce radius of vertcies of bvh_results as ray
+            for (const std::shared_ptr<Face>& face : bvh_results)
+            {
+                // skip if expired
+                if (face->is_expired()) continue;
+
+                // compute relative position
+                RelativePosition relative_position = face->get_surface()->check_relative_position(generic_point);
+
+                // skip if in front 
+                if (relative_position == RelativePosition::IN_FRONT) continue;
+
+                // skip if same surface
+                if (face->get_surface() == surface_to_add_to) continue;
+
+                // reduce counter
+                face->decrement_reduce_radius_counter();
+
+                // don't add if counter is not zero
+                if (face->get_reduce_radius_counter() > 0) continue;
+
+                // add penetrated vertex point
+                new_vertex->add_penetrated_vertex(face->get_vertex(0));
+                new_vertex->add_penetrated_vertex(face->get_vertex(1));
+                new_vertex->add_penetrated_vertex(face->get_vertex(2));
+            }
             new_vertex->try_update_radius();            
 
             // connect to surface
@@ -727,41 +779,40 @@ bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
             // add neighboring vertex
             new_vertex->add_nearby_vertex(vertex);
         }
+        // reduce radius of vertcies of bvh_results as ray
+        for (const std::shared_ptr<Face>& face : bvh_results)
+        {
+            // skip if expired
+            if (face->is_expired()) continue;
+
+            // compute relative position
+            RelativePosition relative_position = face->get_surface()->check_relative_position(generic_point);
+
+            // skip if in front 
+            if (relative_position == RelativePosition::IN_FRONT) continue;
+
+            // skip if same surface
+            if (face->get_surface() == surface_to_add_to) continue;
+
+            // reduce counter
+            face->decrement_reduce_radius_counter();
+
+            // don't add if counter is not zero
+            if (face->get_reduce_radius_counter() > 0) continue;
+
+            // add penetrated vertex point
+            new_vertex->add_penetrated_vertex(face->get_vertex(0));
+            new_vertex->add_penetrated_vertex(face->get_vertex(1));
+            new_vertex->add_penetrated_vertex(face->get_vertex(2));
+        }
         new_vertex->try_update_radius();            
     }
-    
+
     // reduce radius of vertcies of rrs_results as point
+    new_vertex->add_self_to_penetrated_vertices();
     new_vertex->add_self_to_nearby_vertices();
     new_vertex->try_update_radius();
     new_vertex->try_update_node_box();
-
-    // reduce radius of vertcies of bvh_results as ray
-    for (const std::shared_ptr<Face>& face : bvh_results)
-    {
-        // skip if expired
-        if (face->is_expired()) continue;
-
-        // compute relative position
-        RelativePosition relative_position = face->get_surface()->check_relative_position(generic_point);
-
-        // skip if in front 
-        if (relative_position == RelativePosition::IN_FRONT) continue;
-
-        // skip if same surface
-        if (face->get_surface() == surface_to_add_to) continue;
-
-        // reduce counter
-        face->decrement_reduce_radius_counter();
-
-        // don't add if counter is not zero
-        if (face->get_reduce_radius_counter() > 0) continue;
-
-        // add penetrated vertex point
-        new_vertex->add_penetrated_vertex(face->get_vertex(0));
-        new_vertex->add_penetrated_vertex(face->get_vertex(1));
-        new_vertex->add_penetrated_vertex(face->get_vertex(2));
-    }
-    new_vertex->add_self_to_penetrated_vertices();
 
     return true;
 }
