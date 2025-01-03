@@ -78,24 +78,31 @@ public:
     void disconnect(const std::shared_ptr<Surface>& surface);
     void disconnect(const std::shared_ptr<Vertex>& sibling_vertex);
 
+    // point - nearby vertex
     void add_nearby_vertex(const std::shared_ptr<Vertex>& rrs_vertex);
-    void add_penetrating_interior_point(const std::shared_ptr<InteriorPoint>& interior_point);
-    void add_penetrating_vertex_point(const std::shared_ptr<Vertex>& vertex_point);
-    void add_self_to_nearby_vertices();
     void delete_nearby_vertex(const std::shared_ptr<Vertex>& rrs_vertex);
-    void delete_penetrating_interior_point(const std::shared_ptr<InteriorPoint>& interior_point);
-    void delete_penetrating_vertex_point(const std::shared_ptr<Vertex>& vertex_point);
+    void add_self_to_nearby_vertices();
     void delete_self_from_nearby_vertices();
-    double compute_radius();
-    void try_update_radius();
-    void try_break_edges();
-    void try_update_node_box();
 
+    // ray - being penetrated by interior point
+    void add_penetrating_interior_point(const std::shared_ptr<InteriorPoint>& interior_point);
+    void delete_penetrating_interior_point(const std::shared_ptr<InteriorPoint>& interior_point);
+
+    // ray - being penetrated by vertex point
+    void add_penetrating_vertex_point(const std::shared_ptr<Vertex>& vertex_point);
+    void delete_penetrating_vertex_point(const std::shared_ptr<Vertex>& vertex_point);
+
+    // ray - penetrating vertex
     void add_penetrated_vertex(const std::shared_ptr<Vertex>& vertex);
     void add_self_to_penetrated_vertices();
     void delete_self_from_penetrated_vertices();
 
+    // update radius
     void cascade_radius_reduction_to_connected_vertices();
+    double compute_radius();
+    void try_update_radius();
+    void try_break_edges();
+    void try_update_node_box();
 
     void review_surfaces();
     bool is_under_review() const;

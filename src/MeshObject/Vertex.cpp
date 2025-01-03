@@ -569,40 +569,9 @@ void Vertex::add_nearby_vertex(const std::shared_ptr<Vertex>& rrs_vertex)
     distances_to_nearby_vertices_[rrs_vertex] = distance;
 }
 
-void Vertex::add_penetrating_interior_point(const std::shared_ptr<InteriorPoint>& interior_point)
+void Vertex::delete_nearby_vertex(const std::shared_ptr<Vertex>& rrs_vertex)
 {
-    // check input
-    if (interior_point->is_expired()) return;
-
-    // add self to interior point as well
-    interior_point->add_penetrated_vertex(shared_from_this());
-
-    // compute projected position of interior point
-    const Eigen::Vector3d projected_position = get_surface()->compute_point_projective_position(interior_point->get_origin(), interior_point->get_original_position());
-
-    // compute distance
-    const double distance = (projected_position - get_position()).norm();
-
-    // add to list
-    distances_to_ray_of_penetrating_interior_points_[interior_point] = distance;
-}
-
-void Vertex::add_penetrating_vertex_point(const std::shared_ptr<Vertex>& vertex_point)
-{
-    // check input
-    if (vertex_point->is_expired()) return;
-
-    // add self to interior point as well
-    vertex_point->add_penetrated_vertex(shared_from_this());
-
-    // compute projected position of vertex point
-    const Eigen::Vector3d projected_position = get_surface()->compute_point_projective_position(vertex_point->get_origin(), vertex_point->get_original_position());
-
-    // compute distance
-    const double distance = (projected_position - get_position()).norm();
-
-    // add to list
-    distances_to_ray_of_penetrating_vertex_points_[vertex_point] = distance;
+    distances_to_nearby_vertices_.erase(rrs_vertex);
 }
 
 void Vertex::add_self_to_nearby_vertices()
@@ -629,21 +598,6 @@ void Vertex::add_self_to_nearby_vertices()
         // try update
         neighboring_vertex->try_update_node_box();
     }
-}
-
-void Vertex::delete_nearby_vertex(const std::shared_ptr<Vertex>& rrs_vertex)
-{
-    distances_to_nearby_vertices_.erase(rrs_vertex);
-}
-
-void Vertex::delete_penetrating_interior_point(const std::shared_ptr<InteriorPoint>& interior_point)
-{
-    distances_to_ray_of_penetrating_interior_points_.erase(interior_point);
-}
-
-void Vertex::delete_penetrating_vertex_point(const std::shared_ptr<Vertex>& vertex_point)
-{
-    distances_to_ray_of_penetrating_vertex_points_.erase(vertex_point);
 }
 
 void Vertex::delete_self_from_nearby_vertices()
@@ -685,6 +639,165 @@ void Vertex::delete_self_from_nearby_vertices()
 
         // release lock
         omp_unset_nest_lock(&neighboring_vertex->vertex_lock);
+    }
+}
+
+void Vertex::add_penetrating_interior_point(const std::shared_ptr<InteriorPoint>& interior_point)
+{
+    // check input
+    if (interior_point->is_expired()) return;
+
+    // add self to interior point as well
+    interior_point->add_penetrated_vertex(shared_from_this());
+
+    // compute projected position of interior point
+    const Eigen::Vector3d projected_position = get_surface()->compute_point_projective_position(interior_point->get_origin(), interior_point->get_original_position());
+
+    // compute distance
+    const double distance = (projected_position - get_position()).norm();
+
+    // add to list
+    distances_to_ray_of_penetrating_interior_points_[interior_point] = distance;
+}
+
+void Vertex::delete_penetrating_interior_point(const std::shared_ptr<InteriorPoint>& interior_point)
+{
+    distances_to_ray_of_penetrating_interior_points_.erase(interior_point);
+}
+
+void Vertex::add_penetrating_vertex_point(const std::shared_ptr<Vertex>& vertex_point)
+{
+    // check input
+    if (vertex_point->is_expired()) return;
+
+    // add self to interior point as well
+    vertex_point->add_penetrated_vertex(shared_from_this());
+
+    // compute projected position of vertex point
+    const Eigen::Vector3d projected_position = get_surface()->compute_point_projective_position(vertex_point->get_origin(), vertex_point->get_original_position());
+
+    // compute distance
+    const double distance = (projected_position - get_position()).norm();
+
+    // add to list
+    distances_to_ray_of_penetrating_vertex_points_[vertex_point] = distance;
+}
+
+
+void Vertex::delete_penetrating_vertex_point(const std::shared_ptr<Vertex>& vertex_point)
+{
+    distances_to_ray_of_penetrating_vertex_points_.erase(vertex_point);
+}
+
+void Vertex::add_penetrated_vertex(const std::shared_ptr<Vertex>& vertex)
+{
+    // check input
+    if (vertex->is_expired()) return;
+
+    // add
+    penetrated_vertices_.insert(vertex);
+}
+
+void Vertex::add_self_to_penetrated_vertices()
+{
+    // make copy as list may change
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> nearby_penetrated_vertices_copy = penetrated_vertices_;
+
+    // update
+    for (const std::shared_ptr<Vertex>& vertex : penetrated_vertices_)
+    {
+        // skip if expired
+        if (vertex->is_expired()) continue;
+
+        // add to neighboring vertex
+        vertex->add_penetrating_vertex_point(shared_from_this());
+
+        // try update
+        vertex->try_update_radius();
+        vertex->try_break_edges();
+
+        // skip if expired
+        if (vertex->is_expired()) continue;
+
+        // try update
+        vertex->try_update_node_box();
+    }
+}
+
+void Vertex::delete_self_from_penetrated_vertices()
+{
+    // make copy as list may change
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> nearby_penetrated_vertices_copy = penetrated_vertices_;
+
+    // update
+    for (const std::shared_ptr<Vertex>& vertex : penetrated_vertices_)
+    {
+        // try lock the vertex
+        if (!omp_test_nest_lock(&vertex->vertex_lock)) continue;
+
+        // skip if expired
+        if (vertex->is_expired()) 
+        {
+            // release lock
+            omp_unset_nest_lock(&vertex->vertex_lock);
+            continue;
+        }
+
+        // delete from neighboring vertex
+        vertex->delete_penetrating_vertex_point(shared_from_this());
+
+        // try update
+        vertex->try_update_radius();
+        vertex->try_break_edges();
+        
+        // skip if expired
+        if (vertex->is_expired()) 
+        {
+            // release lock
+            omp_unset_nest_lock(&vertex->vertex_lock);
+            continue;
+        }
+
+        // try update
+        vertex->try_update_node_box();
+
+        // release lock
+        omp_unset_nest_lock(&vertex->vertex_lock);
+    }
+}
+
+void Vertex::cascade_radius_reduction_to_connected_vertices()
+{
+    // get connected vertices
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> connected_vertices = compute_connected_vertices();
+
+    // update
+    for (const std::shared_ptr<Vertex>& connected_vertex : connected_vertices)
+    {
+        // skip if expired
+        if (connected_vertex->is_expired()) continue;
+
+        // add nearby vertices to connected vertex
+        for (const auto& [nearby_vertex, distance] : distances_to_nearby_vertices_)
+        {
+            connected_vertex->add_nearby_vertex(nearby_vertex);
+        }
+
+        // add penetrating interior points to connected vertex
+        for (const auto& [interior_point, distance] : distances_to_ray_of_penetrating_interior_points_)
+        {
+            connected_vertex->add_penetrating_interior_point(interior_point);
+        }
+
+        // try update
+        connected_vertex->try_update_radius();
+        connected_vertex->try_break_edges();
+        
+        // skip if expired
+        if (connected_vertex->is_expired()) continue;
+
+        // try update
+        connected_vertex->try_update_node_box();
     }
 }
 
@@ -791,119 +904,6 @@ void Vertex::try_update_node_box()
 
         // release lock
         omp_unset_nest_lock(&node->omp_lock);
-    }
-}
-
-void Vertex::add_penetrated_vertex(const std::shared_ptr<Vertex>& vertex)
-{
-    // check input
-    if (vertex->is_expired()) return;
-
-    // add
-    penetrated_vertices_.insert(vertex);
-}
-
-void Vertex::add_self_to_penetrated_vertices()
-{
-    // make copy as list may change
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> nearby_penetrated_vertices_copy = penetrated_vertices_;
-
-    // update
-    for (const std::shared_ptr<Vertex>& vertex : penetrated_vertices_)
-    {
-        // skip if expired
-        if (vertex->is_expired()) continue;
-
-        // add to neighboring vertex
-        vertex->add_penetrating_vertex_point(shared_from_this());
-
-        // try update
-        vertex->try_update_radius();
-        vertex->try_break_edges();
-
-        // skip if expired
-        if (vertex->is_expired()) continue;
-
-        // try update
-        vertex->try_update_node_box();
-    }
-}
-
-void Vertex::delete_self_from_penetrated_vertices()
-{
-    // make copy as list may change
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> nearby_penetrated_vertices_copy = penetrated_vertices_;
-
-    // update
-    for (const std::shared_ptr<Vertex>& vertex : penetrated_vertices_)
-    {
-        // try lock the vertex
-        if (!omp_test_nest_lock(&vertex->vertex_lock)) continue;
-
-        // skip if expired
-        if (vertex->is_expired()) 
-        {
-            // release lock
-            omp_unset_nest_lock(&vertex->vertex_lock);
-            continue;
-        }
-
-        // delete from neighboring vertex
-        vertex->delete_penetrating_vertex_point(shared_from_this());
-
-        // try update
-        vertex->try_update_radius();
-        vertex->try_break_edges();
-        
-        // skip if expired
-        if (vertex->is_expired()) 
-        {
-            // release lock
-            omp_unset_nest_lock(&vertex->vertex_lock);
-            continue;
-        }
-
-        // try update
-        vertex->try_update_node_box();
-
-        // release lock
-        omp_unset_nest_lock(&vertex->vertex_lock);
-    }
-}
-
-
-void Vertex::cascade_radius_reduction_to_connected_vertices()
-{
-    // get connected vertices
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> connected_vertices = compute_connected_vertices();
-
-    // update
-    for (const std::shared_ptr<Vertex>& connected_vertex : connected_vertices)
-    {
-        // skip if expired
-        if (connected_vertex->is_expired()) continue;
-
-        // add nearby vertices to connected vertex
-        for (const auto& [nearby_vertex, distance] : distances_to_nearby_vertices_)
-        {
-            connected_vertex->add_nearby_vertex(nearby_vertex);
-        }
-
-        // add penetrating interior points to connected vertex
-        for (const auto& [interior_point, distance] : distances_to_ray_of_penetrating_interior_points_)
-        {
-            connected_vertex->add_penetrating_interior_point(interior_point);
-        }
-
-        // try update
-        connected_vertex->try_update_radius();
-        connected_vertex->try_break_edges();
-        
-        // skip if expired
-        if (connected_vertex->is_expired()) continue;
-
-        // try update
-        connected_vertex->try_update_node_box();
     }
 }
 
