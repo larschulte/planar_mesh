@@ -725,8 +725,16 @@ bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
     // reduce radius of vertcies of affected points
     new_vertex->add_self_to_penetrated_vertices();
     new_vertex->add_self_to_nearby_vertices();
-    new_vertex->try_update_radius();
-    new_vertex->try_update_node_box();
+
+    // "add_self" may delete other vertices
+    // which will invoke their "delete_self"
+    // which acts on the "new_vertex" and ask it to recompute radius and try_break_edge
+    // which may cause "new_vertex" to expire
+    if (!new_vertex->is_expired())
+    {
+        new_vertex->try_update_radius();
+        new_vertex->try_update_node_box();
+    }
 
     return true;
 }
