@@ -425,11 +425,11 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
     }
     if (event.getKeySym() == "b" && event.keyDown())
     {
-        app_.refine_surfaces();
+        app_.cleanup_surfaces();
         update_display();
 
         // log
-        std::cout << "refined surfaces" << std::endl;
+        std::cout << "cleanup surfaces" << std::endl;
     }
     if (event.getKeySym() == "k" && event.keyDown())
     {

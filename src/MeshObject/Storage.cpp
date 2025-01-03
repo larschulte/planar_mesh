@@ -625,6 +625,51 @@ void Storage::clear_queues()
     }
 }
 
+void Storage::cleanup_surfaces()
+{
+    // make copy of surfaces
+    std::vector<std::shared_ptr<Surface>> surfaces_copy(surfaces_.begin(), surfaces_.end());
+
+    // for each surface
+    for (const std::shared_ptr<Surface>& surface : surfaces_copy)
+    {
+        // delete if surface is seed
+        if (surface->get_total_point_size() < settings_.fit_plane_threshold) 
+        {
+            delete_surface(surface);
+            continue;
+        }
+
+        // delete if surface have no boudary point
+        std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertices = surface->get_vertices();
+        bool has_boundary = false;
+        for (const std::shared_ptr<Vertex>& vertex : vertices)
+        {
+            if (vertex->is_boundary())
+            {
+                has_boundary = true;
+                break;
+            }
+        }
+        if (!has_boundary) 
+        {
+            delete_surface(surface);
+            continue;
+        }
+
+        // delete if number of face is less than 3
+        if (surface->get_faces().size() < 3) 
+        {
+            delete_surface(surface);
+            continue;
+        }
+
+
+        // what makes a surface bad?
+        
+    }
+}
+
 void Storage::add_searchable_vertex(const std::shared_ptr<Vertex>& vertex)
 {
     // add to a queue that will be processed once all locks are released

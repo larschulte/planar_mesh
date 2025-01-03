@@ -67,6 +67,8 @@ public: // to user
     unsigned int get_abort_queue_size();
     void clear_queues();
 
+    void cleanup_surfaces();
+
     void add_points_in_add_searchable_vertex_queue();
     void add_or_remove_vertices_from_rrs_tree();
     void add_or_remove_faces_from_bvh_tree();

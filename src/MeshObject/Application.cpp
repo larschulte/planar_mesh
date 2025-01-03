@@ -923,6 +923,12 @@ void Application<PointT>::rebuild_tree()
 }
 
 template <typename PointT>
+void Application<PointT>::cleanup_surfaces()
+{
+    storage_->cleanup_surfaces();
+}
+
+template <typename PointT>
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_generic_point_pointcloud()
 {
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
