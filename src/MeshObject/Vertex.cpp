@@ -94,8 +94,8 @@ void Vertex::delete_()
     // set deletion flag
     deleting_ = true;
     
-    // cascade radius reduction
-    cascade_radius_reduction_to_connected_vertices();
+    // // cascade radius reduction
+    // cascade_radius_reduction_to_connected_vertices();
 
     // disconnect
     std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges = edges_;
