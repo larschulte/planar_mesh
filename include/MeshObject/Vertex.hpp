@@ -82,6 +82,7 @@ public:
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> get_connected_boundary_vertices();
     bool check_connected_by_edge(const std::shared_ptr<Vertex>& vertex);
     bool check_connected_by_face(const std::shared_ptr<Vertex>& vertex0, const std::shared_ptr<Vertex>& vertex1);
+    bool try_close_holes();
 
     // point - nearby vertex
     void add_nearby_vertex(const std::shared_ptr<Vertex>& rrs_vertex);

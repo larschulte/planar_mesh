@@ -642,6 +642,11 @@ void Surface::connect(const std::shared_ptr<Vertex>& vertex)
     }
 }
 
+bool Surface::tree_intersect_edge(const std::shared_ptr<Vertex>& vertex0, const std::shared_ptr<Vertex>& vertex1)
+{
+    return edge_bvh_.tree_intersect_edge(vertex0, vertex1);
+}
+
 bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& all_nearby_vertices)
 {
     // initialize
@@ -973,42 +978,7 @@ void Surface::try_close_holes()
     // for each boundary vertex
     for (const auto& vertex : boundary_vertices)
     {
-        // skip if not longer boundary
-        if (!vertex->is_boundary()) continue;
-
-        // get connected boundary vertices
-        std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> connected_boundary_vertices = vertex->get_connected_boundary_vertices();
-
-        // skip if not two connected boundary vertices
-        if (connected_boundary_vertices.size() != 2) continue;
-
-        // get the two connected boundary vertices
-        auto it = connected_boundary_vertices.begin();
-        std::shared_ptr<Vertex> vertex0 = *it;
-        std::shared_ptr<Vertex> vertex1 = *(++it);
-
-        // skip if edge is not short enough
-        double edge_length = (vertex0->get_position() - vertex1->get_position()).norm();
-        if (edge_length > vertex0->get_radius() || edge_length > vertex1->get_radius()) continue;
-
-        // skip if edge intersects
-        if (edge_bvh_.tree_intersect_edge(vertex0, vertex1)) continue;
-
-        // create edge if edge does not exist
-        const bool edge_exist = vertex0->check_connected_by_edge(vertex1);
-        if (!edge_exist)
-        {
-            std::shared_ptr<Edge> new_edge = storage_->add_edge(vertex0, vertex1);
-            connect(new_edge);
-        }
-
-        // create face if face does not exist
-        const bool face_exist = vertex->check_connected_by_face(vertex0, vertex1);
-        if (!face_exist)
-        {
-            std::shared_ptr<Face> new_face = storage_->add_face(shared_from_this(), vertex, vertex0, vertex1);
-            connect(new_face);
-        }
+        vertex->try_close_holes();
     }
 }
 

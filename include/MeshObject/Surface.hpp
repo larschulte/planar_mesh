@@ -97,6 +97,7 @@ public:
 
     void set_random_color();
 
+    bool tree_intersect_edge(const std::shared_ptr<Vertex>& vertex0, const std::shared_ptr<Vertex>& vertex1);
     bool connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& all_nearby_vertices);
 
     void compute_surface_position_std_in_normal_direction();
