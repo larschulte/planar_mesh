@@ -558,6 +558,63 @@ void Vertex::disconnect(const std::shared_ptr<Vertex>& sibling_vertex)
     if (erased) sibling_vertex->disconnect(shared_from_this());
 }
 
+std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> Vertex::get_connected_boundary_edges()
+{
+    // initialize
+    std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> connected_boundary_edges;
+
+    // get boundary edges
+    for (const auto& edge : get_edges())
+    {
+        if (edge->is_boundary()) connected_boundary_edges.insert(edge);
+    }
+
+    // return
+    return connected_boundary_edges;
+}
+
+std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> Vertex::get_connected_boundary_vertices()
+{
+    // get connected boundary edges
+    std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> connected_boundary_edges = get_connected_boundary_edges();
+
+    // get connected boundary vertices
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> connected_boundary_vertices;
+    for (const auto& edge : connected_boundary_edges)
+    {
+        connected_boundary_vertices.insert(edge->get_vertex(0));
+        connected_boundary_vertices.insert(edge->get_vertex(1));
+    }
+    connected_boundary_vertices.erase(shared_from_this()); // remove self
+
+    // return
+    return connected_boundary_vertices;
+}
+
+bool Vertex::check_connected_by_edge(const std::shared_ptr<Vertex>& vertex)
+{
+    // check if connected by edge
+    for (const auto& edge : edges_)
+    {
+        if (edge->get_vertex(0) == vertex || edge->get_vertex(1) == vertex) return true;
+    }
+
+    // return
+    return false;
+}
+
+bool Vertex::check_connected_by_face(const std::shared_ptr<Vertex>& vertex0, const std::shared_ptr<Vertex>& vertex1)
+{
+    // check if connected by face
+    for (const auto& face : faces_)
+    {
+        if (face->has_vertex(vertex0) && face->has_vertex(vertex1)) return true;
+    }
+
+    // return
+    return false;
+}
+
 void Vertex::add_nearby_vertex(const std::shared_ptr<Vertex>& rrs_vertex)
 {
     // check input 

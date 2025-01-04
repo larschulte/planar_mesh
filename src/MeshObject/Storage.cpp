@@ -668,6 +668,16 @@ void Storage::cleanup_surfaces()
         // what makes a surface bad?
         
     }
+
+    // after cleaning up, try closing the holes in each surface
+    for (const std::shared_ptr<Surface>& surface : surfaces_copy)
+    {
+        // skip if expired
+        if (surface->is_expired()) continue;
+
+        // try closing holes
+        surface->try_close_holes();
+    }
 }
 
 void Storage::add_searchable_vertex(const std::shared_ptr<Vertex>& vertex)
