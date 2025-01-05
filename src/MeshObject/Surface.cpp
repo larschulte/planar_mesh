@@ -982,6 +982,17 @@ void Surface::try_close_holes()
     }
 }
 
+void Surface::remove_non_manifold_edges()
+{
+    // make copy of edges
+    std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges_copy = edges_;
+
+    for (const auto& edge : edges_copy)
+    {
+        if (edge->is_non_manifold()) disconnect(edge);
+    }
+}
+
 void Surface::swap(const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2)
 {
     // if contains vertex1

@@ -431,6 +431,14 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
         // log
         std::cout << "cleanup surfaces" << std::endl;
     }
+    if (event.getKeySym() == "n" && event.keyDown())
+    {
+        app_.remove_non_manifold_edges();
+        update_display();
+
+        // log
+        std::cout << "remove non manifold edges" << std::endl;
+    }
     if (event.getKeySym() == "k" && event.keyDown())
     {
         // toggle generic points

@@ -375,6 +375,12 @@ void Edge::remove_searchable_state()
     }
 }
 
+bool Edge::is_non_manifold() const
+{
+    // non manifold if connected to more than 2 faces
+    return faces_.size() > 2;
+}
+
 const std::shared_ptr<Surface>& Edge::get_surface() const
 {
     return surface_;

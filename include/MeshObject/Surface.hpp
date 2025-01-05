@@ -91,6 +91,8 @@ public:
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> get_boundary_vertices();
     void try_close_holes();
 
+    void remove_non_manifold_edges();
+
     void swap(const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2);
     void pause_normal_std_update();
     void resume_normal_std_update();

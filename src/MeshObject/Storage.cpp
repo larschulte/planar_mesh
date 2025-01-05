@@ -680,6 +680,19 @@ void Storage::cleanup_surfaces()
     }
 }
 
+void Storage::remove_non_manifold_edges()
+{
+    // make copy of edges
+    std::vector<std::shared_ptr<Edge>> edges_copy(edges_.begin(), edges_.end());
+
+    // for each edge
+    for (const std::shared_ptr<Edge>& edge : edges_copy)
+    {
+        // delete if edge is non-manifold
+        if (edge->is_non_manifold()) delete_edge(edge);
+    }
+}
+
 void Storage::add_searchable_vertex(const std::shared_ptr<Vertex>& vertex)
 {
     // add to a queue that will be processed once all locks are released

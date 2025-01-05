@@ -68,6 +68,7 @@ public: // to user
     void clear_queues();
 
     void cleanup_surfaces();
+    void remove_non_manifold_edges();
 
     void add_points_in_add_searchable_vertex_queue();
     void add_or_remove_vertices_from_rrs_tree();

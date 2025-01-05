@@ -57,6 +57,8 @@ public:
     void update_searchable_state();
     void remove_searchable_state();
 
+    bool is_non_manifold() const;
+
     bool intersects_edge(const std::shared_ptr<Surface>& surface, const std::shared_ptr<Vertex>& vertex0, const std::shared_ptr<Vertex>& vertex1);
 
 private:
