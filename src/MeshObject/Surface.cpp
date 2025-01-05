@@ -970,16 +970,37 @@ std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> Surface::get_boundar
     return boundary_vertices;
 }
 
-void Surface::try_close_holes()
+bool Surface::try_close_holes_repeatedly()
 {
+    // initialize
+    bool changed = false;
+
+    // try close holes repeatedly
+    while (try_close_holes()) 
+    {
+        changed = true;
+    }
+
+    // return
+    return changed;
+}
+
+bool Surface::try_close_holes()
+{
+    // initialize
+    bool changed = false;
+
     // boundary vertices
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> boundary_vertices = get_boundary_vertices();
 
     // for each boundary vertex
     for (const auto& vertex : boundary_vertices)
     {
-        vertex->try_close_holes();
+        if (vertex->try_close_holes_repeatedly()) changed = true;
     }
+
+    // return
+    return changed;
 }
 
 void Surface::remove_non_manifold_edges()

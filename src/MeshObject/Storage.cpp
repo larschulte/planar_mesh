@@ -676,7 +676,7 @@ void Storage::cleanup_surfaces()
         if (surface->is_expired()) continue;
 
         // try closing holes
-        surface->try_close_holes();
+        surface->try_close_holes_repeatedly();
     }
 }
 

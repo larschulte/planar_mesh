@@ -89,7 +89,8 @@ public:
     void disconnect(const std::shared_ptr<InteriorPoint>& interior_point);
 
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> get_boundary_vertices();
-    void try_close_holes();
+    bool try_close_holes_repeatedly();
+    bool try_close_holes();
 
     void remove_non_manifold_edges();
 
