@@ -682,8 +682,10 @@ bool Vertex::try_close_holes()
 
 bool Vertex::is_non_manifold() const
 {
-    // check if connected by more than 2 boundary edges
-    return get_connected_boundary_edges().size() > 2;
+    // non manifold if 
+    // 1. connected by one boundary edge
+    // 2. connected by more than 2 boundary edges
+    return get_connected_boundary_edges().size() > 2 || get_connected_boundary_edges().size() == 1;
 }
 
 void Vertex::add_nearby_vertex(const std::shared_ptr<Vertex>& rrs_vertex)
