@@ -767,6 +767,9 @@ void Vertex::delete_self_from_nearby_vertices()
             continue;
         }
 
+        // try close holes
+        neighboring_vertex->try_close_holes_repeatedly();
+
         // try update
         neighboring_vertex->try_update_node_box();
 
@@ -867,6 +870,9 @@ void Vertex::delete_self_from_penetrating_vertex_points()
             continue;
         }
 
+        // try close holes
+        vertex->try_close_holes_repeatedly();
+
         // try update
         vertex->try_update_node_box();
 
@@ -966,6 +972,9 @@ void Vertex::delete_self_from_penetrated_vertices()
             omp_unset_nest_lock(&surface_copy->lock);
             continue;
         }
+
+        // try close holes
+        vertex->try_close_holes_repeatedly();
 
         // try update
         vertex->try_update_node_box();
