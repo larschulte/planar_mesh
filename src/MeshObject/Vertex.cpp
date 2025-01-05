@@ -742,6 +742,15 @@ void Vertex::delete_self_from_nearby_vertices()
             continue;
         }
 
+        // try lock the surface
+        std::shared_ptr<Surface> surface_copy = neighboring_vertex->get_surface();
+        if (!omp_test_nest_lock(&surface_copy->lock)) 
+        {
+            // release vertex lock
+            omp_unset_nest_lock(&neighboring_vertex->vertex_lock);
+            continue;
+        }
+
         // delete from neighboring vertex
         neighboring_vertex->delete_nearby_vertex(shared_from_this());        
 
@@ -754,6 +763,7 @@ void Vertex::delete_self_from_nearby_vertices()
         {
             // release lock
             omp_unset_nest_lock(&neighboring_vertex->vertex_lock);
+            omp_unset_nest_lock(&surface_copy->lock);
             continue;
         }
 
@@ -762,6 +772,7 @@ void Vertex::delete_self_from_nearby_vertices()
 
         // release lock
         omp_unset_nest_lock(&neighboring_vertex->vertex_lock);
+        omp_unset_nest_lock(&surface_copy->lock);
     }
 }
 
@@ -831,6 +842,15 @@ void Vertex::delete_self_from_penetrating_vertex_points()
             continue;
         }
 
+        // try lock the surface
+        std::shared_ptr<Surface> surface_copy = vertex->get_surface();
+        if (!omp_test_nest_lock(&surface_copy->lock)) 
+        {
+            // release vertex lock
+            omp_unset_nest_lock(&vertex->vertex_lock);
+            continue;
+        }
+
         // delete from neighboring vertex
         vertex->delete_penetrated_vertex(shared_from_this());
 
@@ -843,6 +863,7 @@ void Vertex::delete_self_from_penetrating_vertex_points()
         {
             // release lock
             omp_unset_nest_lock(&vertex->vertex_lock);
+            omp_unset_nest_lock(&surface_copy->lock);
             continue;
         }
 
@@ -851,6 +872,7 @@ void Vertex::delete_self_from_penetrating_vertex_points()
 
         // release lock
         omp_unset_nest_lock(&vertex->vertex_lock);
+        omp_unset_nest_lock(&surface_copy->lock);
     }
 }
 
@@ -920,6 +942,15 @@ void Vertex::delete_self_from_penetrated_vertices()
             continue;
         }
 
+        // try lock the surface
+        std::shared_ptr<Surface> surface_copy = vertex->get_surface();
+        if (!omp_test_nest_lock(&surface_copy->lock)) 
+        {
+            // release vertex lock
+            omp_unset_nest_lock(&vertex->vertex_lock);
+            continue;
+        }
+
         // delete from neighboring vertex
         vertex->delete_penetrating_vertex_point(shared_from_this());
 
@@ -932,6 +963,7 @@ void Vertex::delete_self_from_penetrated_vertices()
         {
             // release lock
             omp_unset_nest_lock(&vertex->vertex_lock);
+            omp_unset_nest_lock(&surface_copy->lock);
             continue;
         }
 
@@ -940,6 +972,7 @@ void Vertex::delete_self_from_penetrated_vertices()
 
         // release lock
         omp_unset_nest_lock(&vertex->vertex_lock);
+        omp_unset_nest_lock(&surface_copy->lock);
     }
 }
 
