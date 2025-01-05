@@ -615,6 +615,21 @@ bool Vertex::check_connected_by_face(const std::shared_ptr<Vertex>& vertex0, con
     return false;
 }
 
+bool Vertex::try_close_holes_repeatedly()
+{
+    // initialize
+    bool changed = false;
+
+    // try close holes repeatedly
+    while (try_close_holes()) 
+    {
+        changed = true;
+    }
+
+    // return
+    return changed;
+}
+
 bool Vertex::try_close_holes()
 {
     // skip if not longer boundary
