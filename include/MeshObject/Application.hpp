@@ -47,6 +47,7 @@ public:
     void rebuild_tree();
     void cleanup_surfaces();
     void remove_non_manifold_edges();
+    void remove_non_manifold_vertices();
 
     // getter
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr compute_vertex_point_pointcloud(const Settings& settings);

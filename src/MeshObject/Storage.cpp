@@ -693,6 +693,19 @@ void Storage::remove_non_manifold_edges()
     }
 }
 
+void Storage::remove_non_manifold_vertices()
+{
+    // make copy of vertices
+    std::vector<std::shared_ptr<Vertex>> vertices_copy(vertices_.begin(), vertices_.end());
+
+    // for each vertex
+    for (const std::shared_ptr<Vertex>& vertex : vertices_copy)
+    {
+        // delete if vertex is non-manifold
+        if (vertex->is_non_manifold()) delete_vertex(vertex);
+    }
+}
+
 void Storage::add_searchable_vertex(const std::shared_ptr<Vertex>& vertex)
 {
     // add to a queue that will be processed once all locks are released

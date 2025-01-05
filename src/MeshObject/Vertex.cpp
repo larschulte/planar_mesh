@@ -558,7 +558,7 @@ void Vertex::disconnect(const std::shared_ptr<Vertex>& sibling_vertex)
     if (erased) sibling_vertex->disconnect(shared_from_this());
 }
 
-std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> Vertex::get_connected_boundary_edges()
+std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> Vertex::get_connected_boundary_edges() const
 {
     // initialize
     std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> connected_boundary_edges;
@@ -678,6 +678,12 @@ bool Vertex::try_close_holes()
     {
         return false;
     }
+}
+
+bool Vertex::is_non_manifold() const
+{
+    // check if connected by more than 2 boundary edges
+    return get_connected_boundary_edges().size() > 2;
 }
 
 void Vertex::add_nearby_vertex(const std::shared_ptr<Vertex>& rrs_vertex)

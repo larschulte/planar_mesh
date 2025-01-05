@@ -935,6 +935,12 @@ void Application<PointT>::remove_non_manifold_edges()
 }
 
 template <typename PointT>
+void Application<PointT>::remove_non_manifold_vertices()
+{
+    storage_->remove_non_manifold_vertices();
+}
+
+template <typename PointT>
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_generic_point_pointcloud()
 {
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);

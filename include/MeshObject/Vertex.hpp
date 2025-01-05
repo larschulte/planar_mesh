@@ -78,12 +78,15 @@ public:
     void disconnect(const std::shared_ptr<Surface>& surface);
     void disconnect(const std::shared_ptr<Vertex>& sibling_vertex);
 
-    std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> get_connected_boundary_edges();
+    std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> get_connected_boundary_edges() const;
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> get_connected_boundary_vertices();
     bool check_connected_by_edge(const std::shared_ptr<Vertex>& vertex);
     bool check_connected_by_face(const std::shared_ptr<Vertex>& vertex0, const std::shared_ptr<Vertex>& vertex1);
     bool try_close_holes_repeatedly();
     bool try_close_holes();
+
+    // non manifold
+    bool is_non_manifold() const;
 
     // point - nearby vertex
     void add_nearby_vertex(const std::shared_ptr<Vertex>& rrs_vertex);

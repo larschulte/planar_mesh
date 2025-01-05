@@ -415,14 +415,14 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
         // log
         std::cout << "show_wireframe: " << settings_.show_wireframe << std::endl;
     }
-    if (event.getKeySym() == "m" && event.keyDown())
-    {
-        settings_.show_sphere = !settings_.show_sphere;
-        update_display();
+    // if (event.getKeySym() == "m" && event.keyDown())
+    // {
+    //     settings_.show_sphere = !settings_.show_sphere;
+    //     update_display();
 
-        // log
-        std::cout << "show_sphere: " << settings_.show_sphere << std::endl;
-    }
+    //     // log
+    //     std::cout << "show_sphere: " << settings_.show_sphere << std::endl;
+    // }
     if (event.getKeySym() == "b" && event.keyDown())
     {
         app_.cleanup_surfaces();
@@ -438,6 +438,14 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
 
         // log
         std::cout << "remove non manifold edges" << std::endl;
+    }
+    if (event.getKeySym() == "m" && event.keyDown())
+    {
+        app_.remove_non_manifold_vertices();
+        update_display();
+
+        // log
+        std::cout << "remove non manifold vertices" << std::endl;
     }
     if (event.getKeySym() == "k" && event.keyDown())
     {
