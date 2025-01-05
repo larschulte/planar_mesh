@@ -501,7 +501,7 @@ void Vertex::disconnect(const std::shared_ptr<Edge>& edge)
     check_if_update_search_tree();
 
     // check self destruct
-    if (!deleting_ && edges_.empty()) storage_->delete_vertex(shared_from_this());
+    if (!deleting_ && edges_.empty() && can_self_destruct_) storage_->delete_vertex(shared_from_this());
 }
 
 void Vertex::disconnect(const std::shared_ptr<Face>& face)
@@ -678,6 +678,23 @@ bool Vertex::try_close_holes()
     {
         return false;
     }
+}
+
+void Vertex::remove_all_edges()
+{
+    // make copy of edges
+    std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges_copy = edges_;
+
+    // remove all edges
+    for (const auto& edge : edges_copy)
+    {
+        disconnect(edge);
+    }
+}
+
+void Vertex::set_can_self_destruct(bool can_self_destruct)
+{
+    can_self_destruct_ = can_self_destruct;
 }
 
 bool Vertex::is_non_manifold() const

@@ -84,6 +84,10 @@ public:
     bool check_connected_by_face(const std::shared_ptr<Vertex>& vertex0, const std::shared_ptr<Vertex>& vertex1);
     bool try_close_holes_repeatedly();
     bool try_close_holes();
+    void remove_all_edges();
+
+    // can self destruct flag
+    void set_can_self_destruct(bool can_self_destruct);
 
     // non manifold
     bool is_non_manifold() const;
