@@ -632,14 +632,17 @@ bool Vertex::try_close_holes_repeatedly()
 
 bool Vertex::try_close_holes()
 {
+    // changed flag
+    bool changed = false;
+
     // skip if not longer boundary
-    if (!is_boundary()) return false;
+    if (!is_boundary()) return changed;
 
     // get connected boundary vertices
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> connected_boundary_vertices = get_connected_boundary_vertices();
 
     // skip if not two connected boundary vertices
-    if (connected_boundary_vertices.size() != 2) return false;
+    if (connected_boundary_vertices.size() != 2) return changed;
 
     // get the two connected boundary vertices
     auto it = connected_boundary_vertices.begin();
@@ -648,36 +651,37 @@ bool Vertex::try_close_holes()
 
     // skip if edge is not short enough
     double edge_length = (vertex0->get_position() - vertex1->get_position()).norm();
-    if (edge_length > vertex0->get_radius() || edge_length > vertex1->get_radius()) return false;
+    if (edge_length > vertex0->get_radius() || edge_length > vertex1->get_radius()) return changed;
 
     // skip if edge intersects
-    if (get_surface()->tree_intersect_edge(vertex0, vertex1)) return false;
+    if (get_surface()->tree_intersect_edge(vertex0, vertex1)) return changed;
 
     // create edge if edge does not exist
     const bool edge_exist = vertex0->check_connected_by_edge(vertex1);
     if (!edge_exist)
     {
+        // create edge
         std::shared_ptr<Edge> new_edge = storage_->add_edge(vertex0, vertex1);
         get_surface()->connect(new_edge);
+
+        // update flag
+        changed = true;
     }
 
     // create face if face does not exist
     const bool face_exist = check_connected_by_face(vertex0, vertex1);
     if (!face_exist)
     {
+        // create face
         std::shared_ptr<Face> new_face = storage_->add_face(get_surface(), shared_from_this(), vertex0, vertex1);
         get_surface()->connect(new_face);
+
+        // update flag
+        changed = true;
     }
 
-    // if anything changed, return true
-    if (!edge_exist || !face_exist) 
-    {
-        return true;
-    }
-    else
-    {
-        return false;
-    }
+    // return changed
+    return changed;
 }
 
 void Vertex::remove_all_edges()
