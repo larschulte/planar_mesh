@@ -732,7 +732,7 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
     }
 
     // false if new vertex don't have edges
-    if (new_edges.size() == 0) return false;
+    if (vertex->get_edges().empty()) return false;
     
     // false if surface have no boundary edges
     bool has_boundary_edges = false;
