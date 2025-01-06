@@ -695,10 +695,18 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
     std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> new_faces;
     for (const auto& edge0 : new_edges)
     {
+        // skip if edge0 is not boundary
+        if (!edge0->is_boundary()) continue;
+
+        // get vertex0
         std::shared_ptr<Vertex> vertex0 = edge0->get_vertex(0) != vertex ? edge0->get_vertex(0) : edge0->get_vertex(1);
 
         for (const auto& edge1 : new_edges)
         {
+            // skip if edge1 is not boundary
+            if (!edge0->is_boundary()) continue;
+            
+            // get vertex1
             std::shared_ptr<Vertex> vertex1 = edge1->get_vertex(0) != vertex ? edge1->get_vertex(0) : edge1->get_vertex(1);
 
             // skip if repeated
