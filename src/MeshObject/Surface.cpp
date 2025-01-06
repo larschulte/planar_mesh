@@ -670,7 +670,6 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
     }
 
     // create edges
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> used_vertices;
     std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> new_edges;
     for (const auto& nearby_vertex : nearby_vertices)
     {
@@ -686,7 +685,6 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
         connect(new_edge);
 
         // store used vertices and new edges
-        used_vertices.insert(nearby_vertex);
         new_edges.insert(new_edge);
 
         // update flag
@@ -695,20 +693,24 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
 
     // create faces
     std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> new_faces;
-    for (const std::shared_ptr<Vertex>& nearby_vertex0 : used_vertices)
+    for (const auto& edge0 : new_edges)
     {
-        for (const std::shared_ptr<Vertex>& nearby_vertex1 : used_vertices)
+        std::shared_ptr<Vertex> vertex0 = edge0->get_vertex(0) != vertex ? edge0->get_vertex(0) : edge0->get_vertex(1);
+
+        for (const auto& edge1 : new_edges)
         {
+            std::shared_ptr<Vertex> vertex1 = edge1->get_vertex(0) != vertex ? edge1->get_vertex(0) : edge1->get_vertex(1);
+
             // skip if repeated
-            if (nearby_vertex1 <= nearby_vertex0) continue;
+            if (vertex0 <= vertex1) continue;
 
             // skip if edge does not exist between the two vertices
             bool edge_exist = false;
             std::shared_ptr<Edge> existing_edge;
-            for (const std::shared_ptr<Edge>& edge : nearby_vertex0->get_edges())
+            for (const std::shared_ptr<Edge>& edge : vertex0->get_edges())
             {
                 if (edge->get_surface() != shared_from_this()) continue;
-                if (edge->has_vertex(nearby_vertex1))
+                if (edge->has_vertex(vertex1))
                 {
                     edge_exist = true;
                     existing_edge = edge;
@@ -720,27 +722,8 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
             // skip if edge is not boundary
             if (!existing_edge->is_boundary()) continue;
 
-            // skip if face contains nearby vertices
-            // get surface coordinate of the vertices
-            Eigen::Vector2d surface_coordinate0 = vertex->get_surface_coordinate(shared_from_this());
-            Eigen::Vector2d surface_coordinate1 = nearby_vertex0->get_surface_coordinate(shared_from_this());
-            Eigen::Vector2d surface_coordinate2 = nearby_vertex1->get_surface_coordinate(shared_from_this());
-            // check if the triangle formed by the vertices contains any other nearby_vertices
-            bool triangle_contains_nearby_vertices = false;
-            for (const std::shared_ptr<Vertex>& nearby_vertex : nearby_vertices)
-            {
-                if (nearby_vertex == nearby_vertex0 || nearby_vertex == nearby_vertex1) continue;
-                Eigen::Vector2d surface_coordinate = nearby_vertex->get_surface_coordinate(shared_from_this());
-                if (is_point_in_triangle(surface_coordinate0, surface_coordinate1, surface_coordinate2, surface_coordinate))
-                {
-                    triangle_contains_nearby_vertices = true;
-                    break;
-                }
-            }
-            if (triangle_contains_nearby_vertices) continue;
-
             // create face
-            std::shared_ptr<Face> new_face = storage_->add_face(shared_from_this(), vertex, nearby_vertex0, nearby_vertex1);
+            std::shared_ptr<Face> new_face = storage_->add_face(shared_from_this(), vertex, vertex0, vertex1);
             new_faces.insert(new_face);
         }
     }
