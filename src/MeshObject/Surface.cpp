@@ -733,6 +733,12 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
 
     // false if new vertex don't have edges
     if (vertex->get_edges().empty()) return false;
+
+    // false if new faces is non manifold
+    for (const auto& face : new_faces)
+    {
+        if (face->is_non_manifold()) return false;
+    }
     
     // false if surface have no boundary edges
     bool has_boundary_edges = false;
