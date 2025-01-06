@@ -200,6 +200,11 @@ const std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash>& Face::
     return interior_points_;
 }
 
+const std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& Face::get_edges() const
+{
+    return edges_;
+}
+
 const std::shared_ptr<Vertex>& Face::get_vertex(int index) const
 {
     if (index < 0 || index > 2) throw std::runtime_error("Invalid index for vertex.");
@@ -456,6 +461,35 @@ void Face::disconnect(const std::shared_ptr<Face>& sibling_face)
     // delete
     bool erased = sibling_faces_.erase(sibling_face);
     if (erased) sibling_face->disconnect(shared_from_this());
+}
+
+bool Face::is_connected_to_boundary_edges(std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& all_connected_faces, std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& all_connected_edges) const
+{
+    // check for each edge
+    for (const std::shared_ptr<Edge>& edge : get_edges())
+    {
+        // add to visited edges
+        const bool inserted = all_connected_edges.insert(edge).second;
+
+        // skip if edge is already visited
+        if (!inserted) continue;
+
+        // return true if edge is boundary
+        if (edge->is_boundary()) return true;
+        
+        // else, recursively check connected faces
+        if (edge->is_connected_to_boundary_edges(all_connected_faces, all_connected_edges)) return true;        
+    }
+
+    return false;
+}
+
+bool Face::is_non_manifold() const
+{
+    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> all_connected_faces;
+    std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> all_connected_edges;
+
+    return !is_connected_to_boundary_edges(all_connected_faces, all_connected_edges);
 }
 
 void Face::swap(const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2)

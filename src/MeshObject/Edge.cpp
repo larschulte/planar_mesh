@@ -211,6 +211,24 @@ void Edge::disconnect(const std::shared_ptr<Edge>& sibling_edge)
     if (erased) sibling_edge->disconnect(shared_from_this());
 }
 
+bool Edge::is_connected_to_boundary_edges(std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& all_connected_faces, std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& all_connected_edges) const
+{
+    // check for each face
+    for (const std::shared_ptr<Face>& face : get_faces())
+    {
+        // add to visited faces
+        const bool inserted = all_connected_faces.insert(face).second;
+
+        // skip if face is already visited
+        if (!inserted) continue;
+
+        // return true if face is boundary
+        if (face->is_connected_to_boundary_edges(all_connected_faces, all_connected_edges)) return true;
+    }
+
+    return false;
+}
+
 void Edge::swap(const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2)
 {
     // make sure the position of vertex 1 and 2 are identical, otherwise need to update BVH which is not yet implemented
