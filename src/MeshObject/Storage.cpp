@@ -693,6 +693,28 @@ void Storage::remove_non_manifold_edges()
     }
 }
 
+void Storage::remove_non_manifold_faces()
+{
+    // initialize
+    std::vector<std::shared_ptr<Face>> non_manifold_faces;
+    
+    // collect all non manifold faces
+    for (const std::shared_ptr<Face>& face : faces_)
+    {
+        if (face->is_non_manifold()) non_manifold_faces.push_back(face);
+    }
+
+    // delete all non manifold faces
+    for (const std::shared_ptr<Face>& face : non_manifold_faces)
+    {
+        // skip if face is expired
+        if (face->is_expired()) continue;
+
+        // delete face
+        delete_face(face);
+    }
+}
+
 void Storage::remove_non_manifold_vertices()
 {
     // make copy of vertices
