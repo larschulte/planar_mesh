@@ -649,9 +649,6 @@ bool Surface::tree_intersect_edge(const std::shared_ptr<Vertex>& vertex0, const 
 
 bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& all_nearby_vertices)
 {
-    // initialize
-    bool connected = false;
-
     // get nearby vertices in the same surface
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> nearby_vertices;
     for (const auto& nearby_vertex : all_nearby_vertices)
@@ -689,9 +686,6 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
 
         // store used vertices and new edges
         new_edges.insert(new_edge);
-
-        // update flag
-        connected = true;
     }
 
     // create faces
@@ -737,8 +731,9 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
         }
     }
 
-    // return
-    return connected;
+    // if new vertex have edges, return true, else return false
+    if (vertex->get_edges().size() > 0) return true;
+    else return false;
 }
 
 void Surface::compute_surface_position_std_in_normal_direction()
