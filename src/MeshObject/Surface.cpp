@@ -723,7 +723,7 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
             // skip if edge0 is not boundary
             if (!edge0->is_boundary()) continue;
             // skip if edge1 is not boundary
-            if (!edge0->is_boundary()) continue;
+            if (!edge1->is_boundary()) continue;
 
             // create face
             std::shared_ptr<Face> new_face = storage_->add_face(shared_from_this(), vertex, vertex0, vertex1);

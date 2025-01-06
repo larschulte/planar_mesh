@@ -98,6 +98,10 @@ void Edge::connect(const std::shared_ptr<Face>& face)
 
     // connect
     bool inserted = faces_.insert(face).second;
+    if (inserted)
+    {
+        if (faces_.size() > 2) throw std::runtime_error("Edge connected to more than 2 faces.");
+    }
     if (inserted) face->connect(shared_from_this());
 
     // update boundary state
