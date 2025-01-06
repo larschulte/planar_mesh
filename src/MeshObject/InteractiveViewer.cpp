@@ -236,6 +236,8 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
     if (event.getKeySym() == "KP_Next" && event.keyDown())
     {
         settings_.color_mode = ColorMode::RADIUS;
+        app_.update_radius();
+
         update_display();
 
         // log

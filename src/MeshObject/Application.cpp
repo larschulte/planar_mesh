@@ -941,6 +941,12 @@ void Application<PointT>::remove_non_manifold_vertices()
 }
 
 template <typename PointT>
+void Application<PointT>::update_radius()
+{
+    storage_->update_radius();
+}
+
+template <typename PointT>
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_generic_point_pointcloud()
 {
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);

@@ -706,6 +706,21 @@ void Storage::remove_non_manifold_vertices()
     }
 }
 
+void Storage::update_radius()
+{
+    // make copy of vertices
+    std::vector<std::shared_ptr<Vertex>> vertices_copy(vertices_.begin(), vertices_.end());
+
+    for (const std::shared_ptr<Vertex>& vertex : vertices_copy)
+    {
+        // skip if vertex is expired
+        if (vertex->is_expired()) continue;
+
+        // try update radius
+        vertex->try_update_radius();
+    }
+}
+
 void Storage::add_searchable_vertex(const std::shared_ptr<Vertex>& vertex)
 {
     // add to a queue that will be processed once all locks are released

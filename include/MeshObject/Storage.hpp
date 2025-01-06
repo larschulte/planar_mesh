@@ -70,6 +70,7 @@ public: // to user
     void cleanup_surfaces();
     void remove_non_manifold_edges();
     void remove_non_manifold_vertices();
+    void update_radius();
 
     void add_points_in_add_searchable_vertex_queue();
     void add_or_remove_vertices_from_rrs_tree();
