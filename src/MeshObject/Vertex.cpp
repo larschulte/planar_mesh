@@ -678,6 +678,9 @@ bool Vertex::try_close_holes()
         changed = true;
     }
 
+    // skip if edge between 0 and 1 is not boundary
+    if (!vertex0->get_edge(vertex1)->is_boundary()) return changed;
+
     // create face if face does not exist
     const bool face_exist = check_connected_by_face(vertex0, vertex1);
     if (!face_exist)
