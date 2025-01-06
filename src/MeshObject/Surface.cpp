@@ -673,6 +673,9 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
     std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> new_edges;
     for (const auto& nearby_vertex : nearby_vertices)
     {
+        // skip if vertex is not boundary
+        if (!nearby_vertex->is_boundary()) continue;
+
         // skip if edge is longer than any of the radius of vertices
         double distance = (vertex->get_position() - nearby_vertex->get_position()).norm();
         if (distance > vertex->get_radius(shared_from_this()) || distance > nearby_vertex->get_radius()) continue;
