@@ -52,6 +52,8 @@ public:
 
     double& get_projected_uncertainty();
 
+    const std::shared_ptr<Edge>& get_edge(const std::shared_ptr<Vertex>& vertex) const;
+
     // void try_merge_surfaces();
 
     const Eigen::Vector3d& buffer_compute_projected_position(const std::shared_ptr<Surface> surface);

@@ -267,6 +267,16 @@ double& Vertex::get_projected_uncertainty()
     return projected_uncertainty_;
 }
 
+const std::shared_ptr<Edge>& Vertex::get_edge(const std::shared_ptr<Vertex>& vertex) const
+{
+    for (const std::shared_ptr<Edge>& edge : edges_)
+    {
+        if (edge->has_vertex(vertex)) return edge;
+    }
+
+    throw std::runtime_error("Edge not found.");
+}
+
 // void Vertex::try_merge_surfaces()
 // {
     // // check if there is only one surface
