@@ -46,8 +46,6 @@ void InteriorPoint::initialize_(const std::shared_ptr<Storage>& storage, const E
 void InteriorPoint::initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<GenericPoint>& generic_point)
 {
     initialize_(storage, generic_point->get_position(), generic_point->get_origin(), generic_point->get_radius(), generic_point->get_distance_travelled());
-    previous_surface_ = generic_point->get_previous_surface();
-    previous_radius_ = generic_point->get_previous_radius();
     num_deletes_ = generic_point->get_num_deletes();
     projected_uncertainty_ = generic_point->get_projected_uncertainty();
 }
@@ -61,6 +59,7 @@ void InteriorPoint::delete_()
     deleting_ = true;
 
     // disconnect
+    delete_self_from_penetrated_vertices();
     std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces = faces_;
     for (const auto& face : faces) disconnect(face);
     if (surface_) disconnect(surface_);
@@ -192,15 +191,6 @@ void InteriorPoint::connect(const std::shared_ptr<Face>& face)
     // connect
     bool inserted = faces_.insert(face).second;
     if (inserted) face->connect(shared_from_this());
-    if (inserted)
-    {
-        // reduce radius to be consistent with vertices of the face
-        for (const std::shared_ptr<Vertex>& vertex : face->get_vertices())
-        {
-            double distance = (vertex->get_position() - get_position()).norm();
-            reduce_reverse_radius_search_radius(distance + vertex->get_radius());
-        }
-    }
 
     // update confirmed status
     if (inserted) update_confirmed_status();
@@ -218,15 +208,6 @@ void InteriorPoint::connect(const std::shared_ptr<Surface>& surface)
     {
         // update projected position
         projected_position_ = surface->compute_point_projective_position(get_origin(), get_original_position());
-
-        // if new surface is the same as the previous surface, set the radius to the updated previous radius
-        if (surface == previous_surface_) 
-        {
-            reduce_reverse_radius_search_radius(previous_radius_);
-        }
-
-        previous_surface_ = nullptr;
-        previous_radius_ = 0;
     }
     if (inserted) surface->connect(shared_from_this());    
 }
@@ -293,14 +274,81 @@ void InteriorPoint::disconnect(const std::shared_ptr<InteriorPoint>& sibling_int
     if (erased) sibling_interior_point->disconnect(shared_from_this());
 }
 
-void InteriorPoint::reduce_reverse_radius_search_radius(double radius)
+void InteriorPoint::add_penetrated_vertex(const std::shared_ptr<Vertex>& vertex)
 {
-    if (radius < radius_) set_reverse_radius_search_radius(radius);
+    // check input
+    if (vertex->is_expired()) return;
+
+    // add
+    penetrated_vertices_.insert(vertex);
 }
 
-void InteriorPoint::reduce_previous_radius(double radius)
+void InteriorPoint::add_self_to_penetrated_vertices()
 {
-    if (radius < previous_radius_) previous_radius_ = radius;
+    // make copy as list may change
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> nearby_penetrated_vertices_copy = penetrated_vertices_;
+
+    // update
+    for (const std::shared_ptr<Vertex>& vertex : nearby_penetrated_vertices_copy)
+    {
+        // skip if expired
+        if (vertex->is_expired()) continue;
+
+        // add to neighboring vertex
+        vertex->add_penetrating_interior_point(shared_from_this());
+
+        // try update
+        vertex->try_update_radius();
+        vertex->try_break_edges();
+
+        // skip if expired
+        if (vertex->is_expired()) continue;
+
+        // try update
+        vertex->try_update_node_box();
+    }
+}
+
+void InteriorPoint::delete_self_from_penetrated_vertices()
+{
+    // make copy as list may change
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> nearby_penetrated_vertices_copy = penetrated_vertices_;
+
+    // update
+    for (const std::shared_ptr<Vertex>& vertex : penetrated_vertices_)
+    {
+        // try lock the vertex
+        if (!omp_test_nest_lock(&vertex->vertex_lock)) continue;
+
+        // skip if expired
+        if (vertex->is_expired()) 
+        {
+            // release lock
+            omp_unset_nest_lock(&vertex->vertex_lock);
+            continue;
+        }
+
+        // delete from neighboring vertex
+        vertex->delete_penetrating_interior_point(shared_from_this());
+
+        // try update
+        vertex->try_update_radius();
+        vertex->try_break_edges();
+        
+        // skip if expired
+        if (vertex->is_expired()) 
+        {
+            // release lock
+            omp_unset_nest_lock(&vertex->vertex_lock);
+            continue;
+        }
+
+        // try update
+        vertex->try_update_node_box();
+
+        // release lock
+        omp_unset_nest_lock(&vertex->vertex_lock);
+    }
 }
 
 void InteriorPoint::set_reverse_radius_search_radius(double radius)

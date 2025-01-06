@@ -98,7 +98,11 @@ double Surface::compute_point_projective_distance(const Eigen::Vector3d& origin,
 {
     // if perpendicular, return NaN
     Eigen::Vector3d rayDirection = (position - origin).normalized();
-    double distance = (mean_ - position).dot(normal_) / rayDirection.dot(normal_);
+    double distance = std::abs( (mean_ - position).dot(normal_) / rayDirection.dot(normal_) );
+
+    // negative distance if origin and position are on the opposite side of the plane
+    const bool opposite_side = (origin - mean_).dot(normal_) * (position - mean_).dot(normal_) < 0;
+    if (opposite_side) distance *= -1;
 
     // return
     return distance;
@@ -165,6 +169,9 @@ RelativePosition Surface::check_relative_position(double distance_travelled, con
     const bool use_improved_covariance = true;
     if (use_improved_covariance)
     {
+        // return no_relative_position if not enough points
+        if (get_total_point_size() < settings_.fit_plane_threshold) return RelativePosition::NO_RELATIVE_POSITION;
+
         // compute d(range)/d(...)
         Eigen::Vector3d d_range_d_origin = - normal_ / normal_.dot(direction);
         Eigen::Vector3d d_range_d_mean = normal_ / normal_.dot(direction);
@@ -201,6 +208,7 @@ RelativePosition Surface::check_relative_position(double distance_travelled, con
 
         // compute combined std
         double combined_std = std::sqrt(variance_range_origin + variance_range_mean + variance_range_direction + variance_range_normal + settings_.range_precision * settings_.range_precision);
+        double partial_combined_std = std::sqrt(variance_range_origin + variance_range_direction + settings_.range_precision * settings_.range_precision);
 
         // compute point to plane projective distance
         double projective_distance = compute_point_projective_distance(origin, point);
@@ -223,7 +231,7 @@ RelativePosition Surface::check_relative_position(double distance_travelled, con
         else if (points_behind_surface) return RelativePosition::BEHIND;
         else if (points_within_surface)
         {
-            projected_uncertainty = combined_std;
+            projected_uncertainty = partial_combined_std;
             return RelativePosition::WITHIN;
         } 
         else throw std::runtime_error("Invalid relative position.");
@@ -656,13 +664,6 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
         nearby_vertices.insert(nearby_vertex);
     }
 
-    // update search radius of the vertex
-    for (const auto& nearby_vertex : nearby_vertices)
-    {
-        double distance = (vertex->get_position() - nearby_vertex->get_position()).norm();
-        vertex->reduce_reverse_radius_search_radius(distance + nearby_vertex->get_radius());
-    }
-
     // create edges
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> used_vertices;
     std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> new_edges;
@@ -677,14 +678,6 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
         {   
             // log
             if (settings_.log.connect_by_edges_and_faces) std::cout << "Try to create edge between " << vertex->get_id() << " and " << nearby_vertex->get_id() << " but is intersected." << std::endl;
-
-            // should not reduce search radius!!!
-            // radius represents extends of flat surface -> edge intersection within the same plane is still flat surface!
-
-            // // that means the nearby_vertex have too large of search radius
-            // // so we should reduce it
-            // double distance = (vertex->get_position() - nearby_vertex->get_position()).norm();
-            // nearby_vertex->reduce_reverse_radius_search_radius(distance);
         }
         else // if edge does not intersect
         {

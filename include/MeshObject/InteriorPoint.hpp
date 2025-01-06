@@ -51,8 +51,10 @@ public:
     void disconnect(const std::shared_ptr<Surface>& surface);
     void disconnect(const std::shared_ptr<InteriorPoint>& sibling_interior_point);
 
-    void reduce_reverse_radius_search_radius(double radius);
-    void reduce_previous_radius(double radius);
+    void add_penetrated_vertex(const std::shared_ptr<Vertex>& vertex);
+    void add_self_to_penetrated_vertices();
+    void delete_self_from_penetrated_vertices();
+
     void set_reverse_radius_search_radius(double radius);
 
     void update_confirmed_status();
@@ -78,8 +80,6 @@ private:
 
     std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces_;
     std::shared_ptr<Surface> surface_;
-    std::shared_ptr<Surface> previous_surface_;
-    double previous_radius_;
 
     std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> sibling_interior_points_;
 
@@ -95,6 +95,8 @@ private:
     FIFOCache<std::size_t, double> buffer_projected_distance_{3};
 
     Eigen::Vector3d projected_position_ = Eigen::Vector3d::Zero();
+
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> penetrated_vertices_;
 
 public:
     double weight_;

@@ -63,11 +63,12 @@ Settings::Settings()
 
     process_every_n_points = 1;
     
-    fit_plane_threshold = 4;
+    fit_plane_threshold = 3;
     shuffle_pointcloud = true;
     use_radius_value = true;
     pointcloud_fraction = 1;
     radius_value = 3;
+    extra_radius = 0.1;
     duplicated_point_distance_threshold = 0.0; // if two points are closer than this distance, they are considered the same point
 
     abnormal_size = 1.5;

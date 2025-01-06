@@ -29,8 +29,6 @@ public:
     const Eigen::Vector3d& get_direction() const;
     const Eigen::Vector3d& get_inv_direction() const;
     const double& get_radius() const;
-    const double& get_previous_radius() const;
-    const std::shared_ptr<Surface>& get_previous_surface() const;
     bool is_expired() const;
 
     double& get_projected_uncertainty();
@@ -58,8 +56,6 @@ private:
     Eigen::Vector3d direction_;
     Eigen::Vector3d inv_direction_;
     double radius_;
-    double previous_radius_;
-    std::shared_ptr<Surface> previous_surface_;
 
     double projected_uncertainty_;
 };

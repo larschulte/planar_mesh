@@ -280,84 +280,60 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
 
     // process
     bool added_to_new_surface = false;
-    double radius = settings_.radius_value;
     std::shared_ptr<Surface> added_surface;
-    if (add_point_by_intersection_search(generic_point, radius, bvh_results, added_surface))
+
+    std::shared_ptr<Vertex> vertex_added_by_radius_search;
+    std::shared_ptr<Face> face_added_by_intersection_search;
+
+    // clean up bvh and rrs results by recomputing their radius and try breaking edges
+    for (const std::shared_ptr<Face>& face : bvh_results) 
+    {
+        // skip if the face is expired
+        if (face->is_expired()) continue;
+
+        for (const std::shared_ptr<Vertex>& vertex : face->get_vertices())
+        {
+            // skip if the vertex is expired
+            if (vertex->is_expired()) continue;
+
+            vertex->try_update_radius();
+            vertex->try_break_edges();
+
+            // skip if the vertex is expired
+            if (vertex->is_expired()) continue;
+
+            vertex->try_update_node_box();
+        }
+    }
+    for (const std::shared_ptr<Vertex>& vertex : rrs_results) 
+    {
+        // skip if the vertex is expired
+        if (vertex->is_expired()) continue;
+
+        vertex->try_update_radius();
+        vertex->try_break_edges();
+
+        // skip if the vertex is expired
+        if (vertex->is_expired()) continue;
+
+        vertex->try_update_node_box();
+    }
+
+    if (add_point_by_intersection_search(generic_point, bvh_results, rrs_results, added_surface, face_added_by_intersection_search))
     {
         // if point added, go to end to unlock all locks
     }
-    else if (add_point_by_radius_search(generic_point, radius, rrs_results, added_surface))
+    else if (add_point_by_radius_search(generic_point, rrs_results, bvh_results, added_surface, vertex_added_by_radius_search))
     {
         // if point added, go to end to unlock all locks
     }
     else
     {
-        add_point_by_new_surface(generic_point, radius, added_surface);
-        added_to_new_surface = true;
-        // if point added, go to end to unlock all locks
+        throw std::runtime_error("not possible");
     }
 
     // throw if added_surface is nullptr
     if (added_surface == nullptr) throw std::runtime_error("added surface is nullptr");
-
-    // don't reduce radius if the point is added to a new surface
-    if (!added_to_new_surface)
-    {
-        // rrs search radius reduction
-        for (const std::shared_ptr<Vertex>& vertex : rrs_results)
-        {
-            // skip if expired
-            if (vertex->is_expired()) continue;
-
-            // skip if the same surface
-            if (vertex->get_surface() == added_surface) continue;
-
-            // reduce using shortest distance to ray
-            const double distance = shortest_distance_to_line_segment(generic_point->get_origin(), generic_point->get_position(), vertex->get_position());
-            vertex->reduce_reverse_radius_search_radius(distance);
-        }
-
-        // bvh search radius reduction
-        for (const std::shared_ptr<Face>& face : bvh_results)
-        {
-            // skip if expired
-            if (face->is_expired()) continue;
-
-            // skip if the same surface
-            if (face->get_surface() == added_surface) continue;
-
-            // don't reduce radius of face if counter is not zero
-            if (face->get_reduce_radius_counter() > 0)
-            {
-                face->decrement_reduce_radius_counter();
-                continue;
-            }
-
-            // get copy of vertices and interior points (as they might be deleted)
-            std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertices = face->get_vertices();
-            std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> interior_points = face->get_interior_points();
-
-            // reduce using shortest distance to ray
-            for (const std::shared_ptr<Vertex>& vertex : vertices)
-            {
-                // skip if expired
-                if (vertex->is_expired()) continue;
-
-                // reduce using shortest distance to ray
-                const double distance = shortest_distance_to_line_segment(generic_point->get_origin(), generic_point->get_position(), vertex->get_position());
-                vertex->reduce_reverse_radius_search_radius(distance);
-            }
-            for (const std::shared_ptr<InteriorPoint>& interior_point : interior_points)
-            {
-                // skip if expired
-                if (interior_point->is_expired()) continue;
-
-                // reduce using shortest distance to ray
-                const double distance = shortest_distance_to_line_segment(generic_point->get_origin(), generic_point->get_position(), interior_point->get_position());
-                interior_point->reduce_reverse_radius_search_radius(distance);
-            }
-        }
-    }
 
     num_of_concurrent_processes--;
     
@@ -382,7 +358,7 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
 }
 
 template <typename PointT>
-bool Application<PointT>::add_point_by_intersection_search(const std::shared_ptr<GenericPoint>& generic_point, double& new_point_radius, std::vector<std::shared_ptr<Face>>& bvh_results, std::shared_ptr<Surface>& surface_to_add_to)
+bool Application<PointT>::add_point_by_intersection_search(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Face>>& bvh_results, std::vector<std::shared_ptr<Vertex>>& rrs_results, std::shared_ptr<Surface>& surface_to_add_to, std::shared_ptr<Face>& face_added_by_intersection_search)
 {
     // don't reduce radius if the point is added as new surface, thus need to move the reduce radius part outside this function.
 
@@ -399,9 +375,9 @@ bool Application<PointT>::add_point_by_intersection_search(const std::shared_ptr
     // check relative position with the searched surfaces
     // update the smallest distance to surface not within
     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_seed;
-    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_in_front;
     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_within;
     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_behind;
+    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_in_front;
     for (const std::shared_ptr<Surface>& surface : all_surfaces)
     {
         // skip if the surface is expired
@@ -430,20 +406,6 @@ bool Application<PointT>::add_point_by_intersection_search(const std::shared_ptr
         }
     }
 
-    // update new point radius
-    for (const std::shared_ptr<Surface>& surface : surfaces_in_front)
-    {
-        // update radius
-        double distance = surface->compute_point_to_plane_distance(generic_point->get_position());
-        if (distance < new_point_radius) new_point_radius = distance;
-    }
-    for (const std::shared_ptr<Surface>& surface : surfaces_behind)
-    {
-        // update radius
-        double distance = surface->compute_point_to_plane_distance(generic_point->get_position());
-        if (distance < new_point_radius) new_point_radius = distance;
-    }
-    
     // log
     if (settings_.log.process_point) std::cout << ">> found " << bvh_results.size() << " searched faces grouped into " << all_surfaces.size() << " searched surfaces" << std::endl;
 
@@ -460,86 +422,148 @@ bool Application<PointT>::add_point_by_intersection_search(const std::shared_ptr
                 surface_to_add_to = surface;
             }
         }
-    }
-    else if (surfaces_seed.size() > 0)
-    {
-        // add to the closest surface measured by point to point distance
-        double smallest_distance = std::numeric_limits<double>::max();
+        
+        // add to the first face
+        std::shared_ptr<Face> face_to_add_to;
+        for (const std::shared_ptr<Face>& face : bvh_results)
+        {
+            // skip if the face is not from the surface
+            if (face->get_surface() != surface_to_add_to) continue;
 
-        // for each face
-        for (std::shared_ptr<Face> face : bvh_results)
+            // skip if the face is expired
+            if (face->is_expired()) continue;
+
+            // set face_to_add_to
+            face_to_add_to = face;
+            break;
+        }
+
+        // throw if face to add to is not set
+        if (face_to_add_to == nullptr) throw std::runtime_error("face to add to is not set");
+
+        // // add neighboring rrs vertices to the vertex of the face
+        // const std::shared_ptr<Vertex> vertex0 = face_to_add_to->get_vertex(0);
+        // const std::shared_ptr<Vertex> vertex1 = face_to_add_to->get_vertex(1);
+        // const std::shared_ptr<Vertex> vertex2 = face_to_add_to->get_vertex(2);
+        // for (const std::shared_ptr<Vertex>& vertex : rrs_results)
+        // {
+        //     // skip if the vertex is expired
+        //     if (vertex->is_expired()) continue;
+
+        //     // skip if on the same surface
+        //     if (vertex->get_surface() == surface_to_add_to) continue;
+
+        //     // skip if surface seed
+        //     if (vertex->get_surface()->get_total_point_size() < settings_.fit_plane_threshold) continue;
+
+        //     // add neighboring vertex
+        //     vertex0->add_nearby_vertex(vertex);
+        //     vertex1->add_nearby_vertex(vertex);
+        //     vertex2->add_nearby_vertex(vertex);
+        // }
+
+        // vertex0->try_update_radius();
+        // vertex1->try_update_radius();
+        // vertex2->try_update_radius();
+
+        // if (!vertex0->is_expired()) vertex0->try_break_edges();
+        // if (!vertex1->is_expired()) vertex1->try_break_edges();
+        // if (!vertex2->is_expired()) vertex2->try_break_edges();
+
+        // if (face_to_add_to->is_expired()) return false;
+
+        // vertex0->try_update_node_box();
+        // vertex1->try_update_node_box();
+        // vertex2->try_update_node_box();
+
+        // vertex0->add_self_to_nearby_vertices();
+        // vertex1->add_self_to_nearby_vertices();
+        // vertex2->add_self_to_nearby_vertices();
+
+        // add to surface_to_add_to and face_to_add_to
+        const std::shared_ptr<InteriorPoint>& new_interior_point = storage_->add_interior_point(generic_point);
+        new_interior_point->connect(surface_to_add_to);
+        new_interior_point->connect(face_to_add_to);
+        face_to_add_to->increment_reduce_radius_counter();
+
+        // set face
+        face_added_by_intersection_search = face_to_add_to;        
+
+        // interior point reduce radius of rrs vertex as ray
+        for (const std::shared_ptr<Vertex>& vertex : rrs_results)
+        {
+            // skip if expired
+            if (vertex->is_expired()) continue;
+
+            // check relative position
+            RelativePosition relative_position = vertex->get_surface()->check_relative_position(generic_point);
+
+            // skip if no relative position
+            if (relative_position == RelativePosition::NO_RELATIVE_POSITION) continue;
+
+            // skip if in front
+            if (relative_position == RelativePosition::IN_FRONT) continue;
+
+            // skip if same surface
+            if (vertex->get_surface() == surface_to_add_to) continue;
+
+            // add as penetrated vertex
+            new_interior_point->add_penetrated_vertex(vertex);
+        }
+
+        // interior point reduce radius of vertices of face as ray
+        for (const std::shared_ptr<Face>& face : bvh_results)
         {
             // skip if expired
             if (face->is_expired()) continue;
 
-            // this surface
-            std::shared_ptr<Surface> this_surface = face->get_surface();
-            
-            // skip if the face is not in surfaces_seed
-            if (surfaces_seed.find(this_surface) == surfaces_seed.end()) continue;
+            // skip if in front 
+            if (surfaces_in_front.find(face->get_surface()) != surfaces_in_front.end()) continue;
 
-            // for each vertex of the face
-            for (std::shared_ptr<Vertex> vertex : face->get_vertices())
-            {
-                // compute distance
-                double distance = (vertex->get_position() - generic_point->get_position()).norm();
-                if (distance < smallest_distance)
-                {
-                    smallest_distance = distance;
-                    surface_to_add_to = this_surface;
-                }
-            }
+            // skip if same surface
+            if (face->get_surface() == surface_to_add_to) continue;
+
+            // reduce counter
+            face->decrement_reduce_radius_counter();
+
+            // don't add if counter is not zero
+            if (face->get_reduce_radius_counter() > 0) continue;
+
+            // add penetrated vertex point
+            new_interior_point->add_penetrated_vertex(face->get_vertex(0));
+            new_interior_point->add_penetrated_vertex(face->get_vertex(1));
+            new_interior_point->add_penetrated_vertex(face->get_vertex(2));
         }
+
+        // try update
+        new_interior_point->add_self_to_penetrated_vertices();
+
+        return true;
     }
-    else
-    {
-        // add point by radius search or new surface (when no surfaces within nor seed)
-        return false;
-    }
+    
+    // at last, add point by radius search or new surface (when no surfaces within nor seed)
+    return false;
 
     // log
     if (settings_.log.process_point) std::cout << "========================== within surface " << surface_to_add_to->get_id() << std::endl;
-
-    // add to surface_to_add_to
-    const std::shared_ptr<InteriorPoint>& new_interior_point = storage_->add_interior_point(generic_point);
-    new_interior_point->reduce_reverse_radius_search_radius(new_point_radius);
-    new_interior_point->reduce_previous_radius(new_point_radius);
-    new_interior_point->connect(surface_to_add_to);
-    for (const std::shared_ptr<Face>& face : bvh_results)
-    {
-        // skip if the face is not from the surface
-        if (face->get_surface() != surface_to_add_to) continue;
-
-        // skip if the face is expired
-        if (face->is_expired()) continue;
-
-        // connect
-        new_interior_point->connect(face);
-
-        // increment reduce radius counter
-        face->increment_reduce_radius_counter();
-        
-        break;
-    }    
-    return true;
 }
 
 template <typename PointT>
-bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<GenericPoint>& generic_point, double& new_point_radius, std::vector<std::shared_ptr<Vertex>>& rrs_results, std::shared_ptr<Surface>& surface_to_add_to)
+bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Vertex>>& rrs_results, std::vector<std::shared_ptr<Face>>& bvh_results, std::shared_ptr<Surface>& surface_to_add_to, std::shared_ptr<Vertex>& new_vertex)
 {
     // log
     if (settings_.log.add_point_by_radius_search) std::cout << ">> found " << rrs_results.size() << " neighboring vertices" << std::endl;
 
     // convert to set
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> all_vertices(rrs_results.begin(), rrs_results.end());
-
-    // // add to new surface (when no search results)
-    if (all_vertices.size() == 0) return false;
     
     // all_surfaces
     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> all_surfaces; 
     for (std::shared_ptr<Vertex> vertex : all_vertices)
     {
+        // skip if expired
+        if (vertex->is_expired()) continue;
+
         // only add to neighboring surface if the vertex is boundary in that surface
         if (vertex->is_boundary())
         {
@@ -551,7 +575,6 @@ bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
     // split surfaces into seed, within, and outside
     std::set<std::shared_ptr<Surface>> surfaces_seed;
     std::set<std::shared_ptr<Surface>> surfaces_within;
-    std::set<std::shared_ptr<Surface>> surfaces_outside;
     for (std::shared_ptr<Surface> surface : all_surfaces)
     {
         // skip if the surface is expired
@@ -570,29 +593,15 @@ bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
         { 
             surfaces_within.insert(surface);
         }
-        else
-        {
-            surfaces_outside.insert(surface);
-        }
     }
 
-    // update radius
-    for (std::shared_ptr<Vertex> vertex : all_vertices)
-    {
-        // skip if the vertex is expired
-        if (vertex->is_expired()) continue;
+    // flag
+    bool added_to_surface = false;
 
-        // skip if the vertex is not in surfaces_with_point_not_within
-        if (surfaces_outside.find(vertex->get_surface()) == surfaces_outside.end()) continue;
+    // list of surfaces to add to
+    std::vector<std::shared_ptr<Surface>> list_of_surfaces_to_add_to;
 
-        // compute distance
-        double distance = (vertex->get_position() - generic_point->get_position()).norm();
-
-        // reduce new_point_radius
-        if (distance < new_point_radius) new_point_radius = distance;
-    }
-
-    // try add to surfaces_within
+    // put surfaces_within into list
     if (surfaces_within.size() > 0)
     {
         // sort by surface size
@@ -600,36 +609,14 @@ bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
         std::sort(surfaces_within_sorted.begin(), surfaces_within_sorted.end(), 
             [](const std::shared_ptr<Surface>& a, const std::shared_ptr<Surface>& b) { return a->get_total_point_size() > b->get_total_point_size(); });
 
-        // for each surface
-        for (std::shared_ptr<Surface> surface : surfaces_within_sorted)
-        {
-            // try to add to the surface
-            surface_to_add_to = surface;
-
-            // add to surface_to_add_to
-            std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(surface_to_add_to, generic_point);
-            new_vertex->reduce_reverse_radius_search_radius(new_point_radius);
-            new_vertex->reduce_previous_radius(new_point_radius);
-            const bool connected = surface_to_add_to->connect_by_edges_and_faces(new_vertex, all_vertices);
-            
-            if (connected)
-            {
-                return true;
-            }
-            else
-            {
-                // need to prevent this vertex from generating a new generic point
-                new_vertex->can_create_generic_point(false);
-                storage_->delete_vertex(new_vertex);
-                continue;
-            }
-        }
+        // add to list
+        list_of_surfaces_to_add_to.insert(list_of_surfaces_to_add_to.end(), surfaces_within_sorted.begin(), surfaces_within_sorted.end());
     }
 
-    // try add to surfaces_seed
+    // put surfaces_seed into list
     if (surfaces_seed.size() > 0)
     {        
-        // compute surfaces_seed distances
+        // sort by surface closeness
         std::unordered_map<std::shared_ptr<Surface>, double, MeshObjectHash> surfaces_seed_distances;
         for (std::shared_ptr<Surface> surface : surfaces_seed)
         {
@@ -649,52 +636,107 @@ bool Application<PointT>::add_point_by_radius_search(const std::shared_ptr<Gener
                 }
             }
         }
-
-        // sort by surface closeness
         std::vector<std::shared_ptr<Surface>> surfaces_seed_sorted(surfaces_seed.begin(), surfaces_seed.end());
         std::sort(surfaces_seed_sorted.begin(), surfaces_seed_sorted.end(), 
             [&surfaces_seed_distances](const std::shared_ptr<Surface>& a, const std::shared_ptr<Surface>& b) { return surfaces_seed_distances[a] < surfaces_seed_distances[b]; });
 
+        // add to list
+        list_of_surfaces_to_add_to.insert(list_of_surfaces_to_add_to.end(), surfaces_seed_sorted.begin(), surfaces_seed_sorted.end());
+    }
 
-        // for each surface
-        for (std::shared_ptr<Surface> surface : surfaces_seed_sorted)
+    // put new surface into list
+    std::shared_ptr<Surface> new_surface = storage_->add_surface();
+    list_of_surfaces_to_add_to.push_back(new_surface);
+
+    // add to surface according to the list
+    for (std::shared_ptr<Surface> surface : list_of_surfaces_to_add_to)
+    {
+        // add to surface
+        new_vertex = storage_->add_vertex(surface, generic_point);
+
+        // reduce radius of the new vertex
+        for (std::shared_ptr<Vertex> vertex : all_vertices)
         {
-            // try to add to the surface
-            surface_to_add_to = surface;
+            // skip if the vertex is expired
+            if (vertex->is_expired()) continue;
 
-            // add to surface_to_add_to
-            std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(surface_to_add_to, generic_point);
-            new_vertex->reduce_reverse_radius_search_radius(new_point_radius);
-            new_vertex->reduce_previous_radius(new_point_radius);
-            const bool connected = surface_to_add_to->connect_by_edges_and_faces(new_vertex, all_vertices);
-            
-            if (connected)
-            {
-                return true;
-            }
-            else
-            {
-                // need to prevent this vertex from generating a new generic point
-                new_vertex->can_create_generic_point(false);
-                storage_->delete_vertex(new_vertex);
-                continue;
-            }
+            // skip if the vertex is the same as the new vertex
+            if (vertex->get_surface() == surface) continue;
+
+            // add neighboring vertex
+            new_vertex->add_nearby_vertex(vertex);
+        }
+        // reduce radius of vertcies of bvh_results as ray
+        for (const std::shared_ptr<Face>& face : bvh_results)
+        {
+            // skip if expired
+            if (face->is_expired()) continue;
+
+            // compute relative position
+            RelativePosition relative_position = face->get_surface()->check_relative_position(generic_point);
+
+            // skip if no relative position
+            if (relative_position == RelativePosition::NO_RELATIVE_POSITION) continue;
+
+            // skip if in front 
+            if (relative_position == RelativePosition::IN_FRONT) continue;
+
+            // skip if same surface
+            if (face->get_surface() == surface) continue;
+
+            // reduce counter
+            face->decrement_reduce_radius_counter();
+
+            // don't add if counter is not zero
+            if (face->get_reduce_radius_counter() > 0) continue;
+
+            // add penetrated vertex point
+            new_vertex->add_penetrated_vertex(face->get_vertex(0));
+            new_vertex->add_penetrated_vertex(face->get_vertex(1));
+            new_vertex->add_penetrated_vertex(face->get_vertex(2));
+        }
+        new_vertex->try_update_radius();
+
+        // if new surface
+        if (surface == new_surface)
+        {
+            surface_to_add_to = surface;
+            added_to_surface = true;
+            break;
+        }
+
+        // if old surface
+        const bool connected = surface->connect_by_edges_and_faces(new_vertex, all_vertices);
+        if (connected)
+        {
+            surface_to_add_to = surface;
+            added_to_surface = true;
+            break;
+        }
+        else
+        {
+            // need to prevent this vertex from generating a new generic point
+            new_vertex->can_create_generic_point(false);
+            storage_->delete_vertex(new_vertex);
+            continue;
         }
     }
-    
-    // add to new surface (when no surfaces within nor seed)
-    return false;
-}
 
-template <typename PointT>
-void Application<PointT>::add_point_by_new_surface(const std::shared_ptr<GenericPoint>& generic_point, double& radius, std::shared_ptr<Surface>& added_surface)
-{
-    std::shared_ptr<Surface> new_surface = storage_->add_surface();
-    std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(new_surface, generic_point);
-    new_vertex->reduce_reverse_radius_search_radius(radius);
-    new_vertex->reduce_previous_radius(radius);
-    
-    added_surface = new_surface;
+    // reduce radius of vertcies of affected points
+    new_vertex->add_self_to_penetrated_vertices();
+    new_vertex->add_self_to_nearby_vertices();
+
+    // "add_self" may delete other vertices
+    // which will invoke their "delete_self"
+    // which acts on the "new_vertex" and ask it to recompute radius and try_break_edge
+    // which may cause "new_vertex" to expire
+    if (!new_vertex->is_expired())
+    {
+        new_vertex->try_update_radius();
+        new_vertex->try_update_node_box();
+    }
+
+    return true;
 }
 
 template <typename PointT>
@@ -994,7 +1036,12 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_interior_poi
         }
         else if (settings.color_mode == ColorMode::WEIGHT)
         {
-            double distance = interior_point->weight_ / 10000.f;
+            // the lowest uncertainty is 0.02 which is the range precision
+            // 1/(0.02*0.02) = 2500
+            // the best weight is 2500
+            // all weight should be lower than this number
+            const double best_weight = 1.f / (settings.range_precision * settings.range_precision);
+            double distance = interior_point->weight_ / best_weight; 
             std::tuple<int, int, int> color = valueToJet(distance);
             point.r = std::get<0>(color);
             point.g = std::get<1>(color);
@@ -1153,7 +1200,8 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_vertex_point
         }
         else if (setting.color_mode == ColorMode::WEIGHT)
         {
-            double distance = vertex->weight_ / 10000.f;
+            const double best_weight = 1.f / (settings_.range_precision * settings_.range_precision);
+            double distance = vertex->weight_ / best_weight;
             std::tuple<int, int, int> color = valueToJet(distance);
             point.r = std::get<0>(color);
             point.g = std::get<1>(color);

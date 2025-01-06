@@ -50,8 +50,6 @@ void Vertex::initialize_(const std::shared_ptr<Storage>& storage, const std::sha
 void Vertex::initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<Surface>& surface, const std::shared_ptr<GenericPoint>& generic_point)
 {
     initialize_(storage, surface, generic_point->get_position(), generic_point->get_origin(), generic_point->get_radius(), generic_point->get_distance_travelled());
-    previous_surface_ = generic_point->get_previous_surface();
-    previous_radius_ = generic_point->get_previous_radius();
     num_deletes_ = generic_point->get_num_deletes();
     projected_uncertainty_ = generic_point->get_projected_uncertainty();
 }
@@ -95,12 +93,20 @@ void Vertex::delete_()
 
     // set deletion flag
     deleting_ = true;
+    
+    // // cascade radius reduction
+    // cascade_radius_reduction_to_connected_vertices();
 
     // disconnect
     std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges = edges_;
     std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces = faces_;
+    // std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> neighboring_vertices_that_affect_radius = neighboring_vertices_that_affect_radius_;
     for (const auto& edge : edges) disconnect(edge);
     for (const auto& face : faces) disconnect(face);
+    // for (const auto& neighboring_vertex : neighboring_vertices_that_affect_radius) disconnect_neighboring_vertex(neighboring_vertex);
+    delete_self_from_nearby_vertices();
+    delete_self_from_penetrated_vertices();
+    delete_self_from_penetrating_vertex_points();
     if (surface_) disconnect(surface_);
 
     // update delete count
@@ -455,16 +461,6 @@ void Vertex::connect(const std::shared_ptr<Surface>& surface)
     {
         // update projected position
         projected_position_ = surface->compute_point_projective_position(get_origin(), get_original_position());
-
-        // if new surface is the same as the previous surface, set the radius to the updated previous radius
-        if (surface == previous_surface_) 
-        {
-            // set radius to the previous radius
-            reduce_reverse_radius_search_radius(previous_radius_);
-        }
-
-        previous_surface_ = nullptr;
-        previous_radius_ = 0;
     }
     if (inserted) surface->connect(shared_from_this());
     if (inserted) is_singular_ = true;
@@ -562,6 +558,445 @@ void Vertex::disconnect(const std::shared_ptr<Vertex>& sibling_vertex)
     if (erased) sibling_vertex->disconnect(shared_from_this());
 }
 
+void Vertex::add_nearby_vertex(const std::shared_ptr<Vertex>& rrs_vertex)
+{
+    // check input 
+    if (rrs_vertex->is_expired()) return;
+
+    // compute distance
+    const double distance = (get_position() - rrs_vertex->get_position()).norm(); 
+
+    // add to map
+    distances_to_nearby_vertices_[rrs_vertex] = distance;
+}
+
+void Vertex::delete_nearby_vertex(const std::shared_ptr<Vertex>& rrs_vertex)
+{
+    distances_to_nearby_vertices_.erase(rrs_vertex);
+}
+
+void Vertex::add_self_to_nearby_vertices()
+{
+    // make copy as list may change
+    std::unordered_map<std::shared_ptr<Vertex>, double, MeshObjectHash> distance_to_neighboring_rrs_vertices_copy = distances_to_nearby_vertices_;
+
+    // update
+    for (const auto& [neighboring_vertex, distance] : distance_to_neighboring_rrs_vertices_copy)
+    {
+        // skip if expired
+        if (neighboring_vertex->is_expired()) continue;
+
+        // add to neighboring vertex
+        neighboring_vertex->add_nearby_vertex(shared_from_this());
+
+        // try update
+        neighboring_vertex->try_update_radius();
+        neighboring_vertex->try_break_edges();
+
+        // skip if expired
+        if (neighboring_vertex->is_expired()) continue;
+
+        // try update
+        neighboring_vertex->try_update_node_box();
+    }
+}
+
+void Vertex::delete_self_from_nearby_vertices()
+{
+    // make copy as list may change
+    std::unordered_map<std::shared_ptr<Vertex>, double, MeshObjectHash> distance_to_neighboring_rrs_vertices_copy = distances_to_nearby_vertices_;
+
+    // update
+    for (const auto& [neighboring_vertex, distance] : distance_to_neighboring_rrs_vertices_copy)
+    {
+        // try lock the vertex
+        if (!omp_test_nest_lock(&neighboring_vertex->vertex_lock)) continue;
+
+        // skip if expired
+        if (neighboring_vertex->is_expired()) 
+        {
+            // release lock
+            omp_unset_nest_lock(&neighboring_vertex->vertex_lock);
+            continue;
+        }
+
+        // delete from neighboring vertex
+        neighboring_vertex->delete_nearby_vertex(shared_from_this());        
+
+        // try update
+        neighboring_vertex->try_update_radius();
+        neighboring_vertex->try_break_edges();
+        
+        // skip if expired
+        if (neighboring_vertex->is_expired()) 
+        {
+            // release lock
+            omp_unset_nest_lock(&neighboring_vertex->vertex_lock);
+            continue;
+        }
+
+        // try update
+        neighboring_vertex->try_update_node_box();
+
+        // release lock
+        omp_unset_nest_lock(&neighboring_vertex->vertex_lock);
+    }
+}
+
+void Vertex::add_penetrating_interior_point(const std::shared_ptr<InteriorPoint>& interior_point)
+{
+    // check input
+    if (interior_point->is_expired()) return;
+
+    // add self to interior point as well
+    interior_point->add_penetrated_vertex(shared_from_this());
+
+    // compute projected position of interior point
+    const Eigen::Vector3d projected_position = get_surface()->compute_point_projective_position(interior_point->get_origin(), interior_point->get_original_position());
+
+    // compute distance
+    const double distance = (projected_position - get_position()).norm();
+
+    // add to list
+    distances_to_ray_of_penetrating_interior_points_[interior_point] = distance;
+}
+
+void Vertex::delete_penetrating_interior_point(const std::shared_ptr<InteriorPoint>& interior_point)
+{
+    distances_to_ray_of_penetrating_interior_points_.erase(interior_point);
+}
+
+void Vertex::add_penetrating_vertex_point(const std::shared_ptr<Vertex>& vertex_point)
+{
+    // check input
+    if (vertex_point->is_expired()) return;
+
+    // add self to interior point as well
+    vertex_point->add_penetrated_vertex(shared_from_this());
+
+    // compute projected position of vertex point
+    const Eigen::Vector3d projected_position = get_surface()->compute_point_projective_position(vertex_point->get_origin(), vertex_point->get_original_position());
+
+    // compute distance
+    const double distance = (projected_position - get_position()).norm();
+
+    // add to list
+    distances_to_ray_of_penetrating_vertex_points_[vertex_point] = distance;
+}
+
+
+void Vertex::delete_penetrating_vertex_point(const std::shared_ptr<Vertex>& vertex_point)
+{
+    distances_to_ray_of_penetrating_vertex_points_.erase(vertex_point);
+}
+
+void Vertex::delete_self_from_penetrating_vertex_points()
+{
+    // make copy as list may change
+    std::unordered_map<std::shared_ptr<Vertex>, double, MeshObjectHash> distances_to_ray_of_penetrating_vertex_points_copy = distances_to_ray_of_penetrating_vertex_points_;
+
+    // update
+    for (const auto& [vertex, distance] : distances_to_ray_of_penetrating_vertex_points_copy)
+    {
+        // try lock the vertex
+        if (!omp_test_nest_lock(&vertex->vertex_lock)) continue;
+
+        // skip if expired
+        if (vertex->is_expired()) 
+        {
+            // release lock
+            omp_unset_nest_lock(&vertex->vertex_lock);
+            continue;
+        }
+
+        // delete from neighboring vertex
+        vertex->delete_penetrated_vertex(shared_from_this());
+
+        // try update
+        vertex->try_update_radius();
+        vertex->try_break_edges();
+        
+        // skip if expired
+        if (vertex->is_expired()) 
+        {
+            // release lock
+            omp_unset_nest_lock(&vertex->vertex_lock);
+            continue;
+        }
+
+        // try update
+        vertex->try_update_node_box();
+
+        // release lock
+        omp_unset_nest_lock(&vertex->vertex_lock);
+    }
+}
+
+void Vertex::add_penetrated_vertex(const std::shared_ptr<Vertex>& vertex)
+{
+    // check input
+    if (vertex->is_expired()) return;
+
+    // if enough points, compute point to plane distance
+    double distance = settings_.radius_value;
+    if (vertex->get_surface()->get_total_point_size() >= settings_.fit_plane_threshold)
+    {
+        distance = vertex->get_surface()->compute_point_to_plane_distance(get_position());
+    }
+
+    // add to list
+    distances_to_plane_of_penetrated_vertex_points_[vertex] = distance;
+}
+
+void Vertex::delete_penetrated_vertex(const std::shared_ptr<Vertex>& vertex)
+{
+    distances_to_plane_of_penetrated_vertex_points_.erase(vertex);
+}
+
+void Vertex::add_self_to_penetrated_vertices()
+{
+    // make copy as list may change
+    std::unordered_map<std::shared_ptr<Vertex>, double, MeshObjectHash> distances_to_plane_of_penetrated_vertex_points_copy = distances_to_plane_of_penetrated_vertex_points_;
+
+    // update
+    for (const auto& [vertex, distance] : distances_to_plane_of_penetrated_vertex_points_copy)
+    {
+        // skip if expired
+        if (vertex->is_expired()) continue;
+
+        // add to neighboring vertex
+        vertex->add_penetrating_vertex_point(shared_from_this());
+
+        // try update
+        vertex->try_update_radius();
+        vertex->try_break_edges();
+
+        // skip if expired
+        if (vertex->is_expired()) continue;
+
+        // try update
+        vertex->try_update_node_box();
+    }
+}
+
+void Vertex::delete_self_from_penetrated_vertices()
+{
+    // make copy as list may change
+    std::unordered_map<std::shared_ptr<Vertex>, double, MeshObjectHash> distances_to_plane_of_penetrated_vertex_points_copy = distances_to_plane_of_penetrated_vertex_points_;
+
+    // update
+    for (const auto& [vertex, distance] : distances_to_plane_of_penetrated_vertex_points_copy)
+    {
+        // try lock the vertex
+        if (!omp_test_nest_lock(&vertex->vertex_lock)) continue;
+
+        // skip if expired
+        if (vertex->is_expired()) 
+        {
+            // release lock
+            omp_unset_nest_lock(&vertex->vertex_lock);
+            continue;
+        }
+
+        // delete from neighboring vertex
+        vertex->delete_penetrating_vertex_point(shared_from_this());
+
+        // try update
+        vertex->try_update_radius();
+        vertex->try_break_edges();
+        
+        // skip if expired
+        if (vertex->is_expired()) 
+        {
+            // release lock
+            omp_unset_nest_lock(&vertex->vertex_lock);
+            continue;
+        }
+
+        // try update
+        vertex->try_update_node_box();
+
+        // release lock
+        omp_unset_nest_lock(&vertex->vertex_lock);
+    }
+}
+
+void Vertex::cascade_radius_reduction_to_connected_vertices()
+{
+    // get connected vertices
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> connected_vertices = compute_connected_vertices();
+
+    // update
+    for (const std::shared_ptr<Vertex>& connected_vertex : connected_vertices)
+    {
+        // skip if expired
+        if (connected_vertex->is_expired()) continue;
+
+        // add nearby vertices to connected vertex
+        for (const auto& [nearby_vertex, distance] : distances_to_nearby_vertices_)
+        {
+            connected_vertex->add_nearby_vertex(nearby_vertex);
+        }
+
+        // add penetrating interior points to connected vertex
+        for (const auto& [interior_point, distance] : distances_to_ray_of_penetrating_interior_points_)
+        {
+            connected_vertex->add_penetrating_interior_point(interior_point);
+        }
+
+        // try update
+        connected_vertex->try_update_radius();
+        connected_vertex->try_break_edges();
+        
+        // skip if expired
+        if (connected_vertex->is_expired()) continue;
+
+        // try update
+        connected_vertex->try_update_node_box();
+    }
+}
+
+double Vertex::compute_radius()
+{
+    // reset to default
+    double new_radius = settings_.radius_value;
+
+    // remove expired entries
+    for (auto it = distances_to_nearby_vertices_.begin(); it != distances_to_nearby_vertices_.end();)
+    {
+        if (it->first->is_expired())
+        {
+            it = distances_to_nearby_vertices_.erase(it);
+        }
+        else
+        {
+            ++it;
+        }
+    }
+
+    // remove expired entries
+    for (auto it = distances_to_ray_of_penetrating_interior_points_.begin(); it != distances_to_ray_of_penetrating_interior_points_.end();)
+    {
+        if (it->first->is_expired())
+        {
+            it = distances_to_ray_of_penetrating_interior_points_.erase(it);
+        }
+        else
+        {
+            ++it;
+        }
+    }
+
+    // remove expired entries
+    for (auto it = distances_to_ray_of_penetrating_vertex_points_.begin(); it != distances_to_ray_of_penetrating_vertex_points_.end();)
+    {
+        if (it->first->is_expired())
+        {
+            it = distances_to_ray_of_penetrating_vertex_points_.erase(it);
+        }
+        else
+        {
+            ++it;
+        }
+    }
+
+    // remove expired entries
+    for (auto it = distances_to_plane_of_penetrated_vertex_points_.begin(); it != distances_to_plane_of_penetrated_vertex_points_.end();)
+    {
+        if (it->first->is_expired())
+        {
+            it = distances_to_plane_of_penetrated_vertex_points_.erase(it);
+        }
+        else
+        {
+            ++it;
+        }
+    }
+
+    // reduce value
+    for (const auto& [neighboring_vertex, distance] : distances_to_nearby_vertices_)
+    {
+        // with extra radius
+        const double corrected_distance = distance + settings_.extra_radius;
+
+        if (corrected_distance < new_radius) new_radius = corrected_distance;
+    }
+
+    // reduce value
+    for (const auto& [interior_point, distance] : distances_to_ray_of_penetrating_interior_points_)
+    {
+        if (distance < new_radius) new_radius = distance;
+    }
+
+    // reduce value
+    for (const auto& [vertex_point, distance] : distances_to_ray_of_penetrating_vertex_points_)
+    {
+        if (distance < new_radius) new_radius = distance;
+    }
+
+    // reduce value
+    for (const auto& [vertex_point, distance] : distances_to_plane_of_penetrated_vertex_points_)
+    {
+        if (distance < new_radius) new_radius = distance;
+    }
+
+    // return radius
+    return new_radius;
+}
+
+void Vertex::try_update_radius()
+{
+    reverse_search_radius_ = compute_radius();
+}
+
+void Vertex::try_break_edges()
+{
+    // if for an edge, any vertices have smaller radius than the length of the edge, delete the edge
+    std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges_copy = edges_;
+    for (const std::shared_ptr<Edge>& edge : edges_copy)
+    {
+        if (edge->is_expired()) continue; // could turn expired if below deletes an edge which then deletes a face
+        if (edge->is_deleting()) continue; // could be deleting
+
+        if (edge->get_length() > edge->get_vertex(0)->get_radius() || edge->get_length() > edge->get_vertex(1)->get_radius())
+        {
+            storage_->delete_edge(edge);
+        }
+    }
+}
+
+void Vertex::try_update_node_box()
+{
+    // previous radius
+    const double previous_radius = (max_.x() - min_.x()) / 2.0;
+
+    // update min and max
+    const Eigen::Vector3d radius_vector = Eigen::Vector3d(reverse_search_radius_, reverse_search_radius_, reverse_search_radius_);
+    min_ = get_position() - radius_vector;
+    max_ = get_position() + radius_vector;
+
+    if (node)
+    {
+        // skip if can't lock node
+        if (!omp_test_nest_lock(&node->omp_lock)) return;
+
+        // update node
+        if (reverse_search_radius_ > previous_radius)
+        {
+            node->box = RRSBoundingBox(min_, max_);
+            node->recursive_expand_parent_box();
+        }
+        else if (reverse_search_radius_ < previous_radius)
+        {
+            node->box = RRSBoundingBox(min_, max_);
+            node->recursive_shrink_parent_box();
+        }
+
+        // release lock
+        omp_unset_nest_lock(&node->omp_lock);
+    }
+}
+
 void Vertex::review_surfaces()
 {
     // review have the following cases
@@ -606,28 +1041,6 @@ void Vertex::review_surfaces()
 
             // find connected interior points
             std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> connected_interior_points = compute_connected_interior_points();
-
-            // reduce the search radius of the connected vertices
-            for (std::shared_ptr<Vertex> vertex : connected_vertices)
-            {
-                // distance
-                double distance = (vertex->get_position() - get_position()).norm();
-                
-                // reduce the search radius of the searched vertex
-                if (settings_.log.review_surfaces) std::cout << ">>   reducing search radius of vertex " << vertex->get_id() << std::endl;
-                vertex->reduce_reverse_radius_search_radius(distance);
-            }
-
-            // reduce the search radius of the connected interior points
-            for (std::shared_ptr<InteriorPoint> interior_point : connected_interior_points)
-            {
-                // distance
-                double distance = (interior_point->get_position() - get_position()).norm();
-                
-                // reduce the search radius of the searched interior point
-                if (settings_.log.review_surfaces) std::cout << ">>   reducing search radius of interior point " << interior_point->get_id() << std::endl;
-                interior_point->reduce_reverse_radius_search_radius(distance);
-            }
 
             storage_->delete_vertex(shared_from_this());
             under_review_ = false;
@@ -898,64 +1311,6 @@ void Vertex::set_reverse_radius_search_radius(double radius)
     }
 }
 
-void Vertex::reduce_reverse_radius_search_radius(double radius)
-{
-    if (radius >= reverse_search_radius_) return;
-
-    // update radius
-    set_reverse_radius_search_radius(radius);
-
-    // cascade to connected vertices
-    // get connected vertices
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> connected_vertices = compute_connected_vertices();
-    for (const std::shared_ptr<Vertex>& vertex : connected_vertices)
-    {
-        // this vertex and or connected vertices could be expired during the process
-        if (vertex->is_expired()) continue;
-        if (is_expired()) return;
-
-        // distance
-        double distance = (vertex->get_position() - get_position()).norm();
-        
-        // reduce the search radius of the searched vertex
-        vertex->reduce_reverse_radius_search_radius(distance+radius);
-    }
-
-    // cascade to interior point of connected faces
-    // get connected interior points
-    std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> connected_interior_points = compute_connected_interior_points();
-    for (const std::shared_ptr<InteriorPoint>& interior_point : connected_interior_points)
-    {
-        // distance
-        double distance = (interior_point->get_position() - get_position()).norm();
-        
-        // reduce the search radius of the searched interior point
-        interior_point->reduce_reverse_radius_search_radius(distance+radius);
-    }
-
-
-    // if for an edge, any vertices have smaller radius than the length of the edge, delete the edge
-    std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges_copy = edges_;
-    for (const std::shared_ptr<Edge>& edge : edges_copy)
-    {
-        if (edge->is_expired()) continue; // could turn expired if below deletes an edge which then deletes a face
-        if (edge->is_deleting()) continue; // could be deleting
-
-        if (edge->get_length() > edge->get_vertex(0)->get_radius() || edge->get_length() > edge->get_vertex(1)->get_radius())
-        {
-            storage_->delete_edge(edge);
-        }
-    }
-}
-
-void Vertex::reduce_previous_radius(double radius)
-{
-    if (radius >= previous_radius_) return;
-
-    // update radius
-    previous_radius_ = radius;
-}
-
 const Eigen::Vector3d& Vertex::get_min() const
 {
     return min_;
@@ -974,14 +1329,7 @@ const double& Vertex::get_radius() const
 const double& Vertex::get_radius(const std::shared_ptr<Surface>& surface) const
 {
     // only used when being connected to a surface by edge and faces
-    if (surface == previous_surface_)
-    {
-        return previous_radius_;
-    }
-    else
-    {
-        return reverse_search_radius_;
-    }
+    return reverse_search_radius_;
 }
 
 bool Vertex::contains(const Eigen::Vector3d& point) const
