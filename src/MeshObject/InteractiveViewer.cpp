@@ -2,6 +2,7 @@
 #include "MeshObject/Vertex.hpp"
 #include "MeshObject/Edge.hpp"
 #include "MeshObject/Face.hpp"
+#include "MeshObject/Storage.hpp"
 #include <unordered_set>
 #include <pcl/io/ply_io.h>
 
@@ -17,6 +18,8 @@ InteractiveViewer<PointT>::InteractiveViewer(Application<PointT>& app)
     app_(app),
     viewer_(new pcl::visualization::PCLVisualizer ("3D Viewer"))
 {   
+    storage_ = app.get_storage();
+    
     viewer_->getRenderWindow()->GlobalWarningDisplayOff(); // Add This Line
     if (settings_.flip_color) 
     {
@@ -236,7 +239,7 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
     if (event.getKeySym() == "KP_Next" && event.keyDown())
     {
         settings_.color_mode = ColorMode::RADIUS;
-        app_.update_radius();
+        storage_->update_radius();
 
         update_display();
 
@@ -427,15 +430,15 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
     // }
     if (event.getKeySym() == "b" && event.keyDown())
     {
-        app_.cleanup_surfaces();
+        storage_->cleanup_surfaces();
         update_display();
 
         // log
-        std::cout << "cleanup surfaces" << std::endl;
+        std::cout << "close holes" << std::endl;
     }
     if (event.getKeySym() == "n" && event.keyDown())
     {
-        app_.remove_non_manifold_edges();
+        storage_->remove_non_manifold_edges();
         update_display();
 
         // log
@@ -443,7 +446,7 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
     }
     if (event.getKeySym() == "m" && event.keyDown())
     {
-        app_.remove_non_manifold_vertices();
+        storage_->remove_non_manifold_vertices();
         update_display();
 
         // log

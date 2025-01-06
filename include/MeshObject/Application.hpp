@@ -45,10 +45,7 @@ public:
     void process_the_rest();
     void restart();
     void rebuild_tree();
-    void cleanup_surfaces();
-    void remove_non_manifold_edges();
-    void remove_non_manifold_vertices();
-    void update_radius();
+    std::shared_ptr<Storage> get_storage();
 
     // getter
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr compute_vertex_point_pointcloud(const Settings& settings);

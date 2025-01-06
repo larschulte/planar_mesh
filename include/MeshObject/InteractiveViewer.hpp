@@ -17,6 +17,7 @@ private:
 
     // objects
     Application<PointT>& app_;
+    std::shared_ptr<Storage> storage_;
     pcl::visualization::PCLVisualizer::Ptr viewer_;
 
     // settings

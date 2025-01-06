@@ -923,27 +923,9 @@ void Application<PointT>::rebuild_tree()
 }
 
 template <typename PointT>
-void Application<PointT>::cleanup_surfaces()
+std::shared_ptr<Storage> Application<PointT>::get_storage()
 {
-    storage_->cleanup_surfaces();
-}
-
-template <typename PointT>
-void Application<PointT>::remove_non_manifold_edges()
-{
-    storage_->remove_non_manifold_edges();
-}
-
-template <typename PointT>
-void Application<PointT>::remove_non_manifold_vertices()
-{
-    storage_->remove_non_manifold_vertices();
-}
-
-template <typename PointT>
-void Application<PointT>::update_radius()
-{
-    storage_->update_radius();
+    return storage_;
 }
 
 template <typename PointT>
