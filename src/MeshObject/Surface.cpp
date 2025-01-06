@@ -678,22 +678,19 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
         double distance = (vertex->get_position() - nearby_vertex->get_position()).norm();
         if (distance > vertex->get_radius(shared_from_this()) || distance > nearby_vertex->get_radius()) continue;
 
-        // if edge intersects
-        if (edge_bvh_.tree_intersect_edge(vertex, nearby_vertex)) 
-        {   
-            // log
-            if (settings_.log.connect_by_edges_and_faces) std::cout << "Try to create edge between " << vertex->get_id() << " and " << nearby_vertex->get_id() << " but is intersected." << std::endl;
-        }
-        else // if edge does not intersect
-        {
-            // create edge
-            std::shared_ptr<Edge> new_edge = storage_->add_edge(vertex, nearby_vertex);
-            connect(new_edge);
-            used_vertices.insert(nearby_vertex);
-            new_edges.insert(new_edge);
+        // skip if edge intersects
+        if (edge_bvh_.tree_intersect_edge(vertex, nearby_vertex)) continue;
 
-            connected = true;
-        }
+        // create edge
+        std::shared_ptr<Edge> new_edge = storage_->add_edge(vertex, nearby_vertex);
+        connect(new_edge);
+
+        // store used vertices and new edges
+        used_vertices.insert(nearby_vertex);
+        new_edges.insert(new_edge);
+
+        // update flag
+        connected = true;
     }
 
     // create faces
@@ -742,38 +739,7 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
             }
             if (triangle_contains_nearby_vertices) continue;
 
-            // don't remove silver triangle, need better ways
-
-            // // skip if face is too thin (silver triangle)
-            // Eigen::Vector3d edge1 = nearby_vertex0->get_position() - vertex->get_position();
-            // Eigen::Vector3d edge2 = nearby_vertex1->get_position() - vertex->get_position();
-            // double angle = std::acos(edge1.normalized().dot(edge2.normalized())) * 180 / M_PI;
-            // if (angle < settings_.min_face_angle) continue;
-            // if (angle > (180 - 2.0*settings_.min_face_angle)) continue;
-
-
-            // // check if face already exists
-            // bool face_exist = false;
-            // std::shared_ptr<Face> existing_face;
-            // for (const std::shared_ptr<Face>& face : existing_edge->get_faces())
-            // {
-            //     if (face->has_vertex(vertex))
-            //     {
-            //         // log
-            //         std::cout << "Face already exists between " << vertex->get_id() << " and " << nearby_vertex0->get_id() << " and " << nearby_vertex1->get_id() << std::endl;
-                    
-            //         face_exist = true;
-            //         existing_face = face;
-            //         break;
-            //     }
-            // }
-            // if (face_exist)
-            // {
-            //     connect(existing_face);
-            //     continue;
-            // }
-
-            // if face not already exists, create face
+            // create face
             std::shared_ptr<Face> new_face = storage_->add_face(shared_from_this(), vertex, nearby_vertex0, nearby_vertex1);
             new_faces.insert(new_face);
         }
