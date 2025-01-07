@@ -731,6 +731,9 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
         }
     }
 
+    // try close holes
+    vertex->try_close_holes_repeatedly();
+    
     // false if new vertex don't have edges
     if (vertex->get_edges().empty()) return false;
 
