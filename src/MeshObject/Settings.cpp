@@ -39,7 +39,7 @@ Settings::Settings()
         "/home/jiahao/datasets/abingdon logs/2024-12-03_10-25-53_rec001_rad301_run2/slam_pose_graph.slam"
     );
 
-    std::string dataset = "nottinghill";
+    std::string dataset = "christchurch";
     data_loader_settings.pcd_file_folder = dataset_map[dataset].first;
     data_loader_settings.pose_file_path = dataset_map[dataset].second;
 
