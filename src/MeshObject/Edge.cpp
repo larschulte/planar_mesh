@@ -445,6 +445,9 @@ const double& Edge::get_length() const
 
 bool Edge::intersects_edge(const std::shared_ptr<Surface>& surface, const std::shared_ptr<Vertex>& vertex0, const std::shared_ptr<Vertex>& vertex1)
 {
+    // skip if deleting
+    if (is_deleting()) return false;
+
     // skip if vertices are connected
     if (has_vertex(vertex0) || has_vertex(vertex1)) return false;
 
