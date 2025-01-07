@@ -460,6 +460,14 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
         // log
         std::cout << "remove non manifold faces" << std::endl;
     }
+    if (event.getKeySym() == "d" && event.keyDown())
+    {
+        storage_->rebuild_tree();
+        update_display();
+
+        // log
+        std::cout << "rebuild tree" << std::endl;
+    }
     if (event.getKeySym() == "l" && event.keyDown())
     {
         // toggle generic points
