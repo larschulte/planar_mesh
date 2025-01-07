@@ -802,3 +802,8 @@ void RRSTree::print_size()
 {
     std::cout << "Size: " << tree_size << std::endl;
 }
+
+unsigned int RRSTree::get_size() const
+{
+    return tree_size;
+}

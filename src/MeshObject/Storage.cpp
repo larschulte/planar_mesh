@@ -892,6 +892,23 @@ BVHReturnType Storage::face_intersection_search(const std::shared_ptr<GenericPoi
     return triangle_bvh_.tree_intersection_search(generic_point, result);
 }
 
+std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> Storage::get_boundary_vertices() const
+{
+    // initialize
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> boundary_vertices;
+
+    // get vertices
+    const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& vertices = get_vertices();
+
+    for (const std::shared_ptr<Vertex>& vertex : vertices)
+    {
+        if (vertex->is_boundary()) boundary_vertices.insert(vertex);
+    }    
+
+    // return
+    return boundary_vertices;
+}
+
 const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& Storage::get_vertices() const
 {
     return vertices_;
@@ -965,6 +982,16 @@ const std::shared_ptr<Edge>& Storage::get_edge(std::shared_ptr<Vertex> vertex1, 
     throw std::runtime_error("Edge not found.");
 }
 
+unsigned int Storage::get_rrs_size() const
+{
+    return rrs_tree_.get_size();
+}
+
+unsigned int Storage::get_bvh_size() const
+{
+    return triangle_bvh_.get_size();
+}
+
 void Storage::print_rrs() const
 {
     rrs_tree_.tree_print();
@@ -985,9 +1012,4 @@ void Storage::rebuild_tree()
 {
     rrs_tree_.rebuild();
     triangle_bvh_.rebuild();
-}
-
-unsigned int Storage::get_bvh_size() const
-{
-    return triangle_bvh_.get_size();
 }

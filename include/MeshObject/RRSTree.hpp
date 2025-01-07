@@ -104,6 +104,7 @@ public:
     bool can_reverse_radius_search();
     std::vector<std::shared_ptr<Vertex>> compute_vertices_list();
     void print_size();
+    unsigned int get_size() const;
     
     void tree_add_vertex(const std::shared_ptr<Vertex>& boundary_vertex);
     void tree_increase_radius(std::shared_ptr<Vertex> boundary_vertex);

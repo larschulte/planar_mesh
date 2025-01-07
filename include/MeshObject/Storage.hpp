@@ -81,6 +81,7 @@ public: // to user
     RRSReturnType reverse_radius_search(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Vertex>>& result);
     BVHReturnType face_intersection_search(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Face>>& result);
 
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> get_boundary_vertices() const;
     const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& get_vertices() const;
     const std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& get_edges() const;
     const std::shared_ptr<Edge>& get_edge(std::shared_ptr<Vertex> vertex1, std::shared_ptr<Vertex> vertex2) const;
@@ -93,12 +94,13 @@ public: // to user
     std::map<std::shared_ptr<Vertex>, int> get_vertex_to_cloud_indices_map() const;
     bool is_expired() const;
 
+    unsigned int get_rrs_size() const;
+    unsigned int get_bvh_size() const;
+
     void print_rrs() const;
     void print_bvh() const;
     void check_tree_rebuild();
     void rebuild_tree();
-
-    unsigned int get_bvh_size() const;
 
 private: // to Vertex and Face class
     friend class Vertex;
