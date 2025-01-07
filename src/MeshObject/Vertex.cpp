@@ -713,22 +713,59 @@ bool Vertex::try_close_holes_between_self_and(std::shared_ptr<Vertex>& vertex0, 
 
 bool Vertex::try_close_holes()
 {
-    // skip if not longer boundary
-    if (!is_boundary()) return false;
+    // initialize
+    bool changed = false;
 
-    // get connected boundary vertices
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> connected_boundary_vertices = get_connected_boundary_vertices();
+    // initialize
+    bool repeat_loop = true;
+    while (repeat_loop)
+    {
+        repeat_loop = false;
 
-    // skip if not two connected boundary vertices
-    if (connected_boundary_vertices.size() != 2) return false;
+        // get connected boundary vertices
+        std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> connected_boundary_vertices = get_connected_boundary_vertices();
 
-    // get the two connected boundary vertices
-    auto it = connected_boundary_vertices.begin();
-    std::shared_ptr<Vertex> vertex0 = *it;
-    std::shared_ptr<Vertex> vertex1 = *(++it);
+        // skip if less than two connected boundary vertex (this includes when the vertex itself is not boundary)
+        if (connected_boundary_vertices.size() < 2)
+        {
+            break;
+        }
 
-    // try close holes between the two vertices
-    return try_close_holes_between_self_and(vertex0, vertex1);
+        // compute connected boundary vertices with angle
+        std::vector<std::pair<std::shared_ptr<Vertex>, double>> connected_boundary_vertices_with_angle;
+        for (const auto& vertex : connected_boundary_vertices)
+        {
+            // use projected position
+            Eigen::Vector2d direction = vertex->get_surface_coordinate() - get_surface_coordinate();
+            double angle = std::atan2(direction.y(), direction.x());
+
+            // add to list
+            connected_boundary_vertices_with_angle.push_back(std::make_pair(vertex, angle));
+        }
+
+        // sort by angle
+        std::sort(connected_boundary_vertices_with_angle.begin(), connected_boundary_vertices_with_angle.end(), [](const std::pair<std::shared_ptr<Vertex>, double>& a, const std::pair<std::shared_ptr<Vertex>, double>& b) { return a.second < b.second; });
+
+        // create pairs of connected boundary vertices
+        std::vector<std::pair<std::shared_ptr<Vertex>, std::shared_ptr<Vertex>>> connected_boundary_vertex_pairs;
+        for (int i = 0; i < connected_boundary_vertices_with_angle.size(); i++)
+        {
+            connected_boundary_vertex_pairs.push_back(std::make_pair(connected_boundary_vertices_with_angle[i].first, connected_boundary_vertices_with_angle[(i + 1) % connected_boundary_vertices_with_angle.size()].first));
+        }
+
+        // try close holes between the two vertices
+        for (auto& [vertex0, vertex1] : connected_boundary_vertex_pairs)
+        {
+            if (try_close_holes_between_self_and(vertex0, vertex1)) 
+            {
+                changed = true;
+                repeat_loop = true;
+                break;
+            }
+        }
+    }
+
+    return changed;
 }
 
 void Vertex::remove_all_edges()
