@@ -79,6 +79,8 @@ struct Settings
 {
     Settings();
 
+    bool edge_is_short_enough(const double& edge_length, const double& radius0, const double& radius1) const;
+
     // data loader settings
     DataLoader_Settings data_loader_settings;
 

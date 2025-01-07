@@ -674,8 +674,10 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
         if (!nearby_vertex->is_boundary()) continue;
 
         // skip if edge is longer than any of the radius of vertices
-        double distance = (vertex->get_position() - nearby_vertex->get_position()).norm();
-        if (distance > vertex->get_radius(shared_from_this()) || distance > nearby_vertex->get_radius()) continue;
+        const double distance = (vertex->get_position() - nearby_vertex->get_position()).norm();
+        const double radius0 = vertex->get_radius(shared_from_this());
+        const double radius1 = nearby_vertex->get_radius();
+        if (!settings_.edge_is_short_enough(distance, radius0, radius1)) continue;
 
         // skip if edge intersects
         if (edge_bvh_.tree_intersect_edge(vertex, nearby_vertex)) continue;

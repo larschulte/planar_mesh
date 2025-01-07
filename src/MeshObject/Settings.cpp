@@ -156,3 +156,8 @@ Settings::Settings()
     show_sphere = false;
     number_of_spheres_to_display = 60;
 }
+
+bool Settings::edge_is_short_enough(const double& edge_length, const double& radius0, const double& radius1) const
+{
+    return edge_length < radius0 && edge_length < radius1;
+}

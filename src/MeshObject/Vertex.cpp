@@ -646,8 +646,10 @@ bool Vertex::try_close_holes_between_self_and(std::shared_ptr<Vertex>& vertex0, 
     bool changed = false;
 
     // skip if edge is not short enough
-    double edge_length = (vertex0->get_position() - vertex1->get_position()).norm();
-    if (edge_length > vertex0->get_radius() || edge_length > vertex1->get_radius()) return changed;
+    const double edge_length = (vertex0->get_position() - vertex1->get_position()).norm();
+    const double radius0 = vertex0->get_radius();
+    const double radius1 = vertex1->get_radius();
+    if (!settings_.edge_is_short_enough(edge_length, radius0, radius1)) return changed;
 
     // skip if edge intersects
     if (get_surface()->tree_intersect_edge(vertex0, vertex1)) return changed;
@@ -1235,7 +1237,10 @@ void Vertex::try_break_edges()
         if (edge->is_expired()) continue; // could turn expired if below deletes an edge which then deletes a face
         if (edge->is_deleting()) continue; // could be deleting
 
-        if (edge->get_length() > edge->get_vertex(0)->get_radius() || edge->get_length() > edge->get_vertex(1)->get_radius())
+        const double edge_length = edge->get_length();
+        const double radius0 = edge->get_vertex(0)->get_radius();
+        const double radius1 = edge->get_vertex(1)->get_radius();
+        if (!settings_.edge_is_short_enough(edge_length, radius0, radius1))
         {
             storage_->delete_edge(edge);
         }
