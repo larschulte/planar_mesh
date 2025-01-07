@@ -640,24 +640,10 @@ bool Vertex::try_close_holes_repeatedly()
     return changed;
 }
 
-bool Vertex::try_close_holes()
+bool Vertex::try_close_holes_between_self_and(std::shared_ptr<Vertex>& vertex0, std::shared_ptr<Vertex>& vertex1) 
 {
-    // changed flag
+    // initialize flag
     bool changed = false;
-
-    // skip if not longer boundary
-    if (!is_boundary()) return changed;
-
-    // get connected boundary vertices
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> connected_boundary_vertices = get_connected_boundary_vertices();
-
-    // skip if not two connected boundary vertices
-    if (connected_boundary_vertices.size() != 2) return changed;
-
-    // get the two connected boundary vertices
-    auto it = connected_boundary_vertices.begin();
-    std::shared_ptr<Vertex> vertex0 = *it;
-    std::shared_ptr<Vertex> vertex1 = *(++it);
 
     // skip if edge is not short enough
     double edge_length = (vertex0->get_position() - vertex1->get_position()).norm();
@@ -723,6 +709,26 @@ bool Vertex::try_close_holes()
 
     // return changed
     return changed;
+}
+
+bool Vertex::try_close_holes()
+{
+    // skip if not longer boundary
+    if (!is_boundary()) return false;
+
+    // get connected boundary vertices
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> connected_boundary_vertices = get_connected_boundary_vertices();
+
+    // skip if not two connected boundary vertices
+    if (connected_boundary_vertices.size() != 2) return false;
+
+    // get the two connected boundary vertices
+    auto it = connected_boundary_vertices.begin();
+    std::shared_ptr<Vertex> vertex0 = *it;
+    std::shared_ptr<Vertex> vertex1 = *(++it);
+
+    // try close holes between the two vertices
+    return try_close_holes_between_self_and(vertex0, vertex1);
 }
 
 void Vertex::remove_all_edges()
