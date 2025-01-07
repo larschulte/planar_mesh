@@ -211,6 +211,11 @@ void Edge::disconnect(const std::shared_ptr<Edge>& sibling_edge)
     if (erased) sibling_edge->disconnect(shared_from_this());
 }
 
+void Edge::set_can_self_destruct(bool can_self_destruct)
+{
+    can_self_destruct_ = can_self_destruct;
+}
+
 bool Edge::is_connected_to_boundary_edges(std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& all_connected_faces, std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& all_connected_edges) const
 {
     // check for each face
