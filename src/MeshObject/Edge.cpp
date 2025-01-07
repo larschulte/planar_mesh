@@ -98,6 +98,10 @@ void Edge::connect(const std::shared_ptr<Face>& face)
 
     // connect
     bool inserted = faces_.insert(face).second;
+    if (inserted)
+    {
+        if (faces_.size() > 2) throw std::runtime_error("Edge connected to more than 2 faces.");
+    }
     if (inserted) face->connect(shared_from_this());
 
     // update boundary state
@@ -205,6 +209,29 @@ void Edge::disconnect(const std::shared_ptr<Edge>& sibling_edge)
     // disconnect
     bool erased = sibling_edges_.erase(sibling_edge);
     if (erased) sibling_edge->disconnect(shared_from_this());
+}
+
+void Edge::set_can_self_destruct(bool can_self_destruct)
+{
+    can_self_destruct_ = can_self_destruct;
+}
+
+bool Edge::is_connected_to_boundary_edges(std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& all_connected_faces, std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& all_connected_edges) const
+{
+    // check for each face
+    for (const std::shared_ptr<Face>& face : get_faces())
+    {
+        // add to visited faces
+        const bool inserted = all_connected_faces.insert(face).second;
+
+        // skip if face is already visited
+        if (!inserted) continue;
+
+        // return true if face is boundary
+        if (face->is_connected_to_boundary_edges(all_connected_faces, all_connected_edges)) return true;
+    }
+
+    return false;
 }
 
 void Edge::swap(const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2)
@@ -375,6 +402,12 @@ void Edge::remove_searchable_state()
     }
 }
 
+bool Edge::is_non_manifold() const
+{
+    // non manifold if connected to more than 2 faces
+    return faces_.size() > 2;
+}
+
 const std::shared_ptr<Surface>& Edge::get_surface() const
 {
     return surface_;
@@ -412,6 +445,9 @@ const double& Edge::get_length() const
 
 bool Edge::intersects_edge(const std::shared_ptr<Surface>& surface, const std::shared_ptr<Vertex>& vertex0, const std::shared_ptr<Vertex>& vertex1)
 {
+    // skip if deleting
+    if (is_deleting()) return false;
+
     // skip if vertices are connected
     if (has_vertex(vertex0) || has_vertex(vertex1)) return false;
 

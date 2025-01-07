@@ -625,6 +625,124 @@ void Storage::clear_queues()
     }
 }
 
+void Storage::cleanup_surfaces()
+{
+    // make copy of surfaces
+    std::vector<std::shared_ptr<Surface>> surfaces_copy(surfaces_.begin(), surfaces_.end());
+
+    // for each surface
+    for (const std::shared_ptr<Surface>& surface : surfaces_copy)
+    {
+        // delete if surface is seed
+        if (surface->get_total_point_size() < settings_.fit_plane_threshold) 
+        {
+            delete_surface(surface);
+            continue;
+        }
+
+        // delete if surface have no boudary point
+        std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertices = surface->get_vertices();
+        bool has_boundary = false;
+        for (const std::shared_ptr<Vertex>& vertex : vertices)
+        {
+            if (vertex->is_boundary())
+            {
+                has_boundary = true;
+                break;
+            }
+        }
+        if (!has_boundary) 
+        {
+            delete_surface(surface);
+            continue;
+        }
+
+        // delete if number of face is less than 3
+        if (surface->get_faces().size() < 3) 
+        {
+            delete_surface(surface);
+            continue;
+        }
+
+
+        // what makes a surface bad?
+        
+    }
+
+    // after cleaning up, try closing the holes in each surface
+    for (const std::shared_ptr<Surface>& surface : surfaces_copy)
+    {
+        // skip if expired
+        if (surface->is_expired()) continue;
+
+        // try closing holes
+        surface->try_close_holes_repeatedly();
+    }
+}
+
+void Storage::remove_non_manifold_edges()
+{
+    // make copy of edges
+    std::vector<std::shared_ptr<Edge>> edges_copy(edges_.begin(), edges_.end());
+
+    // for each edge
+    for (const std::shared_ptr<Edge>& edge : edges_copy)
+    {
+        // delete if edge is non-manifold
+        if (edge->is_non_manifold()) delete_edge(edge);
+    }
+}
+
+void Storage::remove_non_manifold_faces()
+{
+    // initialize
+    std::vector<std::shared_ptr<Face>> non_manifold_faces;
+    
+    // collect all non manifold faces
+    for (const std::shared_ptr<Face>& face : faces_)
+    {
+        if (face->is_non_manifold()) non_manifold_faces.push_back(face);
+    }
+
+    // delete all non manifold faces
+    for (const std::shared_ptr<Face>& face : non_manifold_faces)
+    {
+        // skip if face is expired
+        if (face->is_expired()) continue;
+
+        // delete face
+        delete_face(face);
+    }
+}
+
+void Storage::remove_non_manifold_vertices()
+{
+    // make copy of vertices
+    std::vector<std::shared_ptr<Vertex>> vertices_copy(vertices_.begin(), vertices_.end());
+
+    // for each vertex
+    for (const std::shared_ptr<Vertex>& vertex : vertices_copy)
+    {
+        // delete if vertex is non-manifold
+        if (vertex->is_non_manifold()) delete_vertex(vertex);
+    }
+}
+
+void Storage::update_radius()
+{
+    // make copy of vertices
+    std::vector<std::shared_ptr<Vertex>> vertices_copy(vertices_.begin(), vertices_.end());
+
+    for (const std::shared_ptr<Vertex>& vertex : vertices_copy)
+    {
+        // skip if vertex is expired
+        if (vertex->is_expired()) continue;
+
+        // try update radius
+        vertex->try_update_radius();
+    }
+}
+
 void Storage::add_searchable_vertex(const std::shared_ptr<Vertex>& vertex)
 {
     // add to a queue that will be processed once all locks are released

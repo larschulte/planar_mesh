@@ -34,6 +34,10 @@ Settings::Settings()
         "/home/jiahao/datasets/2024-11-19_14-05-08_rec013/slam_clouds/",
         "/home/jiahao/datasets/2024-11-19_14-05-08_rec013/slam_pose_graph.slam"
     );
+    dataset_map["abingdon"] = std::make_pair(
+        "/home/jiahao/datasets/abingdon logs/2024-12-03_10-25-53_rec001_rad301_run2/slam_clouds/",
+        "/home/jiahao/datasets/abingdon logs/2024-12-03_10-25-53_rec001_rad301_run2/slam_pose_graph.slam"
+    );
 
     std::string dataset = "nottinghill";
     data_loader_settings.pcd_file_folder = dataset_map[dataset].first;
@@ -67,7 +71,7 @@ Settings::Settings()
     shuffle_pointcloud = true;
     use_radius_value = true;
     pointcloud_fraction = 1;
-    radius_value = 3;
+    radius_value = 1;
     extra_radius = 0.1;
     duplicated_point_distance_threshold = 0.0; // if two points are closer than this distance, they are considered the same point
 

@@ -41,6 +41,10 @@ public:
     void disconnect(const std::shared_ptr<Surface>& surface);
     void disconnect(const std::shared_ptr<Edge>& sibling_edge);
 
+    void set_can_self_destruct(bool can_self_destruct);
+
+    bool is_connected_to_boundary_edges(std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& all_connected_faces, std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& all_connected_edges) const;
+
     void swap(const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2);
 
     void update_confirmed_status();
@@ -56,6 +60,8 @@ public:
     void update_singular_state();
     void update_searchable_state();
     void remove_searchable_state();
+
+    bool is_non_manifold() const;
 
     bool intersects_edge(const std::shared_ptr<Surface>& surface, const std::shared_ptr<Vertex>& vertex0, const std::shared_ptr<Vertex>& vertex1);
 

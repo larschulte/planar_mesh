@@ -88,12 +88,19 @@ public:
     void disconnect(const std::shared_ptr<Face>& face);
     void disconnect(const std::shared_ptr<InteriorPoint>& interior_point);
 
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> get_boundary_vertices();
+    bool try_close_holes_repeatedly();
+    bool try_close_holes();
+
+    void remove_non_manifold_edges();
+
     void swap(const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2);
     void pause_normal_std_update();
     void resume_normal_std_update();
 
     void set_random_color();
 
+    bool tree_intersect_edge(const std::shared_ptr<Vertex>& vertex0, const std::shared_ptr<Vertex>& vertex1);
     bool connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& all_nearby_vertices);
 
     void compute_surface_position_std_in_normal_direction();

@@ -52,6 +52,8 @@ public:
 
     double& get_projected_uncertainty();
 
+    const std::shared_ptr<Edge>& get_edge(const std::shared_ptr<Vertex>& vertex) const;
+
     // void try_merge_surfaces();
 
     const Eigen::Vector3d& buffer_compute_projected_position(const std::shared_ptr<Surface> surface);
@@ -77,6 +79,21 @@ public:
     void disconnect(const std::shared_ptr<Face>& face);
     void disconnect(const std::shared_ptr<Surface>& surface);
     void disconnect(const std::shared_ptr<Vertex>& sibling_vertex);
+
+    std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> get_connected_boundary_edges() const;
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> get_connected_boundary_vertices();
+    bool check_connected_by_edge(const std::shared_ptr<Vertex>& vertex);
+    bool check_connected_by_face(const std::shared_ptr<Vertex>& vertex0, const std::shared_ptr<Vertex>& vertex1);
+    bool try_close_holes_repeatedly();
+    bool try_close_holes_between_self_and(std::shared_ptr<Vertex>& vertex0, std::shared_ptr<Vertex>& vertex1);
+    bool try_close_holes();
+    void remove_all_edges();
+
+    // can self destruct flag
+    void set_can_self_destruct(bool can_self_destruct);
+
+    // non manifold
+    bool is_non_manifold() const;
 
     // point - nearby vertex
     void add_nearby_vertex(const std::shared_ptr<Vertex>& rrs_vertex);

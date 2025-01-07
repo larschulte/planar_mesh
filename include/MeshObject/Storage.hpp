@@ -67,6 +67,12 @@ public: // to user
     unsigned int get_abort_queue_size();
     void clear_queues();
 
+    void cleanup_surfaces();
+    void remove_non_manifold_edges();
+    void remove_non_manifold_vertices();
+    void remove_non_manifold_faces();
+    void update_radius();
+
     void add_points_in_add_searchable_vertex_queue();
     void add_or_remove_vertices_from_rrs_tree();
     void add_or_remove_faces_from_bvh_tree();

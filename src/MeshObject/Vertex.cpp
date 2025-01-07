@@ -267,6 +267,16 @@ double& Vertex::get_projected_uncertainty()
     return projected_uncertainty_;
 }
 
+const std::shared_ptr<Edge>& Vertex::get_edge(const std::shared_ptr<Vertex>& vertex) const
+{
+    for (const std::shared_ptr<Edge>& edge : edges_)
+    {
+        if (edge->has_vertex(vertex)) return edge;
+    }
+
+    throw std::runtime_error("Edge not found.");
+}
+
 // void Vertex::try_merge_surfaces()
 // {
     // // check if there is only one surface
@@ -501,7 +511,7 @@ void Vertex::disconnect(const std::shared_ptr<Edge>& edge)
     check_if_update_search_tree();
 
     // check self destruct
-    if (!deleting_ && edges_.empty()) storage_->delete_vertex(shared_from_this());
+    if (!deleting_ && edges_.empty() && can_self_destruct_) storage_->delete_vertex(shared_from_this());
 }
 
 void Vertex::disconnect(const std::shared_ptr<Face>& face)
@@ -556,6 +566,231 @@ void Vertex::disconnect(const std::shared_ptr<Vertex>& sibling_vertex)
     // disconnect
     bool erased = sibling_vertices_.erase(sibling_vertex);
     if (erased) sibling_vertex->disconnect(shared_from_this());
+}
+
+std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> Vertex::get_connected_boundary_edges() const
+{
+    // initialize
+    std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> connected_boundary_edges;
+
+    // get boundary edges
+    for (const auto& edge : get_edges())
+    {
+        if (edge->is_boundary()) connected_boundary_edges.insert(edge);
+    }
+
+    // return
+    return connected_boundary_edges;
+}
+
+std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> Vertex::get_connected_boundary_vertices()
+{
+    // get connected boundary edges
+    std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> connected_boundary_edges = get_connected_boundary_edges();
+
+    // get connected boundary vertices
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> connected_boundary_vertices;
+    for (const auto& edge : connected_boundary_edges)
+    {
+        connected_boundary_vertices.insert(edge->get_vertex(0));
+        connected_boundary_vertices.insert(edge->get_vertex(1));
+    }
+    connected_boundary_vertices.erase(shared_from_this()); // remove self
+
+    // return
+    return connected_boundary_vertices;
+}
+
+bool Vertex::check_connected_by_edge(const std::shared_ptr<Vertex>& vertex)
+{
+    // check if connected by edge
+    for (const auto& edge : edges_)
+    {
+        if (edge->get_vertex(0) == vertex || edge->get_vertex(1) == vertex) return true;
+    }
+
+    // return
+    return false;
+}
+
+bool Vertex::check_connected_by_face(const std::shared_ptr<Vertex>& vertex0, const std::shared_ptr<Vertex>& vertex1)
+{
+    // check if connected by face
+    for (const auto& face : faces_)
+    {
+        if (face->has_vertex(vertex0) && face->has_vertex(vertex1)) return true;
+    }
+
+    // return
+    return false;
+}
+
+bool Vertex::try_close_holes_repeatedly()
+{
+    // initialize
+    bool changed = false;
+
+    // try close holes repeatedly
+    while (try_close_holes()) 
+    {
+        changed = true;
+    }
+
+    // return
+    return changed;
+}
+
+bool Vertex::try_close_holes_between_self_and(std::shared_ptr<Vertex>& vertex0, std::shared_ptr<Vertex>& vertex1) 
+{
+    // initialize flag
+    bool changed = false;
+
+    // skip if edge is not short enough
+    double edge_length = (vertex0->get_position() - vertex1->get_position()).norm();
+    if (edge_length > vertex0->get_radius() || edge_length > vertex1->get_radius()) return changed;
+
+    // skip if edge intersects
+    if (get_surface()->tree_intersect_edge(vertex0, vertex1)) return changed;
+
+    // create edge if edge does not exist
+    const bool edge_exist = vertex0->check_connected_by_edge(vertex1);
+    if (!edge_exist)
+    {
+        // create edge
+        std::shared_ptr<Edge> new_edge = storage_->add_edge(vertex0, vertex1);
+        get_surface()->connect(new_edge);
+
+        // update flag
+        changed = true;
+    }
+
+    // skip if edge between 0 and 1 is not boundary
+    if (!vertex0->get_edge(vertex1)->is_boundary()) return changed;
+
+    // create face if face does not exist
+    const bool face_exist = check_connected_by_face(vertex0, vertex1);
+    if (!face_exist)
+    {
+        // create face
+        std::shared_ptr<Face> new_face = storage_->add_face(get_surface(), shared_from_this(), vertex0, vertex1);
+        get_surface()->connect(new_face);
+
+        // un-add the face if face is non-manifold
+        if (new_face->is_non_manifold())
+        {
+            // set can self destruct
+            set_can_self_destruct(false);
+            vertex0->set_can_self_destruct(false);
+            vertex1->set_can_self_destruct(false);
+            get_edge(vertex0)->set_can_self_destruct(false);
+            get_edge(vertex1)->set_can_self_destruct(false);
+            vertex0->get_edge(vertex1)->set_can_self_destruct(false);
+
+            // delete face
+            storage_->delete_face(new_face);
+
+            // set can self destruct
+            set_can_self_destruct(true);
+            vertex0->set_can_self_destruct(true);
+            vertex1->set_can_self_destruct(true);
+            get_edge(vertex0)->set_can_self_destruct(true);
+            get_edge(vertex1)->set_can_self_destruct(true);
+            vertex0->get_edge(vertex1)->set_can_self_destruct(true);
+
+            // update flag
+            changed = false;
+        }
+        else
+        {
+            // update flag
+            changed = true;
+        }
+    }
+
+    // return changed
+    return changed;
+}
+
+bool Vertex::try_close_holes()
+{
+    // initialize
+    bool changed = false;
+
+    // initialize
+    bool repeat_loop = true;
+    while (repeat_loop)
+    {
+        repeat_loop = false;
+
+        // get connected boundary vertices
+        std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> connected_boundary_vertices = get_connected_boundary_vertices();
+
+        // skip if less than two connected boundary vertex (this includes when the vertex itself is not boundary)
+        if (connected_boundary_vertices.size() < 2)
+        {
+            break;
+        }
+
+        // compute connected boundary vertices with angle
+        std::vector<std::pair<std::shared_ptr<Vertex>, double>> connected_boundary_vertices_with_angle;
+        for (const auto& vertex : connected_boundary_vertices)
+        {
+            // use projected position
+            Eigen::Vector2d direction = vertex->get_surface_coordinate() - get_surface_coordinate();
+            double angle = std::atan2(direction.y(), direction.x());
+
+            // add to list
+            connected_boundary_vertices_with_angle.push_back(std::make_pair(vertex, angle));
+        }
+
+        // sort by angle
+        std::sort(connected_boundary_vertices_with_angle.begin(), connected_boundary_vertices_with_angle.end(), [](const std::pair<std::shared_ptr<Vertex>, double>& a, const std::pair<std::shared_ptr<Vertex>, double>& b) { return a.second < b.second; });
+
+        // create pairs of connected boundary vertices
+        std::vector<std::pair<std::shared_ptr<Vertex>, std::shared_ptr<Vertex>>> connected_boundary_vertex_pairs;
+        for (int i = 0; i < connected_boundary_vertices_with_angle.size(); i++)
+        {
+            connected_boundary_vertex_pairs.push_back(std::make_pair(connected_boundary_vertices_with_angle[i].first, connected_boundary_vertices_with_angle[(i + 1) % connected_boundary_vertices_with_angle.size()].first));
+        }
+
+        // try close holes between the two vertices
+        for (auto& [vertex0, vertex1] : connected_boundary_vertex_pairs)
+        {
+            if (try_close_holes_between_self_and(vertex0, vertex1)) 
+            {
+                changed = true;
+                repeat_loop = true;
+                break;
+            }
+        }
+    }
+
+    return changed;
+}
+
+void Vertex::remove_all_edges()
+{
+    // make copy of edges
+    std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges_copy = edges_;
+
+    // remove all edges
+    for (const auto& edge : edges_copy)
+    {
+        disconnect(edge);
+    }
+}
+
+void Vertex::set_can_self_destruct(bool can_self_destruct)
+{
+    can_self_destruct_ = can_self_destruct;
+}
+
+bool Vertex::is_non_manifold() const
+{
+    // non manifold if 
+    // 1. connected by one boundary edge
+    // 2. connected by more than 2 boundary edges
+    return get_connected_boundary_edges().size() > 2 || get_connected_boundary_edges().size() == 1;
 }
 
 void Vertex::add_nearby_vertex(const std::shared_ptr<Vertex>& rrs_vertex)
@@ -620,6 +855,15 @@ void Vertex::delete_self_from_nearby_vertices()
             continue;
         }
 
+        // try lock the surface
+        std::shared_ptr<Surface> surface_copy = neighboring_vertex->get_surface();
+        if (!omp_test_nest_lock(&surface_copy->lock)) 
+        {
+            // release vertex lock
+            omp_unset_nest_lock(&neighboring_vertex->vertex_lock);
+            continue;
+        }
+
         // delete from neighboring vertex
         neighboring_vertex->delete_nearby_vertex(shared_from_this());        
 
@@ -632,14 +876,19 @@ void Vertex::delete_self_from_nearby_vertices()
         {
             // release lock
             omp_unset_nest_lock(&neighboring_vertex->vertex_lock);
+            omp_unset_nest_lock(&surface_copy->lock);
             continue;
         }
+
+        // try close holes
+        neighboring_vertex->try_close_holes_repeatedly();
 
         // try update
         neighboring_vertex->try_update_node_box();
 
         // release lock
         omp_unset_nest_lock(&neighboring_vertex->vertex_lock);
+        omp_unset_nest_lock(&surface_copy->lock);
     }
 }
 
@@ -709,6 +958,15 @@ void Vertex::delete_self_from_penetrating_vertex_points()
             continue;
         }
 
+        // try lock the surface
+        std::shared_ptr<Surface> surface_copy = vertex->get_surface();
+        if (!omp_test_nest_lock(&surface_copy->lock)) 
+        {
+            // release vertex lock
+            omp_unset_nest_lock(&vertex->vertex_lock);
+            continue;
+        }
+
         // delete from neighboring vertex
         vertex->delete_penetrated_vertex(shared_from_this());
 
@@ -721,14 +979,19 @@ void Vertex::delete_self_from_penetrating_vertex_points()
         {
             // release lock
             omp_unset_nest_lock(&vertex->vertex_lock);
+            omp_unset_nest_lock(&surface_copy->lock);
             continue;
         }
+
+        // try close holes
+        vertex->try_close_holes_repeatedly();
 
         // try update
         vertex->try_update_node_box();
 
         // release lock
         omp_unset_nest_lock(&vertex->vertex_lock);
+        omp_unset_nest_lock(&surface_copy->lock);
     }
 }
 
@@ -798,6 +1061,15 @@ void Vertex::delete_self_from_penetrated_vertices()
             continue;
         }
 
+        // try lock the surface
+        std::shared_ptr<Surface> surface_copy = vertex->get_surface();
+        if (!omp_test_nest_lock(&surface_copy->lock)) 
+        {
+            // release vertex lock
+            omp_unset_nest_lock(&vertex->vertex_lock);
+            continue;
+        }
+
         // delete from neighboring vertex
         vertex->delete_penetrating_vertex_point(shared_from_this());
 
@@ -810,14 +1082,19 @@ void Vertex::delete_self_from_penetrated_vertices()
         {
             // release lock
             omp_unset_nest_lock(&vertex->vertex_lock);
+            omp_unset_nest_lock(&surface_copy->lock);
             continue;
         }
+
+        // try close holes
+        vertex->try_close_holes_repeatedly();
 
         // try update
         vertex->try_update_node_box();
 
         // release lock
         omp_unset_nest_lock(&vertex->vertex_lock);
+        omp_unset_nest_lock(&surface_copy->lock);
     }
 }
 

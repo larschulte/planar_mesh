@@ -45,6 +45,7 @@ public:
     void process_the_rest();
     void restart();
     void rebuild_tree();
+    std::shared_ptr<Storage> get_storage();
 
     // getter
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr compute_vertex_point_pointcloud(const Settings& settings);

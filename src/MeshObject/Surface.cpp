@@ -642,11 +642,13 @@ void Surface::connect(const std::shared_ptr<Vertex>& vertex)
     }
 }
 
+bool Surface::tree_intersect_edge(const std::shared_ptr<Vertex>& vertex0, const std::shared_ptr<Vertex>& vertex1)
+{
+    return edge_bvh_.tree_intersect_edge(vertex0, vertex1);
+}
+
 bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& all_nearby_vertices)
 {
-    // initialize
-    bool connected = false;
-
     // get nearby vertices in the same surface
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> nearby_vertices;
     for (const auto& nearby_vertex : all_nearby_vertices)
@@ -665,48 +667,49 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
     }
 
     // create edges
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> used_vertices;
     std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> new_edges;
     for (const auto& nearby_vertex : nearby_vertices)
     {
+        // skip if vertex is not boundary
+        if (!nearby_vertex->is_boundary()) continue;
+
         // skip if edge is longer than any of the radius of vertices
         double distance = (vertex->get_position() - nearby_vertex->get_position()).norm();
         if (distance > vertex->get_radius(shared_from_this()) || distance > nearby_vertex->get_radius()) continue;
 
-        // if edge intersects
-        if (edge_bvh_.tree_intersect_edge(vertex, nearby_vertex)) 
-        {   
-            // log
-            if (settings_.log.connect_by_edges_and_faces) std::cout << "Try to create edge between " << vertex->get_id() << " and " << nearby_vertex->get_id() << " but is intersected." << std::endl;
-        }
-        else // if edge does not intersect
-        {
-            // create edge
-            std::shared_ptr<Edge> new_edge = storage_->add_edge(vertex, nearby_vertex);
-            connect(new_edge);
-            used_vertices.insert(nearby_vertex);
-            new_edges.insert(new_edge);
+        // skip if edge intersects
+        if (edge_bvh_.tree_intersect_edge(vertex, nearby_vertex)) continue;
 
-            connected = true;
-        }
+        // create edge
+        std::shared_ptr<Edge> new_edge = storage_->add_edge(vertex, nearby_vertex);
+        connect(new_edge);
+
+        // store used vertices and new edges
+        new_edges.insert(new_edge);
     }
 
     // create faces
     std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> new_faces;
-    for (const std::shared_ptr<Vertex>& nearby_vertex0 : used_vertices)
+    for (const auto& edge0 : new_edges)
     {
-        for (const std::shared_ptr<Vertex>& nearby_vertex1 : used_vertices)
-        {
+        // get vertex0
+        std::shared_ptr<Vertex> vertex0 = edge0->get_vertex(0) != vertex ? edge0->get_vertex(0) : edge0->get_vertex(1);
+
+        for (const auto& edge1 : new_edges)
+        {            
+            // get vertex1
+            std::shared_ptr<Vertex> vertex1 = edge1->get_vertex(0) != vertex ? edge1->get_vertex(0) : edge1->get_vertex(1);
+
             // skip if repeated
-            if (nearby_vertex1 <= nearby_vertex0) continue;
+            if (vertex0 <= vertex1) continue;
 
             // skip if edge does not exist between the two vertices
             bool edge_exist = false;
             std::shared_ptr<Edge> existing_edge;
-            for (const std::shared_ptr<Edge>& edge : nearby_vertex0->get_edges())
+            for (const std::shared_ptr<Edge>& edge : vertex0->get_edges())
             {
                 if (edge->get_surface() != shared_from_this()) continue;
-                if (edge->has_vertex(nearby_vertex1))
+                if (edge->has_vertex(vertex1))
                 {
                     edge_exist = true;
                     existing_edge = edge;
@@ -717,65 +720,46 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
 
             // skip if edge is not boundary
             if (!existing_edge->is_boundary()) continue;
+            // skip if edge0 is not boundary
+            if (!edge0->is_boundary()) continue;
+            // skip if edge1 is not boundary
+            if (!edge1->is_boundary()) continue;
 
-            // skip if face contains nearby vertices
-            // get surface coordinate of the vertices
-            Eigen::Vector2d surface_coordinate0 = vertex->get_surface_coordinate(shared_from_this());
-            Eigen::Vector2d surface_coordinate1 = nearby_vertex0->get_surface_coordinate(shared_from_this());
-            Eigen::Vector2d surface_coordinate2 = nearby_vertex1->get_surface_coordinate(shared_from_this());
-            // check if the triangle formed by the vertices contains any other nearby_vertices
-            bool triangle_contains_nearby_vertices = false;
-            for (const std::shared_ptr<Vertex>& nearby_vertex : nearby_vertices)
-            {
-                if (nearby_vertex == nearby_vertex0 || nearby_vertex == nearby_vertex1) continue;
-                Eigen::Vector2d surface_coordinate = nearby_vertex->get_surface_coordinate(shared_from_this());
-                if (is_point_in_triangle(surface_coordinate0, surface_coordinate1, surface_coordinate2, surface_coordinate))
-                {
-                    triangle_contains_nearby_vertices = true;
-                    break;
-                }
-            }
-            if (triangle_contains_nearby_vertices) continue;
-
-            // don't remove silver triangle, need better ways
-
-            // // skip if face is too thin (silver triangle)
-            // Eigen::Vector3d edge1 = nearby_vertex0->get_position() - vertex->get_position();
-            // Eigen::Vector3d edge2 = nearby_vertex1->get_position() - vertex->get_position();
-            // double angle = std::acos(edge1.normalized().dot(edge2.normalized())) * 180 / M_PI;
-            // if (angle < settings_.min_face_angle) continue;
-            // if (angle > (180 - 2.0*settings_.min_face_angle)) continue;
-
-
-            // // check if face already exists
-            // bool face_exist = false;
-            // std::shared_ptr<Face> existing_face;
-            // for (const std::shared_ptr<Face>& face : existing_edge->get_faces())
-            // {
-            //     if (face->has_vertex(vertex))
-            //     {
-            //         // log
-            //         std::cout << "Face already exists between " << vertex->get_id() << " and " << nearby_vertex0->get_id() << " and " << nearby_vertex1->get_id() << std::endl;
-                    
-            //         face_exist = true;
-            //         existing_face = face;
-            //         break;
-            //     }
-            // }
-            // if (face_exist)
-            // {
-            //     connect(existing_face);
-            //     continue;
-            // }
-
-            // if face not already exists, create face
-            std::shared_ptr<Face> new_face = storage_->add_face(shared_from_this(), vertex, nearby_vertex0, nearby_vertex1);
+            // create face
+            std::shared_ptr<Face> new_face = storage_->add_face(shared_from_this(), vertex, vertex0, vertex1);
             new_faces.insert(new_face);
         }
     }
 
-    // return
-    return connected;
+    // try close holes
+    vertex->try_close_holes_repeatedly();
+
+    // false if after try close holes, the vertex still have more than two boundary edges
+    if (vertex->get_connected_boundary_edges().size() > 2) return false;
+    
+    // false if new vertex don't have edges
+    if (vertex->get_edges().empty()) return false;
+
+    // false if new faces is non manifold
+    for (const auto& face : new_faces)
+    {
+        if (face->is_non_manifold()) return false;
+    }
+    
+    // false if surface have no boundary edges
+    bool has_boundary_edges = false;
+    for (const auto& edge : edges_)
+    {
+        if (edge->is_boundary()) 
+        {
+            has_boundary_edges = true;
+            break;
+        }
+    }
+    if (!has_boundary_edges) return false;
+
+    // else
+    return true;
 }
 
 void Surface::compute_surface_position_std_in_normal_direction()
@@ -947,6 +931,65 @@ void Surface::disconnect(const std::shared_ptr<InteriorPoint>& interior_point)
     {
 
         remove_point_from_surface_fitting(interior_point->get_original_position(), interior_point->get_origin(), interior_point->get_distance_travelled(), interior_point->weight_);
+    }
+}
+
+std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> Surface::get_boundary_vertices()
+{
+    // initialize
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> boundary_vertices;
+
+    // get boundary vertices
+    for (const auto& vertex : vertices_)
+    {
+        if (vertex->is_boundary()) boundary_vertices.insert(vertex);
+    }
+
+    // return
+    return boundary_vertices;
+}
+
+bool Surface::try_close_holes_repeatedly()
+{
+    // initialize
+    bool changed = false;
+
+    // try close holes repeatedly
+    while (try_close_holes()) 
+    {
+        changed = true;
+    }
+
+    // return
+    return changed;
+}
+
+bool Surface::try_close_holes()
+{
+    // initialize
+    bool changed = false;
+
+    // boundary vertices
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> boundary_vertices = get_boundary_vertices();
+
+    // for each boundary vertex
+    for (const auto& vertex : boundary_vertices)
+    {
+        if (vertex->try_close_holes_repeatedly()) changed = true;
+    }
+
+    // return
+    return changed;
+}
+
+void Surface::remove_non_manifold_edges()
+{
+    // make copy of edges
+    std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges_copy = edges_;
+
+    for (const auto& edge : edges_copy)
+    {
+        if (edge->is_non_manifold()) disconnect(edge);
     }
 }
 
