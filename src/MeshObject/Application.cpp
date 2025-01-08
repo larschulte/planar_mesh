@@ -347,11 +347,17 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> rrs_surfaces;
     for (const std::shared_ptr<Face>& face : bvh_results)
     {
+        // skip if expired
+        if (face->is_expired()) continue;
+
         all_surfaces.insert(face->get_surface());
         bvh_surfaces.insert(face->get_surface());
     }
     for (const std::shared_ptr<Vertex>& vertex : rrs_results)
     {
+        // skip if expired
+        if (vertex->is_expired()) continue;
+        
         all_surfaces.insert(vertex->get_surface());
         rrs_surfaces.insert(vertex->get_surface());
     }
