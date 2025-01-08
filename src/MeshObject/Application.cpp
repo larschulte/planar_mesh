@@ -1026,6 +1026,9 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_vertex_point
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
     for (const std::shared_ptr<Vertex>& vertex : storage_->get_vertices())
     {
+        // skip if internal
+        if (!setting.show_internal_vertices && !vertex->is_boundary()) continue;
+
         // skip if not confirmed
         if (setting.show_confirmed_only && !vertex->is_confirmed()) continue;
 

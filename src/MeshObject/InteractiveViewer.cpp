@@ -98,6 +98,11 @@ void InteractiveViewer<PointT>::update_display(bool export_ply)
             // skip if not confirmed
             if (settings_.show_confirmed_only && !face->is_confirmed()) continue;
 
+            // skip if can't find all indices
+            if (vertex_to_cloud_indices_map.find(face->get_vertex(0)) == vertex_to_cloud_indices_map.end()) continue;
+            if (vertex_to_cloud_indices_map.find(face->get_vertex(1)) == vertex_to_cloud_indices_map.end()) continue;
+            if (vertex_to_cloud_indices_map.find(face->get_vertex(2)) == vertex_to_cloud_indices_map.end()) continue;
+
             pcl::Vertices triangle;
             triangle.vertices.push_back(vertex_to_cloud_indices_map.at(face->get_vertex(0)));
             triangle.vertices.push_back(vertex_to_cloud_indices_map.at(face->get_vertex(1)));
@@ -459,6 +464,14 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
 
         // log
         std::cout << "remove non manifold faces" << std::endl;
+    }
+    if (event.getKeySym() == "semicolon" && event.keyDown())
+    {
+        settings_.show_internal_vertices = !settings_.show_internal_vertices;
+        update_display();
+
+        // log
+        std::cout << "show internal vertex: " << settings_.show_internal_vertices << std::endl;
     }
     if (event.getKeySym() == "d" && event.keyDown())
     {

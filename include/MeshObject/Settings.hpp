@@ -125,6 +125,7 @@ struct Settings
     // interactive viewer settings
     bool update_display;
     bool flip_color;
+    bool show_internal_vertices;
     bool show_generic_points;
     bool show_interior_points;
     bool show_pointcloud;
