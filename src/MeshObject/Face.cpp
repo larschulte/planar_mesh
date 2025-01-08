@@ -104,21 +104,6 @@ void Face::update_radius(const std::shared_ptr<GenericPoint>& generic_point)
 {
 }
 
-unsigned int Face::get_reduce_radius_counter() const
-{
-    return reduce_radius_counter_;
-}
-
-void Face::increment_reduce_radius_counter()
-{
-    reduce_radius_counter_++;
-}
-
-void Face::decrement_reduce_radius_counter()
-{
-    reduce_radius_counter_--;
-}
-
 void Face::delete_()
 {
     // lock face

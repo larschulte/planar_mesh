@@ -72,10 +72,6 @@ public:
 
     void update_radius(const std::shared_ptr<GenericPoint>& generic_point);
 
-    unsigned int get_reduce_radius_counter() const;
-    void increment_reduce_radius_counter();
-    void decrement_reduce_radius_counter();
-
 private:
     static Settings settings_;
 
@@ -104,8 +100,6 @@ private:
     std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> sibling_faces_;
 
     std::shared_ptr<Vertex> first_vertex_;
-
-    unsigned int reduce_radius_counter_ = 0;
 };
 
 bool operator<(const std::shared_ptr<Face>& lhs, const std::shared_ptr<Face>& rhs);

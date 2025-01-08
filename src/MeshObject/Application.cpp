@@ -499,7 +499,6 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
             const std::shared_ptr<InteriorPoint>& new_interior_point = storage_->add_interior_point(generic_point);
             new_interior_point->connect(surface_to_add_to);
             new_interior_point->connect(face_to_add_to);
-            face_to_add_to->increment_reduce_radius_counter();     
 
             // interior point reduce radius of rrs vertex as ray
             for (const std::shared_ptr<Vertex>& vertex : rrs_results)
@@ -534,12 +533,6 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
                 
                 // skip if in front 
                 if (surfaces_bvh_in_front.find(face->get_surface()) != surfaces_bvh_in_front.end()) continue;
-
-                // reduce counter
-                face->decrement_reduce_radius_counter();
-
-                // don't add if counter is not zero
-                if (face->get_reduce_radius_counter() > 0) continue;
 
                 // add penetrated vertex point
                 new_interior_point->add_penetrated_vertex(face->get_vertex(0));
@@ -589,12 +582,6 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
 
             // skip if in front 
             if (surfaces_bvh_in_front.find(face->get_surface()) != surfaces_bvh_in_front.end()) continue;
-
-            // reduce counter
-            face->decrement_reduce_radius_counter();
-
-            // don't add if counter is not zero
-            if (face->get_reduce_radius_counter() > 0) continue;
 
             // add penetrated vertex point
             new_vertex->add_penetrated_vertex(face->get_vertex(0));
