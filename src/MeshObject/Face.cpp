@@ -165,6 +165,33 @@ void Face::temp_initialize(const Eigen::Vector3d& end_point)
     max_ = end_point + Eigen::Vector3d(radius, radius, radius);
 }
 
+void Face::un_add_face()
+{
+    // get copy of vertices
+    std::shared_ptr<Vertex> vertex0 = *vertices_.begin();
+    std::shared_ptr<Vertex> vertex1 = *std::next(vertices_.begin(), 1);
+    std::shared_ptr<Vertex> vertex2 = *std::next(vertices_.begin(), 2);
+
+    // set can self destruct
+    vertex0->set_can_self_destruct(false);
+    vertex1->set_can_self_destruct(false);
+    vertex2->set_can_self_destruct(false);
+    vertex0->get_edge(vertex1)->set_can_self_destruct(false);
+    vertex1->get_edge(vertex2)->set_can_self_destruct(false);
+    vertex2->get_edge(vertex0)->set_can_self_destruct(false);
+
+    // delete face
+    storage_->delete_face(shared_from_this());
+
+    // set can self destruct
+    vertex0->set_can_self_destruct(true);
+    vertex1->set_can_self_destruct(true);
+    vertex2->set_can_self_destruct(true);
+    vertex0->get_edge(vertex1)->set_can_self_destruct(true);
+    vertex1->get_edge(vertex2)->set_can_self_destruct(true);
+    vertex2->get_edge(vertex0)->set_can_self_destruct(true);
+}
+
 const int& Face::get_id() const
 {
     return id_;

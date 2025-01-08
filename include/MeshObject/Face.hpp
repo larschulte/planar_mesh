@@ -28,6 +28,8 @@ public:
 
     void temp_initialize(const Eigen::Vector3d& end_point);
 
+    void un_add_face();
+
     std::shared_ptr<Node> node;
 
     const int& get_id() const;
