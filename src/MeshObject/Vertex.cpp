@@ -1197,7 +1197,8 @@ double Vertex::compute_radius()
     // reduce value
     for (const auto& [neighboring_vertex, distance] : distances_to_nearby_vertices_)
     {
-        if (distance < new_radius) new_radius = distance;
+        if (distance + 0.1f < new_radius) new_radius = distance + 0.1f;
+        // if (distance < new_radius) new_radius = distance;
     }
 
     // reduce value
