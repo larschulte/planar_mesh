@@ -255,6 +255,11 @@ bool Face::is_expired() const
     return is_expired_;
 }
 
+bool Face::is_deleting() const
+{
+    return deleting_;
+}
+
 bool Face::is_searchable() const
 {
     return node != nullptr;

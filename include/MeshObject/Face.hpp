@@ -44,6 +44,7 @@ public:
     const Eigen::Vector3d& get_max() const;
     const std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& get_sibling_faces() const;
     bool is_expired() const;
+    bool is_deleting() const;
     bool is_searchable() const;
     bool has_vertex(const std::shared_ptr<Vertex>& vertex) const;
     bool is_penetrated() const;
