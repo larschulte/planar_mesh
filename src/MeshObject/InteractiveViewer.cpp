@@ -473,6 +473,14 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
         // log
         std::cout << "show internal vertex: " << settings_.show_internal_vertices << std::endl;
     }
+    if (event.getKeySym() == "s" && event.keyDown())
+    {
+        storage_->remove_penetrated_faces();
+        update_display();
+
+        // log
+        std::cout << "remove penetrated faces" << std::endl;
+    }
     if (event.getKeySym() == "d" && event.keyDown())
     {
         storage_->rebuild_tree();

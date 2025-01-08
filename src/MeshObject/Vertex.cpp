@@ -269,6 +269,36 @@ double& Vertex::get_projected_uncertainty()
     return projected_uncertainty_;
 }
 
+std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> Vertex::get_penetrating_vertices() const
+{
+    // initialize
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> penetrating_vertices;
+    
+    // add
+    for (const auto& vertex : distances_to_ray_of_penetrating_vertex_points_)
+    {
+        penetrating_vertices.insert(vertex.first);
+    }
+
+    // return
+    return penetrating_vertices;
+}
+
+std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> Vertex::get_penetrating_interior_points() const
+{
+    // initialize
+    std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> penetrating_interior_points;
+    
+    // add
+    for (const auto& interior_point : distances_to_ray_of_penetrating_interior_points_)
+    {
+        penetrating_interior_points.insert(interior_point.first);
+    }
+
+    // return
+    return penetrating_interior_points;
+}
+
 const std::shared_ptr<Edge>& Vertex::get_edge(const std::shared_ptr<Vertex>& vertex) const
 {
     for (const std::shared_ptr<Edge>& edge : edges_)

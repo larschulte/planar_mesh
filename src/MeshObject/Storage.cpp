@@ -743,6 +743,22 @@ void Storage::update_radius()
     }
 }
 
+void Storage::remove_penetrated_faces()
+{
+    // make copy of faces
+    std::vector<std::shared_ptr<Face>> faces_copy(faces_.begin(), faces_.end());
+
+    // for each face
+    for (const std::shared_ptr<Face>& face : faces_copy)
+    {
+        // skip if face is expired
+        if (face->is_expired()) continue;
+
+        // delete if face is penetrated
+        if (face->is_penetrated()) delete_face(face);
+    }
+}
+
 void Storage::add_searchable_vertex(const std::shared_ptr<Vertex>& vertex)
 {
     // add to a queue that will be processed once all locks are released

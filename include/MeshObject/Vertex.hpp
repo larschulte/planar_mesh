@@ -52,6 +52,9 @@ public:
 
     double& get_projected_uncertainty();
 
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> get_penetrating_vertices() const;
+    std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> get_penetrating_interior_points() const;
+
     const std::shared_ptr<Edge>& get_edge(const std::shared_ptr<Vertex>& vertex) const;
 
     // void try_merge_surfaces();
