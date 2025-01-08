@@ -523,6 +523,8 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
             // try update
             new_interior_point->add_self_to_penetrated_vertices();
 
+            // delete new surface
+            storage_->delete_surface(new_surface);
             return;
         }
         
@@ -599,6 +601,8 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
                 new_vertex->try_update_node_box();
             }
 
+            // delete new surface
+            storage_->delete_surface(new_surface);
             return;
         }
         else
