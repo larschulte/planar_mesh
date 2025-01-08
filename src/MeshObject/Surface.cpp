@@ -729,6 +729,15 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
 
             // create face
             std::shared_ptr<Face> new_face = storage_->add_face(shared_from_this(), vertex, vertex0, vertex1);
+
+            // un-add face if face is non-manifold or penetrated
+            if (new_face->is_non_manifold() || new_face->is_penetrated())
+            {
+                new_face->un_add_face();
+                continue;
+            }
+            
+            // store
             new_faces.insert(new_face);
         }
     }
@@ -741,12 +750,6 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
     
     // false if new vertex don't have edges
     if (vertex->get_edges().empty()) return false;
-
-    // false if new faces is non manifold
-    for (const auto& face : new_faces)
-    {
-        if (face->is_non_manifold()) return false;
-    }
     
     // false if surface have no boundary edges
     bool has_boundary_edges = false;

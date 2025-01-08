@@ -709,27 +709,11 @@ bool Vertex::try_close_holes_between_self_and(std::shared_ptr<Vertex>& vertex0, 
         std::shared_ptr<Face> new_face = storage_->add_face(get_surface(), shared_from_this(), vertex0, vertex1);
         get_surface()->connect(new_face);
 
-        // un-add the face if face is non-manifold
-        if (new_face->is_non_manifold())
+        // un-add the face if face is non-manifold or penetrated
+        if (new_face->is_non_manifold() || new_face->is_penetrated())
         {
-            // set can self destruct
-            set_can_self_destruct(false);
-            vertex0->set_can_self_destruct(false);
-            vertex1->set_can_self_destruct(false);
-            get_edge(vertex0)->set_can_self_destruct(false);
-            get_edge(vertex1)->set_can_self_destruct(false);
-            vertex0->get_edge(vertex1)->set_can_self_destruct(false);
-
-            // delete face
-            storage_->delete_face(new_face);
-
-            // set can self destruct
-            set_can_self_destruct(true);
-            vertex0->set_can_self_destruct(true);
-            vertex1->set_can_self_destruct(true);
-            get_edge(vertex0)->set_can_self_destruct(true);
-            get_edge(vertex1)->set_can_self_destruct(true);
-            vertex0->get_edge(vertex1)->set_can_self_destruct(true);
+            // un-add face
+            new_face->un_add_face();
 
             // update flag
             changed = false;
