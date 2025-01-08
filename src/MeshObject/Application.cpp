@@ -732,7 +732,10 @@ void Application<PointT>::loop()
                 if (!generic_point) break;
 
                 // Process the point (outside the critical section)
-                process_point(generic_point);
+                if (generic_point)
+                {
+                    process_point(generic_point);
+                }
             }
         }
         num_iteration ++;
