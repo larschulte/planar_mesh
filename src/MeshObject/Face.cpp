@@ -277,8 +277,8 @@ bool Face::is_penetrated() const
     std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> all_penetrating_interior_points;
     for (const auto& vertex : vertices_)
     {
-        std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> penetrating_vertices = vertex->get_penetrating_vertices();
-        std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> penetrating_interior_points = vertex->get_penetrating_interior_points();
+        std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> penetrating_vertices = vertex->get_vertex_ray_publishers();
+        std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> penetrating_interior_points = vertex->get_interior_ray_publishers();
 
         // store
         all_penetrating_vertices.insert(penetrating_vertices.begin(), penetrating_vertices.end());

@@ -515,8 +515,8 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
                 // skip if in front
                 if (surfaces_rrs_in_front.find(vertex->get_surface()) != surfaces_rrs_in_front.end()) continue;
 
-                // add as penetrated vertex
-                new_interior_point->add_penetrated_vertex(vertex);
+                // add as subscriber
+                new_interior_point->add_interior_ray_distance_subscriber(vertex);
             }
 
             // interior point removes penetrated faces
@@ -535,16 +535,16 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
                 if (surfaces_bvh_in_front.find(face->get_surface()) != surfaces_bvh_in_front.end()) continue;
 
                 // add penetrated vertex point
-                new_interior_point->add_penetrated_vertex(face->get_vertex(0));
-                new_interior_point->add_penetrated_vertex(face->get_vertex(1));
-                new_interior_point->add_penetrated_vertex(face->get_vertex(2));
+                std::shared_ptr<Vertex> vertex0 = face->get_vertex(0);
+                std::shared_ptr<Vertex> vertex1 = face->get_vertex(1);
+                std::shared_ptr<Vertex> vertex2 = face->get_vertex(2);
+                new_interior_point->add_interior_ray_distance_subscriber(vertex0);
+                new_interior_point->add_interior_ray_distance_subscriber(vertex1);
+                new_interior_point->add_interior_ray_distance_subscriber(vertex2);
 
                 // delete penetrated face
                 storage_->delete_face(face);
             }
-
-            // try update
-            new_interior_point->add_self_to_penetrated_vertices();
 
             // delete new surface
             storage_->delete_surface(new_surface);
@@ -568,7 +568,7 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
             if (vertex->get_surface() == surface_to_add_to) continue;
 
             // add neighboring vertex
-            new_vertex->add_nearby_vertex(vertex);
+            new_vertex->add_vertex_point_distance_publisher(vertex);
         }
 
         // delete penetrated faces
@@ -587,9 +587,12 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
             if (surfaces_bvh_in_front.find(face->get_surface()) != surfaces_bvh_in_front.end()) continue;
 
             // add penetrated vertex point
-            new_vertex->add_penetrated_vertex(face->get_vertex(0));
-            new_vertex->add_penetrated_vertex(face->get_vertex(1));
-            new_vertex->add_penetrated_vertex(face->get_vertex(2));
+            std::shared_ptr<Vertex> vertex0 = face->get_vertex(0);
+            std::shared_ptr<Vertex> vertex1 = face->get_vertex(1);
+            std::shared_ptr<Vertex> vertex2 = face->get_vertex(2);
+            new_vertex->add_vertex_ray_distance_subscriber(vertex0);
+            new_vertex->add_vertex_ray_distance_subscriber(vertex1);
+            new_vertex->add_vertex_ray_distance_subscriber(vertex2);
 
             // delete penetrated face
             storage_->delete_face(face);
@@ -609,9 +612,18 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
         const bool connected = surface_to_add_to->connect_by_edges_and_faces(new_vertex, rrs_results_set);
         if (connected)
         {
-            // reduce radius of vertcies of affected points
-            new_vertex->add_self_to_penetrated_vertices();
-            new_vertex->add_self_to_nearby_vertices();
+            // reduce radius of nearby vertices
+            for (std::shared_ptr<Vertex> vertex : rrs_results)
+            {
+                // skip if the vertex is expired
+                if (vertex->is_expired()) continue;
+
+                // skip if the vertex is the same as the new vertex
+                if (vertex->get_surface() == surface_to_add_to) continue;
+
+                // add neighboring vertex
+                new_vertex->add_vertex_point_distance_subscriber(vertex);
+            }
 
             // "add_self" may delete other vertices
             // which will invoke their "delete_self"

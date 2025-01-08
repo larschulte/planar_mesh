@@ -51,9 +51,10 @@ public:
     void disconnect(const std::shared_ptr<Surface>& surface);
     void disconnect(const std::shared_ptr<InteriorPoint>& sibling_interior_point);
 
-    void add_penetrated_vertex(const std::shared_ptr<Vertex>& vertex);
-    void add_self_to_penetrated_vertices();
-    void delete_self_from_penetrated_vertices();
+    void delete_subscribers();
+    
+    void add_interior_ray_distance_subscriber(const std::shared_ptr<Vertex>& interior_ray_subscriber);
+    void delete_interior_ray_distance_subscriber(const std::shared_ptr<Vertex>& interior_ray_subscriber);
 
     void set_reverse_radius_search_radius(double radius);
 
@@ -96,7 +97,7 @@ private:
 
     Eigen::Vector3d projected_position_ = Eigen::Vector3d::Zero();
 
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> penetrated_vertices_;
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> interior_ray_distance_subscribers_;
 
 public:
     double weight_;

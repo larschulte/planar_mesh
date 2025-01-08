@@ -59,7 +59,7 @@ void InteriorPoint::delete_()
     deleting_ = true;
 
     // disconnect
-    delete_self_from_penetrated_vertices();
+    delete_subscribers();
     std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces = faces_;
     for (const auto& face : faces) disconnect(face);
     if (surface_) disconnect(surface_);
@@ -274,81 +274,46 @@ void InteriorPoint::disconnect(const std::shared_ptr<InteriorPoint>& sibling_int
     if (erased) sibling_interior_point->disconnect(shared_from_this());
 }
 
-void InteriorPoint::add_penetrated_vertex(const std::shared_ptr<Vertex>& vertex)
+void InteriorPoint::delete_subscribers()
+{
+    // interior ray subscribers
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> interior_ray_distance_subscribers_copy = interior_ray_distance_subscribers_;
+    for (const auto& interior_ray_subscriber : interior_ray_distance_subscribers_copy)
+    {
+        delete_interior_ray_distance_subscriber(interior_ray_subscriber);
+    }
+}
+
+void InteriorPoint::add_interior_ray_distance_subscriber(const std::shared_ptr<Vertex>& interior_ray_subscriber)
 {
     // check input
-    if (vertex->is_expired()) return;
+    if (interior_ray_subscriber->is_expired()) return;
 
-    // add
-    penetrated_vertices_.insert(vertex);
+    // skip if already exist
+    const bool already_exist = interior_ray_distance_subscribers_.find(interior_ray_subscriber) != interior_ray_distance_subscribers_.end();
+    if (already_exist) return;
+
+    // add subscriber
+    interior_ray_distance_subscribers_.insert(interior_ray_subscriber).second;
+
+    // add self to subscriber vertex as publisher
+    interior_ray_subscriber->add_interior_ray_distance_publisher(shared_from_this());
 }
 
-void InteriorPoint::add_self_to_penetrated_vertices()
+void InteriorPoint::delete_interior_ray_distance_subscriber(const std::shared_ptr<Vertex>& interior_ray_subscriber)
 {
-    // make copy as list may change
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> nearby_penetrated_vertices_copy = penetrated_vertices_;
+    // check input
+    if (interior_ray_subscriber->is_expired()) return;
 
-    // update
-    for (const std::shared_ptr<Vertex>& vertex : nearby_penetrated_vertices_copy)
-    {
-        // skip if expired
-        if (vertex->is_expired()) continue;
+    // skip if not exist
+    const bool not_exist = interior_ray_distance_subscribers_.find(interior_ray_subscriber) == interior_ray_distance_subscribers_.end();
+    if (not_exist) return;
 
-        // add to neighboring vertex
-        vertex->add_penetrating_interior_point(shared_from_this());
+    // delete subscriber
+    interior_ray_distance_subscribers_.erase(interior_ray_subscriber);
 
-        // try update
-        vertex->try_update_radius();
-        vertex->try_break_edges();
-
-        // skip if expired
-        if (vertex->is_expired()) continue;
-
-        // try update
-        vertex->try_update_node_box();
-    }
-}
-
-void InteriorPoint::delete_self_from_penetrated_vertices()
-{
-    // make copy as list may change
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> nearby_penetrated_vertices_copy = penetrated_vertices_;
-
-    // update
-    for (const std::shared_ptr<Vertex>& vertex : penetrated_vertices_)
-    {
-        // try lock the vertex
-        if (!omp_test_nest_lock(&vertex->vertex_lock)) continue;
-
-        // skip if expired
-        if (vertex->is_expired()) 
-        {
-            // release lock
-            omp_unset_nest_lock(&vertex->vertex_lock);
-            continue;
-        }
-
-        // delete from neighboring vertex
-        vertex->delete_penetrating_interior_point(shared_from_this());
-
-        // try update
-        vertex->try_update_radius();
-        vertex->try_break_edges();
-        
-        // skip if expired
-        if (vertex->is_expired()) 
-        {
-            // release lock
-            omp_unset_nest_lock(&vertex->vertex_lock);
-            continue;
-        }
-
-        // try update
-        vertex->try_update_node_box();
-
-        // release lock
-        omp_unset_nest_lock(&vertex->vertex_lock);
-    }
+    // delete self from subscriber vertex as publisher
+    interior_ray_subscriber->delete_interior_ray_distance_publisher(shared_from_this());
 }
 
 void InteriorPoint::set_reverse_radius_search_radius(double radius)

@@ -52,8 +52,8 @@ public:
 
     double& get_projected_uncertainty();
 
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> get_penetrating_vertices() const;
-    std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> get_penetrating_interior_points() const;
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> get_vertex_ray_publishers() const;
+    std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> get_interior_ray_publishers() const;
 
     const std::shared_ptr<Edge>& get_edge(const std::shared_ptr<Vertex>& vertex) const;
 
@@ -98,29 +98,35 @@ public:
     // non manifold
     bool is_non_manifold() const;
 
-    // point - nearby vertex
-    void add_nearby_vertex(const std::shared_ptr<Vertex>& rrs_vertex);
-    void delete_nearby_vertex(const std::shared_ptr<Vertex>& rrs_vertex);
-    void add_self_to_nearby_vertices();
-    void delete_self_from_nearby_vertices();
+    void delete_publishers();
+    void delete_subscribers();
 
-    // ray - being penetrated by interior point
-    void add_penetrating_interior_point(const std::shared_ptr<InteriorPoint>& interior_point);
-    void delete_penetrating_interior_point(const std::shared_ptr<InteriorPoint>& interior_point);
+    void upon_adding_publisher();
+    void upon_deleting_publisher();
 
-    // ray - being penetrated by vertex point
-    void add_penetrating_vertex_point(const std::shared_ptr<Vertex>& vertex_point);
-    void delete_penetrating_vertex_point(const std::shared_ptr<Vertex>& vertex_point);
-    void delete_self_from_penetrating_vertex_points();
+    // vertex point distance publisher and subscriber
+    void add_vertex_point_distance_publisher(const std::shared_ptr<Vertex>& vertex_point_publisher);
+    void delete_vertex_point_distance_publisher(const std::shared_ptr<Vertex>& vertex_point_publisher);
+    void add_vertex_point_distance_subscriber(const std::shared_ptr<Vertex>& vertex_point_subscriber);
+    void delete_vertex_point_distance_subscriber(const std::shared_ptr<Vertex>& vertex_point_subscriber);
 
-    // ray - penetrating vertex
-    void add_penetrated_vertex(const std::shared_ptr<Vertex>& vertex);
-    void delete_penetrated_vertex(const std::shared_ptr<Vertex>& vertex);
-    void add_self_to_penetrated_vertices();
-    void delete_self_from_penetrated_vertices();
+    // vertex ray distance publisher and subscriber
+    void add_vertex_ray_distance_publisher(const std::shared_ptr<Vertex>& vertex_ray_publisher);
+    void delete_vertex_ray_distance_publisher(const std::shared_ptr<Vertex>& vertex_ray_publisher);
+    void add_vertex_ray_distance_subscriber(const std::shared_ptr<Vertex>& vertex_ray_subscriber);
+    void delete_vertex_ray_distance_subscriber(const std::shared_ptr<Vertex>& vertex_ray_subscriber);
+
+    // vertex plane distance publisher and subscriber
+    void add_vertex_plane_distance_publisher(const std::shared_ptr<Vertex>& vertex_plane_publisher);
+    void delete_vertex_plane_distance_publisher(const std::shared_ptr<Vertex>& vertex_plane_publisher);
+    void add_vertex_plane_distance_subscriber(const std::shared_ptr<Vertex>& vertex_plane_subscriber);
+    void delete_vertex_plane_distance_subscriber(const std::shared_ptr<Vertex>& vertex_plane_subscriber);
+
+    // interior ray distance publisher
+    void add_interior_ray_distance_publisher(const std::shared_ptr<InteriorPoint>& interior_ray_publisher);
+    void delete_interior_ray_distance_publisher(const std::shared_ptr<InteriorPoint>& interior_ray_publisher);
 
     // update radius
-    void cascade_radius_reduction_to_connected_vertices();
     double compute_radius();
     void try_update_radius();
     void try_break_edges();
@@ -198,10 +204,16 @@ private:
 
     Eigen::Vector3d projected_position_ = Eigen::Vector3d::Zero();
 
-    std::unordered_map<std::shared_ptr<Vertex>, double, MeshObjectHash> distances_to_nearby_vertices_;
-    std::unordered_map<std::shared_ptr<InteriorPoint>, double, MeshObjectHash> distances_to_ray_of_penetrating_interior_points_;
-    std::unordered_map<std::shared_ptr<Vertex>, double, MeshObjectHash> distances_to_ray_of_penetrating_vertex_points_;
-    std::unordered_map<std::shared_ptr<Vertex>, double, MeshObjectHash> distances_to_plane_of_penetrated_vertex_points_;
+    // a publisher is one that reduces radius of other vertices
+    std::unordered_map<std::shared_ptr<Vertex>, double, MeshObjectHash> vertex_point_distance_publishers_;
+    std::unordered_map<std::shared_ptr<Vertex>, double, MeshObjectHash> vertex_ray_distance_publishers_;
+    std::unordered_map<std::shared_ptr<Vertex>, double, MeshObjectHash> vertex_plane_distance_publishers_;
+    std::unordered_map<std::shared_ptr<InteriorPoint>, double, MeshObjectHash> interior_ray_distance_publishers_;
+
+    // a subscriber is one that is reduced by the current vertex
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertex_point_distance_subscribers_;
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertex_ray_distance_subscribers_;
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertex_plane_distance_subscribers_;
 
 public:
     double weight_;
