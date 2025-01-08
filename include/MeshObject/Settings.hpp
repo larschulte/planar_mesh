@@ -80,6 +80,7 @@ struct Settings
     Settings();
 
     bool edge_is_short_enough(const double& edge_length, const double& radius0, const double& radius1) const;
+    double compute_rrs_half_size(const double& radius) const;
 
     // data loader settings
     DataLoader_Settings data_loader_settings;
@@ -94,7 +95,6 @@ struct Settings
     bool use_radius_value;
     double pointcloud_fraction;
     double radius_value;
-    double extra_radius;
     double radius_ratio; // distance to radius ratio
     std::size_t process_every_n_points;
     double duplicated_point_distance_threshold;

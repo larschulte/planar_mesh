@@ -1197,10 +1197,7 @@ double Vertex::compute_radius()
     // reduce value
     for (const auto& [neighboring_vertex, distance] : distances_to_nearby_vertices_)
     {
-        // with extra radius
-        const double corrected_distance = distance + settings_.extra_radius;
-
-        if (corrected_distance < new_radius) new_radius = corrected_distance;
+        if (distance < new_radius) new_radius = distance;
     }
 
     // reduce value
@@ -1252,12 +1249,13 @@ void Vertex::try_break_edges()
 void Vertex::try_update_node_box()
 {
     // previous radius
-    const double previous_radius = (max_.x() - min_.x()) / 2.0;
+    const double previous_rrs_half_size = (max_.x() - min_.x()) / 2.0;
 
     // update min and max
-    const Eigen::Vector3d radius_vector = Eigen::Vector3d(reverse_search_radius_, reverse_search_radius_, reverse_search_radius_);
-    min_ = get_position() - radius_vector;
-    max_ = get_position() + radius_vector;
+    const double current_rrs_half_size = settings_.compute_rrs_half_size(reverse_search_radius_);
+    const Eigen::Vector3d half_size_vecotr = Eigen::Vector3d(current_rrs_half_size, current_rrs_half_size, current_rrs_half_size);
+    min_ = get_position() - half_size_vecotr;
+    max_ = get_position() + half_size_vecotr;
 
     if (node)
     {
@@ -1265,12 +1263,12 @@ void Vertex::try_update_node_box()
         if (!omp_test_nest_lock(&node->omp_lock)) return;
 
         // update node
-        if (reverse_search_radius_ > previous_radius)
+        if (current_rrs_half_size > previous_rrs_half_size)
         {
             node->box = RRSBoundingBox(min_, max_);
             node->recursive_expand_parent_box();
         }
-        else if (reverse_search_radius_ < previous_radius)
+        else if (current_rrs_half_size < previous_rrs_half_size)
         {
             node->box = RRSBoundingBox(min_, max_);
             node->recursive_shrink_parent_box();

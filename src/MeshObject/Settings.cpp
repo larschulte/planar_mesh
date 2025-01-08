@@ -72,7 +72,6 @@ Settings::Settings()
     use_radius_value = true;
     pointcloud_fraction = 1;
     radius_value = 1;
-    extra_radius = 0.1;
     duplicated_point_distance_threshold = 0.0; // if two points are closer than this distance, they are considered the same point
 
     abnormal_size = 1.5;
@@ -159,5 +158,12 @@ Settings::Settings()
 
 bool Settings::edge_is_short_enough(const double& edge_length, const double& radius0, const double& radius1) const
 {
-    return edge_length < radius0 && edge_length < radius1;
+    const double minimum_edge_length = 0.1f;
+    return edge_length < radius0 + minimum_edge_length && edge_length < radius1 + minimum_edge_length;
+}
+
+double Settings::compute_rrs_half_size(const double& radius) const
+{
+    const double minimum_rrs_half_size = 0.1f;
+    return std::max(minimum_rrs_half_size, radius);
 }
