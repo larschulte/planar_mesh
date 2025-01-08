@@ -855,21 +855,63 @@ void Vertex::delete_subscribers()
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertex_point_distance_subscribers_copy = vertex_point_distance_subscribers_;
     for (const auto& vertex_point_subscriber : vertex_point_distance_subscribers_copy)
     {
+        // try lock vertex and surface
+        if(!omp_test_nest_lock(&vertex_point_subscriber->vertex_lock)) continue;
+        if (!omp_test_nest_lock(&vertex_point_subscriber->get_surface()->lock)) 
+        {
+            // unlock vertex
+            omp_unset_nest_lock(&vertex_point_subscriber->vertex_lock);
+            continue;
+        }
+
+        // delete
         delete_vertex_point_distance_subscriber(vertex_point_subscriber);
+
+        // unlock vertex and surface
+        omp_unset_nest_lock(&vertex_point_subscriber->get_surface()->lock);
+        omp_unset_nest_lock(&vertex_point_subscriber->vertex_lock);
     }
 
     // vertex ray subscribers
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertex_ray_distance_subscribers_copy = vertex_ray_distance_subscribers_;
     for (const auto& vertex_ray_subscriber : vertex_ray_distance_subscribers_copy)
     {
+        // try lock vertex and surface
+        if(!omp_test_nest_lock(&vertex_ray_subscriber->vertex_lock)) continue;
+        if (!omp_test_nest_lock(&vertex_ray_subscriber->get_surface()->lock)) 
+        {
+            // unlock vertex
+            omp_unset_nest_lock(&vertex_ray_subscriber->vertex_lock);
+            continue;
+        }
+
+        // delete
         delete_vertex_ray_distance_subscriber(vertex_ray_subscriber);
+
+        // unlock vertex and surface
+        omp_unset_nest_lock(&vertex_ray_subscriber->get_surface()->lock);
+        omp_unset_nest_lock(&vertex_ray_subscriber->vertex_lock);
     }
 
     // vertex plane subscribers
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertex_plane_distance_subscribers_copy = vertex_plane_distance_subscribers_;
     for (const auto& vertex_plane_subscriber : vertex_plane_distance_subscribers_copy)
     {
+        // try lock vertex and surface
+        if(!omp_test_nest_lock(&vertex_plane_subscriber->vertex_lock)) continue;
+        if (!omp_test_nest_lock(&vertex_plane_subscriber->get_surface()->lock)) 
+        {
+            // unlock vertex
+            omp_unset_nest_lock(&vertex_plane_subscriber->vertex_lock);
+            continue;
+        }
+
+        // delete
         delete_vertex_plane_distance_subscriber(vertex_plane_subscriber);
+
+        // unlock vertex and surface
+        omp_unset_nest_lock(&vertex_plane_subscriber->get_surface()->lock);
+        omp_unset_nest_lock(&vertex_plane_subscriber->vertex_lock);
     }
 }
 

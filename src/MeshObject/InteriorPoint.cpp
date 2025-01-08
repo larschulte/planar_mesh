@@ -280,7 +280,21 @@ void InteriorPoint::delete_subscribers()
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> interior_ray_distance_subscribers_copy = interior_ray_distance_subscribers_;
     for (const auto& interior_ray_subscriber : interior_ray_distance_subscribers_copy)
     {
+        // try lock vertex and surface
+        if(!omp_test_nest_lock(&interior_ray_subscriber->vertex_lock)) continue;
+        if (!omp_test_nest_lock(&interior_ray_subscriber->get_surface()->lock)) 
+        {
+            // unlock vertex
+            omp_unset_nest_lock(&interior_ray_subscriber->vertex_lock);
+            continue;
+        }
+
+        // delete
         delete_interior_ray_distance_subscriber(interior_ray_subscriber);
+
+        // unlock vertex and surface
+        omp_unset_nest_lock(&interior_ray_subscriber->get_surface()->lock);
+        omp_unset_nest_lock(&interior_ray_subscriber->vertex_lock);
     }
 }
 
