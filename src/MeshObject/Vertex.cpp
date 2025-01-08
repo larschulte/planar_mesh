@@ -1577,7 +1577,7 @@ const double& Vertex::get_radius(const std::shared_ptr<Surface>& surface) const
 
 bool Vertex::contains(const Eigen::Vector3d& point) const
 {
-    return (point - position_).norm() < reverse_search_radius_;
+    return (point - get_position()).norm() < settings_.compute_rrs_half_size(reverse_search_radius_);
 }
 
 bool Vertex::approx_contains(const Eigen::Vector3d& point) const
