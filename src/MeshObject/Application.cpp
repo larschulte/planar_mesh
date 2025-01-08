@@ -519,7 +519,7 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
                 new_interior_point->add_penetrated_vertex(vertex);
             }
 
-            // interior point reduce radius of vertices of face as ray
+            // interior point removes penetrated faces
             for (const std::shared_ptr<Face>& face : bvh_results)
             {
                 // skip if expired
@@ -538,6 +538,9 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
                 new_interior_point->add_penetrated_vertex(face->get_vertex(0));
                 new_interior_point->add_penetrated_vertex(face->get_vertex(1));
                 new_interior_point->add_penetrated_vertex(face->get_vertex(2));
+
+                // delete penetrated face
+                storage_->delete_face(face);
             }
 
             // try update
@@ -568,7 +571,7 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
             new_vertex->add_nearby_vertex(vertex);
         }
 
-        // reduce radius of vertcies of bvh_results as ray
+        // delete penetrated faces
         for (const std::shared_ptr<Face>& face : bvh_results)
         {
             // skip if expired
@@ -587,6 +590,9 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
             new_vertex->add_penetrated_vertex(face->get_vertex(0));
             new_vertex->add_penetrated_vertex(face->get_vertex(1));
             new_vertex->add_penetrated_vertex(face->get_vertex(2));
+
+            // delete penetrated face
+            storage_->delete_face(face);
         }
 
         // try update

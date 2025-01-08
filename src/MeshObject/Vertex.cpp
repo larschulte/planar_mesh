@@ -1259,6 +1259,22 @@ void Vertex::try_break_edges()
             storage_->delete_edge(edge);
         }
     }
+
+    // skip if expired
+    if (is_expired()) return;
+
+    // delete face if penetrated
+    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces_copy = faces_;
+    for (const std::shared_ptr<Face>& face : faces_copy)
+    {
+        if (face->is_expired()) continue; // could turn expired if below deletes a face
+        if (face->is_deleting()) continue; // could be deleting
+
+        if (face->is_penetrated())
+        {
+            storage_->delete_face(face);
+        }
+    }
 }
 
 void Vertex::try_update_node_box()
