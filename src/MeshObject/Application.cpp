@@ -341,8 +341,7 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
 template <typename PointT>
 void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Face>>& bvh_results, std::vector<std::shared_ptr<Vertex>>& rrs_results)
 {
-    // from bvh results and rrs results, get all surfaces
-    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> all_surfaces;
+    // from bvh results and rrs results, get surfaces
     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> bvh_surfaces;
     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> rrs_surfaces;
     for (const std::shared_ptr<Face>& face : bvh_results)
@@ -350,7 +349,6 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
         // skip if expired
         if (face->is_expired()) continue;
 
-        all_surfaces.insert(face->get_surface());
         bvh_surfaces.insert(face->get_surface());
     }
     for (const std::shared_ptr<Vertex>& vertex : rrs_results)
@@ -358,93 +356,118 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
         // skip if expired
         if (vertex->is_expired()) continue;
         
-        all_surfaces.insert(vertex->get_surface());
         rrs_surfaces.insert(vertex->get_surface());
     }
 
-    // split surfaces into seed, within, behind, in front
-    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_seed;
-    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_within;
-    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_behind;
-    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_in_front;
-    for (const std::shared_ptr<Surface>& surface : all_surfaces)
+    // split surfaces into bvh and rrs seed, within, behind, in front
+    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_bvh_seed;
+    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_bvh_within;
+    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_bvh_behind;
+    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_bvh_in_front;
+    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_rrs_seed;
+    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_rrs_within;
+    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_rrs_behind;
+    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_rrs_in_front;
+    for (const std::shared_ptr<Surface>& surface : bvh_surfaces)
     {
         // skip if the surface is expired
         if (surface->is_expired()) continue;
 
-        // seed surface
-        if (surface->get_total_point_size() < settings_.fit_plane_threshold)
-        {
-            // skip if surface from bvh
-            if (bvh_surfaces.find(surface) != bvh_surfaces.end()) continue;
-
-            surfaces_seed.insert(surface);
-            continue;
-        }
-
-        // relative position
+        // check relative position
         RelativePosition relative_position = surface->check_relative_position(generic_point);
-        if (relative_position == RelativePosition::WITHIN)
-        {
-            surfaces_within.insert(surface);
-        }
-        else if (relative_position == RelativePosition::BEHIND)
-        {
-            surfaces_behind.insert(surface);
-        }
-        else if (relative_position == RelativePosition::IN_FRONT)
-        {
-            surfaces_in_front.insert(surface);
-        }
+
+        // skip if no relative position
+        if (relative_position == RelativePosition::NO_RELATIVE_POSITION) surfaces_bvh_seed.insert(surface);
+
+        // add to within
+        if (relative_position == RelativePosition::WITHIN) surfaces_bvh_within.insert(surface);
+
+        // add to behind
+        if (relative_position == RelativePosition::BEHIND) surfaces_bvh_behind.insert(surface);
+
+        // add to in front
+        if (relative_position == RelativePosition::IN_FRONT) surfaces_bvh_in_front.insert(surface);
+    }
+    for (const std::shared_ptr<Surface>& surface : rrs_surfaces)
+    {
+        // skip if the surface is expired
+        if (surface->is_expired()) continue;
+
+        // check relative position
+        RelativePosition relative_position = surface->check_relative_position(generic_point);
+
+        // skip if no relative position
+        if (relative_position == RelativePosition::NO_RELATIVE_POSITION) surfaces_rrs_seed.insert(surface);
+
+        // add to within
+        if (relative_position == RelativePosition::WITHIN) surfaces_rrs_within.insert(surface);
+
+        // add to behind
+        if (relative_position == RelativePosition::BEHIND) surfaces_rrs_behind.insert(surface);
+
+        // add to in front
+        if (relative_position == RelativePosition::IN_FRONT) surfaces_rrs_in_front.insert(surface);
     }
 
     // construct a list of surfaces to add to
     std::vector<std::shared_ptr<Surface>> list_of_surfaces_to_add_to;
 
-    // 1. surfaces_within
-    if (surfaces_within.size() > 0)
+    // 1. surfaces_bvh_within
+    if (surfaces_bvh_within.size() > 0)
     {
         // sort by surface size
-        std::vector<std::shared_ptr<Surface>> surfaces_within_sorted(surfaces_within.begin(), surfaces_within.end());
-        std::sort(surfaces_within_sorted.begin(), surfaces_within_sorted.end(), 
+        std::vector<std::shared_ptr<Surface>> surfaces_bvh_within_sorted(surfaces_bvh_within.begin(), surfaces_bvh_within.end());
+        std::sort(surfaces_bvh_within_sorted.begin(), surfaces_bvh_within_sorted.end(), 
             [](const std::shared_ptr<Surface>& a, const std::shared_ptr<Surface>& b) { return a->get_total_point_size() > b->get_total_point_size(); });
 
         // add to list
-        list_of_surfaces_to_add_to.insert(list_of_surfaces_to_add_to.end(), surfaces_within_sorted.begin(), surfaces_within_sorted.end());
+        list_of_surfaces_to_add_to.insert(list_of_surfaces_to_add_to.end(), surfaces_bvh_within_sorted.begin(), surfaces_bvh_within_sorted.end());
     }
 
-    // 2. surfaces_seed
-    if (surfaces_seed.size() > 0)
+    // 2. surfaces_rrs_within
+    if (surfaces_rrs_within.size() > 0)
+    {
+        // sort by surface size
+        std::vector<std::shared_ptr<Surface>> surfaces_rrs_within_sorted(surfaces_rrs_within.begin(), surfaces_rrs_within.end());
+        std::sort(surfaces_rrs_within_sorted.begin(), surfaces_rrs_within_sorted.end(), 
+            [](const std::shared_ptr<Surface>& a, const std::shared_ptr<Surface>& b) { return a->get_total_point_size() > b->get_total_point_size(); });
+
+        // add to list
+        list_of_surfaces_to_add_to.insert(list_of_surfaces_to_add_to.end(), surfaces_rrs_within_sorted.begin(), surfaces_rrs_within_sorted.end());
+    }
+
+    // 3. surfaces_rrs_seed
+    if (surfaces_rrs_seed.size() > 0)
     {        
         // sort by surface closeness
-        std::unordered_map<std::shared_ptr<Surface>, double, MeshObjectHash> surfaces_seed_distances;
-        for (std::shared_ptr<Surface> surface : surfaces_seed)
+        std::unordered_map<std::shared_ptr<Surface>, double, MeshObjectHash> surfaces_rrs_seed_distances;
+        for (std::shared_ptr<Surface> surface : surfaces_rrs_seed)
         {
             for (std::shared_ptr<Vertex> vertex : rrs_results)
             {
                 // skip if the vertex is expired
                 if (vertex->is_expired()) continue;
 
-                // skip if the vertex is not in surfaces_seed
+                // skip if the vertex is not in surfaces_rrs_seed
                 if (vertex->get_surface() != surface) continue;
 
                 // compute distance
                 double distance_vertex = (vertex->get_position() - generic_point->get_position()).norm();
-                if (distance_vertex < surfaces_seed_distances[surface])
+                if (distance_vertex < surfaces_rrs_seed_distances[surface])
                 {
-                    surfaces_seed_distances[surface] = distance_vertex;
+                    surfaces_rrs_seed_distances[surface] = distance_vertex;
                 }
             }
         }
-        std::vector<std::shared_ptr<Surface>> surfaces_seed_sorted(surfaces_seed.begin(), surfaces_seed.end());
-        std::sort(surfaces_seed_sorted.begin(), surfaces_seed_sorted.end(), 
-            [&surfaces_seed_distances](const std::shared_ptr<Surface>& a, const std::shared_ptr<Surface>& b) { return surfaces_seed_distances[a] < surfaces_seed_distances[b]; });
+        std::vector<std::shared_ptr<Surface>> surfaces_rrs_seed_sorted(surfaces_rrs_seed.begin(), surfaces_rrs_seed.end());
+        std::sort(surfaces_rrs_seed_sorted.begin(), surfaces_rrs_seed_sorted.end(), 
+            [&surfaces_rrs_seed_distances](const std::shared_ptr<Surface>& a, const std::shared_ptr<Surface>& b) { return surfaces_rrs_seed_distances[a] < surfaces_rrs_seed_distances[b]; });
 
         // add to list
-        list_of_surfaces_to_add_to.insert(list_of_surfaces_to_add_to.end(), surfaces_seed_sorted.begin(), surfaces_seed_sorted.end());
+        list_of_surfaces_to_add_to.insert(list_of_surfaces_to_add_to.end(), surfaces_rrs_seed_sorted.begin(), surfaces_rrs_seed_sorted.end());
     }
 
-    // 3. new surface
+    // 4. new surface
     std::shared_ptr<Surface> new_surface = storage_->add_surface();
     list_of_surfaces_to_add_to.push_back(new_surface);
 
@@ -509,7 +532,7 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
                 if (face->is_expired()) continue;
 
                 // skip if in front 
-                if (surfaces_in_front.find(face->get_surface()) != surfaces_in_front.end()) continue;
+                if (surfaces_bvh_in_front.find(face->get_surface()) != surfaces_bvh_in_front.end()) continue;
 
                 // skip if same surface
                 if (face->get_surface() == surface_to_add_to) continue;
