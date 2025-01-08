@@ -277,6 +277,10 @@ std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> Vertex::get_penetrat
     // add
     for (const auto& vertex : distances_to_ray_of_penetrating_vertex_points_)
     {
+        // skip if expired
+        if (vertex.first->is_expired()) continue;
+
+        // insert
         penetrating_vertices.insert(vertex.first);
     }
 
@@ -292,6 +296,10 @@ std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> Vertex::get_p
     // add
     for (const auto& interior_point : distances_to_ray_of_penetrating_interior_points_)
     {
+        // skip if expired
+        if (interior_point.first->is_expired()) continue;
+
+        // insert
         penetrating_interior_points.insert(interior_point.first);
     }
 
