@@ -141,7 +141,6 @@ public:
     void can_create_generic_point(bool can_create);
 
 public: // for reverse radius search
-    void set_reverse_radius_search_radius(double radius);
     const Eigen::Vector3d& get_min() const;
     const Eigen::Vector3d& get_max() const;
     const double& get_radius() const;

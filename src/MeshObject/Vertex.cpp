@@ -41,7 +41,8 @@ void Vertex::initialize_(const std::shared_ptr<Storage>& storage, const std::sha
     check_if_update_search_tree();
 
     // set reverse search radius based on input parameter
-    set_reverse_radius_search_radius(radius);
+    try_update_radius();
+    try_update_node_box();
 
     // log
     if (settings_.log.initialize) std::cout << "Vertex " << id_ << " created.\n";
@@ -144,7 +145,8 @@ void Vertex::temp_initialize(const Eigen::Vector3d& position, unsigned int id)
     position_ = position;
 
     // set radius
-    set_reverse_radius_search_radius(0.001);
+    try_update_radius();
+    try_update_node_box();
 }
 
 const int& Vertex::get_id() const 
@@ -1550,47 +1552,6 @@ void Vertex::print_info()
 void Vertex::can_create_generic_point(bool state)
 {
     can_create_generic_point_ = state;
-}
-
-void Vertex::set_reverse_radius_search_radius(double radius)
-{
-    if (node)
-    {
-        // lock node
-        while (!omp_test_nest_lock(&node->omp_lock)) 
-        {
-            std::cout << "set reverse radius search radius waiting " << id_ << std::endl;
-        }
-    }
-
-    // set radius
-    double previous_radius = reverse_search_radius_;
-    reverse_search_radius_ = radius;
-
-    // update min and max
-    min_ = position_ - Eigen::Vector3d(radius, radius, radius);
-    max_ = position_ + Eigen::Vector3d(radius, radius, radius);
-
-    // update if node exists
-    if (node) 
-    {
-        if (reverse_search_radius_ > previous_radius)
-        {
-            node->box = RRSBoundingBox(min_, max_);
-            node->recursive_expand_parent_box();
-        }
-        else if (reverse_search_radius_ < previous_radius)
-        {
-            node->box = RRSBoundingBox(min_, max_);
-            node->recursive_shrink_parent_box();
-        }
-    }
-
-    if (node)
-    {
-        // release lock
-        omp_unset_nest_lock(&node->omp_lock);
-    }
 }
 
 const Eigen::Vector3d& Vertex::get_min() const
