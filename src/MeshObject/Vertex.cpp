@@ -1219,7 +1219,7 @@ double Vertex::compute_radius()
     // reduce value
     for (const auto& [neighboring_vertex, distance] : distances_to_nearby_vertices_)
     {
-        const double extra_radius = 0.2f;
+        const double extra_radius = settings_.extra_radius;
         if (distance + extra_radius < new_radius) new_radius = distance + extra_radius;
     }
 
