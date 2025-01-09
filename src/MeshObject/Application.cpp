@@ -557,23 +557,9 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
         // skip if same surface
         if (vertex->get_surface() == surface_to_add_to) continue;
 
-        if (new_interior_point)
-        {
-            // skip if no relative position
-            if (surfaces_rrs_seed.find(vertex->get_surface()) != surfaces_rrs_seed.end()) continue;
-
-            // skip if in front
-            if (surfaces_rrs_in_front.find(vertex->get_surface()) != surfaces_rrs_in_front.end()) continue;
-
-            // add as subscriber
-            new_interior_point->add_interior_ray_distance_subscriber(vertex);
-        }
-
-        if (new_vertex)
-        {
-            // add neighboring vertex
-            new_vertex->add_vertex_point_distance_subscriber(vertex);
-        }
+        // reduce radius of nearby vertices
+        if (new_interior_point) new_interior_point->add_interior_point_distance_subscriber(vertex);
+        if (new_vertex) new_vertex->add_vertex_point_distance_subscriber(vertex);
     }    
 }
 

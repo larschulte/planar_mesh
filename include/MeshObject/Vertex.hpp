@@ -126,6 +126,10 @@ public:
     void add_interior_ray_distance_publisher(const std::shared_ptr<InteriorPoint>& interior_ray_publisher);
     void delete_interior_ray_distance_publisher(const std::shared_ptr<InteriorPoint>& interior_ray_publisher);
 
+    // interior point distance publisher
+    void add_interior_point_distance_publisher(const std::shared_ptr<InteriorPoint>& interior_point_publisher);
+    void delete_interior_point_distance_publisher(const std::shared_ptr<InteriorPoint>& interior_point_publisher);
+
     // update radius
     double compute_radius();
     void try_update_radius();
@@ -209,6 +213,7 @@ private:
     std::unordered_map<std::shared_ptr<Vertex>, double, MeshObjectHash> vertex_ray_distance_publishers_;
     std::unordered_map<std::shared_ptr<Vertex>, double, MeshObjectHash> vertex_plane_distance_publishers_;
     std::unordered_map<std::shared_ptr<InteriorPoint>, double, MeshObjectHash> interior_ray_distance_publishers_;
+    std::unordered_map<std::shared_ptr<InteriorPoint>, double, MeshObjectHash> interior_point_distance_publishers_;
 
     // a subscriber is one that is reduced by the current vertex
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertex_point_distance_subscribers_;

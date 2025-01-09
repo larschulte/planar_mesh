@@ -847,6 +847,13 @@ void Vertex::delete_publishers()
     {
         delete_interior_ray_distance_publisher(interior_ray_publisher);
     }
+
+    // interior point publisher
+    std::unordered_map<std::shared_ptr<InteriorPoint>, double, MeshObjectHash> interior_point_distance_publishers_copy = interior_point_distance_publishers_;
+    for (const auto& [interior_point_publisher, distance] : interior_point_distance_publishers_copy)
+    {
+        delete_interior_point_distance_publisher(interior_point_publisher);
+    }
 }
 
 void Vertex::delete_subscribers()
@@ -1197,6 +1204,47 @@ void Vertex::delete_interior_ray_distance_publisher(const std::shared_ptr<Interi
     interior_ray_publisher->delete_interior_ray_distance_subscriber(shared_from_this());
 }
 
+void Vertex::add_interior_point_distance_publisher(const std::shared_ptr<InteriorPoint>& interior_point_publisher)
+{
+    // check input
+    if (interior_point_publisher->is_expired()) return;
+
+    // skip if already exist
+    const bool already_exist = interior_point_distance_publishers_.find(interior_point_publisher) != interior_point_distance_publishers_.end();
+    if (already_exist) return;
+
+    // compute distance
+    const double distance = (get_position() - interior_point_publisher->get_position()).norm(); 
+
+    // add publisher
+    interior_point_distance_publishers_[interior_point_publisher] = distance;
+
+    // upon adding publisher
+    upon_adding_publisher();
+
+    // add self to publisher vertex as subscriber
+    interior_point_publisher->add_interior_point_distance_subscriber(shared_from_this());
+}
+
+void Vertex::delete_interior_point_distance_publisher(const std::shared_ptr<InteriorPoint>& interior_point_publisher)
+{
+    // check input
+    if (interior_point_publisher->is_expired()) return;
+
+    // skip if not exist
+    const bool not_exist = interior_point_distance_publishers_.find(interior_point_publisher) == interior_point_distance_publishers_.end();
+    if (not_exist) return;
+
+    // delete publisher
+    interior_point_distance_publishers_.erase(interior_point_publisher);
+    
+    // upon deleting publisher
+    upon_deleting_publisher();
+
+    // delete self from publisher vertex as subscriber
+    interior_point_publisher->delete_interior_point_distance_subscriber(shared_from_this());
+}
+
 double Vertex::compute_radius()
 {
     // reset to default
@@ -1254,6 +1302,19 @@ double Vertex::compute_radius()
         }
     }
 
+    // remove expired entries
+    for (auto it = interior_point_distance_publishers_.begin(); it != interior_point_distance_publishers_.end();)
+    {
+        if (it->first->is_expired())
+        {
+            it = interior_point_distance_publishers_.erase(it);
+        }
+        else
+        {
+            ++it;
+        }
+    }
+
     // reduce value
     for (const auto& [neighboring_vertex, distance] : vertex_point_distance_publishers_)
     {
@@ -1275,6 +1336,12 @@ double Vertex::compute_radius()
 
     // reduce value
     for (const auto& [vertex_point, distance] : vertex_plane_distance_publishers_)
+    {
+        if (distance < new_radius) new_radius = distance;
+    }
+
+    // reduce value
+    for (const auto& [interior_point, distance] : interior_point_distance_publishers_)
     {
         if (distance < new_radius) new_radius = distance;
     }
