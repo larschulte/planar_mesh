@@ -240,7 +240,7 @@ void TriangleBVH::sort_face_list_in_axis(std::vector<std::shared_ptr<Face>>& fac
         });
 }
 
-BVHReturnType TriangleBVH::node_intersection_search(const std::shared_ptr<Node>& node, const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Face>>& faces_intersected) const
+BVHReturnType TriangleBVH::node_intersection_search(Node* node, const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Face>>& faces_intersected) const
 {    
     // lock the node for exclusive read/write (abort if can't lock node -> someone else is reading/writing this node)
     if (!omp_test_nest_lock(&node->omp_lock))
@@ -260,8 +260,8 @@ BVHReturnType TriangleBVH::node_intersection_search(const std::shared_ptr<Node>&
     if (!node->isLeaf)
     {
         // get copy of left and right node
-        std::shared_ptr<Node> left = node->left;
-        std::shared_ptr<Node> right = node->right;
+        Node* left = node->left.get();
+        Node* right = node->right.get();
         // unlock node
         omp_unset_nest_lock(&node->omp_lock);
 
@@ -792,7 +792,7 @@ void TriangleBVH::tree_add_face(std::shared_ptr<Face> face)
 
 BVHReturnType TriangleBVH::tree_intersection_search(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Face>>& faces_intersected) const
 {
-    return node_intersection_search(root, generic_point, faces_intersected);
+    return node_intersection_search(root.get(), generic_point, faces_intersected);
 }
 
 void TriangleBVH::tree_print() const

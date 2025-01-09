@@ -566,7 +566,7 @@ bool RRSTree::node_delete_vertex(const std::shared_ptr<RRSNode>& node, const std
     }
 }
 
-RRSReturnType RRSTree::node_reverse_radius_search(const std::shared_ptr<RRSNode>& node, const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Vertex>>& search_results)
+RRSReturnType RRSTree::node_reverse_radius_search(RRSNode* node, const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Vertex>>& search_results)
 {
     // lock the node for exclusive read/write (abort if can't lock node -> someone else is reading/writing this node)
     if (!omp_test_nest_lock(&node->omp_lock))
@@ -586,8 +586,8 @@ RRSReturnType RRSTree::node_reverse_radius_search(const std::shared_ptr<RRSNode>
     if (!node->isLeaf)
     {
         // get copy of left and right node
-        std::shared_ptr<RRSNode> left = node->left;
-        std::shared_ptr<RRSNode> right = node->right;
+        RRSNode* left = node->left.get();
+        RRSNode* right = node->right.get();
         // unlock node
         omp_unset_nest_lock(&node->omp_lock);
 
@@ -791,7 +791,7 @@ void RRSTree::tree_delete_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
 
 RRSReturnType RRSTree::tree_reverse_radius_search(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Vertex>>& search_results)
 {
-    return node_reverse_radius_search(root, generic_point, search_results);
+    return node_reverse_radius_search(root.get(), generic_point, search_results);
 }
 
 void RRSTree::tree_increase_radius(std::shared_ptr<Vertex> boundary_vertex)
