@@ -311,7 +311,7 @@ BVHReturnType TriangleBVH::node_intersection_search(Node* node, const std::share
         }
 
         // skip if not intersected
-        if (!node->faces[0]->intersects_point(generic_point->get_origin(), generic_point->get_direction()))
+        if (!face->intersects_point(generic_point->get_origin(), generic_point->get_direction()))
         {
             omp_unset_nest_lock(&face->face_lock);
             omp_unset_nest_lock(&node->omp_lock);
@@ -331,7 +331,7 @@ BVHReturnType TriangleBVH::node_intersection_search(Node* node, const std::share
         }
 
         // return
-        faces_intersected.push_back(node->faces[0]);
+        faces_intersected.push_back(face);
 
         omp_unset_nest_lock(&face->face_lock);
         return BVHReturnType::INTERSECTED;
