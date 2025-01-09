@@ -468,22 +468,22 @@ std::shared_ptr<Node> TriangleBVH::build_node(const std::vector<std::shared_ptr<
 std::shared_ptr<Node> TriangleBVH::find_best_node(const std::shared_ptr<Node>& node, const std::shared_ptr<Face>& face)
 {
     // store a list of queue to process
-    std::queue<std::pair<std::shared_ptr<Node>, double>> queue;
-    queue.push(std::make_pair(node, 0));
+    std::queue<std::pair<Node*, double>> queue;
+    queue.push(std::make_pair(node.get(), 0));
 
     // initialize
     double best_cost = std::numeric_limits<double>::infinity();
-    std::shared_ptr<Node> best_node = nullptr;
+    Node* best_node = nullptr;
 
     // while queue is not empty
     while (!queue.empty())
     {
         // get the first element
-        std::pair<std::shared_ptr<Node>, double> current = queue.front();
+        std::pair<Node*, double> current = queue.front();
         queue.pop();
 
         // get the node and inherited cost
-        std::shared_ptr<Node> current_node = current.first;
+        Node* current_node = current.first;
         double inherited_cost = current.second;
 
         // cost to branch from current node
@@ -524,14 +524,23 @@ std::shared_ptr<Node> TriangleBVH::find_best_node(const std::shared_ptr<Node>& n
             else
             {
                 // we should go into the children
-                queue.push(std::make_pair(current_node->left, inherited_cost + change_to_inherited));
-                queue.push(std::make_pair(current_node->right, inherited_cost + change_to_inherited));
+                queue.push(std::make_pair(current_node->left.get(), inherited_cost + change_to_inherited));
+                queue.push(std::make_pair(current_node->right.get(), inherited_cost + change_to_inherited));
             }
         }
     }
 
-    // return the best node
-    return best_node;
+    // Return the best node as a shared_ptr
+    if (best_node)
+    {
+        // Since best_node is part of the existing tree, we can create a shared_ptr using std::shared_ptr aliasing constructor
+        // This shares ownership with the original node's shared_ptr
+        return std::shared_ptr<Node>(node, best_node);
+    }
+    else
+    {
+        return nullptr;
+    }
 }
 
 void TriangleBVH::node_add_face(const std::shared_ptr<Node>& node, const std::shared_ptr<Face>& face)

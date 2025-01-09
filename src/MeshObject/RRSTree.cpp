@@ -343,23 +343,23 @@ std::shared_ptr<RRSNode> RRSTree::build_node(const std::vector<std::shared_ptr<V
 
 std::shared_ptr<RRSNode> RRSTree::find_best_node(const std::shared_ptr<RRSNode>& node, const std::shared_ptr<Vertex>& boundary_vertex)
 {
-    // store a list of queue to process
-    std::queue<std::pair<std::shared_ptr<RRSNode>, double>> queue;
-    queue.push(std::make_pair(node, 0));
+    // Store a queue of nodes to process using raw pointers
+    std::queue<std::pair<RRSNode*, double>> queue;
+    queue.push(std::make_pair(node.get(), 0));
 
     // initialize
     double best_cost = std::numeric_limits<double>::infinity();
-    std::shared_ptr<RRSNode> best_node = nullptr;
+    RRSNode* best_node = nullptr;
 
     // while queue is not empty
     while (!queue.empty())
     {
         // get the first element
-        std::pair<std::shared_ptr<RRSNode>, double> current = queue.front();
+        std::pair<RRSNode*, double> current = queue.front();
         queue.pop();
 
         // get the node and inherited cost
-        std::shared_ptr<RRSNode> current_node = current.first;
+        RRSNode* current_node = current.first;
         double inherited_cost = current.second;
 
         // cost to branch from current node
@@ -400,14 +400,23 @@ std::shared_ptr<RRSNode> RRSTree::find_best_node(const std::shared_ptr<RRSNode>&
             else
             {
                 // we should go into the children
-                queue.push(std::make_pair(current_node->left, inherited_cost + change_to_inherited));
-                queue.push(std::make_pair(current_node->right, inherited_cost + change_to_inherited));
+                queue.push(std::make_pair(current_node->left.get(), inherited_cost + change_to_inherited));
+                queue.push(std::make_pair(current_node->right.get(), inherited_cost + change_to_inherited));
             }
         }
     }
 
-    // return the best node
-    return best_node;
+    // Return the best node as a shared_ptr
+    if (best_node)
+    {
+        // Since best_node is part of the existing tree, we can create a shared_ptr using std::shared_ptr aliasing constructor
+        // This shares ownership with the original node's shared_ptr
+        return std::shared_ptr<RRSNode>(node, best_node);
+    }
+    else
+    {
+        return nullptr;
+    }
 }
 
 
