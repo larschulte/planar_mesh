@@ -443,10 +443,13 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
         // store current surface to add to
         surface_to_add_to = surface;
 
-        // if from bvh surface
+        // if added as interior point
         if (bvh_surfaces.find(surface_to_add_to) != bvh_surfaces.end())
         {
-            // add to the first face
+            // add as interior point
+            const std::shared_ptr<InteriorPoint>& new_interior_point = storage_->add_interior_point(generic_point);
+
+            // get the first face
             std::shared_ptr<Face> face_to_add_to;
             for (const std::shared_ptr<Face>& face : bvh_results)
             {
@@ -461,11 +464,7 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
                 break;
             }
 
-            // throw if face to add to is not set
-            if (face_to_add_to == nullptr) throw std::runtime_error("face to add to is not set");
-
-            // add to surface_to_add_to and face_to_add_to
-            const std::shared_ptr<InteriorPoint>& new_interior_point = storage_->add_interior_point(generic_point);
+            // add
             new_interior_point->connect(surface_to_add_to);
             new_interior_point->connect(face_to_add_to);
 
@@ -495,9 +494,7 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
             break;
         }
         
-        // if from rrs surface
-
-        // add to surface
+        // if added as vertex
         std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(surface_to_add_to, generic_point);
 
         // reduce radius of the new vertex
