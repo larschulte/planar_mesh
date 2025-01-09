@@ -568,6 +568,12 @@ bool RRSTree::node_delete_vertex(const std::shared_ptr<RRSNode>& node, const std
 
 RRSReturnType RRSTree::node_reverse_radius_search(RRSNode* node, const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Vertex>>& search_results)
 {
+    // Double-Checked Locking
+    if (!node->box.contains(generic_point->get_position()))
+    {
+        return RRSReturnType::SKIP;
+    }
+
     // lock the node for exclusive read/write (abort if can't lock node -> someone else is reading/writing this node)
     if (!omp_test_nest_lock(&node->omp_lock))
     {

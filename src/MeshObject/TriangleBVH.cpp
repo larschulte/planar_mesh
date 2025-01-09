@@ -241,7 +241,13 @@ void TriangleBVH::sort_face_list_in_axis(std::vector<std::shared_ptr<Face>>& fac
 }
 
 BVHReturnType TriangleBVH::node_intersection_search(Node* node, const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Face>>& faces_intersected) const
-{    
+{   
+    // Double-Checked Locking
+    if (!node->box.intersect(generic_point->get_position(), generic_point->get_inv_direction()))
+    {
+        return BVHReturnType::SKIP;
+    }
+
     // lock the node for exclusive read/write (abort if can't lock node -> someone else is reading/writing this node)
     if (!omp_test_nest_lock(&node->omp_lock))
     {
