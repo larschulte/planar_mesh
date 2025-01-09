@@ -520,7 +520,7 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
         }
     }
 
-    // delete within and penetrated that are from differnt surface
+    // bvh - delete penetrated 
     for (const std::shared_ptr<Face>& face : bvh_results)
     {
         // skip if expired
@@ -539,7 +539,7 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
         storage_->delete_face(face);
     }
     
-    // reduce radius of nearby vertices as ray
+    // rrs - reduce radius
     for (const std::shared_ptr<Vertex>& vertex : rrs_results)
     {
         // skip if expired
