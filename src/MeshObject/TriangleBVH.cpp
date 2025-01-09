@@ -290,9 +290,16 @@ BVHReturnType TriangleBVH::node_intersection_search(Node* node, const std::share
             omp_unset_nest_lock(&node->omp_lock);
             return BVHReturnType::SKIP;
         }
+        const std::shared_ptr<Face>& face = node->faces[0];
+
+        // Double-Checked Locking
+        if (face->is_expired() || !face->intersects_point(generic_point->get_origin(), generic_point->get_direction()))
+        {
+            omp_unset_nest_lock(&node->omp_lock);
+            return BVHReturnType::SKIP;
+        }
 
         // abort if can't lock face lock
-        const std::shared_ptr<Face>& face = node->faces[0];
         if (!omp_test_nest_lock(&face->face_lock))
         {
             omp_unset_nest_lock(&node->omp_lock);

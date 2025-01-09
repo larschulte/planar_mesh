@@ -618,6 +618,13 @@ RRSReturnType RRSTree::node_reverse_radius_search(RRSNode* node, const std::shar
         }
         const std::shared_ptr<Vertex>& boundary_vertex = node->boundary_vertices[0];
 
+        // Double-Checked Locking
+        if (boundary_vertex->is_expired() || !boundary_vertex->approx_contains(generic_point->get_position()))
+        {
+            omp_unset_nest_lock(&node->omp_lock);
+            return RRSReturnType::SKIP;
+        }
+
         // abort if can't lock vertex
         // vertex lock prevent vertex's properties from being changed when we are accessing
         if (!omp_test_nest_lock(&boundary_vertex->vertex_lock))
