@@ -1290,9 +1290,9 @@ void Vertex::try_update_radius()
 
 void Vertex::try_break_edges()
 {
-    // if for an edge, any vertices have smaller radius than the length of the edge, delete the edge
-    std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges_copy = edges_;
-    for (const std::shared_ptr<Edge>& edge : edges_copy)
+    // collect edges to delete
+    std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges_to_delete;
+    for (const std::shared_ptr<Edge>& edge : edges_)
     {
         if (edge->is_expired()) continue; // could turn expired if below deletes an edge which then deletes a face
         if (edge->is_deleting()) continue; // could be deleting
@@ -1302,24 +1302,20 @@ void Vertex::try_break_edges()
         const double radius1 = edge->get_vertex(1)->get_radius();
         if (!settings_.edge_is_short_enough(edge_length, radius0, radius1))
         {
-            storage_->delete_edge(edge);
+            edges_to_delete.insert(edge);
         }
     }
 
-    // skip if expired
-    if (is_expired()) return;
-
-    // delete face if penetrated
-    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces_copy = faces_;
-    for (const std::shared_ptr<Face>& face : faces_copy)
+    // delete edges
+    for (const std::shared_ptr<Edge>& edge : edges_to_delete)
     {
-        if (face->is_expired()) continue; // could turn expired if below deletes a face
-        if (face->is_deleting()) continue; // could be deleting
+        // skip if expired
+        if (is_expired()) return;
 
-        if (face->is_penetrated())
-        {
-            storage_->delete_face(face);
-        }
+        // skip if edge is expired
+        if (edge->is_expired()) continue; 
+
+        storage_->delete_edge(edge);
     }
 }
 
