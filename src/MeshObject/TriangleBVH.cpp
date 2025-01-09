@@ -303,15 +303,7 @@ BVHReturnType TriangleBVH::node_intersection_search(Node* node, const std::share
         // thus this thread may have lock this face during the gap
         // and see an expired face in the search tree
         // thus we need to check if the face is expired and skip if it is
-        if (face->is_expired())
-        {
-            omp_unset_nest_lock(&face->face_lock);
-            omp_unset_nest_lock(&node->omp_lock);
-            return BVHReturnType::SKIP;
-        }
-
-        // skip if not intersected
-        if (!face->intersects_point(generic_point->get_origin(), generic_point->get_direction()))
+        if (face->is_expired() || !face->intersects_point(generic_point->get_origin(), generic_point->get_direction()))
         {
             omp_unset_nest_lock(&face->face_lock);
             omp_unset_nest_lock(&node->omp_lock);

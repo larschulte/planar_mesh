@@ -630,15 +630,7 @@ RRSReturnType RRSTree::node_reverse_radius_search(RRSNode* node, const std::shar
         // thus this thread may have lock this vertex during the gap
         // and see an expired vertex in the search tree
         // thus we need to check if the vertex is expired and skip if it is
-        if (boundary_vertex->is_expired())
-        {
-            omp_unset_nest_lock(&boundary_vertex->vertex_lock);
-            omp_unset_nest_lock(&node->omp_lock);
-            return RRSReturnType::SKIP;
-        }
-
-        // skip if not contained
-        if (!boundary_vertex->approx_contains(generic_point->get_position()))
+        if (boundary_vertex->is_expired() || !boundary_vertex->approx_contains(generic_point->get_position()))
         {
             omp_unset_nest_lock(&boundary_vertex->vertex_lock);
             omp_unset_nest_lock(&node->omp_lock);
