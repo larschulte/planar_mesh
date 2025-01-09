@@ -924,9 +924,17 @@ void Vertex::delete_subscribers()
 
 void Vertex::upon_adding_publisher()
 {
+    // previous and current radius
+    const double previous_radius = get_radius();
     try_update_radius();
-    try_break_edges();
-    if (!is_expired()) try_update_node_box();
+    const double current_radius = get_radius();
+    
+    // only try break edge and update node box if radius is reduced
+    if (current_radius < previous_radius) 
+    {
+        try_break_edges();
+        if (!is_expired()) try_update_node_box();
+    }    
 }
 
 void Vertex::upon_deleting_publisher()
@@ -934,9 +942,17 @@ void Vertex::upon_deleting_publisher()
     // skip if deleting
     if (is_deleting()) return;
 
+    // previous and current radius
+    const double previous_radius = get_radius();
     try_update_radius();
-    try_close_holes_repeatedly();
-    try_update_node_box();
+    const double current_radius = get_radius();
+
+    // only try close holes and update node box if radius is increased
+    if (current_radius > previous_radius) 
+    {
+        try_close_holes_repeatedly();
+        try_update_node_box();
+    }
 }
 
 void Vertex::add_vertex_point_distance_publisher(const std::shared_ptr<Vertex>& vertex_point_publisher)
