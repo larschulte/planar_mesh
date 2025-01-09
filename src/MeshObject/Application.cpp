@@ -491,6 +491,7 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
                 // add neighboring vertex
                 new_vertex->add_vertex_point_distance_publisher(vertex);
             }
+            new_vertex->upon_adding_publisher();
 
             if (!surface_to_add_to->connect_by_edges_and_faces(new_vertex, rrs_results))
             {
@@ -527,6 +528,7 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
             // add neighboring vertex
             new_vertex->add_vertex_point_distance_publisher(vertex);
         }
+        new_vertex->upon_adding_publisher();
     }
 
     // bvh - delete penetrated 

@@ -970,9 +970,6 @@ void Vertex::add_vertex_point_distance_publisher(const std::shared_ptr<Vertex>& 
     // add publisher
     vertex_point_distance_publishers_[vertex_point_publisher] = distance;
 
-    // upon adding publisher
-    upon_adding_publisher();
-
     // add self to publisher vertex as subscriber
     vertex_point_publisher->add_vertex_point_distance_subscriber(shared_from_this());
 }
@@ -1010,6 +1007,7 @@ void Vertex::add_vertex_point_distance_subscriber(const std::shared_ptr<Vertex>&
 
     // add self to subscriber vertex as publisher
     vertex_point_subscriber->add_vertex_point_distance_publisher(shared_from_this());
+    vertex_point_subscriber->upon_adding_publisher();
 }
 
 void Vertex::delete_vertex_point_distance_subscriber(const std::shared_ptr<Vertex>& vertex_point_subscriber)
@@ -1044,9 +1042,6 @@ void Vertex::add_vertex_ray_distance_publisher(const std::shared_ptr<Vertex>& ve
 
     // add publisher
     vertex_ray_distance_publishers_[vertex_ray_publisher] = ray_distance;
-
-    // upon adding publisher
-    upon_adding_publisher();
 
     // add self to vertex ray as subscriber
     vertex_ray_publisher->add_vertex_ray_distance_subscriber(shared_from_this());
@@ -1085,6 +1080,7 @@ void Vertex::add_vertex_ray_distance_subscriber(const std::shared_ptr<Vertex>& v
 
     // add self to subscriber vertex as publisher
     vertex_ray_subscriber->add_vertex_ray_distance_publisher(shared_from_this());
+    vertex_ray_subscriber->upon_adding_publisher();
 }
 
 void Vertex::delete_vertex_ray_distance_subscriber(const std::shared_ptr<Vertex>& vertex_ray_subscriber)
@@ -1123,9 +1119,6 @@ void Vertex::add_vertex_plane_distance_publisher(const std::shared_ptr<Vertex>& 
     // add to publisher
     vertex_plane_distance_publishers_[vertex_plane_publisher] = distance;
 
-    // upon adding publisher
-    upon_adding_publisher();
-
     // add self to publisher vertex as subscriber
     vertex_plane_publisher->add_vertex_plane_distance_subscriber(shared_from_this());
 }
@@ -1159,6 +1152,7 @@ void Vertex::add_vertex_plane_distance_subscriber(const std::shared_ptr<Vertex>&
 
     // add self to subscriber vertex as publisher
     vertex_plane_subscriber->add_vertex_plane_distance_publisher(shared_from_this());
+    vertex_plane_subscriber->upon_adding_publisher();
 }
 
 void Vertex::delete_vertex_plane_distance_subscriber(const std::shared_ptr<Vertex>& vertex_plane_subscriber)
@@ -1193,9 +1187,6 @@ void Vertex::add_interior_ray_distance_publisher(const std::shared_ptr<InteriorP
 
     // add publisher
     interior_ray_distance_publishers_[interior_ray_publisher] = ray_distance;
-
-    // upon adding publisher
-    upon_adding_publisher();
 
     // add self to interior point as subscriber
     interior_ray_publisher->add_interior_ray_distance_subscriber(shared_from_this());
@@ -1234,9 +1225,6 @@ void Vertex::add_interior_point_distance_publisher(const std::shared_ptr<Interio
 
     // add publisher
     interior_point_distance_publishers_[interior_point_publisher] = distance;
-
-    // upon adding publisher
-    upon_adding_publisher();
 
     // add self to publisher vertex as subscriber
     interior_point_publisher->add_interior_point_distance_subscriber(shared_from_this());
