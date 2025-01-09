@@ -100,8 +100,8 @@ private:
 
     Eigen::Vector3d projected_position_ = Eigen::Vector3d::Zero();
 
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> interior_ray_distance_subscribers_;
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> interior_point_distance_subscribers_;
+    std::vector<std::shared_ptr<Vertex>> interior_ray_distance_subscribers_;
+    std::vector<std::shared_ptr<Vertex>> interior_point_distance_subscribers_;
 
 public:
     double weight_;

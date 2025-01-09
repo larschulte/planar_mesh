@@ -209,16 +209,16 @@ private:
     Eigen::Vector3d projected_position_ = Eigen::Vector3d::Zero();
 
     // a publisher is one that reduces radius of other vertices
-    std::unordered_map<std::shared_ptr<Vertex>, double, MeshObjectHash> vertex_point_distance_publishers_;
-    std::unordered_map<std::shared_ptr<Vertex>, double, MeshObjectHash> vertex_ray_distance_publishers_;
-    std::unordered_map<std::shared_ptr<Vertex>, double, MeshObjectHash> vertex_plane_distance_publishers_;
-    std::unordered_map<std::shared_ptr<InteriorPoint>, double, MeshObjectHash> interior_ray_distance_publishers_;
-    std::unordered_map<std::shared_ptr<InteriorPoint>, double, MeshObjectHash> interior_point_distance_publishers_;
+    std::vector<std::pair<std::shared_ptr<Vertex>, double>> vertex_point_distance_publishers_;
+    std::vector<std::pair<std::shared_ptr<Vertex>, double>> vertex_ray_distance_publishers_;
+    std::vector<std::pair<std::shared_ptr<Vertex>, double>> vertex_plane_distance_publishers_;
+    std::vector<std::pair<std::shared_ptr<InteriorPoint>, double>> interior_ray_distance_publishers_;
+    std::vector<std::pair<std::shared_ptr<InteriorPoint>, double>> interior_point_distance_publishers_;
 
     // a subscriber is one that is reduced by the current vertex
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertex_point_distance_subscribers_;
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertex_ray_distance_subscribers_;
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertex_plane_distance_subscribers_;
+    std::vector<std::shared_ptr<Vertex>> vertex_point_distance_subscribers_;
+    std::vector<std::shared_ptr<Vertex>> vertex_ray_distance_subscribers_;
+    std::vector<std::shared_ptr<Vertex>> vertex_plane_distance_subscribers_;
 
 public:
     double weight_;

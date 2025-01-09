@@ -277,7 +277,7 @@ void InteriorPoint::disconnect(const std::shared_ptr<InteriorPoint>& sibling_int
 void InteriorPoint::delete_subscribers()
 {
     // interior ray subscribers
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> interior_ray_distance_subscribers_copy = interior_ray_distance_subscribers_;
+    std::vector<std::shared_ptr<Vertex>> interior_ray_distance_subscribers_copy = interior_ray_distance_subscribers_;
     for (const auto& interior_ray_subscriber : interior_ray_distance_subscribers_copy)
     {
         // try lock vertex and surface
@@ -298,7 +298,7 @@ void InteriorPoint::delete_subscribers()
     }
 
     // interior point subscribers
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> interior_point_distance_subscribers_copy = interior_point_distance_subscribers_;
+    std::vector<std::shared_ptr<Vertex>> interior_point_distance_subscribers_copy = interior_point_distance_subscribers_;
     for (const auto& interior_point_subscriber : interior_point_distance_subscribers_copy)
     {
         // try lock vertex and surface
@@ -324,12 +324,14 @@ void InteriorPoint::add_interior_ray_distance_subscriber(const std::shared_ptr<V
     // check input
     if (interior_ray_subscriber->is_expired()) return;
 
+    // remove expired subscribers
+    interior_ray_distance_subscribers_.erase(std::remove_if(interior_ray_distance_subscribers_.begin(), interior_ray_distance_subscribers_.end(), [&](const std::shared_ptr<Vertex>& interior_ray_subscriber_) {return interior_ray_subscriber_->is_expired();}), interior_ray_distance_subscribers_.end());
+
     // skip if already exist
-    const bool already_exist = interior_ray_distance_subscribers_.find(interior_ray_subscriber) != interior_ray_distance_subscribers_.end();
-    if (already_exist) return;
+    for (const auto& interior_ray_subscriber_ : interior_ray_distance_subscribers_) if (interior_ray_subscriber_ == interior_ray_subscriber) return; // Already exists
 
     // add subscriber
-    interior_ray_distance_subscribers_.insert(interior_ray_subscriber).second;
+    interior_ray_distance_subscribers_.push_back(interior_ray_subscriber);
 
     // add self to subscriber vertex as publisher
     interior_ray_subscriber->add_interior_ray_distance_publisher(shared_from_this());
@@ -341,12 +343,15 @@ void InteriorPoint::delete_interior_ray_distance_subscriber(const std::shared_pt
     // check input
     if (interior_ray_subscriber->is_expired()) return;
 
+    // remove expired subscribers
+    interior_ray_distance_subscribers_.erase(std::remove_if(interior_ray_distance_subscribers_.begin(), interior_ray_distance_subscribers_.end(), [&](const std::shared_ptr<Vertex>& interior_ray_subscriber_) {return interior_ray_subscriber_->is_expired();}), interior_ray_distance_subscribers_.end());
+
     // skip if not exist
-    const bool not_exist = interior_ray_distance_subscribers_.find(interior_ray_subscriber) == interior_ray_distance_subscribers_.end();
-    if (not_exist) return;
+    auto it = std::find(interior_ray_distance_subscribers_.begin(), interior_ray_distance_subscribers_.end(), interior_ray_subscriber);
+    if (it == interior_ray_distance_subscribers_.end()) return; // skip if not exist
 
     // delete subscriber
-    interior_ray_distance_subscribers_.erase(interior_ray_subscriber);
+    interior_ray_distance_subscribers_.erase(it);
 
     // delete self from subscriber vertex as publisher
     interior_ray_subscriber->delete_interior_ray_distance_publisher(shared_from_this());
@@ -357,12 +362,14 @@ void InteriorPoint::add_interior_point_distance_subscriber(const std::shared_ptr
     // check input
     if (interior_point_subscriber->is_expired()) return;
 
+    // remove expired subscribers
+    interior_point_distance_subscribers_.erase(std::remove_if(interior_point_distance_subscribers_.begin(), interior_point_distance_subscribers_.end(), [&](const std::shared_ptr<Vertex>& interior_point_subscriber_) {return interior_point_subscriber_->is_expired();}), interior_point_distance_subscribers_.end());
+
     // skip if already exist
-    const bool already_exist = interior_point_distance_subscribers_.find(interior_point_subscriber) != interior_point_distance_subscribers_.end();
-    if (already_exist) return;
+    for (const auto& interior_point_subscriber_ : interior_point_distance_subscribers_) if (interior_point_subscriber_ == interior_point_subscriber) return; // Already exists
 
     // add subscriber
-    interior_point_distance_subscribers_.insert(interior_point_subscriber).second;
+    interior_point_distance_subscribers_.push_back(interior_point_subscriber);
 
     // add self to subscriber vertex as publisher
     interior_point_subscriber->add_interior_point_distance_publisher(shared_from_this());
@@ -374,12 +381,15 @@ void InteriorPoint::delete_interior_point_distance_subscriber(const std::shared_
     // check input
     if (interior_point_subscriber->is_expired()) return;
 
+    // remove expired subscribers
+    interior_point_distance_subscribers_.erase(std::remove_if(interior_point_distance_subscribers_.begin(), interior_point_distance_subscribers_.end(), [&](const std::shared_ptr<Vertex>& interior_point_subscriber_) {return interior_point_subscriber_->is_expired();}), interior_point_distance_subscribers_.end());
+
     // skip if not exist
-    const bool not_exist = interior_point_distance_subscribers_.find(interior_point_subscriber) == interior_point_distance_subscribers_.end();
-    if (not_exist) return;
+    auto it = std::find(interior_point_distance_subscribers_.begin(), interior_point_distance_subscribers_.end(), interior_point_subscriber);
+    if (it == interior_point_distance_subscribers_.end()) return; // skip if not exist
 
     // delete subscriber
-    interior_point_distance_subscribers_.erase(interior_point_subscriber);
+    interior_point_distance_subscribers_.erase(it);
     
     // delete self from subscriber vertex as publisher
     interior_point_subscriber->delete_interior_point_distance_publisher(shared_from_this());
