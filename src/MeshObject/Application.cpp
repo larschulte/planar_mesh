@@ -432,12 +432,8 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
         list_of_surfaces_to_add_to.insert(list_of_surfaces_to_add_to.end(), surfaces_rrs_seed_sorted.begin(), surfaces_rrs_seed_sorted.end());
     }
 
-    // 4. new surface
-    std::shared_ptr<Surface> new_surface = storage_->add_surface();
-    list_of_surfaces_to_add_to.push_back(new_surface);
-
-    // add to surface according to the list
-    std::shared_ptr<Surface> surface_to_add_to;
+    // add to surface according to the list of bvh and rrs surfaces
+    std::shared_ptr<Surface> surface_to_add_to = nullptr;
     std::shared_ptr<InteriorPoint> new_interior_point = nullptr;
     std::shared_ptr<Vertex> new_vertex = nullptr;
     for (std::shared_ptr<Surface> surface : list_of_surfaces_to_add_to)
@@ -445,7 +441,7 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
         // store current surface to add to
         surface_to_add_to = surface;
 
-        // if added as interior point
+        // if from bvh surface
         if (bvh_surfaces.find(surface_to_add_to) != bvh_surfaces.end())
         {
             // add as interior point
@@ -470,14 +466,52 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
             new_interior_point->connect(surface_to_add_to);
             new_interior_point->connect(face_to_add_to);
 
-            // delete new surface
-            storage_->delete_surface(new_surface);
-
             // return
             break;
         }
         
-        // if added as vertex
+        // if from rrs surface
+        if (rrs_surfaces.find(surface_to_add_to) != rrs_surfaces.end())
+        {
+            // added as vertex
+            new_vertex = storage_->add_vertex(surface_to_add_to, generic_point);
+
+            // reduce radius of the new vertex
+            for (std::shared_ptr<Vertex> vertex : rrs_results)
+            {
+                // skip if the vertex is expired
+                if (vertex->is_expired()) continue;
+
+                // skip if the vertex is the same as the new vertex
+                if (vertex->get_surface() == surface_to_add_to) continue;
+
+                // add neighboring vertex
+                new_vertex->add_vertex_point_distance_publisher(vertex);
+            }
+
+            std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> rrs_results_set = std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>(rrs_results.begin(), rrs_results.end());
+            const bool connected = surface_to_add_to->connect_by_edges_and_faces(new_vertex, rrs_results_set);
+            if (connected)
+            {
+                break;
+            }
+            else
+            {
+                // need to prevent this vertex from generating a new generic point
+                new_vertex->can_create_generic_point(false);
+                storage_->delete_vertex(new_vertex);
+                continue;
+            }
+        }
+    }
+
+    // add to new surface if not added to list of bvh or rrs
+    if (surface_to_add_to == nullptr)
+    {
+        // add new surface
+        std::shared_ptr<Surface> surface_to_add_to = storage_->add_surface();
+
+        // add as vertex
         new_vertex = storage_->add_vertex(surface_to_add_to, generic_point);
 
         // reduce radius of the new vertex
@@ -491,32 +525,6 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
 
             // add neighboring vertex
             new_vertex->add_vertex_point_distance_publisher(vertex);
-        }
-
-        // try update
-        new_vertex->try_update_radius();
-
-        // if new surface
-        if (surface_to_add_to == new_surface)
-        {
-            break;
-        }
-
-        // if old surface
-        std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> rrs_results_set = std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>(rrs_results.begin(), rrs_results.end());
-        const bool connected = surface_to_add_to->connect_by_edges_and_faces(new_vertex, rrs_results_set);
-        if (connected)
-        {
-            // delete new surface
-            storage_->delete_surface(new_surface);
-            break;
-        }
-        else
-        {
-            // need to prevent this vertex from generating a new generic point
-            new_vertex->can_create_generic_point(false);
-            storage_->delete_vertex(new_vertex);
-            continue;
         }
     }
 
