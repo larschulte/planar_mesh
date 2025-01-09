@@ -437,8 +437,12 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
     list_of_surfaces_to_add_to.push_back(new_surface);
 
     // add to surface according to the list
-    for (std::shared_ptr<Surface> surface_to_add_to : list_of_surfaces_to_add_to)
+    std::shared_ptr<Surface> surface_to_add_to;
+    for (std::shared_ptr<Surface> surface : list_of_surfaces_to_add_to)
     {
+        // store current surface to add to
+        surface_to_add_to = surface;
+
         // if from bvh surface
         if (bvh_surfaces.find(surface_to_add_to) != bvh_surfaces.end())
         {
@@ -484,38 +488,11 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
                 new_interior_point->add_interior_ray_distance_subscriber(vertex);
             }
 
-            // interior point removes penetrated faces
-            for (const std::shared_ptr<Face>& face : bvh_results)
-            {
-                // skip if expired
-                if (face->is_expired()) continue;
-
-                // skip if same surface
-                if (face->get_surface() == surface_to_add_to) continue;
-
-                // skip if no relative position
-                if (surfaces_bvh_seed.find(face->get_surface()) != surfaces_bvh_seed.end()) continue;
-                
-                // skip if in front 
-                if (surfaces_bvh_in_front.find(face->get_surface()) != surfaces_bvh_in_front.end()) continue;
-
-                // add penetrated vertex point
-                std::shared_ptr<Vertex> vertex0 = face->get_vertex(0);
-                std::shared_ptr<Vertex> vertex1 = face->get_vertex(1);
-                std::shared_ptr<Vertex> vertex2 = face->get_vertex(2);
-                new_interior_point->add_interior_ray_distance_subscriber(vertex0);
-                new_interior_point->add_interior_ray_distance_subscriber(vertex1);
-                new_interior_point->add_interior_ray_distance_subscriber(vertex2);
-
-                // delete penetrated face
-                storage_->delete_face(face);
-            }
-
             // delete new surface
             storage_->delete_surface(new_surface);
 
             // return
-            return;
+            break;
         }
         
         // if from rrs surface
@@ -536,40 +513,13 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
             new_vertex->add_vertex_point_distance_publisher(vertex);
         }
 
-        // delete penetrated faces
-        for (const std::shared_ptr<Face>& face : bvh_results)
-        {
-            // skip if expired
-            if (face->is_expired()) continue;
-
-            // skip if same surface
-            if (face->get_surface() == surface_to_add_to) continue;
-
-            // skip if no relative position
-            if (surfaces_bvh_seed.find(face->get_surface()) != surfaces_bvh_seed.end()) continue;
-
-            // skip if in front 
-            if (surfaces_bvh_in_front.find(face->get_surface()) != surfaces_bvh_in_front.end()) continue;
-
-            // add penetrated vertex point
-            std::shared_ptr<Vertex> vertex0 = face->get_vertex(0);
-            std::shared_ptr<Vertex> vertex1 = face->get_vertex(1);
-            std::shared_ptr<Vertex> vertex2 = face->get_vertex(2);
-            new_vertex->add_vertex_ray_distance_subscriber(vertex0);
-            new_vertex->add_vertex_ray_distance_subscriber(vertex1);
-            new_vertex->add_vertex_ray_distance_subscriber(vertex2);
-
-            // delete penetrated face
-            storage_->delete_face(face);
-        }
-
         // try update
         new_vertex->try_update_radius();
 
         // if new surface
         if (surface_to_add_to == new_surface)
         {
-            return;
+            break;
         }
 
         // if old surface
@@ -602,7 +552,7 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
 
             // delete new surface
             storage_->delete_surface(new_surface);
-            return;
+            break;
         }
         else
         {
@@ -611,6 +561,25 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
             storage_->delete_vertex(new_vertex);
             continue;
         }
+    }
+
+    // delete within and penetrated that are from differnt surface
+    for (const std::shared_ptr<Face>& face : bvh_results)
+    {
+        // skip if expired
+        if (face->is_expired()) continue;
+
+        // skip if same surface
+        if (face->get_surface() == surface_to_add_to) continue;
+
+        // skip if no relative position
+        if (surfaces_bvh_seed.find(face->get_surface()) != surfaces_bvh_seed.end()) continue;
+
+        // skip if in front 
+        if (surfaces_bvh_in_front.find(face->get_surface()) != surfaces_bvh_in_front.end()) continue;
+
+        // delete penetrated face
+        storage_->delete_face(face);
     }
 }
 
