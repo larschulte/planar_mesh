@@ -32,7 +32,7 @@ public:
     
     // algorithm
     void process_point(const std::shared_ptr<GenericPoint>& generic_point);
-    void add_point_to_map(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Face>>& bvh_results, std::vector<std::shared_ptr<Vertex>>& rrs_results);
+    void add_point_to_map(const std::shared_ptr<GenericPoint>& generic_point, std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> bvh_results, std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> rrs_results);
     
     // interaction
     void refine_surfaces();

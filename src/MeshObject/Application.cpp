@@ -279,7 +279,10 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
     // std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
     // process
-    add_point_to_map(generic_point, bvh_results, rrs_results);
+    // convert to set
+    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> bvh_results_set(bvh_results.begin(), bvh_results.end());
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> rrs_results_set(rrs_results.begin(), rrs_results.end());
+    add_point_to_map(generic_point, bvh_results_set, rrs_results_set);
 
     num_of_concurrent_processes--;
     
@@ -304,7 +307,7 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
 }
 
 template <typename PointT>
-void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Face>>& bvh_results, std::vector<std::shared_ptr<Vertex>>& rrs_results)
+void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& generic_point, std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> bvh_results, std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> rrs_results)
 {
     // from bvh results and rrs results, get surfaces
     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> bvh_surfaces;
@@ -489,18 +492,16 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
                 new_vertex->add_vertex_point_distance_publisher(vertex);
             }
 
-            std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> rrs_results_set = std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>(rrs_results.begin(), rrs_results.end());
-            const bool connected = surface_to_add_to->connect_by_edges_and_faces(new_vertex, rrs_results_set);
-            if (connected)
+            if (!surface_to_add_to->connect_by_edges_and_faces(new_vertex, rrs_results))
             {
-                break;
-            }
-            else
-            {
-                // need to prevent this vertex from generating a new generic point
+                // delete this and retry
                 new_vertex->can_create_generic_point(false);
                 storage_->delete_vertex(new_vertex);
                 continue;
+            }
+            else
+            {
+                break;
             }
         }
     }
