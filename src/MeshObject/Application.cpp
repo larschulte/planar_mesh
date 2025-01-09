@@ -438,6 +438,8 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
 
     // add to surface according to the list
     std::shared_ptr<Surface> surface_to_add_to;
+    std::shared_ptr<InteriorPoint> new_interior_point = nullptr;
+    std::shared_ptr<Vertex> new_vertex = nullptr;
     for (std::shared_ptr<Surface> surface : list_of_surfaces_to_add_to)
     {
         // store current surface to add to
@@ -447,7 +449,7 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
         if (bvh_surfaces.find(surface_to_add_to) != bvh_surfaces.end())
         {
             // add as interior point
-            const std::shared_ptr<InteriorPoint>& new_interior_point = storage_->add_interior_point(generic_point);
+            new_interior_point = storage_->add_interior_point(generic_point);
 
             // get the first face
             std::shared_ptr<Face> face_to_add_to;
@@ -468,25 +470,6 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
             new_interior_point->connect(surface_to_add_to);
             new_interior_point->connect(face_to_add_to);
 
-            // interior point reduce radius of rrs vertex as ray
-            for (const std::shared_ptr<Vertex>& vertex : rrs_results)
-            {
-                // skip if expired
-                if (vertex->is_expired()) continue;
-
-                // skip if same surface
-                if (vertex->get_surface() == surface_to_add_to) continue;
-
-                // skip if no relative position
-                if (surfaces_rrs_seed.find(vertex->get_surface()) != surfaces_rrs_seed.end()) continue;
-
-                // skip if in front
-                if (surfaces_rrs_in_front.find(vertex->get_surface()) != surfaces_rrs_in_front.end()) continue;
-
-                // add as subscriber
-                new_interior_point->add_interior_ray_distance_subscriber(vertex);
-            }
-
             // delete new surface
             storage_->delete_surface(new_surface);
 
@@ -495,7 +478,7 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
         }
         
         // if added as vertex
-        std::shared_ptr<Vertex> new_vertex = storage_->add_vertex(surface_to_add_to, generic_point);
+        new_vertex = storage_->add_vertex(surface_to_add_to, generic_point);
 
         // reduce radius of the new vertex
         for (std::shared_ptr<Vertex> vertex : rrs_results)
@@ -524,29 +507,6 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
         const bool connected = surface_to_add_to->connect_by_edges_and_faces(new_vertex, rrs_results_set);
         if (connected)
         {
-            // reduce radius of nearby vertices
-            for (std::shared_ptr<Vertex> vertex : rrs_results)
-            {
-                // skip if the vertex is expired
-                if (vertex->is_expired()) continue;
-
-                // skip if the vertex is the same as the new vertex
-                if (vertex->get_surface() == surface_to_add_to) continue;
-
-                // add neighboring vertex
-                new_vertex->add_vertex_point_distance_subscriber(vertex);
-            }
-
-            // "add_self" may delete other vertices
-            // which will invoke their "delete_self"
-            // which acts on the "new_vertex" and ask it to recompute radius and try_break_edge
-            // which may cause "new_vertex" to expire
-            if (!new_vertex->is_expired())
-            {
-                new_vertex->try_update_radius();
-                new_vertex->try_update_node_box();
-            }
-
             // delete new surface
             storage_->delete_surface(new_surface);
             break;
@@ -578,6 +538,34 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
         // delete penetrated face
         storage_->delete_face(face);
     }
+    
+    // reduce radius of nearby vertices as ray
+    for (const std::shared_ptr<Vertex>& vertex : rrs_results)
+    {
+        // skip if expired
+        if (vertex->is_expired()) continue;
+
+        // skip if same surface
+        if (vertex->get_surface() == surface_to_add_to) continue;
+
+        if (new_interior_point)
+        {
+            // skip if no relative position
+            if (surfaces_rrs_seed.find(vertex->get_surface()) != surfaces_rrs_seed.end()) continue;
+
+            // skip if in front
+            if (surfaces_rrs_in_front.find(vertex->get_surface()) != surfaces_rrs_in_front.end()) continue;
+
+            // add as subscriber
+            new_interior_point->add_interior_ray_distance_subscriber(vertex);
+        }
+
+        if (new_vertex)
+        {
+            // add neighboring vertex
+            new_vertex->add_vertex_point_distance_subscriber(vertex);
+        }
+    }    
 }
 
 template <typename PointT>
