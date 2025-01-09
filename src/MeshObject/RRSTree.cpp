@@ -317,7 +317,7 @@ std::shared_ptr<RRSNode> RRSTree::build_node(const std::vector<std::shared_ptr<V
     // lock before creating link between vertex and node
     while (!omp_test_nest_lock(&node->omp_lock))
     {
-        std::cout << "RRS lock node inside build node waiting ..." << std::endl;
+        // std::cout << "RRS lock node inside build node waiting ..." << std::endl;
     };
 
     // expand box
@@ -435,7 +435,7 @@ void RRSTree::node_add_vertex(const std::shared_ptr<RRSNode>& node, const std::s
     // lock before adding vertex
     while (!omp_test_nest_lock(&node->omp_lock))
     {
-        std::cout << "RRS lock node inside add vertex waiting ... " << std::endl;
+        // std::cout << "RRS lock node inside add vertex waiting ... " << std::endl;
     };
 
     // after locking the node
@@ -758,7 +758,7 @@ void RRSTree::tree_delete_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
     // lock the node
     while (!omp_test_nest_lock(&node->omp_lock)) // don't copy node, as node can change when other thread is adding point to the node
     {
-        std::cout << "delete vertex waiting ..." << std::endl;
+        // std::cout << "delete vertex waiting ..." << std::endl;
     }
 
     // make copy for later release
