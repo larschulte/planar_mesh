@@ -667,7 +667,6 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
     }
 
     // create edges
-    std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> new_edges;
     for (const auto& nearby_vertex : nearby_vertices)
     {
         // skip if vertex is not boundary
@@ -685,9 +684,6 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
         // create edge
         std::shared_ptr<Edge> new_edge = storage_->add_edge(vertex, nearby_vertex);
         connect(new_edge);
-
-        // store used vertices and new edges
-        new_edges.insert(new_edge);
     }
 
     // false if new vertex don't have edges
