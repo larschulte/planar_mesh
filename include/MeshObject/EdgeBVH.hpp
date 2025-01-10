@@ -22,7 +22,7 @@ private:
         Eigen::Vector3d max;
         BoundingBox();
         void expand(const Eigen::Vector3d& point);
-        bool intersect(const Eigen::Vector3d& orig, const Eigen::Vector3d& dir, double& tMin, double& tMax) const;
+        bool intersect(const Eigen::Vector3d& orig, const Eigen::Vector3d& dir_inv, double& tMin, double& tMax) const;
         bool intersect(const Eigen::Vector3d& a, const Eigen::Vector3d& b) const;
         int get_longest_axis();
     };

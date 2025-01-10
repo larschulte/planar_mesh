@@ -16,11 +16,11 @@ void EdgeBVH::BoundingBox::expand(const Eigen::Vector3d& point)
     max = max.cwiseMax(point);
 }
 
-bool EdgeBVH::BoundingBox::intersect(const Eigen::Vector3d& orig, const Eigen::Vector3d& dir, double& tMin, double& tMax) const 
+bool EdgeBVH::BoundingBox::intersect(const Eigen::Vector3d& orig, const Eigen::Vector3d& dir_inv, double& tMin, double& tMax) const 
 {
     for (int i = 0; i < 3; ++i) 
     {
-        double invD = 1.0 / dir[i];
+        const double& invD = dir_inv[i];
         double t0 = (min[i] - orig[i]) * invD;
         double t1 = (max[i] - orig[i]) * invD;
         if (invD < 0.0) std::swap(t0, t1);
@@ -33,20 +33,21 @@ bool EdgeBVH::BoundingBox::intersect(const Eigen::Vector3d& orig, const Eigen::V
 
 bool EdgeBVH::BoundingBox::intersect(const Eigen::Vector3d& a, const Eigen::Vector3d& b) const 
 {
-    // count as intersect if both points are inside
-    bool a_inside = (a[0] >= min[0] && a[0] <= max[0] &&
+    // count as intersect if either point is inside
+    const bool a_inside = (a[0] >= min[0] && a[0] <= max[0] &&
                      a[1] >= min[1] && a[1] <= max[1] &&
                      a[2] >= min[2] && a[2] <= max[2]);
-    bool b_inside = (b[0] >= min[0] && b[0] <= max[0] &&
+    const bool b_inside = (b[0] >= min[0] && b[0] <= max[0] &&
                      b[1] >= min[1] && b[1] <= max[1] &&
                      b[2] >= min[2] && b[2] <= max[2]);
-    if (a_inside && b_inside) return true;
+    if (a_inside || b_inside) return true;
 
-    // Check for intersection if not both points are inside
+    // Check for intersection if no point is inside
     double tMin = 0.0;
     double tMax = 1.0;
-    Eigen::Vector3d dir = b - a;
-    return intersect(a, dir, tMin, tMax) && tMax >= 0.0 && tMin <= 1.0;
+    const Eigen::Vector3d dir = b - a;
+    const Eigen::Vector3d dir_inv = dir.cwiseInverse();
+    return intersect(a, dir_inv, tMin, tMax) && tMax >= 0.0 && tMin <= 1.0;
 }
 
 int EdgeBVH::BoundingBox::get_longest_axis()
