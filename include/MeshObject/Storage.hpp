@@ -40,12 +40,12 @@ public: // to user
     const std::shared_ptr<InteriorPoint>& add_interior_point(const Eigen::Vector3d& position, const Eigen::Vector3d& origin, double distance_travelled);
     const std::shared_ptr<InteriorPoint>& add_interior_point(const std::shared_ptr<GenericPoint>& generic_point);
     
-    void delete_vertex(const std::shared_ptr<Vertex>& vertex);
-    void delete_edge(const std::shared_ptr<Edge>& edge);
-    void delete_face(const std::shared_ptr<Face>& face);
-    void delete_surface(const std::shared_ptr<Surface>& surface);
-    void delete_generic_point(const std::shared_ptr<GenericPoint>& genertic_point);
-    void delete_interior_point(const std::shared_ptr<InteriorPoint>& interior_point);
+    void delete_vertex(const std::shared_ptr<Vertex> vertex);
+    void delete_edge(const std::shared_ptr<Edge> edge);
+    void delete_face(const std::shared_ptr<Face> face);
+    void delete_surface(const std::shared_ptr<Surface> surface);
+    void delete_generic_point(const std::shared_ptr<GenericPoint> genertic_point);
+    void delete_interior_point(const std::shared_ptr<InteriorPoint> interior_point);
 
     void add_to_main_queue(const Eigen::Vector3d& position, const Eigen::Vector3d& origin, double distance_travelled);
     void split_main_queue_into_smaller_queues();
