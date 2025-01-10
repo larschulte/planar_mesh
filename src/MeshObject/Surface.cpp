@@ -690,58 +690,6 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
         new_edges.insert(new_edge);
     }
 
-    // create faces
-    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> new_faces;
-    for (const auto& edge0 : new_edges)
-    {
-        // get vertex0
-        std::shared_ptr<Vertex> vertex0 = edge0->get_vertex(0) != vertex ? edge0->get_vertex(0) : edge0->get_vertex(1);
-
-        for (const auto& edge1 : new_edges)
-        {            
-            // get vertex1
-            std::shared_ptr<Vertex> vertex1 = edge1->get_vertex(0) != vertex ? edge1->get_vertex(0) : edge1->get_vertex(1);
-
-            // skip if repeated
-            if (vertex0 <= vertex1) continue;
-
-            // skip if edge does not exist between the two vertices
-            bool edge_exist = false;
-            std::shared_ptr<Edge> existing_edge;
-            for (const std::shared_ptr<Edge>& edge : vertex0->get_edges())
-            {
-                if (edge->get_surface() != shared_from_this()) continue;
-                if (edge->has_vertex(vertex1))
-                {
-                    edge_exist = true;
-                    existing_edge = edge;
-                    break;
-                }
-            }
-            if (!edge_exist) continue;
-
-            // skip if edge is not boundary
-            if (!existing_edge->is_boundary()) continue;
-            // skip if edge0 is not boundary
-            if (!edge0->is_boundary()) continue;
-            // skip if edge1 is not boundary
-            if (!edge1->is_boundary()) continue;
-
-            // create face
-            std::shared_ptr<Face> new_face = storage_->add_face(shared_from_this(), vertex, vertex0, vertex1);
-
-            // un-add face if face is non-manifold or penetrated
-            if (new_face->is_non_manifold() || new_face->is_penetrated())
-            {
-                new_face->un_add_face();
-                continue;
-            }
-            
-            // store
-            new_faces.insert(new_face);
-        }
-    }
-
     // try close holes
     vertex->try_close_holes_repeatedly();
 
