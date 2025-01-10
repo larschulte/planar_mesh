@@ -682,7 +682,7 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
         if (!settings_.edge_is_short_enough(distance, radius0, radius1)) continue;
 
         // skip if edge intersects
-        if (edge_bvh_.tree_intersect_edge(vertex, candidate_vertex)) continue;
+        if (tree_intersect_edge(vertex, candidate_vertex)) continue;
 
         // create edge
         std::shared_ptr<Edge> new_edge = storage_->add_edge(vertex, candidate_vertex);
