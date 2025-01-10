@@ -53,8 +53,8 @@ public:
 
     void delete_subscribers();
     
-    void add_interior_point_distance_subscriber(const std::shared_ptr<Vertex>& interior_point_subscriber);
-    void delete_interior_point_distance_subscriber(const std::shared_ptr<Vertex>& interior_point_subscriber);
+    void add_interior_point_distance_subscriber(const std::shared_ptr<Vertex> interior_point_subscriber);
+    void delete_interior_point_distance_subscriber(const std::shared_ptr<Vertex> interior_point_subscriber);
 
     void set_reverse_radius_search_radius(double radius);
 

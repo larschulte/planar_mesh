@@ -298,7 +298,7 @@ void InteriorPoint::delete_subscribers()
     }
 }
 
-void InteriorPoint::add_interior_point_distance_subscriber(const std::shared_ptr<Vertex>& interior_point_subscriber)
+void InteriorPoint::add_interior_point_distance_subscriber(const std::shared_ptr<Vertex> interior_point_subscriber)
 {
     // check input
     if (interior_point_subscriber->is_expired()) return;
@@ -317,7 +317,7 @@ void InteriorPoint::add_interior_point_distance_subscriber(const std::shared_ptr
     interior_point_subscriber->upon_adding_publisher();
 }
 
-void InteriorPoint::delete_interior_point_distance_subscriber(const std::shared_ptr<Vertex>& interior_point_subscriber)
+void InteriorPoint::delete_interior_point_distance_subscriber(const std::shared_ptr<Vertex> interior_point_subscriber)
 {
     // check input
     if (interior_point_subscriber->is_expired()) return;

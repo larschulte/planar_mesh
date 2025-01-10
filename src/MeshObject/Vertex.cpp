@@ -866,7 +866,7 @@ void Vertex::upon_deleting_publisher()
     }
 }
 
-void Vertex::add_vertex_point_distance_publisher(const std::shared_ptr<Vertex>& vertex_point_publisher)
+void Vertex::add_vertex_point_distance_publisher(const std::shared_ptr<Vertex> vertex_point_publisher)
 {
     // check input
     if (vertex_point_publisher->is_expired()) return;
@@ -887,7 +887,7 @@ void Vertex::add_vertex_point_distance_publisher(const std::shared_ptr<Vertex>& 
     vertex_point_publisher->add_vertex_point_distance_subscriber(shared_from_this());
 }
 
-void Vertex::delete_vertex_point_distance_publisher(const std::shared_ptr<Vertex>& vertex_point_publisher)
+void Vertex::delete_vertex_point_distance_publisher(const std::shared_ptr<Vertex> vertex_point_publisher)
 {
     // check input
     if (vertex_point_publisher->is_expired()) return;
@@ -909,7 +909,7 @@ void Vertex::delete_vertex_point_distance_publisher(const std::shared_ptr<Vertex
     vertex_point_publisher->delete_vertex_point_distance_subscriber(shared_from_this());
 }
 
-void Vertex::add_vertex_point_distance_subscriber(const std::shared_ptr<Vertex>& vertex_point_subscriber)
+void Vertex::add_vertex_point_distance_subscriber(const std::shared_ptr<Vertex> vertex_point_subscriber)
 {
     // check input
     if (vertex_point_subscriber->is_expired()) return;
@@ -928,7 +928,7 @@ void Vertex::add_vertex_point_distance_subscriber(const std::shared_ptr<Vertex>&
     vertex_point_subscriber->upon_adding_publisher();
 }
 
-void Vertex::delete_vertex_point_distance_subscriber(const std::shared_ptr<Vertex>& vertex_point_subscriber)
+void Vertex::delete_vertex_point_distance_subscriber(const std::shared_ptr<Vertex> vertex_point_subscriber)
 {
     // check input
     if (vertex_point_subscriber->is_expired()) return;
@@ -947,7 +947,7 @@ void Vertex::delete_vertex_point_distance_subscriber(const std::shared_ptr<Verte
     vertex_point_subscriber->delete_vertex_point_distance_publisher(shared_from_this());
 }
 
-void Vertex::add_interior_point_distance_publisher(const std::shared_ptr<InteriorPoint>& interior_point_publisher)
+void Vertex::add_interior_point_distance_publisher(const std::shared_ptr<InteriorPoint> interior_point_publisher)
 {
     // check input
     if (interior_point_publisher->is_expired()) return;
@@ -968,7 +968,7 @@ void Vertex::add_interior_point_distance_publisher(const std::shared_ptr<Interio
     interior_point_publisher->add_interior_point_distance_subscriber(shared_from_this());
 }
 
-void Vertex::delete_interior_point_distance_publisher(const std::shared_ptr<InteriorPoint>& interior_point_publisher)
+void Vertex::delete_interior_point_distance_publisher(const std::shared_ptr<InteriorPoint> interior_point_publisher)
 {
     // check input
     if (interior_point_publisher->is_expired()) return;

@@ -105,14 +105,14 @@ public:
     void upon_deleting_publisher();
 
     // vertex point distance publisher and subscriber
-    void add_vertex_point_distance_publisher(const std::shared_ptr<Vertex>& vertex_point_publisher);
-    void delete_vertex_point_distance_publisher(const std::shared_ptr<Vertex>& vertex_point_publisher);
-    void add_vertex_point_distance_subscriber(const std::shared_ptr<Vertex>& vertex_point_subscriber);
-    void delete_vertex_point_distance_subscriber(const std::shared_ptr<Vertex>& vertex_point_subscriber);
+    void add_vertex_point_distance_publisher(const std::shared_ptr<Vertex> vertex_point_publisher);
+    void delete_vertex_point_distance_publisher(const std::shared_ptr<Vertex> vertex_point_publisher);
+    void add_vertex_point_distance_subscriber(const std::shared_ptr<Vertex> vertex_point_subscriber);
+    void delete_vertex_point_distance_subscriber(const std::shared_ptr<Vertex> vertex_point_subscriber);
 
     // interior point distance publisher
-    void add_interior_point_distance_publisher(const std::shared_ptr<InteriorPoint>& interior_point_publisher);
-    void delete_interior_point_distance_publisher(const std::shared_ptr<InteriorPoint>& interior_point_publisher);
+    void add_interior_point_distance_publisher(const std::shared_ptr<InteriorPoint> interior_point_publisher);
+    void delete_interior_point_distance_publisher(const std::shared_ptr<InteriorPoint> interior_point_publisher);
 
     // update radius
     double compute_radius();
