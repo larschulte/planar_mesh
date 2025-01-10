@@ -696,21 +696,6 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
     // try close holes
     vertex->try_close_holes_repeatedly();
 
-    // false if after try close holes, the vertex still have more than two boundary edges
-    if (vertex->get_connected_boundary_edges().size() > 2) return false;
-    
-    // false if surface have no boundary edges
-    bool has_boundary_edges = false;
-    for (const auto& edge : edges_)
-    {
-        if (edge->is_boundary()) 
-        {
-            has_boundary_edges = true;
-            break;
-        }
-    }
-    if (!has_boundary_edges) return false;
-
     // else
     return true;
 }
