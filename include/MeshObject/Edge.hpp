@@ -24,7 +24,7 @@ public:
     const int& get_id() const;
     const std::shared_ptr<Vertex>& get_vertex(int index) const;
     const std::shared_ptr<Surface>& get_surface() const;
-    const std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& get_faces() const;
+    const std::vector<std::shared_ptr<Face>>& get_faces() const;
     const std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& get_sibling_edges() const;
     const Eigen::Vector3d& get_center() const;
     const Eigen::Vector3d& get_max() const;
@@ -87,8 +87,8 @@ private:
     int id_;
     std::shared_ptr<Storage> storage_;
 
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertices_;
-    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces_;
+    std::vector<std::shared_ptr<Vertex>> vertices_;
+    std::vector<std::shared_ptr<Face>> faces_;
     std::shared_ptr<Surface> surface_;
     
     std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> sibling_edges_;

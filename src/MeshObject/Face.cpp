@@ -123,9 +123,9 @@ void Face::delete_()
 
     // disconnect
     // make a copy of the set to avoid iterator invalidation
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertices = vertices_;
-    std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges = edges_;
-    std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> interior_points = interior_points_;
+    std::vector<std::shared_ptr<Vertex>> vertices = vertices_;
+    std::vector<std::shared_ptr<Edge>> edges = edges_;
+    std::vector<std::shared_ptr<InteriorPoint>> interior_points = interior_points_;
     std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> sibling_faces = sibling_faces_;
     for (const auto& vertex : vertices) disconnect(vertex);
     for (const auto& edge : edges) disconnect(edge);
@@ -155,9 +155,9 @@ void Face::temp_initialize(const Eigen::Vector3d& end_point)
 
     // set the vertex as the first vertex
     first_vertex_ = temp0;
-    vertices_.insert(temp0);
-    vertices_.insert(temp1);
-    vertices_.insert(temp2);
+    vertices_.push_back(temp0);
+    vertices_.push_back(temp1);
+    vertices_.push_back(temp2);
 
     // set the bounding box
     double radius = 0.001;
@@ -202,17 +202,17 @@ const Eigen::Vector3d& Face::get_center() const
     return center_;
 }
 
-const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& Face::get_vertices() const
+const std::vector<std::shared_ptr<Vertex>>& Face::get_vertices() const
 {
     return vertices_;
 }
 
-const std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash>& Face::get_interior_points() const
+const std::vector<std::shared_ptr<InteriorPoint>>& Face::get_interior_points() const
 {
     return interior_points_;
 }
 
-const std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& Face::get_edges() const
+const std::vector<std::shared_ptr<Edge>>& Face::get_edges() const
 {
     return edges_;
 }
@@ -267,7 +267,8 @@ bool Face::is_searchable() const
 
 bool Face::has_vertex(const std::shared_ptr<Vertex>& vertex) const
 {
-    return vertices_.find(vertex) != vertices_.end();
+    for (const std::shared_ptr<Vertex>& vertex_ : vertices_) if (vertex_ == vertex) return true;
+    return false;
 }
 
 bool Face::is_penetrated() const
@@ -371,9 +372,12 @@ void Face::connect(const std::shared_ptr<Vertex>& vertex)
     // check input
     if (vertex->is_expired()) throw std::runtime_error("Attempts to connect face with invalid vertex.");
 
+    // skip if already connected
+    for (const std::shared_ptr<Vertex>& vertex_ : vertices_) if (vertex_ == vertex) return;
+
     // connect
-    bool inserted = vertices_.insert(vertex).second;
-    if (inserted) vertex->connect(shared_from_this());
+    vertices_.push_back(vertex);
+    vertex->connect(shared_from_this());
 
     // check size
     if (vertices_.size() > 3) throw std::runtime_error("Face connected to more than 3 vertices.");
@@ -384,9 +388,12 @@ void Face::connect(const std::shared_ptr<Edge>& edge)
     // check input
     if (edge->is_expired()) throw std::runtime_error("Attempts to connect face with invalid edge.");
 
+    // skip if already connected
+    for (const std::shared_ptr<Edge>& edge_ : edges_) if (edge_ == edge) return;
+
     // connect
-    bool inserted = edges_.insert(edge).second;
-    if (inserted) edge->connect(shared_from_this());
+    edges_.push_back(edge);
+    edge->connect(shared_from_this());
 
     // check size
     if (edges_.size() > 3) throw std::runtime_error("Face connected to more than 3 edges.");
@@ -408,10 +415,13 @@ void Face::connect(const std::shared_ptr<InteriorPoint>& interior_point)
     // check input
     if (interior_point->is_expired()) throw std::runtime_error("Attempts to connect face with invalid interior point.");
 
+    // skip if already connected
+    for (const std::shared_ptr<InteriorPoint>& interior_point_ : interior_points_) if (interior_point_ == interior_point) return;
+
     // connect
-    bool inserted = interior_points_.insert(interior_point).second;
-    if (inserted) interior_point->connect(shared_from_this());
-    if (inserted) update_confirmed_status();
+    interior_points_.push_back(interior_point);
+    interior_point->connect(shared_from_this());
+    update_confirmed_status();
 }
 
 void Face::connect(const std::shared_ptr<Face>& sibling_face)
@@ -440,9 +450,13 @@ void Face::disconnect(const std::shared_ptr<Vertex>& vertex)
     // check input
     if (vertex->is_expired()) return;
 
+    // skip if not connected
+    auto it = std::find(vertices_.begin(), vertices_.end(), vertex);
+    if (it == vertices_.end()) return;
+
     // delete
-    bool erased = vertices_.erase(vertex);
-    if (erased) vertex->disconnect(shared_from_this());
+    vertices_.erase(it);
+    vertex->disconnect(shared_from_this());
 
     // self destruct
     if (!deleting_ && can_self_destruct_) storage_->delete_face(shared_from_this());
@@ -453,9 +467,13 @@ void Face::disconnect(const std::shared_ptr<Edge>& edge)
     // check input
     if (edge->is_expired()) return;
 
+    // skip if not connected
+    auto it = std::find(edges_.begin(), edges_.end(), edge);
+    if (it == edges_.end()) return;
+
     // delete
-    bool erased = edges_.erase(edge);
-    if (erased) edge->disconnect(shared_from_this());
+    edges_.erase(it);
+    edge->disconnect(shared_from_this());
 
     // self destruct
     if (!deleting_) storage_->delete_face(shared_from_this());
@@ -490,10 +508,14 @@ void Face::disconnect(const std::shared_ptr<InteriorPoint>& interior_point)
     // check input
     if (interior_point->is_expired()) return;
 
+    // skip if not connected
+    auto it = std::find(interior_points_.begin(), interior_points_.end(), interior_point);
+    if (it == interior_points_.end()) return;
+
     // delete
-    bool erased = interior_points_.erase(interior_point);
-    if (erased) interior_point->disconnect(shared_from_this());
-    if (erased) update_confirmed_status();
+    interior_points_.erase(it);
+    interior_point->disconnect(shared_from_this());
+    update_confirmed_status();
 
     // self destruct
     if (!deleting_) storage_->delete_face(shared_from_this());
@@ -541,7 +563,8 @@ bool Face::is_non_manifold() const
 void Face::swap(const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2)
 {
     // if contains vertex1
-    if (vertices_.find(vertex1) != vertices_.end())
+    auto it = std::find(vertices_.begin(), vertices_.end(), vertex1);
+    if (it != vertices_.end())
     {
         // std::cout << "Swapping face " << id_ << " vertex " << vertex1->get_id() << " with vertex " << vertex2->get_id() << std::endl;
 

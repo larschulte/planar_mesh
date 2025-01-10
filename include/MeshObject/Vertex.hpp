@@ -44,8 +44,8 @@ public:
     const std::shared_ptr<Surface>& get_surface() const;
     const std::shared_ptr<Surface>& get_surface_check() const;
     bool has_surface() const;
-    const std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& get_edges() const;
-    const std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& get_faces() const;
+    const std::vector<std::shared_ptr<Edge>>& get_edges() const;
+    const std::vector<std::shared_ptr<Face>>& get_faces() const;
     const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& get_sibling_vertices() const;
     std::size_t get_num_deletes() const;
     double get_current_surface_uncertainty() const;
@@ -186,8 +186,8 @@ private:
     int id_;
     std::shared_ptr<Storage> storage_;
 
-    std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges_;
-    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces_;
+    std::vector<std::shared_ptr<Edge>> edges_;
+    std::vector<std::shared_ptr<Face>> faces_;
     std::shared_ptr<Surface> surface_;
 
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> sibling_vertices_;

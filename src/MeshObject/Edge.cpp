@@ -63,8 +63,8 @@ void Edge::delete_()
 
     // disconnect
     // make copy of vertices_ and faces_ to avoid iterator invalidation
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertices = vertices_;
-    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces = faces_;
+    std::vector<std::shared_ptr<Vertex>> vertices = vertices_;
+    std::vector<std::shared_ptr<Face>> faces = faces_;
     std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> sibling_edges = sibling_edges_;
     for (const auto& vertex : vertices) disconnect(vertex);
     for (const auto& face : faces) disconnect(face);
@@ -83,12 +83,14 @@ void Edge::connect(const std::shared_ptr<Vertex>& vertex)
     // check input
     if (vertex->is_expired()) throw std::runtime_error("Attempts to connect edge with invalid vertex.");
 
-    // connect
-    bool inserted = vertices_.insert(vertex).second;
-    if (inserted) vertex->connect(shared_from_this());
+    // skip if already connected
+    for (const std::shared_ptr<Vertex>& vertex_ : vertices_) if (vertex_ == vertex) return;
 
-    // check size
+    // connect
+    vertices_.push_back(vertex);
     if (vertices_.size() > 2) throw std::runtime_error("Edge connected to more than 2 vertices.");
+
+    vertex->connect(shared_from_this());
 }
 
 void Edge::connect(const std::shared_ptr<Face>& face) 
@@ -96,20 +98,21 @@ void Edge::connect(const std::shared_ptr<Face>& face)
     // check input
     if (face->is_expired()) throw std::runtime_error("Attempts to connect edge with invalid face.");
 
+    // skip if already connected
+    for (const std::shared_ptr<Face>& face_ : faces_) if (face_ == face) return;
+
     // connect
-    bool inserted = faces_.insert(face).second;
-    if (inserted)
-    {
-        if (faces_.size() > 2) throw std::runtime_error("Edge connected to more than 2 faces.");
-    }
-    if (inserted) face->connect(shared_from_this());
+    faces_.push_back(face);
+    if (faces_.size() > 2) throw std::runtime_error("Edge connected to more than 2 faces.");
+    
+    face->connect(shared_from_this());
 
     // update boundary state
-    if (inserted) update_boundary_state();
+    update_boundary_state();
 
     // update confirmed status
-    if (inserted) update_confirmed_status();
-    if (inserted) update_singular_state();
+    update_confirmed_status();
+    update_singular_state();
 }
 
 void Edge::connect(const std::shared_ptr<Surface>& surface)
@@ -154,9 +157,13 @@ void Edge::disconnect(const std::shared_ptr<Vertex>& vertex)
     // check input
     if (vertex->is_expired()) return;
 
+    // skip if not connected
+    auto it = std::find(vertices_.begin(), vertices_.end(), vertex);
+    if (it == vertices_.end()) return;
+
     // disconnect
-    bool erased = vertices_.erase(vertex);
-    if (erased) vertex->disconnect(shared_from_this());
+    vertices_.erase(it);
+    vertex->disconnect(shared_from_this());
 
     // self destruct
     if (!deleting_ && can_self_destruct_) storage_->delete_edge(shared_from_this());
@@ -167,20 +174,24 @@ void Edge::disconnect(const std::shared_ptr<Face>& face)
     // check input
     if (face->is_expired()) return;
 
+    // skip if not connected
+    auto it = std::find(faces_.begin(), faces_.end(), face);
+    if (it == faces_.end()) return;
+
     // disconnect
-    bool erased = faces_.erase(face);
-    if (erased) face->disconnect(shared_from_this());
+    faces_.erase(it);
+    face->disconnect(shared_from_this());
 
     // update boundary state
-    if (erased) update_boundary_state();
+    update_boundary_state();
 
     // update confirmed status
-    if (erased) update_confirmed_status();
-    if (erased) update_singular_state();
+    update_confirmed_status();
+    update_singular_state();
 
     // do not self destruct when have no face
     // check self destruct
-    if (erased && faces_.empty() && !deleting_ && can_self_destruct_) storage_->delete_edge(shared_from_this());
+    if (faces_.empty() && !deleting_ && can_self_destruct_) storage_->delete_edge(shared_from_this());
 }
 
 void Edge::disconnect(const std::shared_ptr<Surface>& surface)
@@ -239,7 +250,8 @@ void Edge::swap(const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Ve
     // make sure the position of vertex 1 and 2 are identical, otherwise need to update BVH which is not yet implemented
     if ((vertex1->get_position() - vertex2->get_position()).norm() > 1e-8) throw std::runtime_error("Swapping edge with non-identical vertices.");
     
-    if (vertices_.find(vertex1) != vertices_.end())
+    auto it = std::find(vertices_.begin(), vertices_.end(), vertex1);
+    if (it != vertices_.end())
     {
         // std::cout << "Swapping edge " << id_ << " vertex " << vertex1->get_id() << " with vertex " << vertex2->get_id() << std::endl;
         
@@ -413,7 +425,7 @@ const std::shared_ptr<Surface>& Edge::get_surface() const
     return surface_;
 }
 
-const std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& Edge::get_faces() const
+const std::vector<std::shared_ptr<Face>>& Edge::get_faces() const
 {
     return faces_;
 }

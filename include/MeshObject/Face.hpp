@@ -34,9 +34,9 @@ public:
 
     const int& get_id() const;
     const Eigen::Vector3d& get_center() const;
-    const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& get_vertices() const;
-    const std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash>& get_interior_points() const;
-    const std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& get_edges() const;
+    const std::vector<std::shared_ptr<Vertex>>& get_vertices() const;
+    const std::vector<std::shared_ptr<InteriorPoint>>& get_interior_points() const;
+    const std::vector<std::shared_ptr<Edge>>& get_edges() const;
     const std::shared_ptr<Vertex>& get_vertex(int index) const;
     const std::shared_ptr<Vertex>& get_first_vertex() const;
     const std::shared_ptr<Surface>& get_surface() const;
@@ -96,9 +96,9 @@ private:
     int id_;
     std::shared_ptr<Storage> storage_;
 
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertices_;
-    std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges_;
-    std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> interior_points_;
+    std::vector<std::shared_ptr<Vertex>> vertices_;
+    std::vector<std::shared_ptr<Edge>> edges_;
+    std::vector<std::shared_ptr<InteriorPoint>> interior_points_;
     std::shared_ptr<Surface> surface_;
 
     std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> sibling_faces_;

@@ -99,8 +99,8 @@ void Vertex::delete_()
     // cascade_radius_reduction_to_connected_vertices();
 
     // disconnect
-    std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges = edges_;
-    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces = faces_;
+    std::vector<std::shared_ptr<Edge>> edges = edges_;
+    std::vector<std::shared_ptr<Face>> faces = faces_;
     // std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> neighboring_vertices_that_affect_radius = neighboring_vertices_that_affect_radius_;
     for (const auto& edge : edges) disconnect(edge);
     for (const auto& face : faces) disconnect(face);
@@ -238,12 +238,12 @@ bool Vertex::has_surface() const
     return surface_ != nullptr;
 }
 
-const std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& Vertex::get_edges() const 
+const std::vector<std::shared_ptr<Edge>>& Vertex::get_edges() const 
 { 
     return edges_; 
 }
 
-const std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& Vertex::get_faces() const 
+const std::vector<std::shared_ptr<Face>>& Vertex::get_faces() const 
 { 
     return faces_; 
 }
@@ -476,12 +476,13 @@ void Vertex::connect(const std::shared_ptr<Edge>& edge)
     // check input
     if (edge->is_expired()) throw std::runtime_error("Attempts to connect vertex with invalid edge.");
 
-    // connect
-    bool inserted = edges_.insert(edge).second;
-    if (inserted) edge->connect(shared_from_this());
+    // skip if already connected
+    for (const std::shared_ptr<Edge>& edge_ : edges_) if (edge_ == edge) return;
 
-    // update boundary state
-    if (inserted) check_if_update_search_tree();
+    // connect
+    edges_.push_back(edge);
+    edge->connect(shared_from_this());
+    check_if_update_search_tree();
 }
 
 void Vertex::connect(const std::shared_ptr<Face>& face) 
@@ -489,13 +490,16 @@ void Vertex::connect(const std::shared_ptr<Face>& face)
     // check input
     if (face->is_expired()) throw std::runtime_error("Attempts to connect vertex with invalid face.");
 
+    // skip if already connected
+    for (const std::shared_ptr<Face>& face_ : faces_) if (face_ == face) return;
+
     // connect
-    bool inserted = faces_.insert(face).second;
-    if (inserted) face->connect(shared_from_this());
+    faces_.push_back(face);
+    face->connect(shared_from_this());
 
     // update confirmed status
-    if (inserted) update_confirmed_status();
-    if (inserted) update_singular_state();
+    update_confirmed_status();
+    update_singular_state();
 }
 
 void Vertex::connect(const std::shared_ptr<Surface>& surface)
@@ -542,9 +546,13 @@ void Vertex::disconnect(const std::shared_ptr<Edge>& edge)
     // check input
     if (edge->is_expired()) return;
 
+    // skip if not connected
+    auto it = std::find(edges_.begin(), edges_.end(), edge);
+    if (it == edges_.end()) return;
+
     // disconnect
-    bool erased = edges_.erase(edge);
-    if (erased) edge->disconnect(shared_from_this());
+    edges_.erase(it);
+    edge->disconnect(shared_from_this());
 
     // update boundary state
     check_if_update_search_tree();
@@ -558,13 +566,17 @@ void Vertex::disconnect(const std::shared_ptr<Face>& face)
     // check pointer validity
     if (face->is_expired()) return;
 
+    // skip if not connected
+    auto it = std::find(faces_.begin(), faces_.end(), face);
+    if (it == faces_.end()) return;
+
     // disconnect
-    bool erased = faces_.erase(face);
-    if (erased) face->disconnect(shared_from_this());
+    faces_.erase(it);
+    face->disconnect(shared_from_this());
 
     // update confirmed status
-    if (erased) update_confirmed_status();
-    if (erased) update_singular_state();
+    update_confirmed_status();
+    update_singular_state();
 
     // do not self destruct when have no face
     // check self destruct
@@ -796,7 +808,7 @@ bool Vertex::try_close_holes()
 void Vertex::remove_all_edges()
 {
     // make copy of edges
-    std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges_copy = edges_;
+    std::vector<std::shared_ptr<Edge>> edges_copy = edges_;
 
     // remove all edges
     for (const auto& edge : edges_copy)
@@ -1703,8 +1715,8 @@ void Vertex::absorbs(const std::shared_ptr<Vertex>& input_vertex)
     input_vertex->swap(current_surface, new_surface);
 
     // make input_vertex's edges and faces connect to this vertex
-    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces_copy = input_vertex->get_faces();
-    std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges_copy = input_vertex->get_edges();
+    std::vector<std::shared_ptr<Face>> faces_copy = input_vertex->get_faces();
+    std::vector<std::shared_ptr<Edge>> edges_copy = input_vertex->get_edges();
     for (const std::shared_ptr<Face>& face : faces_copy) face->swap(input_vertex, shared_from_this());            
     for (const std::shared_ptr<Edge>& edge : edges_copy) edge->swap(input_vertex, shared_from_this());
 }
