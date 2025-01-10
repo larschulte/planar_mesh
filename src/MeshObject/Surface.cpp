@@ -649,44 +649,47 @@ bool Surface::tree_intersect_edge(const std::shared_ptr<Vertex>& vertex0, const 
 
 bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& all_nearby_vertices)
 {
-    // get nearby vertices in the same surface
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> nearby_vertices;
+    // get candidate vertices
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> candidate_vertices;
     for (const auto& nearby_vertex : all_nearby_vertices)
     {
         // check input
         if (nearby_vertex->is_expired()) continue;
 
-        // skip if same vertex
-        if (nearby_vertex == vertex) continue;
-
         // skip if does not belong to the same surface
         if (nearby_vertex->get_surface() != shared_from_this()) continue;
 
-        // add to nearby vertices
-        nearby_vertices.insert(nearby_vertex);
+        // skip if not boundary
+        if (!nearby_vertex->is_boundary()) continue;
+
+        // skip if same vertex
+        if (nearby_vertex == vertex) continue;
+
+        // add to candidate vertices
+        candidate_vertices.insert(nearby_vertex);
     }
 
     // create edges
-    for (const auto& nearby_vertex : nearby_vertices)
+    for (const auto& candidate_vertex : candidate_vertices)
     {
         // skip if vertex is not boundary
-        if (!nearby_vertex->is_boundary()) continue;
+        if (!candidate_vertex->is_boundary()) continue;
 
         // skip if edge is longer than any of the radius of vertices
-        const double distance = (vertex->get_position() - nearby_vertex->get_position()).norm();
+        const double distance = (vertex->get_position() - candidate_vertex->get_position()).norm();
         const double radius0 = vertex->get_radius(shared_from_this());
-        const double radius1 = nearby_vertex->get_radius();
+        const double radius1 = candidate_vertex->get_radius();
         if (!settings_.edge_is_short_enough(distance, radius0, radius1)) continue;
 
         // skip if edge intersects
-        if (edge_bvh_.tree_intersect_edge(vertex, nearby_vertex)) continue;
+        if (edge_bvh_.tree_intersect_edge(vertex, candidate_vertex)) continue;
 
         // create edge
-        std::shared_ptr<Edge> new_edge = storage_->add_edge(vertex, nearby_vertex);
+        std::shared_ptr<Edge> new_edge = storage_->add_edge(vertex, candidate_vertex);
         connect(new_edge);
     }
 
-    // false if new vertex don't have edges
+    // false if no edge is created
     if (vertex->get_edges().empty()) return false;
 
     // try close holes
