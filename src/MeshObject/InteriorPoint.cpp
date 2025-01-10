@@ -306,7 +306,9 @@ void InteriorPoint::add_interior_point_distance_subscriber(const std::shared_ptr
     // remove expired subscribers
     for (auto it = interior_point_distance_subscribers_.begin(); it != interior_point_distance_subscribers_.end();)
     {
-        if (it->get()->is_expired()) it = interior_point_distance_subscribers_.erase(it);
+        // erase if empty
+        if (!it->get()) it = interior_point_distance_subscribers_.erase(it);
+        else if (it->get()->is_expired()) it = interior_point_distance_subscribers_.erase(it);
         else ++it;
     }
 
@@ -329,7 +331,9 @@ void InteriorPoint::delete_interior_point_distance_subscriber(const std::shared_
     // remove expired subscribers
     for (auto it = interior_point_distance_subscribers_.begin(); it != interior_point_distance_subscribers_.end();)
     {
-        if (it->get()->is_expired()) it = interior_point_distance_subscribers_.erase(it);
+        // erase if empty
+        if (!it->get()) it = interior_point_distance_subscribers_.erase(it);
+        else if (it->get()->is_expired()) it = interior_point_distance_subscribers_.erase(it);
         else ++it;
     }
 

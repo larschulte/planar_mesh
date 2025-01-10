@@ -874,7 +874,9 @@ void Vertex::add_vertex_point_distance_publisher(const std::shared_ptr<Vertex> v
     // remove expired publishers
     for (auto it = vertex_point_distance_publishers_.begin(); it != vertex_point_distance_publishers_.end();)
     {
-        if (it->first->is_expired()) it = vertex_point_distance_publishers_.erase(it);
+        // erase if empty
+        if (!it->first) it = vertex_point_distance_publishers_.erase(it); 
+        else if (it->first->is_expired()) it = vertex_point_distance_publishers_.erase(it);
         else ++it;
     }
 
@@ -899,7 +901,9 @@ void Vertex::delete_vertex_point_distance_publisher(const std::shared_ptr<Vertex
     // remove expired publishers
     for (auto it = vertex_point_distance_publishers_.begin(); it != vertex_point_distance_publishers_.end();)
     {
-        if (it->first->is_expired()) it = vertex_point_distance_publishers_.erase(it);
+        // erase if empty
+        if (!it->first) it = vertex_point_distance_publishers_.erase(it); 
+        else if (it->first->is_expired()) it = vertex_point_distance_publishers_.erase(it);
         else ++it;
     }
 
@@ -925,7 +929,9 @@ void Vertex::add_vertex_point_distance_subscriber(const std::shared_ptr<Vertex> 
     // remove expired subscribers
     for (auto it = vertex_point_distance_subscribers_.begin(); it != vertex_point_distance_subscribers_.end();)
     {
-        if (it->get()->is_expired()) it = vertex_point_distance_subscribers_.erase(it);
+        // erase if empty
+        if (!it->get()) it = vertex_point_distance_subscribers_.erase(it);
+        else if (it->get()->is_expired()) it = vertex_point_distance_subscribers_.erase(it);
         else ++it;
     }
 
@@ -948,7 +954,9 @@ void Vertex::delete_vertex_point_distance_subscriber(const std::shared_ptr<Verte
     // remove expired subscribers
     for (auto it = vertex_point_distance_subscribers_.begin(); it != vertex_point_distance_subscribers_.end();)
     {
-        if (it->get()->is_expired()) it = vertex_point_distance_subscribers_.erase(it);
+        // erase if empty
+        if (!it->get()) it = vertex_point_distance_subscribers_.erase(it);
+        else if (it->get()->is_expired()) it = vertex_point_distance_subscribers_.erase(it);
         else ++it;
     }
 
@@ -971,7 +979,9 @@ void Vertex::add_interior_point_distance_publisher(const std::shared_ptr<Interio
     // remove expired publishers
     for (auto it = interior_point_distance_publishers_.begin(); it != interior_point_distance_publishers_.end();)
     {
-        if (it->first->is_expired()) it = interior_point_distance_publishers_.erase(it);
+        // erase if empty
+        if (!it->first) it = interior_point_distance_publishers_.erase(it); 
+        else if (it->first->is_expired()) it = interior_point_distance_publishers_.erase(it);
         else ++it;
     }
 
@@ -996,7 +1006,9 @@ void Vertex::delete_interior_point_distance_publisher(const std::shared_ptr<Inte
     // remove expired publishers
     for (auto it = interior_point_distance_publishers_.begin(); it != interior_point_distance_publishers_.end();)
     {
-        if (it->first->is_expired()) it = interior_point_distance_publishers_.erase(it);
+        // erase if empty
+        if (!it->first) it = interior_point_distance_publishers_.erase(it); 
+        else if (it->first->is_expired()) it = interior_point_distance_publishers_.erase(it);
         else ++it;
     }
 
