@@ -480,6 +480,10 @@ std::shared_ptr<Node> TriangleBVH::find_best_node(const std::shared_ptr<Node>& n
     double best_cost = std::numeric_limits<double>::infinity();
     Node* best_node = nullptr;
 
+    // compute lower bound cost to add branch node
+    RRSBoundingBox smallest_branch_box(face->get_min(), face->get_max());
+    const double lower_bound_cost = smallest_branch_box.get_surface_area();
+
     // while queue is not empty
     while (!queue.empty())
     {
@@ -491,8 +495,10 @@ std::shared_ptr<Node> TriangleBVH::find_best_node(const std::shared_ptr<Node>& n
         Node* current_node = current.first;
         double inherited_cost = current.second;
 
-        // cost to branch from current node
-        double cost;
+        // skip if inherited cost is already greater than best cost
+        if (inherited_cost + lower_bound_cost > best_cost) continue;
+
+        // cost to add a branch that contains current node and leaf node
         {
             // cost of creating a new branch node
             BoundingBox new_branch_box = current_node->box;
@@ -500,13 +506,14 @@ std::shared_ptr<Node> TriangleBVH::find_best_node(const std::shared_ptr<Node>& n
             double new_branch_node_cost = new_branch_box.get_surface_area();
 
             // total cost
-            cost = inherited_cost + new_branch_node_cost;
-        }
+            double cost = inherited_cost + new_branch_node_cost;
 
-        if (cost < best_cost)
-        {
-            best_cost = cost;
-            best_node = current_node;
+            // update best cost and best node
+            if (cost < best_cost)
+            {
+                best_cost = cost;
+                best_node = current_node;
+            }
         }
 
         // check if it is worth it to go to the children
@@ -517,18 +524,13 @@ std::shared_ptr<Node> TriangleBVH::find_best_node(const std::shared_ptr<Node>& n
             expanded_box.expand_box_no_return(face->get_min(), face->get_max());
             double change_to_inherited = expanded_box.get_surface_area() - current_node->box.get_surface_area();
 
-            // compute lower bound cost to add branch node
-            RRSBoundingBox smallest_branch_box(face->get_min(), face->get_max());
-            double lower_bound_cost = smallest_branch_box.get_surface_area();
+            // lower-bound cost
+            double cost = inherited_cost + change_to_inherited + lower_bound_cost;            
             
-            if (inherited_cost + change_to_inherited + lower_bound_cost > best_cost)
+            // update best cost and best node
+            if (cost < best_cost)
             {
-                // it is not worth it to go to the children
-                continue;
-            }
-            else
-            {
-                // we should go into the children
+                // we should check the children
                 queue.push(std::make_pair(current_node->left.get(), inherited_cost + change_to_inherited));
                 queue.push(std::make_pair(current_node->right.get(), inherited_cost + change_to_inherited));
             }
