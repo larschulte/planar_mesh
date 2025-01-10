@@ -54,15 +54,8 @@ public:
     };
 
 private:
-    std::shared_ptr<Surface> surface_;
-
     std::shared_ptr<EdgeBVH::Node> root;
-    double rebuild_threshold;
-    int size_at_last_rebuild;
     int edge_size;
-
-    void sort_edge_list_in_axis(std::vector<std::shared_ptr<Edge>>& edge_list, int axis, int start, int end);
-    void expand_node_box(const std::shared_ptr<EdgeBVH::Node>& node, const std::shared_ptr<Edge>& edge);
     
     // use SAH for EdgeBVH
     std::shared_ptr<EdgeBVH::Node> find_best_node(const std::shared_ptr<EdgeBVH::Node>& root, const std::shared_ptr<Edge>& edge);
@@ -74,7 +67,6 @@ private:
 
 public:
     EdgeBVH();
-    void set_surface(const std::shared_ptr<Surface>& surface);
     std::vector<std::shared_ptr<Edge>> get_edge_list() const;
 
     void tree_add_edge(const std::shared_ptr<Edge>& edge);

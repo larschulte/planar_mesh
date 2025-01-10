@@ -168,21 +168,6 @@ void EdgeBVH::Node::recursive_shrink_parent_box()
     }
 }
 
-void EdgeBVH::sort_edge_list_in_axis(std::vector<std::shared_ptr<Edge>>& edge_list, int axis, int start, int end)
-{
-    std::sort(edge_list.begin() + start, edge_list.begin() + end, 
-        [&](const std::shared_ptr<Edge>& edge_a, const std::shared_ptr<Edge>& edge_b) 
-        {
-            return edge_a->get_center()[axis] < edge_b->get_center()[axis];
-        });
-}
-
-void EdgeBVH::expand_node_box(const std::shared_ptr<EdgeBVH::Node>& node, const std::shared_ptr<Edge>& edge)
-{
-    node->box.expand(edge->get_max());
-    node->box.expand(edge->get_min());
-}
-
 bool EdgeBVH::node_intersect_edge(const std::shared_ptr<EdgeBVH::Node>& node, const std::shared_ptr<Vertex>& vertex0, const std::shared_ptr<Vertex>& vertex1)
 {
     bool intersected = node->box.intersect(vertex0->get_position(), vertex1->get_position());
@@ -197,7 +182,7 @@ bool EdgeBVH::node_intersect_edge(const std::shared_ptr<EdgeBVH::Node>& node, co
     {
         for (const std::shared_ptr<Edge>& edge : node->edges)
         {
-            if (edge->intersects_edge(surface_, vertex0, vertex1)) return true;
+            if (edge->intersects_edge(vertex0, vertex1)) return true;
         }
     }
 
@@ -399,24 +384,16 @@ void EdgeBVH::tree_delete_edge(const std::shared_ptr<Edge>& edge)
     node->box = BoundingBox();
     for (const std::shared_ptr<Edge>& edge : node->edges)
     {
-        expand_node_box(node, edge);
+        node->box.expand_box_no_return(edge);
     }
 
     // shrink parent box
     node->recursive_shrink_parent_box();
 }
 
-EdgeBVH::EdgeBVH()
-    : rebuild_threshold(2),
-      size_at_last_rebuild(0), 
-      edge_size(0)
+EdgeBVH::EdgeBVH() : edge_size(0)
 {
     root = std::make_shared<EdgeBVH::Node>();
-}
-
-void EdgeBVH::set_surface(const std::shared_ptr<Surface>& surface)
-{
-    surface_ = surface;
 }
 
 void EdgeBVH::tree_add_edge(const std::shared_ptr<Edge>& edge)

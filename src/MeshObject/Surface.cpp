@@ -49,9 +49,6 @@ void Surface::initialize_(const std::shared_ptr<Storage>& storage)
 
     // initialize surface color
     set_random_color();
-
-    // initialize edge_bvh
-    edge_bvh_.set_surface(shared_from_this());
     
     // log
     if (settings_.log.initialize) std::cout << "Surface " << id_ << " created.\n";
