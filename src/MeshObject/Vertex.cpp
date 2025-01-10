@@ -99,14 +99,14 @@ void Vertex::delete_()
     // cascade_radius_reduction_to_connected_vertices();
 
     // disconnect
+    delete_publishers();
+    delete_subscribers();
     std::vector<std::shared_ptr<Edge>> edges = edges_;
     std::vector<std::shared_ptr<Face>> faces = faces_;
     // std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> neighboring_vertices_that_affect_radius = neighboring_vertices_that_affect_radius_;
     for (const auto& edge : edges) disconnect(edge);
     for (const auto& face : faces) disconnect(face);
     // for (const auto& neighboring_vertex : neighboring_vertices_that_affect_radius) disconnect_neighboring_vertex(neighboring_vertex);
-    delete_publishers();
-    delete_subscribers();
     if (surface_) disconnect(surface_);
 
     // update delete count
