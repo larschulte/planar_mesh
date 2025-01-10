@@ -6,6 +6,7 @@
 
 #include "MeshObject/MeshObject.hpp"
 #include "MeshObject/Settings.hpp"
+#include "MeshObject/EdgeBVH.hpp"
 
 // Forward declarations
 class Vertex;
@@ -21,6 +22,7 @@ protected:
     void delete_();
 
 public:
+    std::shared_ptr<EdgeBVH::Node> node;
 
     // read and write lock
     mutable std::shared_mutex rwlock_vertices_;

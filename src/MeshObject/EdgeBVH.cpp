@@ -10,10 +10,50 @@ EdgeBVH::BoundingBox::BoundingBox()
     : min(Eigen::Vector3d::Constant(std::numeric_limits<double>::infinity())),
       max(Eigen::Vector3d::Constant(-std::numeric_limits<double>::infinity())) {}
 
+EdgeBVH::BoundingBox::BoundingBox(const std::shared_ptr<Edge>& edge) 
+    : min(edge->get_min()), max(edge->get_max()) {}
+
 void EdgeBVH::BoundingBox::expand(const Eigen::Vector3d& point) 
 {
     min = min.cwiseMin(point);
     max = max.cwiseMax(point);
+}
+
+void EdgeBVH::BoundingBox::expand_box_no_return(const Eigen::Vector3d& input_min, const Eigen::Vector3d& input_max) 
+{
+    if (input_min[0] < min[0]) min[0] = input_min[0];
+    if (input_min[1] < min[1]) min[1] = input_min[1];
+    if (input_min[2] < min[2]) min[2] = input_min[2];
+
+    if (input_max[0] > max[0]) max[0] = input_max[0];
+    if (input_max[1] > max[1]) max[1] = input_max[1];
+    if (input_max[2] > max[2]) max[2] = input_max[2];
+}
+
+void EdgeBVH::BoundingBox::expand_box_no_return(const std::shared_ptr<Edge>& edge) 
+{
+    expand(edge->get_min());
+    expand(edge->get_max());
+}
+
+void EdgeBVH::BoundingBox::expand_box_no_return(const EdgeBVH::BoundingBox& box) 
+{
+    expand_box_no_return(box.min, box.max);
+}
+
+bool EdgeBVH::BoundingBox::expand_box(const Eigen::Vector3d& input_min, const Eigen::Vector3d& input_max) 
+{
+    Eigen::Vector3d oldMin = min;
+    Eigen::Vector3d oldMax = max;
+
+    expand_box_no_return(input_min, input_max);
+
+    return (min != oldMin || max != oldMax);
+}
+
+bool EdgeBVH::BoundingBox::expand_box(const EdgeBVH::BoundingBox& box) 
+{
+    return expand_box(box.min, box.max);
 }
 
 bool EdgeBVH::BoundingBox::intersect(const Eigen::Vector3d& orig, const Eigen::Vector3d& dir_inv, double& tMin, double& tMax) const 
@@ -59,29 +99,91 @@ int EdgeBVH::BoundingBox::get_longest_axis()
     return axis;
 }
 
+double EdgeBVH::BoundingBox::compute_surface_area() const
+{
+    Eigen::Vector3d dimensions = max - min;
+    double area = 2.0 * (dimensions[0] * dimensions[1] + dimensions[1] * dimensions[2] + dimensions[2] * dimensions[0]);
+    if (std::isnan(area)) throw std::runtime_error("BoundingBox::compute_surface_area() returned nan."); // throw if nan
+    return area;
+}
+
+const double& EdgeBVH::BoundingBox::get_surface_area()
+{
+    // if min and max are not updated, return the stored value
+    if (min == min_used_for_surface_area && max == max_used_for_surface_area) return surface_area;
+
+    // else update and return
+    min_used_for_surface_area = min;
+    max_used_for_surface_area = max;
+    surface_area = compute_surface_area();
+    return surface_area;
+}
+
 bool EdgeBVH::Node::isLeaf() const 
 {
     return !left && !right;
 }
 
+void EdgeBVH::Node::recursive_expand_parent_box()
+{
+    if (parent)
+    {
+        // expanded
+        const bool expanded = parent->box.expand_box(box);
 
-double EdgeBVH::sort_edge_list_in_axis(std::vector<std::shared_ptr<Edge>>& edge_list, int axis, int start, int mid, int end)
+        // recursive update
+        if (expanded)
+        {
+            parent->recursive_expand_parent_box();
+        }
+    }
+}
+
+void EdgeBVH::Node::recursive_shrink_parent_box()
+{
+    if (parent)
+    {
+        // old parent box
+        EdgeBVH::BoundingBox old_parent_box = parent->box;
+
+        // new parent box
+        EdgeBVH::BoundingBox new_parent_box = EdgeBVH::BoundingBox();
+        new_parent_box.expand_box_no_return(parent->left->box);
+        new_parent_box.expand_box_no_return(parent->right->box);
+        
+        // shrunk
+        const bool shrunk = new_parent_box.min[0] > old_parent_box.min[0] &&
+                            new_parent_box.min[1] > old_parent_box.min[1] &&
+                            new_parent_box.min[2] > old_parent_box.min[2] &&
+                            new_parent_box.max[0] < old_parent_box.max[0] &&
+                            new_parent_box.max[1] < old_parent_box.max[1] &&
+                            new_parent_box.max[2] < old_parent_box.max[2];
+
+        // recursive update
+        if (shrunk) 
+        {
+            parent->box = new_parent_box;
+            parent->recursive_shrink_parent_box();
+        }
+    }
+}
+
+void EdgeBVH::sort_edge_list_in_axis(std::vector<std::shared_ptr<Edge>>& edge_list, int axis, int start, int end)
 {
     std::sort(edge_list.begin() + start, edge_list.begin() + end, 
         [&](const std::shared_ptr<Edge>& edge_a, const std::shared_ptr<Edge>& edge_b) 
         {
             return edge_a->get_center()[axis] < edge_b->get_center()[axis];
         });
-    return edge_list[mid]->get_center()[axis];
 }
 
-void EdgeBVH::expand_node_box(const std::shared_ptr<Node>& node, const std::shared_ptr<Edge>& edge)
+void EdgeBVH::expand_node_box(const std::shared_ptr<EdgeBVH::Node>& node, const std::shared_ptr<Edge>& edge)
 {
     node->box.expand(edge->get_max());
     node->box.expand(edge->get_min());
 }
 
-bool EdgeBVH::node_intersect_edge(const std::shared_ptr<Node>& node, const std::shared_ptr<Vertex>& vertex0, const std::shared_ptr<Vertex>& vertex1)
+bool EdgeBVH::node_intersect_edge(const std::shared_ptr<EdgeBVH::Node>& node, const std::shared_ptr<Vertex>& vertex0, const std::shared_ptr<Vertex>& vertex1)
 {
     bool intersected = node->box.intersect(vertex0->get_position(), vertex1->get_position());
     if (!intersected) return false;
@@ -102,96 +204,144 @@ bool EdgeBVH::node_intersect_edge(const std::shared_ptr<Node>& node, const std::
     return false;
 }
 
-void EdgeBVH::convert_leaf_to_branch(const std::shared_ptr<Node>& node)
+std::shared_ptr<EdgeBVH::Node> EdgeBVH::find_best_node(const std::shared_ptr<EdgeBVH::Node>& node, const std::shared_ptr<Edge>& edge)
 {
-    int start = 0;
-    int end = node->edges.size();
-    int mid = (start + end) / 2;
-    int axis = node->box.get_longest_axis();
-    double split_value = sort_edge_list_in_axis(node->edges, axis, start, mid, end);
+    // Store a queue of nodes to process using raw pointers
+    std::queue<std::pair<EdgeBVH::Node*, double>> queue;
+    queue.push(std::make_pair(node.get(), 0));
+
+    // initialize
+    double best_cost = std::numeric_limits<double>::infinity();
+    EdgeBVH::Node* best_node = nullptr;
+
+    // while queue is not empty
+    while (!queue.empty())
+    {
+        // get the first element
+        std::pair<EdgeBVH::Node*, double> current = queue.front();
+        queue.pop();
+
+        // get the node and inherited cost
+        EdgeBVH::Node* current_node = current.first;
+        double inherited_cost = current.second;
+
+        // cost to branch from current node
+        double cost;
+        {
+            // cost of creating a new branch node
+            EdgeBVH::BoundingBox new_branch_box = current_node->box;
+            new_branch_box.expand_box_no_return(edge);
+            double new_branch_node_cost = new_branch_box.get_surface_area();
+
+            // total cost
+            cost = inherited_cost + new_branch_node_cost;
+        }
+
+        if (cost < best_cost)
+        {
+            best_cost = cost;
+            best_node = current_node;
+        }
+
+        // check if it is worth it to go to the children
+        if (!current_node->isLeaf())
+        {
+            // compute change to inherited cost
+            EdgeBVH::BoundingBox expanded_box = current_node->box;
+            expanded_box.expand_box_no_return(edge);
+            double change_to_inherited = expanded_box.get_surface_area() - current_node->box.get_surface_area();
+
+            // compute lower bound cost to add branch node
+            EdgeBVH::BoundingBox smallest_branch_box(edge);
+            double lower_bound_cost = smallest_branch_box.get_surface_area();
+            
+            if (inherited_cost + change_to_inherited + lower_bound_cost > best_cost)
+            {
+                // it is not worth it to go to the children
+                continue;
+            }
+            else
+            {
+                // we should go into the children
+                queue.push(std::make_pair(current_node->left.get(), inherited_cost + change_to_inherited));
+                queue.push(std::make_pair(current_node->right.get(), inherited_cost + change_to_inherited));
+            }
+        }
+    }
+
+    // Return the best node as a shared_ptr
+    if (best_node)
+    {
+        // Since best_node is part of the existing tree, we can create a shared_ptr using std::shared_ptr aliasing constructor
+        // This shares ownership with the original node's shared_ptr
+        return std::shared_ptr<EdgeBVH::Node>(node, best_node);
+    }
+    else
+    {
+        return nullptr;
+    }
+}
+
+
+void EdgeBVH::node_add_edge(const std::shared_ptr<EdgeBVH::Node>& node, const std::shared_ptr<Edge>& edge)
+{    
+    // create new node
+    std::shared_ptr<EdgeBVH::Node> new_node = std::make_shared<EdgeBVH::Node>();
+    {
+        new_node->box.expand_box_no_return(edge);
+        new_node->edges.push_back(edge);
+        edge->node = new_node;
+    }
     
-    node->split_axis = axis;
-    node->split_value = split_value;
-    node->left = build_node(node->edges, start, mid);
-    node->right = build_node(node->edges, mid, end);
-
-    node->edges.clear();
-}
-
-std::shared_ptr<EdgeBVH::Node> EdgeBVH::build_node(const std::vector<std::shared_ptr<Edge>>& edge_list, const int& start, const int& end)
-{
-    auto node = std::make_shared<Node>();
-
-    // expand box
-    for (int i = start; i < end; ++i)
+    // create duplicate node of the current node added to
+    std::shared_ptr<EdgeBVH::Node> duplicate_node = std::make_shared<EdgeBVH::Node>();
     {
-        expand_node_box(node, edge_list[i]);
-    }
-
-    // store vector
-    node->edges = std::vector<std::shared_ptr<Edge>>(edge_list.begin() + start, edge_list.begin() + end);
-
-    // convert to branch if necessary
-    if (node->edges.size() > 4) convert_leaf_to_branch(node);
-
-    return node;
-}
-
-void EdgeBVH::node_add_edge(const std::shared_ptr<Node>& node, const std::shared_ptr<Edge>& edge)
-{
-    expand_node_box(node, edge);
-
-    if (!node->isLeaf())
-    {   
-        if (edge->get_center()[node->split_axis] < node->split_value)
+        duplicate_node->box = node->box;
+        duplicate_node->split_value = node->split_value;
+        duplicate_node->split_axis = node->split_axis;
+        
+        // if node is leaf, copy boundary vertices
+        if (node->isLeaf())
         {
-            node_add_edge(node->left, edge);
-        }
-        else 
-        {
-            node_add_edge(node->right, edge);
-        }
-    }
-    else
-    {
-        node->edges.push_back(edge);
-        if (node->edges.size() > 4) convert_leaf_to_branch(node);
-    }
-}
-
-bool EdgeBVH::node_delete_edge(const std::shared_ptr<Node>& node, const std::shared_ptr<Edge>& edge)
-{
-    if (!node->isLeaf())
-    {
-        if (edge->get_center()[node->split_axis] < node->split_value)
-        {
-            return node_delete_edge(node->left, edge);
-        }
-        else if (edge->get_center()[node->split_axis] > node->split_value)
-        {
-            return node_delete_edge(node->right, edge);
+            duplicate_node->edges = node->edges;
+            for (const std::shared_ptr<Edge>& edge : duplicate_node->edges)
+            {
+                edge->node = duplicate_node;
+            }
         }
         else
         {
-            return node_delete_edge(node->left, edge) || node_delete_edge(node->right, edge);
+            // else, copy children
+            duplicate_node->left = node->left;
+            duplicate_node->right = node->right;
+
+            node->left->parent = duplicate_node;
+            node->right->parent = duplicate_node;
         }
     }
-    else
+    
+    // make new node and duplicate node children of the current node
     {
-        auto it = std::remove(node->edges.begin(), node->edges.end(), edge);
-        if (it != node->edges.end())
-        {
-            node->edges.erase(it, node->edges.end());
-            return true;
-        }
-        else
-        {
-            return false;
-        }
-    }
+        // expand current node box
+        node->box.expand_box_no_return(new_node->box);
+        node->recursive_expand_parent_box();
+
+        // get split axis
+        node->split_axis = node->box.get_longest_axis();
+
+        // get split value  
+        node->split_value = edge->get_center()[node->split_axis];
+
+        // put into children
+        node->left = duplicate_node;
+        node->right = new_node;
+
+        duplicate_node->parent = node;
+        new_node->parent = node;
+    }    
 }
 
-void EdgeBVH::node_print(const std::shared_ptr<Node>& node, int level) const
+void EdgeBVH::node_print(const std::shared_ptr<EdgeBVH::Node>& node, int level) const
 {
     if (!node->isLeaf())
     {
@@ -235,9 +385,25 @@ void EdgeBVH::tree_delete_edge(const std::shared_ptr<Edge>& edge)
 
     // decrement size
     edge_size--;
+
+    // get node
+    std::shared_ptr<Node> node = edge->node;
+    if (!node) throw std::runtime_error("Edge does not belong to any node.");
     
     // delete from BVH
-    if (!node_delete_edge(root, edge)) throw std::runtime_error("Edge not found in BVH.");
+    auto it = std::remove(node->edges.begin(), node->edges.end(), edge);
+    node->edges.erase(it, node->edges.end());
+    edge->node = nullptr;
+    
+    // recompute box
+    node->box = BoundingBox();
+    for (const std::shared_ptr<Edge>& edge : node->edges)
+    {
+        expand_node_box(node, edge);
+    }
+
+    // shrink parent box
+    node->recursive_shrink_parent_box();
 }
 
 EdgeBVH::EdgeBVH()
@@ -245,25 +411,12 @@ EdgeBVH::EdgeBVH()
       size_at_last_rebuild(0), 
       edge_size(0)
 {
-    rebuild();
+    root = std::make_shared<EdgeBVH::Node>();
 }
 
 void EdgeBVH::set_surface(const std::shared_ptr<Surface>& surface)
 {
     surface_ = surface;
-}
-
-void EdgeBVH::rebuild()
-{
-    if (edge_size == 0)
-    {
-        root = build_node(std::vector<std::shared_ptr<Edge>>(), 0, 0);
-    }
-    else
-    {
-        std::vector<std::shared_ptr<Edge>> edge_list = get_edge_list();
-        root = build_node(edge_list, 0, edge_list.size());
-    }
 }
 
 void EdgeBVH::tree_add_edge(const std::shared_ptr<Edge>& edge)
@@ -274,13 +427,11 @@ void EdgeBVH::tree_add_edge(const std::shared_ptr<Edge>& edge)
     // increment count
     edge_size++;
 
-    node_add_edge(root, edge);
+    // find best node to add
+    std::shared_ptr<Node> best_node = find_best_node(root, edge);
 
-    if (edge_size > size_at_last_rebuild * rebuild_threshold)
-    {    
-        rebuild();
-        size_at_last_rebuild = edge_size;
-    }
+    // add to best node
+    node_add_edge(best_node, edge);
 }
 
 bool EdgeBVH::tree_intersect_edge(const std::shared_ptr<Vertex>& vertex0, const std::shared_ptr<Vertex>& vertex1)
