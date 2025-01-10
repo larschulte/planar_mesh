@@ -271,35 +271,6 @@ bool Face::has_vertex(const std::shared_ptr<Vertex>& vertex) const
     return false;
 }
 
-bool Face::is_penetrated() const
-{
-    // get penetrated points from vertices
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> all_penetrating_vertices;
-    std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> all_penetrating_interior_points;
-    for (const auto& vertex : vertices_)
-    {
-        std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> penetrating_vertices = vertex->get_vertex_ray_publishers();
-        std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> penetrating_interior_points = vertex->get_interior_ray_publishers();
-
-        // store
-        all_penetrating_vertices.insert(penetrating_vertices.begin(), penetrating_vertices.end());
-        all_penetrating_interior_points.insert(penetrating_interior_points.begin(), penetrating_interior_points.end());
-    }
-
-    // check if the face is penetrated
-    for (const auto& vertex : all_penetrating_vertices)
-    {
-        if (intersects_point(vertex->get_origin(), vertex->get_direction())) return true;
-    }
-    for (const auto& interior_point : all_penetrating_interior_points)
-    {
-        if (intersects_point(interior_point->get_origin(), interior_point->get_direction())) return true;
-    }
-
-    // else
-    return false;
-}
-
 bool Face::intersects_point(const Eigen::Vector3d& origin, const Eigen::Vector3d& direction) const
 {    
     const double EPSILON = 1e-8;

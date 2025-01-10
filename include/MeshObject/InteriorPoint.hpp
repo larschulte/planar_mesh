@@ -53,9 +53,6 @@ public:
 
     void delete_subscribers();
     
-    void add_interior_ray_distance_subscriber(const std::shared_ptr<Vertex>& interior_ray_subscriber);
-    void delete_interior_ray_distance_subscriber(const std::shared_ptr<Vertex>& interior_ray_subscriber);
-
     void add_interior_point_distance_subscriber(const std::shared_ptr<Vertex>& interior_point_subscriber);
     void delete_interior_point_distance_subscriber(const std::shared_ptr<Vertex>& interior_point_subscriber);
 
@@ -100,7 +97,6 @@ private:
 
     Eigen::Vector3d projected_position_ = Eigen::Vector3d::Zero();
 
-    std::vector<std::shared_ptr<Vertex>> interior_ray_distance_subscribers_;
     std::vector<std::shared_ptr<Vertex>> interior_point_distance_subscribers_;
 
 public:

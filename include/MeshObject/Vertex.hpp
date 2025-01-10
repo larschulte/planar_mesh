@@ -110,22 +110,6 @@ public:
     void add_vertex_point_distance_subscriber(const std::shared_ptr<Vertex>& vertex_point_subscriber);
     void delete_vertex_point_distance_subscriber(const std::shared_ptr<Vertex>& vertex_point_subscriber);
 
-    // vertex ray distance publisher and subscriber
-    void add_vertex_ray_distance_publisher(const std::shared_ptr<Vertex>& vertex_ray_publisher);
-    void delete_vertex_ray_distance_publisher(const std::shared_ptr<Vertex>& vertex_ray_publisher);
-    void add_vertex_ray_distance_subscriber(const std::shared_ptr<Vertex>& vertex_ray_subscriber);
-    void delete_vertex_ray_distance_subscriber(const std::shared_ptr<Vertex>& vertex_ray_subscriber);
-
-    // vertex plane distance publisher and subscriber
-    void add_vertex_plane_distance_publisher(const std::shared_ptr<Vertex>& vertex_plane_publisher);
-    void delete_vertex_plane_distance_publisher(const std::shared_ptr<Vertex>& vertex_plane_publisher);
-    void add_vertex_plane_distance_subscriber(const std::shared_ptr<Vertex>& vertex_plane_subscriber);
-    void delete_vertex_plane_distance_subscriber(const std::shared_ptr<Vertex>& vertex_plane_subscriber);
-
-    // interior ray distance publisher
-    void add_interior_ray_distance_publisher(const std::shared_ptr<InteriorPoint>& interior_ray_publisher);
-    void delete_interior_ray_distance_publisher(const std::shared_ptr<InteriorPoint>& interior_ray_publisher);
-
     // interior point distance publisher
     void add_interior_point_distance_publisher(const std::shared_ptr<InteriorPoint>& interior_point_publisher);
     void delete_interior_point_distance_publisher(const std::shared_ptr<InteriorPoint>& interior_point_publisher);
@@ -210,15 +194,10 @@ private:
 
     // a publisher is one that reduces radius of other vertices
     std::vector<std::pair<std::shared_ptr<Vertex>, double>> vertex_point_distance_publishers_;
-    std::vector<std::pair<std::shared_ptr<Vertex>, double>> vertex_ray_distance_publishers_;
-    std::vector<std::pair<std::shared_ptr<Vertex>, double>> vertex_plane_distance_publishers_;
-    std::vector<std::pair<std::shared_ptr<InteriorPoint>, double>> interior_ray_distance_publishers_;
     std::vector<std::pair<std::shared_ptr<InteriorPoint>, double>> interior_point_distance_publishers_;
 
     // a subscriber is one that is reduced by the current vertex
     std::vector<std::shared_ptr<Vertex>> vertex_point_distance_subscribers_;
-    std::vector<std::shared_ptr<Vertex>> vertex_ray_distance_subscribers_;
-    std::vector<std::shared_ptr<Vertex>> vertex_plane_distance_subscribers_;
 
 public:
     double weight_;

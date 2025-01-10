@@ -47,7 +47,6 @@ public:
     bool is_deleting() const;
     bool is_searchable() const;
     bool has_vertex(const std::shared_ptr<Vertex>& vertex) const;
-    bool is_penetrated() const;
 
     bool intersects_point(const Eigen::Vector3d& origin, const Eigen::Vector3d& direction) const;
     bool intersects_point(const std::shared_ptr<GenericPoint>& generic_point);

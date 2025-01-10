@@ -268,44 +268,6 @@ double& Vertex::get_projected_uncertainty()
     return projected_uncertainty_;
 }
 
-std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> Vertex::get_vertex_ray_publishers() const
-{
-    // initialize
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertex_ray_publishers;
-    
-    // add
-    for (const auto& vertex : vertex_ray_distance_publishers_)
-    {
-        // skip if expired
-        if (vertex.first->is_expired()) continue;
-
-        // insert
-        vertex_ray_publishers.insert(vertex.first);
-    }
-
-    // return
-    return vertex_ray_publishers;
-}
-
-std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> Vertex::get_interior_ray_publishers() const
-{
-    // initialize
-    std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> interior_ray_publishers;
-    
-    // add
-    for (const auto& interior_point : interior_ray_distance_publishers_)
-    {
-        // skip if expired
-        if (interior_point.first->is_expired()) continue;
-
-        // insert
-        interior_ray_publishers.insert(interior_point.first);
-    }
-
-    // return
-    return interior_ray_publishers;
-}
-
 const std::shared_ptr<Edge>& Vertex::get_edge(const std::shared_ptr<Vertex>& vertex) const
 {
     for (const std::shared_ptr<Edge>& edge : edges_)
@@ -728,8 +690,8 @@ bool Vertex::try_close_holes_between_self_and(std::shared_ptr<Vertex>& vertex0, 
         std::shared_ptr<Face> new_face = storage_->add_face(get_surface(), shared_from_this(), vertex0, vertex1);
         get_surface()->connect(new_face);
 
-        // un-add the face if face is non-manifold or penetrated
-        if (new_face->is_non_manifold() || new_face->is_penetrated())
+        // un-add the face if face is non-manifold
+        if (new_face->is_non_manifold())
         {
             // un-add face
             new_face->un_add_face();
@@ -839,27 +801,6 @@ void Vertex::delete_publishers()
         delete_vertex_point_distance_publisher(vertex_point_publisher);
     }
 
-    // vertex ray publisher
-    std::vector<std::pair<std::shared_ptr<Vertex>, double>> vertex_ray_distance_publishers_copy = vertex_ray_distance_publishers_;
-    for (const auto& [vertex_ray_publisher, distance] : vertex_ray_distance_publishers_copy)
-    {
-        delete_vertex_ray_distance_publisher(vertex_ray_publisher);
-    }
-
-    // vertex plane publisher
-    std::vector<std::pair<std::shared_ptr<Vertex>, double>> vertex_plane_distance_publishers_copy = vertex_plane_distance_publishers_;
-    for (const auto& [vertex_plane_publisher, distance] : vertex_plane_distance_publishers_copy)
-    {
-        delete_vertex_plane_distance_publisher(vertex_plane_publisher);
-    }
-
-    // interior ray publisher
-    std::vector<std::pair<std::shared_ptr<InteriorPoint>, double>> interior_ray_distance_publishers_copy = interior_ray_distance_publishers_;
-    for (const auto& [interior_ray_publisher, distance] : interior_ray_distance_publishers_copy)
-    {
-        delete_interior_ray_distance_publisher(interior_ray_publisher);
-    }
-
     // interior point publisher
     std::vector<std::pair<std::shared_ptr<InteriorPoint>, double>> interior_point_distance_publishers_copy = interior_point_distance_publishers_;
     for (const auto& [interior_point_publisher, distance] : interior_point_distance_publishers_copy)
@@ -889,48 +830,6 @@ void Vertex::delete_subscribers()
         // unlock vertex and surface
         omp_unset_nest_lock(&vertex_point_subscriber->get_surface()->lock);
         omp_unset_nest_lock(&vertex_point_subscriber->vertex_lock);
-    }
-
-    // vertex ray subscribers
-    std::vector<std::shared_ptr<Vertex>> vertex_ray_distance_subscribers_copy = vertex_ray_distance_subscribers_;
-    for (const auto& vertex_ray_subscriber : vertex_ray_distance_subscribers_copy)
-    {
-        // try lock vertex and surface
-        if(!omp_test_nest_lock(&vertex_ray_subscriber->vertex_lock)) continue;
-        if (!omp_test_nest_lock(&vertex_ray_subscriber->get_surface()->lock)) 
-        {
-            // unlock vertex
-            omp_unset_nest_lock(&vertex_ray_subscriber->vertex_lock);
-            continue;
-        }
-
-        // delete
-        delete_vertex_ray_distance_subscriber(vertex_ray_subscriber);
-
-        // unlock vertex and surface
-        omp_unset_nest_lock(&vertex_ray_subscriber->get_surface()->lock);
-        omp_unset_nest_lock(&vertex_ray_subscriber->vertex_lock);
-    }
-
-    // vertex plane subscribers
-    std::vector<std::shared_ptr<Vertex>> vertex_plane_distance_subscribers_copy = vertex_plane_distance_subscribers_;
-    for (const auto& vertex_plane_subscriber : vertex_plane_distance_subscribers_copy)
-    {
-        // try lock vertex and surface
-        if(!omp_test_nest_lock(&vertex_plane_subscriber->vertex_lock)) continue;
-        if (!omp_test_nest_lock(&vertex_plane_subscriber->get_surface()->lock)) 
-        {
-            // unlock vertex
-            omp_unset_nest_lock(&vertex_plane_subscriber->vertex_lock);
-            continue;
-        }
-
-        // delete
-        delete_vertex_plane_distance_subscriber(vertex_plane_subscriber);
-
-        // unlock vertex and surface
-        omp_unset_nest_lock(&vertex_plane_subscriber->get_surface()->lock);
-        omp_unset_nest_lock(&vertex_plane_subscriber->vertex_lock);
     }
 }
 
@@ -1048,217 +947,6 @@ void Vertex::delete_vertex_point_distance_subscriber(const std::shared_ptr<Verte
     vertex_point_subscriber->delete_vertex_point_distance_publisher(shared_from_this());
 }
 
-// vertex ray distance publisher and subscriber
-void Vertex::add_vertex_ray_distance_publisher(const std::shared_ptr<Vertex>& vertex_ray_publisher)
-{
-    // check input
-    if (vertex_ray_publisher->is_expired()) return;
-
-    // remove expired publishers
-    vertex_ray_distance_publishers_.erase(std::remove_if(vertex_ray_distance_publishers_.begin(), vertex_ray_distance_publishers_.end(), [&](const std::pair<std::shared_ptr<Vertex>, double>& pair) {return pair.first->is_expired();}), vertex_ray_distance_publishers_.end());
-
-    // skip if already exist
-    for (const auto& pair : vertex_ray_distance_publishers_) if (pair.first == vertex_ray_publisher) return; // Already exists
-
-    // compute ray distance
-    const Eigen::Vector3d projected_position = get_surface()->compute_point_projective_position(vertex_ray_publisher->get_origin(), vertex_ray_publisher->get_original_position());
-    const double ray_distance = (projected_position - get_position()).norm();
-
-    // add publisher
-    vertex_ray_distance_publishers_.emplace_back(vertex_ray_publisher, ray_distance);
-
-    // add self to vertex ray as subscriber
-    vertex_ray_publisher->add_vertex_ray_distance_subscriber(shared_from_this());
-}
-
-void Vertex::delete_vertex_ray_distance_publisher(const std::shared_ptr<Vertex>& vertex_ray_publisher)
-{
-    // check input
-    if (vertex_ray_publisher->is_expired()) return;
-
-    // remove expired publishers
-    vertex_ray_distance_publishers_.erase(std::remove_if(vertex_ray_distance_publishers_.begin(), vertex_ray_distance_publishers_.end(), [&](const std::pair<std::shared_ptr<Vertex>, double>& pair) {return pair.first->is_expired();}), vertex_ray_distance_publishers_.end());
-
-    // skip if not exist
-    auto it = std::find_if(vertex_ray_distance_publishers_.begin(), vertex_ray_distance_publishers_.end(), [&](const std::pair<std::shared_ptr<Vertex>, double>& pair) {return pair.first == vertex_ray_publisher;});
-    if (it == vertex_ray_distance_publishers_.end()) return;
-
-    // delete publisher
-    vertex_ray_distance_publishers_.erase(it);
-
-    // upon deleting publisher
-    upon_deleting_publisher();
-
-    // delete self from vertex ray as subscriber
-    vertex_ray_publisher->delete_vertex_ray_distance_subscriber(shared_from_this());
-}
-
-void Vertex::add_vertex_ray_distance_subscriber(const std::shared_ptr<Vertex>& vertex_ray_subscriber)
-{
-    // check input
-    if (vertex_ray_subscriber->is_expired()) return;
-
-    // remove expired subscribers
-    vertex_ray_distance_subscribers_.erase(std::remove_if(vertex_ray_distance_subscribers_.begin(), vertex_ray_distance_subscribers_.end(), [&](const std::shared_ptr<Vertex>& vertex_ray_subscriber_) {return vertex_ray_subscriber_->is_expired();}), vertex_ray_distance_subscribers_.end());
-
-    // skip if already exist
-    for (const auto& vertex_ray_subscriber_ : vertex_ray_distance_subscribers_) if (vertex_ray_subscriber_ == vertex_ray_subscriber) return; // Already exists
-
-    // add subscriber
-    vertex_ray_distance_subscribers_.push_back(vertex_ray_subscriber);
-
-    // add self to subscriber vertex as publisher
-    vertex_ray_subscriber->add_vertex_ray_distance_publisher(shared_from_this());
-    vertex_ray_subscriber->upon_adding_publisher();
-}
-
-void Vertex::delete_vertex_ray_distance_subscriber(const std::shared_ptr<Vertex>& vertex_ray_subscriber)
-{
-    // check input
-    if (vertex_ray_subscriber->is_expired()) return;
-
-    // remove expired subscribers
-    vertex_ray_distance_subscribers_.erase(std::remove_if(vertex_ray_distance_subscribers_.begin(), vertex_ray_distance_subscribers_.end(), [&](const std::shared_ptr<Vertex>& vertex_ray_subscriber_) {return vertex_ray_subscriber_->is_expired();}), vertex_ray_distance_subscribers_.end());
-
-    // skip if not exist
-    auto it = std::find(vertex_ray_distance_subscribers_.begin(), vertex_ray_distance_subscribers_.end(), vertex_ray_subscriber);
-    if (it == vertex_ray_distance_subscribers_.end()) return; // skip if not exist
-
-    // delete subscriber
-    vertex_ray_distance_subscribers_.erase(it);
-    
-    // delete self from subscriber vertex as publisher
-    vertex_ray_subscriber->delete_vertex_ray_distance_publisher(shared_from_this());
-}
-
-// vertex plane distance publisher and subscriber
-void Vertex::add_vertex_plane_distance_publisher(const std::shared_ptr<Vertex>& vertex_plane_publisher)
-{
-    // check input
-    if (vertex_plane_publisher->is_expired()) return;
-
-    // remove expired publishers
-    vertex_plane_distance_publishers_.erase(std::remove_if(vertex_plane_distance_publishers_.begin(), vertex_plane_distance_publishers_.end(), [&](const std::pair<std::shared_ptr<Vertex>, double>& pair) {return pair.first->is_expired();}), vertex_plane_distance_publishers_.end());
-
-    // skip if already exist
-    for (const auto& pair : vertex_plane_distance_publishers_) if (pair.first == vertex_plane_publisher) return; // Already exists
-
-    // compute distance
-    double distance = settings_.radius_value;
-    if (vertex_plane_publisher->get_surface()->get_total_point_size() >= settings_.fit_plane_threshold)
-    {
-        distance = vertex_plane_publisher->get_surface()->compute_point_to_plane_distance(get_position());
-    }
-
-    // add to publisher
-    vertex_plane_distance_publishers_.emplace_back(vertex_plane_publisher, distance);
-
-    // add self to publisher vertex as subscriber
-    vertex_plane_publisher->add_vertex_plane_distance_subscriber(shared_from_this());
-}
-
-void Vertex::delete_vertex_plane_distance_publisher(const std::shared_ptr<Vertex>& vertex_plane_publisher)
-{
-    // check input
-    if (vertex_plane_publisher->is_expired()) return;
-
-    // remove expired publishers
-    vertex_plane_distance_publishers_.erase(std::remove_if(vertex_plane_distance_publishers_.begin(), vertex_plane_distance_publishers_.end(), [&](const std::pair<std::shared_ptr<Vertex>, double>& pair) {return pair.first->is_expired();}), vertex_plane_distance_publishers_.end());
-
-    // skip if not exist
-    auto it = std::find_if(vertex_plane_distance_publishers_.begin(), vertex_plane_distance_publishers_.end(), [&](const std::pair<std::shared_ptr<Vertex>, double>& pair) {return pair.first == vertex_plane_publisher;});
-    if (it == vertex_plane_distance_publishers_.end()) return;
-
-    // delete publisher
-    vertex_plane_distance_publishers_.erase(it);
-
-    // delete self from publisher vertex as subscriber
-    vertex_plane_publisher->delete_vertex_plane_distance_subscriber(shared_from_this());
-}
-
-void Vertex::add_vertex_plane_distance_subscriber(const std::shared_ptr<Vertex>& vertex_plane_subscriber)
-{
-    // check input
-    if (vertex_plane_subscriber->is_expired()) return;
-
-    // remove expired subscribers
-    vertex_plane_distance_subscribers_.erase(std::remove_if(vertex_plane_distance_subscribers_.begin(), vertex_plane_distance_subscribers_.end(), [&](const std::shared_ptr<Vertex>& vertex_plane_subscriber_) {return vertex_plane_subscriber_->is_expired();}), vertex_plane_distance_subscribers_.end());
-
-    // skip if already exist
-    for (const auto& vertex_plane_subscriber_ : vertex_plane_distance_subscribers_) if (vertex_plane_subscriber_ == vertex_plane_subscriber) return; // Already exists
-
-    // add subscriber
-    vertex_plane_distance_subscribers_.push_back(vertex_plane_subscriber);
-
-    // add self to subscriber vertex as publisher
-    vertex_plane_subscriber->add_vertex_plane_distance_publisher(shared_from_this());
-    vertex_plane_subscriber->upon_adding_publisher();
-}
-
-void Vertex::delete_vertex_plane_distance_subscriber(const std::shared_ptr<Vertex>& vertex_plane_subscriber)
-{
-    // check input
-    if (vertex_plane_subscriber->is_expired()) return;
-
-    // remove expired subscribers
-    vertex_plane_distance_subscribers_.erase(std::remove_if(vertex_plane_distance_subscribers_.begin(), vertex_plane_distance_subscribers_.end(), [&](const std::shared_ptr<Vertex>& vertex_plane_subscriber_) {return vertex_plane_subscriber_->is_expired();}), vertex_plane_distance_subscribers_.end());
-
-    // skip if not exist
-    auto it = std::find(vertex_plane_distance_subscribers_.begin(), vertex_plane_distance_subscribers_.end(), vertex_plane_subscriber);
-    if (it == vertex_plane_distance_subscribers_.end()) return; // skip if not exist
-
-    // delete subscriber
-    vertex_plane_distance_subscribers_.erase(it);
-    
-    // delete self from subscriber vertex as publisher
-    vertex_plane_subscriber->delete_vertex_plane_distance_publisher(shared_from_this());
-}
-
-// interior ray distance publisher
-void Vertex::add_interior_ray_distance_publisher(const std::shared_ptr<InteriorPoint>& interior_ray_publisher)
-{
-    // check input
-    if (interior_ray_publisher->is_expired()) return;
-
-    // remove expired publishers
-    interior_ray_distance_publishers_.erase(std::remove_if(interior_ray_distance_publishers_.begin(), interior_ray_distance_publishers_.end(), [&](const std::pair<std::shared_ptr<InteriorPoint>, double>& pair) {return pair.first->is_expired();}), interior_ray_distance_publishers_.end());
-
-    // skip if already exist
-    for (const auto& pair : interior_ray_distance_publishers_) if (pair.first == interior_ray_publisher) return; // Already exists
-
-    // compute ray distance
-    const Eigen::Vector3d projected_position = get_surface()->compute_point_projective_position(interior_ray_publisher->get_origin(), interior_ray_publisher->get_original_position());
-    const double ray_distance = (projected_position - get_position()).norm();
-
-    // add publisher
-    interior_ray_distance_publishers_.emplace_back(interior_ray_publisher, ray_distance);
-
-    // add self to interior point as subscriber
-    interior_ray_publisher->add_interior_ray_distance_subscriber(shared_from_this());
-}
-
-void Vertex::delete_interior_ray_distance_publisher(const std::shared_ptr<InteriorPoint>& interior_ray_publisher)
-{
-    // check input
-    if (interior_ray_publisher->is_expired()) return;
-
-    // remove expired publishers
-    interior_ray_distance_publishers_.erase(std::remove_if(interior_ray_distance_publishers_.begin(), interior_ray_distance_publishers_.end(), [&](const std::pair<std::shared_ptr<InteriorPoint>, double>& pair) {return pair.first->is_expired();}), interior_ray_distance_publishers_.end());
-
-    // skip if not exist
-    auto it = std::find_if(interior_ray_distance_publishers_.begin(), interior_ray_distance_publishers_.end(), [&](const std::pair<std::shared_ptr<InteriorPoint>, double>& pair) {return pair.first == interior_ray_publisher;});
-    if (it == interior_ray_distance_publishers_.end()) return;
-
-    // delete publisher
-    interior_ray_distance_publishers_.erase(it);
-
-    // upon deleting publisher
-    upon_deleting_publisher();
-
-    // delete self from interior point as subscriber
-    interior_ray_publisher->delete_interior_ray_distance_subscriber(shared_from_this());
-}
-
 void Vertex::add_interior_point_distance_publisher(const std::shared_ptr<InteriorPoint>& interior_point_publisher)
 {
     // check input
@@ -1319,45 +1007,6 @@ double Vertex::compute_radius()
             ++it;
         }
     }
-    
-    // remove expired entries
-    for (auto it = interior_ray_distance_publishers_.begin(); it != interior_ray_distance_publishers_.end();)
-    {
-        if (it->first->is_expired())
-        {
-            it = interior_ray_distance_publishers_.erase(it);
-        }
-        else
-        {
-            ++it;
-        }
-    }
-
-    // remove expired entries
-    for (auto it = vertex_ray_distance_publishers_.begin(); it != vertex_ray_distance_publishers_.end();)
-    {
-        if (it->first->is_expired())
-        {
-            it = vertex_ray_distance_publishers_.erase(it);
-        }
-        else
-        {
-            ++it;
-        }
-    }
-
-    // remove expired entries
-    for (auto it = vertex_plane_distance_publishers_.begin(); it != vertex_plane_distance_publishers_.end();)
-    {
-        if (it->first->is_expired())
-        {
-            it = vertex_plane_distance_publishers_.erase(it);
-        }
-        else
-        {
-            ++it;
-        }
-    }
 
     // remove expired entries
     for (auto it = interior_point_distance_publishers_.begin(); it != interior_point_distance_publishers_.end();)
@@ -1377,24 +1026,6 @@ double Vertex::compute_radius()
     {
         const double extra_radius = settings_.extra_radius;
         if (distance + extra_radius < new_radius) new_radius = distance + extra_radius;
-    }
-
-    // reduce value
-    for (const auto& [interior_point, distance] : interior_ray_distance_publishers_)
-    {
-        if (distance < new_radius) new_radius = distance;
-    }
-
-    // reduce value
-    for (const auto& [vertex_point, distance] : vertex_ray_distance_publishers_)
-    {
-        if (distance < new_radius) new_radius = distance;
-    }
-
-    // reduce value
-    for (const auto& [vertex_point, distance] : vertex_plane_distance_publishers_)
-    {
-        if (distance < new_radius) new_radius = distance;
     }
 
     // reduce value

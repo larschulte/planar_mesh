@@ -72,7 +72,6 @@ public: // to user
     void remove_non_manifold_vertices();
     void remove_non_manifold_faces();
     void update_radius();
-    void remove_penetrated_faces();
 
     void add_points_in_add_searchable_vertex_queue();
     void add_or_remove_vertices_from_rrs_tree();
