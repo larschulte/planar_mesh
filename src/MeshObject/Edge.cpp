@@ -38,8 +38,9 @@ void Edge::initialize_(const std::shared_ptr<Storage>& storage, const std::share
     center_ = 0.5 * (vertex1_valid->get_position() + vertex2_valid->get_position());
 
     // compute max and min
-    max_ = vertex1->get_position().cwiseMax(vertex2->get_position());
-    min_ = vertex1->get_position().cwiseMin(vertex2->get_position());
+    double margin = 0.1f;
+    max_ = vertex1->get_position().cwiseMax(vertex2->get_position()) + margin * Eigen::Vector3d::Ones();
+    min_ = vertex1->get_position().cwiseMin(vertex2->get_position()) - margin * Eigen::Vector3d::Ones();
 
     // compute length
     length_ = (vertex1->get_position() - vertex2->get_position()).norm();
