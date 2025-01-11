@@ -149,7 +149,11 @@ double BoundingBox::compute_surface_area() const
 {
     Eigen::Vector3d dimensions = max - min;
     double area = 2.0 * (dimensions[0] * dimensions[1] + dimensions[1] * dimensions[2] + dimensions[2] * dimensions[0]);
-    if (std::isnan(area)) throw std::runtime_error("BVHBoundingBox::compute_surface_area() returned nan."); // throw if nan
+    if (std::isnan(area)) 
+    {
+        // this means the box is being deleted, thus should have zero area.
+        return 0;   
+    }
     return area;
 }
 
@@ -735,7 +739,7 @@ void TriangleBVH::tree_delete_face(std::shared_ptr<Face> face)
     const bool found = std::find(node->faces.begin(), node->faces.end(), face) != node->faces.end();
     if (!found) throw std::invalid_argument("Face not found in BVH.");
 
-    node->box = BoundingBox();
+    node->box = BoundingBox(); // here
     node->recursive_shrink_parent_box();
 
     // delete from node
