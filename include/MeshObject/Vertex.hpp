@@ -32,6 +32,12 @@ protected:
 public:
     omp_nest_lock_t vertex_lock;
 
+    // read write locks for shared resources
+    mutable std::shared_mutex rwlock_vertex_point_distance_publishers_;
+    mutable std::shared_mutex rwlock_interior_point_distance_publishers_;
+    mutable std::shared_mutex rwlock_vertex_point_distance_subscribers_;
+
+
     void temp_initialize(const Eigen::Vector3d& position, unsigned int id);
     std::shared_ptr<RRSNode> node;
 

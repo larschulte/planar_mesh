@@ -303,11 +303,16 @@ void InteriorPoint::add_interior_point_distance_subscriber(const std::shared_ptr
     // check input
     if (interior_point_subscriber->is_expired()) return;
 
-    // skip if already exist
-    for (const auto& interior_point_subscriber_ : interior_point_distance_subscribers_) if (interior_point_subscriber_ == interior_point_subscriber) return; // Already exists
+    {
+        // lock
+        std::unique_lock<std::shared_mutex> lock(rwlock_interior_point_distance_subscribers_);
 
-    // add subscriber
-    interior_point_distance_subscribers_.push_back(interior_point_subscriber);
+        // skip if already exist
+        for (const auto& interior_point_subscriber_ : interior_point_distance_subscribers_) if (interior_point_subscriber_ == interior_point_subscriber) return; // Already exists
+
+        // add subscriber
+        interior_point_distance_subscribers_.push_back(interior_point_subscriber);
+    }
 
     // add self to subscriber vertex as publisher
     interior_point_subscriber->add_interior_point_distance_publisher(shared_from_this());
@@ -319,12 +324,17 @@ void InteriorPoint::delete_interior_point_distance_subscriber(const std::shared_
     // check input
     if (interior_point_subscriber->is_expired()) return;
 
-    // skip if not exist
-    auto it = std::find(interior_point_distance_subscribers_.begin(), interior_point_distance_subscribers_.end(), interior_point_subscriber);
-    if (it == interior_point_distance_subscribers_.end()) return; // skip if not exist
+    {
+        // lock
+        std::unique_lock<std::shared_mutex> lock(rwlock_interior_point_distance_subscribers_);
 
-    // delete subscriber
-    interior_point_distance_subscribers_.erase(it);
+        // skip if not exist
+        auto it = std::find(interior_point_distance_subscribers_.begin(), interior_point_distance_subscribers_.end(), interior_point_subscriber);
+        if (it == interior_point_distance_subscribers_.end()) return; // skip if not exist
+
+        // delete subscriber
+        interior_point_distance_subscribers_.erase(it);
+    }    
     
     // delete self from subscriber vertex as publisher
     interior_point_subscriber->delete_interior_point_distance_publisher(shared_from_this());

@@ -24,6 +24,10 @@ protected:
     void delete_(); 
 
 public:
+
+    // read write locks
+    mutable std::shared_mutex rwlock_interior_point_distance_subscribers_;
+
     const int& get_id() const;
     const Eigen::Vector3d& get_original_position() const;
     const Eigen::Vector3d& get_position() const;

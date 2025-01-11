@@ -871,14 +871,19 @@ void Vertex::add_vertex_point_distance_publisher(const std::shared_ptr<Vertex> v
     // check input
     if (vertex_point_publisher->is_expired()) return;
 
-    // skip if already exist
-    for (const auto& pair : vertex_point_distance_publishers_) if (pair.first == vertex_point_publisher) return; // Already exists
+    {
+        // lock
+        std::unique_lock<std::shared_mutex> lock(rwlock_vertex_point_distance_publishers_);
 
-    // compute distance
-    const double distance = (get_position() - vertex_point_publisher->get_position()).norm(); 
+        // skip if already exist
+        for (const auto& pair : vertex_point_distance_publishers_) if (pair.first == vertex_point_publisher) return; // Already exists
 
-    // add publisher
-    vertex_point_distance_publishers_.emplace_back(vertex_point_publisher, distance);
+        // compute distance
+        const double distance = (get_position() - vertex_point_publisher->get_position()).norm(); 
+
+        // add publisher
+        vertex_point_distance_publishers_.emplace_back(vertex_point_publisher, distance);
+    }
 
     // add self to publisher vertex as subscriber
     vertex_point_publisher->add_vertex_point_distance_subscriber(shared_from_this());
@@ -888,13 +893,18 @@ void Vertex::delete_vertex_point_distance_publisher(const std::shared_ptr<Vertex
 {
     // check input
     if (vertex_point_publisher->is_expired()) return;
+    
+    {
+        // lock
+        std::unique_lock<std::shared_mutex> lock(rwlock_vertex_point_distance_publishers_);
 
-    // skip if not exist
-    auto it = std::find_if(vertex_point_distance_publishers_.begin(), vertex_point_distance_publishers_.end(), [&](const std::pair<std::shared_ptr<Vertex>, double>& pair) {return pair.first == vertex_point_publisher;});
-    if (it == vertex_point_distance_publishers_.end()) return;
+        // skip if not exist
+        auto it = std::find_if(vertex_point_distance_publishers_.begin(), vertex_point_distance_publishers_.end(), [&](const std::pair<std::shared_ptr<Vertex>, double>& pair) {return pair.first == vertex_point_publisher;});
+        if (it == vertex_point_distance_publishers_.end()) return;
 
-    // delete publisher
-    vertex_point_distance_publishers_.erase(it);
+        // delete publisher
+        vertex_point_distance_publishers_.erase(it);
+    }
     
     // upon deleting publisher
     upon_deleting_publisher();
@@ -907,12 +917,17 @@ void Vertex::add_vertex_point_distance_subscriber(const std::shared_ptr<Vertex> 
 {
     // check input
     if (vertex_point_subscriber->is_expired()) return;
+    
+    {
+        // lock
+        std::unique_lock<std::shared_mutex> lock(rwlock_vertex_point_distance_subscribers_);
 
-    // skip if already exist
-    for (const auto& vertex_point_subscriber_ : vertex_point_distance_subscribers_) if (vertex_point_subscriber_ == vertex_point_subscriber) return; // Already exists
+        // skip if already exist
+        for (const auto& vertex_point_subscriber_ : vertex_point_distance_subscribers_) if (vertex_point_subscriber_ == vertex_point_subscriber) return; // Already exists
 
-    // add subscriber
-    vertex_point_distance_subscribers_.push_back(vertex_point_subscriber);
+        // add subscriber
+        vertex_point_distance_subscribers_.push_back(vertex_point_subscriber);
+    }
 
     // add self to subscriber vertex as publisher
     vertex_point_subscriber->add_vertex_point_distance_publisher(shared_from_this());
@@ -924,12 +939,17 @@ void Vertex::delete_vertex_point_distance_subscriber(const std::shared_ptr<Verte
     // check input
     if (vertex_point_subscriber->is_expired()) return;
 
-    // skip if not exist
-    auto it = std::find(vertex_point_distance_subscribers_.begin(), vertex_point_distance_subscribers_.end(), vertex_point_subscriber);
-    if (it == vertex_point_distance_subscribers_.end()) return; // skip if not exist
+    {
+        // lock
+        std::unique_lock<std::shared_mutex> lock(rwlock_vertex_point_distance_subscribers_);
 
-    // delete subscriber
-    vertex_point_distance_subscribers_.erase(it);
+        // skip if not exist
+        auto it = std::find(vertex_point_distance_subscribers_.begin(), vertex_point_distance_subscribers_.end(), vertex_point_subscriber);
+        if (it == vertex_point_distance_subscribers_.end()) return; // skip if not exist
+
+        // delete subscriber
+        vertex_point_distance_subscribers_.erase(it);
+    }
     
     // delete self from subscriber vertex as publisher
     vertex_point_subscriber->delete_vertex_point_distance_publisher(shared_from_this());
@@ -940,14 +960,19 @@ void Vertex::add_interior_point_distance_publisher(const std::shared_ptr<Interio
     // check input
     if (interior_point_publisher->is_expired()) return;
 
-    // skip if already exist
-    for (const auto& pair : interior_point_distance_publishers_) if (pair.first == interior_point_publisher) return; // Already exists
+    {
+        // lock
+        std::unique_lock<std::shared_mutex> lock(rwlock_interior_point_distance_publishers_);
 
-    // compute distance
-    const double distance = (get_position() - interior_point_publisher->get_position()).norm(); 
+        // skip if already exist
+        for (const auto& pair : interior_point_distance_publishers_) if (pair.first == interior_point_publisher) return; // Already exists
+    
+        // compute distance
+        const double distance = (get_position() - interior_point_publisher->get_position()).norm(); 
 
-    // add publisher
-    interior_point_distance_publishers_.emplace_back(interior_point_publisher, distance);
+        // add publisher
+        interior_point_distance_publishers_.emplace_back(interior_point_publisher, distance);
+    }
 
     // add self to publisher vertex as subscriber
     interior_point_publisher->add_interior_point_distance_subscriber(shared_from_this());
@@ -958,12 +983,17 @@ void Vertex::delete_interior_point_distance_publisher(const std::shared_ptr<Inte
     // check input
     if (interior_point_publisher->is_expired()) return;
 
-    // skip if not exist
-    auto it = std::find_if(interior_point_distance_publishers_.begin(), interior_point_distance_publishers_.end(), [&](const std::pair<std::shared_ptr<InteriorPoint>, double>& pair) {return pair.first == interior_point_publisher;});
-    if (it == interior_point_distance_publishers_.end()) return;
+    {
+        // lock
+        std::unique_lock<std::shared_mutex> lock(rwlock_interior_point_distance_publishers_);
 
-    // delete publisher
-    interior_point_distance_publishers_.erase(it);
+        // skip if not exist
+        auto it = std::find_if(interior_point_distance_publishers_.begin(), interior_point_distance_publishers_.end(), [&](const std::pair<std::shared_ptr<InteriorPoint>, double>& pair) {return pair.first == interior_point_publisher;});
+        if (it == interior_point_distance_publishers_.end()) return;
+
+        // delete publisher
+        interior_point_distance_publishers_.erase(it);
+    }
     
     // upon deleting publisher
     upon_deleting_publisher();
