@@ -12,6 +12,7 @@
 #include <shared_mutex>
 #include <mutex>
 #include "MeshObject/Settings.hpp"
+#include <shared_mutex>
 
 #include <set>
 
@@ -24,6 +25,13 @@ bool ray_triangle_intersect(const Eigen::Vector3d& orig, const Eigen::Vector3d& 
 
 struct BoundingBox 
 {
+    // include a read write lock
+    mutable std::shared_mutex mutex_; // Read-write lock
+    
+    // copy assigmnet operator
+    BoundingBox& operator=(const BoundingBox& other);
+    BoundingBox(const BoundingBox&);
+
     Eigen::Vector3d min;
     Eigen::Vector3d max;
     Eigen::Vector3d min_used_for_surface_area;

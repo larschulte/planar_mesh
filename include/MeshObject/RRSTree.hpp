@@ -14,6 +14,7 @@
 #include <mutex>
 #include <set>
 #include "MeshObject/Settings.hpp"
+#include <shared_mutex>
 
 class Vertex;
 class Surface;
@@ -21,6 +22,13 @@ class GenericPoint;
 
 struct RRSBoundingBox 
 {
+    // include a read write lock
+    mutable std::shared_mutex mutex_; // Read-write lock
+
+    // copy assigmnet operator
+    RRSBoundingBox& operator=(const RRSBoundingBox& other);
+    RRSBoundingBox(const RRSBoundingBox& other);
+
     Eigen::Vector3d min;
     Eigen::Vector3d max;
     Eigen::Vector3d min_used_for_surface_area;

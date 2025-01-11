@@ -23,6 +23,37 @@ std::ostream& operator<<(std::ostream& os, const RRSReturnType& type)
     return os;
 }
 
+RRSBoundingBox& RRSBoundingBox::operator=(const RRSBoundingBox& other)
+{
+    if (this != &other)
+    {
+        std::unique_lock lock_this(mutex_); // Acquire unique (write) lock for this object
+        std::shared_lock lock_other(other.mutex_); // Acquire shared (read) lock for other object
+
+        min = other.min;
+        max = other.max;
+        min_used_for_surface_area = other.min_used_for_surface_area;
+        max_used_for_surface_area = other.max_used_for_surface_area;
+        surface_area = other.surface_area;
+    }
+    return *this;
+}
+
+RRSBoundingBox::RRSBoundingBox(const RRSBoundingBox& other)
+{
+    if (this != &other)
+    {
+        std::unique_lock lock_this(mutex_); // Acquire unique (write) lock for this object
+        std::shared_lock lock_other(other.mutex_); // Acquire shared (read) lock for other object
+
+        min = other.min;
+        max = other.max;
+        min_used_for_surface_area = other.min_used_for_surface_area;
+        max_used_for_surface_area = other.max_used_for_surface_area;
+        surface_area = other.surface_area;
+    }
+} 
+
 RRSBoundingBox::RRSBoundingBox() : 
     min(Eigen::Vector3d::Constant(std::numeric_limits<double>::infinity())),
     max(Eigen::Vector3d::Constant(-std::numeric_limits<double>::infinity())) {}
@@ -31,6 +62,8 @@ RRSBoundingBox::RRSBoundingBox(const Eigen::Vector3d& min, const Eigen::Vector3d
 
 bool RRSBoundingBox::expand(const Eigen::Vector3d& point)
 {
+    std::unique_lock lock(mutex_); // Acquire unique (write) lock
+
     Eigen::Vector3d oldMin = min;
     Eigen::Vector3d oldMax = max;
 
@@ -46,6 +79,8 @@ bool RRSBoundingBox::expand(const Eigen::Vector3d& point)
 
 void RRSBoundingBox::expand_box_no_return(const Eigen::Vector3d& input_min, const Eigen::Vector3d& input_max)
 {
+    std::unique_lock lock(mutex_); // Acquire unique (write) lock
+
     // Component-wise min and max without calling Eigen's functions
     if (input_min[0] < min[0]) min[0] = input_min[0];
     if (input_min[1] < min[1]) min[1] = input_min[1];
@@ -83,6 +118,8 @@ bool RRSBoundingBox::expand_box(const RRSBoundingBox& box)
 
 bool RRSBoundingBox::contains(const Eigen::Vector3d& point)
 {
+    std::shared_lock lock(mutex_); // Acquire shared (read) lock
+
     return (point[0] >= min[0] && point[0] <= max[0] &&
             point[1] >= min[1] && point[1] <= max[1] &&
             point[2] >= min[2] && point[2] <= max[2]);
@@ -90,6 +127,8 @@ bool RRSBoundingBox::contains(const Eigen::Vector3d& point)
 
 int RRSBoundingBox::get_longest_axis()
 {
+    std::shared_lock lock(mutex_); // Acquire shared (read) lock
+
     Eigen::Vector3d diagonal_line = max - min;
     int axis = 0;
     if (diagonal_line[1] > diagonal_line[axis]) axis = 1;
@@ -111,6 +150,8 @@ double RRSBoundingBox::compute_surface_area() const
 
 const double& RRSBoundingBox::get_surface_area()
 {
+    std::shared_lock lock(mutex_); // Acquire shared (read) lock
+
     // if min and max are not updated, return the stored value
     if (min == min_used_for_surface_area && max == max_used_for_surface_area) return surface_area;
 
