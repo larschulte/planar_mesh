@@ -135,7 +135,6 @@ struct Settings
     bool show_pointcloud;
     bool show_triangle;
     bool show_edge;
-    bool show_confirmed_only;
     bool show_keycode;
     bool show_singular_edge;
     bool show_singular_vertex;

@@ -61,9 +61,6 @@ public:
     void delete_interior_point_distance_subscriber(const std::shared_ptr<Vertex> interior_point_subscriber);
 
     void set_reverse_radius_search_radius(double radius);
-
-    void update_confirmed_status();
-    bool is_confirmed() const;
     
     void swap(const std::shared_ptr<Surface>& surface1, const std::shared_ptr<Surface>& surface2);
 
@@ -74,9 +71,6 @@ private:
     bool is_expired_ = true;
 
     std::size_t num_deletes_;
-
-    std::size_t num_confirmed_faces = 0;
-    bool is_confirmed_ = false;
 
     bool can_self_destruct_ = true;
 

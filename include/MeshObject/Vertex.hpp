@@ -130,9 +130,7 @@ public:
     void review_surfaces();
     bool is_under_review() const;
 
-    void update_confirmed_status();
     void update_singular_state();
-    bool is_confirmed() const;
     bool is_singular() const;
     
     void swap(const std::shared_ptr<Surface>& surface1, const std::shared_ptr<Surface>& surface2);
@@ -170,9 +168,6 @@ private:
     double current_surface_uncertainty_;
 
     std::size_t num_deletes_;
-
-    std::size_t num_confirmed_faces = 0;
-    bool is_confirmed_ = false;
 
     int id_;
     std::shared_ptr<Storage> storage_;

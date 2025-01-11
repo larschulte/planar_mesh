@@ -265,25 +265,6 @@ void Edge::swap(const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Ve
     }
 }
 
-void Edge::update_confirmed_status()
-{
-    // update number of confirmed faces
-    num_confirmed_faces = 0;
-    for (const std::shared_ptr<Face>& face : faces_)
-    {
-        if (face->is_confirmed()) num_confirmed_faces++;
-    }
-
-    // update confirmed status
-    if (num_confirmed_faces >= 1) is_confirmed_ = true;
-    else is_confirmed_ = false;
-}
-
-bool Edge::is_confirmed() const
-{
-    return is_confirmed_;
-}
-
 // swap surface1 with surface2
 void Edge::swap(const std::shared_ptr<Surface>& surface1, const std::shared_ptr<Surface>& surface2)
 {

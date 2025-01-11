@@ -145,7 +145,6 @@ Settings::Settings()
     show_pointcloud = true;
     show_triangle = true;
     show_edge = true;
-    show_confirmed_only = false;
     show_keycode = false;
     show_singular_edge = false;
     show_singular_vertex = false;

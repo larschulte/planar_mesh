@@ -50,9 +50,6 @@ public:
 
     void swap(const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2);
 
-    void update_confirmed_status();
-    bool is_confirmed() const;
-
     void swap(const std::shared_ptr<Surface>& surface1, const std::shared_ptr<Surface>& surface2);
 
     bool has_vertex(const std::shared_ptr<Vertex>& vertex) const;
@@ -75,9 +72,6 @@ private:
     bool is_searchable_;
 
     bool can_self_destruct_ = true;
-
-    std::size_t num_confirmed_faces = 0;
-    bool is_confirmed_ = false;
 
     Eigen::Vector3d center_;
     Eigen::Vector3d max_;

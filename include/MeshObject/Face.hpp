@@ -68,9 +68,6 @@ public:
 
     void swap(const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2);
 
-    void update_confirmed_status();
-    bool is_confirmed() const;
-
     void swap(const std::shared_ptr<Surface>& surface1, const std::shared_ptr<Surface>& surface2);
 
     void update_radius(const std::shared_ptr<GenericPoint>& generic_point);
@@ -82,7 +79,6 @@ private:
 
     bool deleting_ = false;
     bool is_expired_ = true;
-    bool is_confirmed_ = false;
 
     bool can_self_destruct_ = true;
 

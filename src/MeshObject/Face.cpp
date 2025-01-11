@@ -392,7 +392,6 @@ void Face::connect(const std::shared_ptr<InteriorPoint>& interior_point)
     // connect
     interior_points_.push_back(interior_point);
     interior_point->connect(shared_from_this());
-    update_confirmed_status();
 }
 
 void Face::connect(const std::shared_ptr<Face>& sibling_face)
@@ -486,7 +485,6 @@ void Face::disconnect(const std::shared_ptr<InteriorPoint>& interior_point)
     // delete
     interior_points_.erase(it);
     interior_point->disconnect(shared_from_this());
-    update_confirmed_status();
 
     // self destruct
     if (!deleting_) storage_->delete_face(shared_from_this());
@@ -544,35 +542,6 @@ void Face::swap(const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Ve
         connect(vertex2);
         can_self_destruct_ = true;
     }
-}
-
-void Face::update_confirmed_status()
-{
-    bool previous_status = is_confirmed_;
-    bool current_status = interior_points_.size() > 0;
-
-    // if changed, update connected edges and vertices and interior points
-    if (current_status != previous_status)
-    {
-        is_confirmed_ = current_status;
-        for (const std::shared_ptr<Edge>& edge : edges_)
-        {
-            edge->update_confirmed_status();
-        }
-        for (const std::shared_ptr<Vertex>& vertex : vertices_)
-        {
-            vertex->update_confirmed_status();
-        }
-        for (const std::shared_ptr<InteriorPoint>& interior_point : interior_points_)
-        {
-            interior_point->update_confirmed_status();
-        }
-    }
-}
-
-bool Face::is_confirmed() const
-{
-    return is_confirmed_;
 }
 
 // swap surface1 with surface2

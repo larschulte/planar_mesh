@@ -473,8 +473,6 @@ void Vertex::connect(const std::shared_ptr<Face>& face)
         faces_.push_back(face);
     }
     
-    // update confirmed status
-    update_confirmed_status();
     update_singular_state();
 
     // reverse connect
@@ -551,9 +549,6 @@ void Vertex::disconnect(const std::shared_ptr<Face>& face)
 
     // reverse disconnect
     face->disconnect(shared_from_this());
-
-    // update confirmed status
-    update_confirmed_status();
 
     // do not self destruct when have no face
     // check self destruct
@@ -1295,20 +1290,6 @@ bool Vertex::is_under_review() const
     return under_review_;
 }
 
-void Vertex::update_confirmed_status()
-{
-    // update number of confirmed faces
-    num_confirmed_faces = 0;
-    for (const std::shared_ptr<Face>& face : faces_)
-    {
-        if (face->is_confirmed()) num_confirmed_faces++;
-    }
-
-    // update confirmed status
-    if (num_confirmed_faces >= 1) is_confirmed_ = true;
-    else is_confirmed_ = false;
-}
-
 void Vertex::update_singular_state()
 {
     // count number of faces in this surface
@@ -1317,11 +1298,6 @@ void Vertex::update_singular_state()
     // update singular state
     if (num_faces_in_surface == 0) is_singular_ = true;
     else is_singular_ = false;
-}
-
-bool Vertex::is_confirmed() const
-{
-    return is_confirmed_;
 }
 
 bool Vertex::is_singular() const

@@ -191,9 +191,6 @@ void InteriorPoint::connect(const std::shared_ptr<Face>& face)
     // connect
     bool inserted = faces_.insert(face).second;
     if (inserted) face->connect(shared_from_this());
-
-    // update confirmed status
-    if (inserted) update_confirmed_status();
 }
 
 void InteriorPoint::connect(const std::shared_ptr<Surface>& surface)
@@ -241,9 +238,6 @@ void InteriorPoint::disconnect(const std::shared_ptr<Face>& face)
     // disconnect
     bool erased = faces_.erase(face);
     if (erased) face->disconnect(shared_from_this());
-
-    // udpate confirmed status
-    if (erased) update_confirmed_status();
 
     // self destruct
     if (!deleting_ && faces_.empty()) storage_->delete_interior_point(shared_from_this());
@@ -344,25 +338,6 @@ void InteriorPoint::delete_interior_point_distance_subscriber(const std::shared_
 void InteriorPoint::set_reverse_radius_search_radius(double radius)
 {
     radius_ = radius;
-}
-
-void InteriorPoint::update_confirmed_status()
-{
-    // update number of confirmed faces
-    num_confirmed_faces = 0;
-    for (const std::shared_ptr<Face>& face : faces_)
-    {
-        if (face->is_confirmed()) num_confirmed_faces++;
-    }
-
-    // update confirmed status
-    if (num_confirmed_faces >= 1) is_confirmed_ = true;
-    else is_confirmed_ = false;
-}
-
-bool InteriorPoint::is_confirmed() const
-{
-    return is_confirmed_;
 }
 
 // swap surface1 with surface2
