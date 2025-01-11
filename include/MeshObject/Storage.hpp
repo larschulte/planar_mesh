@@ -49,6 +49,7 @@ public: // to user
 
     void add_to_main_queue(const Eigen::Vector3d& position, const Eigen::Vector3d& origin, double distance_travelled);
     void split_main_queue_into_smaller_queues();
+    void split_main_queue_into_smaller_queues_by_angle(Eigen::Vector3d origin);
     void split_main_queue_into_smaller_queues_by_contention();
     void print_main_queue_stats();
 

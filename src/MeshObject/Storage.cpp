@@ -430,6 +430,37 @@ void Storage::print_main_queue_stats()
     }
 }
 
+void Storage::split_main_queue_into_smaller_queues_by_angle(Eigen::Vector3d origin)
+{
+    // Define angle thresholds for splitting
+    double angle_step = 360.0 / settings_.num_threads; // Divide the sphere into equal segments
+
+    // Initialize the smaller queues
+    for (auto& queue : smaller_queues_) {
+        while (!queue.empty()) {
+            queue.pop(); // Ensure the smaller queues are empty before starting
+        }
+    }
+
+    // Process each point in the main queue
+    while (!main_queue_.empty()) {
+        // Get the point from the main queue
+        std::shared_ptr<GenericPoint> point = main_queue_.front();
+        main_queue_.pop();
+
+        // Compute the angle of the point
+        Eigen::Vector3d position = point->get_position();
+        Eigen::Vector3d direction = position - origin;
+        double angle = std::atan2(direction[1], direction[0]) * 180.0 / M_PI;
+
+        // Determine the target queue based on the angle
+        int queue_index = static_cast<int>(angle / angle_step) % settings_.num_threads;
+
+        // Add the point to the appropriate smaller queue
+        smaller_queues_[queue_index].push(point);
+    }
+}
+
 void Storage::split_main_queue_into_smaller_queues_by_contention()
 {
     // group points by contented surface
