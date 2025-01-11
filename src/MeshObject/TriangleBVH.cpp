@@ -181,29 +181,39 @@ int BoundingBox::get_longest_axis()
     return axis;
 }
 
-double BoundingBox::compute_surface_area() const
-{
-    Eigen::Vector3d dimensions = max - min;
-    double area = 2.0 * (dimensions[0] * dimensions[1] + dimensions[1] * dimensions[2] + dimensions[2] * dimensions[0]);
-    if (std::isnan(area)) 
-    {
-        // this means the box is being deleted, thus should have zero area.
-        return 0;   
-    }
-    return area;
-}
-
 const double& BoundingBox::get_surface_area()
 {
-    std::shared_lock lock(mutex_); // Acquire shared (read) lock
-    
-    // if min and max are not updated, return the stored value
-    if (min == min_used_for_surface_area && max == max_used_for_surface_area) return surface_area;
+    {
+        std::shared_lock lock(mutex_); // Acquire shared (read) lock
 
-    // else update and return
-    min_used_for_surface_area = min;
-    max_used_for_surface_area = max;
-    surface_area = compute_surface_area();
+        // If min and max are unchanged, return the cached surface area
+        if (min == min_used_for_surface_area && max == max_used_for_surface_area) 
+        {
+            return surface_area;
+        }
+    } // Release shared lock before acquiring unique lock
+
+    {
+        std::unique_lock lock(mutex_); // Acquire unique (write) lock
+
+        // Recheck condition to avoid race conditions
+        if (min != min_used_for_surface_area || max != max_used_for_surface_area) 
+        {
+            // Update the cached surface area
+            Eigen::Vector3d dimensions = max - min;
+            double area = 2.0 * (dimensions[0] * dimensions[1] + 
+                                 dimensions[1] * dimensions[2] + 
+                                 dimensions[2] * dimensions[0]);
+
+            // Handle invalid boxes (e.g., during deletion)
+            surface_area = std::isnan(area) ? 0.0 : area;
+
+            // Cache the updated min and max
+            min_used_for_surface_area = min;
+            max_used_for_surface_area = max;
+        }
+    }
+
     return surface_area;
 }
 
