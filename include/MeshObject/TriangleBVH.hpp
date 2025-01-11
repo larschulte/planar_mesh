@@ -42,8 +42,15 @@ struct BoundingBox
     const double& get_surface_area();
 };
 
-struct Node 
+enum class BVHReturnType
 {
+    INTERSECTED,
+    SKIP,
+    ABORT
+};
+class Node : public std::enable_shared_from_this<Node>
+{
+    public:
     BoundingBox box;
     double split_value;
     int split_axis;
@@ -58,13 +65,12 @@ struct Node
 
     void recursive_expand_parent_box();
     void recursive_shrink_parent_box();
-};
 
-enum class BVHReturnType
-{
-    INTERSECTED,
-    SKIP,
-    ABORT
+    BVHReturnType node_intersection_search(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Face>>& faces_intersected) const;
+    void node_add_face(const std::shared_ptr<Face>& face);
+    bool node_delete_face(const std::shared_ptr<Face>& face);
+    void node_print(int level) const;
+    void node_flatten(std::vector<std::shared_ptr<Face>>& face_list) const;
 };
 
 // overload <<
@@ -78,14 +84,7 @@ private:
     int face_size;
     unsigned int leaf_size;
     std::shared_ptr<Node> root;
-
-    BVHReturnType node_intersection_search(Node* node, const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Face>>& faces_intersected) const;
-
     std::shared_ptr<Node> find_best_node(const std::shared_ptr<Node>& node, const std::shared_ptr<Face>& face);
-    void node_add_face(const std::shared_ptr<Node>& node, const std::shared_ptr<Face>& face);
-    bool node_delete_face(const std::shared_ptr<Node>& node, const std::shared_ptr<Face>& face);
-    void node_print(const std::shared_ptr<Node>& node, int level) const;
-    void node_flatten(const std::shared_ptr<Node>& node, std::vector<std::shared_ptr<Face>>& face_list) const;
 
 public:
     TriangleBVH();

@@ -38,8 +38,17 @@ struct RRSBoundingBox
     const double& get_surface_area();
 };
 
-struct RRSNode 
+
+enum class RRSReturnType
 {
+    INTERSECTED,
+    SKIP,
+    ABORT
+};
+
+class RRSNode : public std::enable_shared_from_this<RRSNode>
+{
+    public:
     RRSBoundingBox box;
     double split_value;
     int split_axis;
@@ -54,14 +63,14 @@ struct RRSNode
 
     void recursive_expand_parent_box();
     void recursive_shrink_parent_box();
+
+    void node_add_vertex(const std::shared_ptr<Vertex>& boundary_vertex);
+    bool node_delete_vertex(const std::shared_ptr<Vertex>& boundary_vertex);
+    RRSReturnType node_reverse_radius_search(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Vertex>>& search_results);
+    void node_print(int level) const;
+    void node_flattern(std::vector<std::shared_ptr<Vertex>>& flatten_list);
 };
 
-enum class RRSReturnType
-{
-    INTERSECTED,
-    SKIP,
-    ABORT
-};
 
 // Overload the << operator for RRSReturnType
 std::ostream& operator<<(std::ostream& os, const RRSReturnType& type);
@@ -74,13 +83,7 @@ private:
     std::shared_ptr<RRSNode> root;
     int tree_size;
     std::size_t leaf_size;
-
     std::shared_ptr<RRSNode> find_best_node(const std::shared_ptr<RRSNode>& root, const std::shared_ptr<Vertex>& boundary_vertex);
-    void node_add_vertex(const std::shared_ptr<RRSNode>& node, const std::shared_ptr<Vertex>& boundary_vertex);
-    bool node_delete_vertex(const std::shared_ptr<RRSNode>& node, const std::shared_ptr<Vertex>& boundary_vertex);
-    RRSReturnType node_reverse_radius_search(RRSNode* node, const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Vertex>>& search_results);
-    void node_print(const std::shared_ptr<RRSNode>& node, int level) const;
-    void node_flattern(const std::shared_ptr<RRSNode>& node, std::vector<std::shared_ptr<Vertex>>& flatten_list);
 
 public:
     RRSTree();
