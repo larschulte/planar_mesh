@@ -193,6 +193,9 @@ std::shared_ptr<RRSNode> RRSTree::find_best_node(const std::shared_ptr<RRSNode>&
         // skip if inherited cost is already greater than best cost
         if (inherited_cost + lower_bound_cost > best_cost) continue;
 
+        // read lock
+        std::shared_lock<std::shared_mutex> lock(current_node->rwlock_node_);
+        
         // cost to add a branch that contains current node and leaf node
         {
             // cost of creating a new branch node
@@ -267,7 +270,8 @@ std::shared_ptr<RRSNode> RRSTree::find_best_node(const std::shared_ptr<RRSNode>&
 // when adding vertex from storage, add to a queue. that is processed after all locks are released
 void RRSNode::node_add_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
 {
-    // after locking the node
+    // write lock
+    std::unique_lock<std::shared_mutex> lock(rwlock_node_);
     
     // create new node
     std::shared_ptr<RRSNode> new_node = std::make_shared<RRSNode>();
@@ -335,6 +339,9 @@ void RRSNode::node_add_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
 
 void RRSNode::node_delete_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
 {
+    // write lock
+    std::unique_lock<std::shared_mutex> lock(rwlock_node_);
+
     // boundary vertex is only stored in leaf node
 
     // remove node from vertices
@@ -354,6 +361,9 @@ void RRSNode::node_delete_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
 
 RRSReturnType RRSNode::node_reverse_radius_search(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Vertex>>& search_results)
 {
+    // read lock
+    std::shared_lock<std::shared_mutex> lock(rwlock_node_);
+
     // skip if not contained
     if (!box_.contains(generic_point->get_position()))
     {

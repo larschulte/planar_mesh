@@ -212,6 +212,9 @@ void Node::recursive_shrink_parent_box()
 
 BVHReturnType Node::node_intersection_search(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Face>>& faces_intersected) const
 {   
+    // read lock
+    std::shared_lock<std::shared_mutex> lock(rwlock_node_);
+    
     // skip if not intersected
     if (!box_.intersect(generic_point->get_position(), generic_point->get_inv_direction()))
     {
@@ -292,6 +295,9 @@ std::shared_ptr<Node> TriangleBVH::find_best_node(const std::shared_ptr<Node>& n
         // skip if inherited cost is already greater than best cost
         if (inherited_cost + lower_bound_cost > best_cost) continue;
 
+        // read lock
+        std::shared_lock<std::shared_mutex> lock(current_node->rwlock_node_);
+
         // cost to add a branch that contains current node and leaf node
         {
             // cost of creating a new branch node
@@ -346,7 +352,8 @@ std::shared_ptr<Node> TriangleBVH::find_best_node(const std::shared_ptr<Node>& n
 
 void Node::node_add_face(const std::shared_ptr<Face>& face)
 {
-    // after locking the node
+    // write lock
+    std::unique_lock<std::shared_mutex> lock(rwlock_node_);
     
     // create new node
     std::shared_ptr<Node> new_node = std::make_shared<Node>();
@@ -414,6 +421,9 @@ void Node::node_add_face(const std::shared_ptr<Face>& face)
 
 void Node::node_delete_face(const std::shared_ptr<Face>& face)
 {
+    // write lock
+    std::unique_lock<std::shared_mutex> lock(rwlock_node_);
+
     // face is only stored in leaf node
 
     // remove node from face

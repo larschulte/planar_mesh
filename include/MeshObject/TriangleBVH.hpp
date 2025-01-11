@@ -10,6 +10,7 @@
 #include <array>
 
 #include <shared_mutex>
+#include <mutex>
 #include "MeshObject/Settings.hpp"
 
 #include <set>
@@ -61,6 +62,9 @@ class Node : public std::enable_shared_from_this<Node>
     std::vector<std::shared_ptr<Face>> faces_;
 
     bool locked_children = false;
+
+    // read write lock
+    mutable std::shared_mutex rwlock_node_;
 
     void recursive_expand_parent_box();
     void recursive_shrink_parent_box();

@@ -11,6 +11,7 @@
 #include <iostream> 
 
 #include <shared_mutex>
+#include <mutex>
 #include <set>
 #include "MeshObject/Settings.hpp"
 
@@ -59,6 +60,9 @@ class RRSNode : public std::enable_shared_from_this<RRSNode>
     std::vector<std::shared_ptr<Vertex>> boundary_vertices_;
 
     bool locked_children = false;
+
+    // read write lock
+    mutable std::shared_mutex rwlock_node_;
 
     void recursive_expand_parent_box();
     void recursive_shrink_parent_box();
