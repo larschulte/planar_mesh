@@ -75,6 +75,9 @@ Settings::Settings()
     extra_radius = 0.1;
     duplicated_point_distance_threshold = 0.0; // if two points are closer than this distance, they are considered the same point
 
+    odometry_position_uncertainty_rate = 0.001; // kitti sota 0.005m/m (0.5%)
+    odometry_angular_uncertainty_rate = 0.001; // kitti sota 0.001 deg/m
+
     abnormal_size = 1.5;
     envelope_size = 3.5;
 

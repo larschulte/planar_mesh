@@ -180,8 +180,8 @@ RelativePosition Surface::check_relative_position(double distance_travelled, con
 
         // compute covariance of ...
         // - settings
-        double odometry_position_uncertainty_rate = 0.001; // kitti sota 0.005m/m (0.5%)
-        double odometry_angular_uncertainty_rate = 0.001; // kitti sota 0.001 deg/m
+        double odometry_position_uncertainty_rate = settings_.odometry_position_uncertainty_rate;
+        double odometry_angular_uncertainty_rate = settings_.odometry_angular_uncertainty_rate;
         double epsilon = 1e-6;
         // - uncertainties
         double odometry_position_uncertainty = std::abs(distance_travelled - get_smallest_distance_travelled()) * odometry_position_uncertainty_rate;
