@@ -126,12 +126,12 @@ void Face::delete_()
     std::vector<std::shared_ptr<Vertex>> vertices = vertices_;
     std::vector<std::shared_ptr<Edge>> edges = edges_;
     std::vector<std::shared_ptr<InteriorPoint>> interior_points = interior_points_;
-    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> sibling_faces = sibling_faces_;
     for (const auto& vertex : vertices) disconnect(vertex);
     for (const auto& edge : edges) disconnect(edge);
     for (const auto& interior_point : interior_points) disconnect(interior_point);
-    if (surface_ != nullptr) disconnect(surface_);
-    for (const auto& sibling_face : sibling_faces) disconnect(sibling_face);
+    // make copy of surface
+    std::shared_ptr<Surface> surface = surface_;
+    if (surface != nullptr) disconnect(surface);
 
     // log
     if (settings_.log.deletion) std::cout << "---------- face " << id_ << " destroyed" << std::endl;
@@ -245,11 +245,6 @@ const Eigen::Vector3d& Face::get_max() const
     return max_;
 }
 
-const std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& Face::get_sibling_faces() const
-{
-    return sibling_faces_;
-}
-
 bool Face::is_expired() const
 {
     return is_expired_;
@@ -343,11 +338,18 @@ void Face::connect(const std::shared_ptr<Vertex>& vertex)
     // check input
     if (vertex->is_expired()) throw std::runtime_error("Attempts to connect face with invalid vertex.");
 
-    // skip if already connected
-    for (const std::shared_ptr<Vertex>& vertex_ : vertices_) if (vertex_ == vertex) return;
+    {
+        // write lock
+        std::unique_lock<std::shared_mutex> lock(rwlock_vertices_);
 
-    // connect
-    vertices_.push_back(vertex);
+        // skip if already connected
+        for (const std::shared_ptr<Vertex>& vertex_ : vertices_) if (vertex_ == vertex) return;
+
+        // connect
+        vertices_.push_back(vertex);
+    }
+
+    // reverse connection
     vertex->connect(shared_from_this());
 
     // check size
@@ -359,11 +361,18 @@ void Face::connect(const std::shared_ptr<Edge>& edge)
     // check input
     if (edge->is_expired()) throw std::runtime_error("Attempts to connect face with invalid edge.");
 
-    // skip if already connected
-    for (const std::shared_ptr<Edge>& edge_ : edges_) if (edge_ == edge) return;
+    {
+        // write lock
+        std::unique_lock<std::shared_mutex> lock(rwlock_edges_);
 
-    // connect
-    edges_.push_back(edge);
+        // skip if already connected
+        for (const std::shared_ptr<Edge>& edge_ : edges_) if (edge_ == edge) return;
+
+        // connect
+        edges_.push_back(edge);
+    }
+
+    // reverse connection
     edge->connect(shared_from_this());
 
     // check size
@@ -375,10 +384,19 @@ void Face::connect(const std::shared_ptr<Surface>& surface)
     // check input
     if (surface->is_expired()) throw std::runtime_error("Attempts to connect face with invalid surface.");
 
-    // connect
-    bool inserted = surface_ != surface;
-    if (inserted) surface_ = surface;
-    if (inserted) surface->connect(shared_from_this());
+    {
+        // write lock
+        std::unique_lock<std::shared_mutex> lock(rwlock_surface_);
+
+        // skip if already connected
+        if (surface_ == surface) return;
+
+        // connect
+        surface_ = surface;
+    }
+
+    // reverse connection
+    surface->connect(shared_from_this());
 }
 
 void Face::connect(const std::shared_ptr<InteriorPoint>& interior_point)
@@ -386,33 +404,19 @@ void Face::connect(const std::shared_ptr<InteriorPoint>& interior_point)
     // check input
     if (interior_point->is_expired()) throw std::runtime_error("Attempts to connect face with invalid interior point.");
 
-    // skip if already connected
-    for (const std::shared_ptr<InteriorPoint>& interior_point_ : interior_points_) if (interior_point_ == interior_point) return;
-
-    // connect
-    interior_points_.push_back(interior_point);
-    interior_point->connect(shared_from_this());
-}
-
-void Face::connect(const std::shared_ptr<Face>& sibling_face)
-{
-    // check input
-    if (sibling_face->is_expired()) throw std::runtime_error("Attempts to connect face with invalid sibling face.");
-
-    // skip if try to connect to itself
-    if (sibling_face == shared_from_this()) return;
-
-    // connect
-    bool inserted = sibling_faces_.insert(sibling_face).second;
-    if (inserted) std::cout << "Connected face " << id_ << " with face " << sibling_face->get_id() << " as sibling."<< std::endl;
-    if (inserted) sibling_face->connect(shared_from_this());
-    if (inserted)
     {
-        for (const std::shared_ptr<Face>& sibling_face_ : sibling_faces_)
-        {
-            sibling_face_->connect(sibling_face);
-        }
+        // write lock
+        std::unique_lock<std::shared_mutex> lock(rwlock_interior_points_);
+
+        // skip if already connected
+        for (const std::shared_ptr<InteriorPoint>& interior_point_ : interior_points_) if (interior_point_ == interior_point) return;
+
+        // connect
+        interior_points_.push_back(interior_point);
     }
+
+    // reverse connection
+    interior_point->connect(shared_from_this());
 }
 
 void Face::disconnect(const std::shared_ptr<Vertex>& vertex)
@@ -420,12 +424,19 @@ void Face::disconnect(const std::shared_ptr<Vertex>& vertex)
     // check input
     if (vertex->is_expired()) return;
 
-    // skip if not connected
-    auto it = std::find(vertices_.begin(), vertices_.end(), vertex);
-    if (it == vertices_.end()) return;
+    {
+        // write lock
+        std::unique_lock<std::shared_mutex> lock(rwlock_vertices_);
 
-    // delete
-    vertices_.erase(it);
+        // skip if not connected
+        auto it = std::find(vertices_.begin(), vertices_.end(), vertex);
+        if (it == vertices_.end()) return;
+
+        // delete
+        vertices_.erase(it);
+    }
+
+    // reverse connection
     vertex->disconnect(shared_from_this());
 
     // self destruct
@@ -437,12 +448,19 @@ void Face::disconnect(const std::shared_ptr<Edge>& edge)
     // check input
     if (edge->is_expired()) return;
 
-    // skip if not connected
-    auto it = std::find(edges_.begin(), edges_.end(), edge);
-    if (it == edges_.end()) return;
+    {
+        // write lock
+        std::unique_lock<std::shared_mutex> lock(rwlock_edges_);
 
-    // delete
-    edges_.erase(it);
+        // skip if not connected
+        auto it = std::find(edges_.begin(), edges_.end(), edge);
+        if (it == edges_.end()) return;
+
+        // delete
+        edges_.erase(it);
+    }
+
+    // reverse connection
     edge->disconnect(shared_from_this());
 
     // self destruct
@@ -451,26 +469,25 @@ void Face::disconnect(const std::shared_ptr<Edge>& edge)
 
 void Face::disconnect(const std::shared_ptr<Surface>& surface)
 {
-    // lock node
-    std::shared_ptr<Node> node_copy = node ? node : std::make_shared<Node>(); // lock if node exists
-    while (!omp_test_nest_lock(&node_copy->omp_lock)) 
-    {
-        std::cout << "disconnect face waiting " << id_ << std::endl;
-    }
-
     // check input
     if (surface->is_expired()) return;
 
-    // disconnect
-    bool erased = surface_ == surface;
-    if (erased) surface->disconnect(shared_from_this());
-    if (erased) surface_ = nullptr;
+    {
+        // write lock
+        std::unique_lock<std::shared_mutex> lock(rwlock_surface_);
+
+        // skip if not connected
+        if (surface_ != surface) return;
+
+        // disconnect
+        surface_ = nullptr;
+    }
+
+    // reverse connection
+    surface->disconnect(shared_from_this());
 
     // self destruct
-    if (!deleting_ && erased && can_self_destruct_) storage_->delete_face(shared_from_this());
-
-    // release lock
-    omp_unset_nest_lock(&node_copy->omp_lock);
+    if (!deleting_ && can_self_destruct_) storage_->delete_face(shared_from_this());
 }
 
 void Face::disconnect(const std::shared_ptr<InteriorPoint>& interior_point)
@@ -478,26 +495,23 @@ void Face::disconnect(const std::shared_ptr<InteriorPoint>& interior_point)
     // check input
     if (interior_point->is_expired()) return;
 
-    // skip if not connected
-    auto it = std::find(interior_points_.begin(), interior_points_.end(), interior_point);
-    if (it == interior_points_.end()) return;
+    {
+        // write lock
+        std::unique_lock<std::shared_mutex> lock(rwlock_interior_points_);
 
-    // delete
-    interior_points_.erase(it);
+        // skip if not connected
+        auto it = std::find(interior_points_.begin(), interior_points_.end(), interior_point);
+        if (it == interior_points_.end()) return;
+
+        // delete
+        interior_points_.erase(it);
+    }
+
+    // reverse connection
     interior_point->disconnect(shared_from_this());
 
     // self destruct
     if (!deleting_) storage_->delete_face(shared_from_this());
-}
-
-void Face::disconnect(const std::shared_ptr<Face>& sibling_face)
-{
-    // check input
-    if (sibling_face->is_expired()) return;
-
-    // delete
-    bool erased = sibling_faces_.erase(sibling_face);
-    if (erased) sibling_face->disconnect(shared_from_this());
 }
 
 bool Face::is_connected_to_boundary_edges(std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& all_connected_faces, std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& all_connected_edges) const

@@ -26,6 +26,12 @@ protected:
 public:
     omp_nest_lock_t face_lock;
 
+    // read write lock
+    mutable std::shared_mutex rwlock_vertices_;
+    mutable std::shared_mutex rwlock_edges_;
+    mutable std::shared_mutex rwlock_interior_points_;
+    mutable std::shared_mutex rwlock_surface_;
+
     void temp_initialize(const Eigen::Vector3d& end_point);
 
     void un_add_face();
@@ -42,7 +48,6 @@ public:
     const std::shared_ptr<Surface>& get_surface() const;
     const Eigen::Vector3d& get_min() const;
     const Eigen::Vector3d& get_max() const;
-    const std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& get_sibling_faces() const;
     bool is_expired() const;
     bool is_deleting() const;
     bool is_searchable() const;
@@ -56,12 +61,10 @@ public:
     void connect(const std::shared_ptr<Edge>& edge);
     void connect(const std::shared_ptr<Surface>& surface);
     void connect(const std::shared_ptr<InteriorPoint>& interior_point);
-    void connect(const std::shared_ptr<Face>& sibling_face);
     void disconnect(const std::shared_ptr<Vertex>& vertex);
     void disconnect(const std::shared_ptr<Edge>& edge);
     void disconnect(const std::shared_ptr<Surface>& surface);
     void disconnect(const std::shared_ptr<InteriorPoint>& interior_point);
-    void disconnect(const std::shared_ptr<Face>& sibling_face);
 
     bool is_connected_to_boundary_edges(std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& all_connected_faces, std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& all_connected_edges) const;
     bool is_non_manifold() const;
@@ -95,8 +98,6 @@ private:
     std::vector<std::shared_ptr<Edge>> edges_;
     std::vector<std::shared_ptr<InteriorPoint>> interior_points_;
     std::shared_ptr<Surface> surface_;
-
-    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> sibling_faces_;
 
     std::shared_ptr<Vertex> first_vertex_;
 };
