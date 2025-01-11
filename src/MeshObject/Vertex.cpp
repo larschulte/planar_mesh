@@ -1071,12 +1071,12 @@ void Vertex::try_update_node_box()
         // update node
         if (current_rrs_half_size > previous_rrs_half_size)
         {
-            node->box = RRSBoundingBox(min_, max_);
+            node->box_ = RRSBoundingBox(min_, max_);
             node->recursive_expand_parent_box();
         }
         else if (current_rrs_half_size < previous_rrs_half_size)
         {
-            node->box = RRSBoundingBox(min_, max_);
+            node->box_ = RRSBoundingBox(min_, max_);
             node->recursive_shrink_parent_box();
         }
     }

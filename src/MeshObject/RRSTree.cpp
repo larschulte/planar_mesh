@@ -123,30 +123,30 @@ const double& RRSBoundingBox::get_surface_area()
 
 void RRSNode::recursive_expand_parent_box()
 {
-    if (parent)
+    if (parent_)
     {
         // expanded
-        const bool expanded = parent->box.expand_box(box);
+        const bool expanded = parent_->box_.expand_box(box_);
 
         // recursive update
         if (expanded)
         {
-            parent->recursive_expand_parent_box();
+            parent_->recursive_expand_parent_box();
         }
     }
 }
 
 void RRSNode::recursive_shrink_parent_box()
 {
-    if (parent)
+    if (parent_)
     {
         // old parent box
-        RRSBoundingBox old_parent_box = parent->box;
+        RRSBoundingBox old_parent_box = parent_->box_;
 
         // new parent box
         RRSBoundingBox new_parent_box = RRSBoundingBox();
-        new_parent_box.expand_box_no_return(parent->left->box);
-        new_parent_box.expand_box_no_return(parent->right->box);
+        new_parent_box.expand_box_no_return(parent_->left_->box_);
+        new_parent_box.expand_box_no_return(parent_->right_->box_);
         
         // shrunk
         const bool shrunk = new_parent_box.min[0] > old_parent_box.min[0] &&
@@ -159,8 +159,8 @@ void RRSNode::recursive_shrink_parent_box()
         // recursive update
         if (shrunk) 
         {
-            parent->box = new_parent_box;
-            parent->recursive_shrink_parent_box();
+            parent_->box_ = new_parent_box;
+            parent_->recursive_shrink_parent_box();
         }
     }
 }
@@ -196,7 +196,7 @@ std::shared_ptr<RRSNode> RRSTree::find_best_node(const std::shared_ptr<RRSNode>&
         // cost to add a branch that contains current node and leaf node
         {
             // cost of creating a new branch node
-            RRSBoundingBox new_branch_box = current_node->box;
+            RRSBoundingBox new_branch_box = current_node->box_;
             new_branch_box.expand_box_no_return(boundary_vertex->get_min(), boundary_vertex->get_max());
             double new_branch_node_cost = new_branch_box.get_surface_area();
 
@@ -212,12 +212,12 @@ std::shared_ptr<RRSNode> RRSTree::find_best_node(const std::shared_ptr<RRSNode>&
         }
         
         // check if it is worth it to go to the children
-        if (!current_node->isLeaf)
+        if (!current_node->isLeaf_)
         {
             // compute change to inherited cost
-            RRSBoundingBox expanded_box = current_node->box;
+            RRSBoundingBox expanded_box = current_node->box_;
             expanded_box.expand_box_no_return(boundary_vertex->get_min(), boundary_vertex->get_max());
-            double change_to_inherited = expanded_box.get_surface_area() - current_node->box.get_surface_area();
+            double change_to_inherited = expanded_box.get_surface_area() - current_node->box_.get_surface_area();
 
             // lower-bound cost
             double cost = inherited_cost + change_to_inherited + lower_bound_cost;
@@ -226,8 +226,8 @@ std::shared_ptr<RRSNode> RRSTree::find_best_node(const std::shared_ptr<RRSNode>&
             if (cost < best_cost)
             {
                 // we should check the children
-                queue.push(std::make_pair(current_node->left.get(), inherited_cost + change_to_inherited));
-                queue.push(std::make_pair(current_node->right.get(), inherited_cost + change_to_inherited));
+                queue.push(std::make_pair(current_node->left_.get(), inherited_cost + change_to_inherited));
+                queue.push(std::make_pair(current_node->right_.get(), inherited_cost + change_to_inherited));
             }
         }
     }
@@ -272,23 +272,23 @@ void RRSNode::node_add_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
     // create new node
     std::shared_ptr<RRSNode> new_node = std::make_shared<RRSNode>();
     {
-        new_node->box.expand_box_no_return(boundary_vertex->get_min(), boundary_vertex->get_max());
-        new_node->boundary_vertices.push_back(boundary_vertex);
+        new_node->box_.expand_box_no_return(boundary_vertex->get_min(), boundary_vertex->get_max());
+        new_node->boundary_vertices_.push_back(boundary_vertex);
         boundary_vertex->node = new_node;
     }
     
     // create duplicate node
     std::shared_ptr<RRSNode> duplicate_node = std::make_shared<RRSNode>();
     {
-        duplicate_node->box = box;
-        duplicate_node->split_value = split_value;
-        duplicate_node->split_axis = split_axis;
+        duplicate_node->box_ = box_;
+        duplicate_node->split_value_ = split_value_;
+        duplicate_node->split_axis_ = split_axis_;
         
         // if node is leaf, copy boundary vertices
-        if (isLeaf)
+        if (isLeaf_)
         {
-            duplicate_node->boundary_vertices = boundary_vertices;
-            for (const std::shared_ptr<Vertex>& vertex : duplicate_node->boundary_vertices)
+            duplicate_node->boundary_vertices_ = boundary_vertices_;
+            for (const std::shared_ptr<Vertex>& vertex : duplicate_node->boundary_vertices_)
             {
                 vertex->node = duplicate_node;
             }
@@ -296,66 +296,66 @@ void RRSNode::node_add_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
         else
         {
             // else, copy children
-            duplicate_node->left = left;
-            left->parent = duplicate_node;
+            duplicate_node->left_ = left_;
+            left_->parent_ = duplicate_node;
 
-            duplicate_node->right = right;
-            right->parent = duplicate_node;
+            duplicate_node->right_ = right_;
+            right_->parent_ = duplicate_node;
 
-            duplicate_node->isLeaf.store(isLeaf.load());
+            duplicate_node->isLeaf_.store(isLeaf_.load());
         }
     }
     
     // make new node and duplicate node children of the current node
     {
         // expand current node box
-        box.expand_box_no_return(new_node->box);
+        box_.expand_box_no_return(new_node->box_);
         recursive_expand_parent_box();
 
         // get split axis
-        split_axis = box.get_longest_axis();
+        split_axis_ = box_.get_longest_axis();
 
         // get split value  
-        split_value = boundary_vertex->get_position()[split_axis];
+        split_value_ = boundary_vertex->get_position()[split_axis_];
 
         // put into children
-        left = duplicate_node;
-        duplicate_node->parent = shared_from_this();
-        right = new_node;
-        new_node->parent = shared_from_this();
+        left_ = duplicate_node;
+        duplicate_node->parent_ = shared_from_this();
+        right_ = new_node;
+        new_node->parent_ = shared_from_this();
 
         // assign sibling
-        duplicate_node->sibling = sibling;
-        new_node->sibling = duplicate_node;
+        duplicate_node->sibling_ = sibling_;
+        new_node->sibling_ = duplicate_node;
 
         // change to branch
-        isLeaf = false;
+        isLeaf_ = false;
     }    
 }
 
 bool RRSNode::node_delete_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
 {
-    if (!isLeaf)
+    if (!isLeaf_)
     {
-        if (boundary_vertex->get_position()[split_axis] < split_value)
+        if (boundary_vertex->get_position()[split_axis_] < split_value_)
         {
-            return left->node_delete_vertex(boundary_vertex);
+            return left_->node_delete_vertex(boundary_vertex);
         }
-        else if (boundary_vertex->get_position()[split_axis] > split_value)
+        else if (boundary_vertex->get_position()[split_axis_] > split_value_)
         {
-            return right->node_delete_vertex(boundary_vertex);
+            return right_->node_delete_vertex(boundary_vertex);
         }
         else
         {
-            return left->node_delete_vertex(boundary_vertex) || right->node_delete_vertex(boundary_vertex);
+            return left_->node_delete_vertex(boundary_vertex) || right_->node_delete_vertex(boundary_vertex);
         }
     }
     else
     {
-        auto it = std::remove(boundary_vertices.begin(), boundary_vertices.end(), boundary_vertex);
-        if (it != boundary_vertices.end())
+        auto it = std::remove(boundary_vertices_.begin(), boundary_vertices_.end(), boundary_vertex);
+        if (it != boundary_vertices_.end())
         {
-            boundary_vertices.erase(it, boundary_vertices.end());
+            boundary_vertices_.erase(it, boundary_vertices_.end());
             boundary_vertex->node = nullptr;
             return true;
         }
@@ -369,17 +369,17 @@ bool RRSNode::node_delete_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
 RRSReturnType RRSNode::node_reverse_radius_search(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Vertex>>& search_results)
 {
     // skip if not contained
-    if (!box.contains(generic_point->get_position()))
+    if (!box_.contains(generic_point->get_position()))
     {
         return RRSReturnType::SKIP;
     }
 
     // branch if not leaf
-    if (!isLeaf)
+    if (!isLeaf_)
     {
         // search left and right
-        RRSReturnType left_return = left->node_reverse_radius_search(generic_point, search_results);
-        RRSReturnType right_return = right->node_reverse_radius_search(generic_point, search_results);
+        RRSReturnType left_return = left_->node_reverse_radius_search(generic_point, search_results);
+        RRSReturnType right_return = right_->node_reverse_radius_search(generic_point, search_results);
 
         // skip if both is skip
         if (left_return == RRSReturnType::SKIP && right_return == RRSReturnType::SKIP) return RRSReturnType::SKIP;
@@ -389,11 +389,11 @@ RRSReturnType RRSNode::node_reverse_radius_search(const std::shared_ptr<GenericP
     else
     {
         // skip if no vertices
-        if (boundary_vertices.size() == 0)
+        if (boundary_vertices_.size() == 0)
         {
             return RRSReturnType::SKIP;
         }
-        const std::shared_ptr<Vertex>& boundary_vertex = boundary_vertices[0];
+        const std::shared_ptr<Vertex>& boundary_vertex = boundary_vertices_[0];
 
         // Double-Checked Locking
         if (boundary_vertex->is_expired() || !boundary_vertex->approx_contains(generic_point->get_position()))
@@ -422,14 +422,14 @@ RRSReturnType RRSNode::node_reverse_radius_search(const std::shared_ptr<GenericP
 
 void RRSNode::node_flattern(std::vector<std::shared_ptr<Vertex>>& flatten_list)
 {
-    if (!isLeaf)
+    if (!isLeaf_)
     {
-        left->node_flattern(flatten_list);
-        right->node_flattern(flatten_list);
+        left_->node_flattern(flatten_list);
+        right_->node_flattern(flatten_list);
     }
     else
     {
-        flatten_list.insert(flatten_list.end(), boundary_vertices.begin(), boundary_vertices.end());
+        flatten_list.insert(flatten_list.end(), boundary_vertices_.begin(), boundary_vertices_.end());
     }
 }
 
@@ -442,14 +442,14 @@ std::vector<std::shared_ptr<Vertex>> RRSTree::compute_vertices_list()
 
 void RRSNode::node_print(int level) const
 {
-    if (!isLeaf)
+    if (!isLeaf_)
     {
-        left->node_print(level+1);
-        right->node_print(level+1);
+        left_->node_print(level+1);
+        right_->node_print(level+1);
     }
     else
     {
-        for (const std::shared_ptr<Vertex>& boundary_vertex : boundary_vertices)
+        for (const std::shared_ptr<Vertex>& boundary_vertex : boundary_vertices_)
         {
             std::cout << "Level: " <<  level << " | ID: " << boundary_vertex->get_id() << " | Position: " << boundary_vertex->get_position().transpose() << " | Radius: " << boundary_vertex->get_radius() << std::endl;
         }
@@ -493,15 +493,15 @@ void RRSTree::tree_delete_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
     const std::shared_ptr<RRSNode> locked_node = node;
 
     // throw if not found in node->boundary_vertices
-    const bool found = std::find(node->boundary_vertices.begin(), node->boundary_vertices.end(), boundary_vertex) != node->boundary_vertices.end();
+    const bool found = std::find(node->boundary_vertices_.begin(), node->boundary_vertices_.end(), boundary_vertex) != node->boundary_vertices_.end();
     if (!found) throw std::invalid_argument("Vertex not found in node's boundary_vertices.");
 
     // shrink bounding box
-    node->box = RRSBoundingBox(); // here
+    node->box_ = RRSBoundingBox(); // here
     node->recursive_shrink_parent_box();
 
     // delete from node
-    node->boundary_vertices.erase(std::remove(node->boundary_vertices.begin(), node->boundary_vertices.end(), boundary_vertex), node->boundary_vertices.end());
+    node->boundary_vertices_.erase(std::remove(node->boundary_vertices_.begin(), node->boundary_vertices_.end(), boundary_vertex), node->boundary_vertices_.end());
     boundary_vertex->node = nullptr;
 }
 

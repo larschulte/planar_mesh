@@ -50,15 +50,15 @@ enum class BVHReturnType
 class Node : public std::enable_shared_from_this<Node>
 {
     public:
-    BoundingBox box;
-    double split_value;
-    int split_axis;
-    std::shared_ptr<Node> parent;
-    std::shared_ptr<Node> left;
-    std::shared_ptr<Node> right;
-    std::shared_ptr<Node> sibling;
-    std::atomic<bool> isLeaf = true;
-    std::vector<std::shared_ptr<Face>> faces;
+    BoundingBox box_;
+    double split_value_;
+    int split_axis_;
+    std::shared_ptr<Node> parent_;
+    std::shared_ptr<Node> left_;
+    std::shared_ptr<Node> right_;
+    std::shared_ptr<Node> sibling_;
+    std::atomic<bool> isLeaf_ = true;
+    std::vector<std::shared_ptr<Face>> faces_;
 
     bool locked_children = false;
 

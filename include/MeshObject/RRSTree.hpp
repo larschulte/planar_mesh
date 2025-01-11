@@ -48,15 +48,15 @@ enum class RRSReturnType
 class RRSNode : public std::enable_shared_from_this<RRSNode>
 {
     public:
-    RRSBoundingBox box;
-    double split_value;
-    int split_axis;
-    std::shared_ptr<RRSNode> parent;
-    std::shared_ptr<RRSNode> left;
-    std::shared_ptr<RRSNode> right;
-    std::shared_ptr<RRSNode> sibling;
-    std::atomic<bool> isLeaf = true;
-    std::vector<std::shared_ptr<Vertex>> boundary_vertices;
+    RRSBoundingBox box_;
+    double split_value_;
+    int split_axis_;
+    std::shared_ptr<RRSNode> parent_;
+    std::shared_ptr<RRSNode> left_;
+    std::shared_ptr<RRSNode> right_;
+    std::shared_ptr<RRSNode> sibling_;
+    std::atomic<bool> isLeaf_ = true;
+    std::vector<std::shared_ptr<Vertex>> boundary_vertices_;
 
     bool locked_children = false;
 
