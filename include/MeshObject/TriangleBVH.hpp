@@ -47,7 +47,7 @@ struct BoundingBox
     bool intersect(const Eigen::Vector3d& orig, const Eigen::Vector3d& invdir, double& tMin, double& tMax) const;
     bool intersect(const Eigen::Vector3d& orig, const Eigen::Vector3d& invdir) const;
     int get_longest_axis();
-    const double& get_surface_area();
+    double get_surface_area();
 };
 
 enum class BVHReturnType

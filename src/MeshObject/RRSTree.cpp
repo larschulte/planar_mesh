@@ -27,31 +27,40 @@ RRSBoundingBox& RRSBoundingBox::operator=(const RRSBoundingBox& other)
 {
     if (this != &other)
     {
-        std::unique_lock lock_this(mutex_); // Acquire unique (write) lock for this object
-        std::shared_lock lock_other(other.mutex_); // Acquire shared (read) lock for other object
+        // Step 1: Lock the other box and read its data
+        Eigen::Vector3d other_min, other_max, other_min_used, other_max_used;
+        double other_surface_area;
+        {
+            std::shared_lock lock_other(other.mutex_); // Lock the other box
+            other_min = other.min;
+            other_max = other.max;
+            other_min_used = other.min_used_for_surface_area;
+            other_max_used = other.max_used_for_surface_area;
+            other_surface_area = other.surface_area;
+        } // Unlock the other box here
 
-        min = other.min;
-        max = other.max;
-        min_used_for_surface_area = other.min_used_for_surface_area;
-        max_used_for_surface_area = other.max_used_for_surface_area;
-        surface_area = other.surface_area;
+        // Step 2: Lock the current box and store the copied data
+        {
+            std::unique_lock lock_this(mutex_); // Lock this box
+            min = other_min;
+            max = other_max;
+            min_used_for_surface_area = other_min_used;
+            max_used_for_surface_area = other_max_used;
+            surface_area = other_surface_area;
+        }
     }
     return *this;
 }
 
 RRSBoundingBox::RRSBoundingBox(const RRSBoundingBox& other)
 {
-    if (this != &other)
-    {
-        std::unique_lock lock_this(mutex_); // Acquire unique (write) lock for this object
-        std::shared_lock lock_other(other.mutex_); // Acquire shared (read) lock for other object
+    std::shared_lock lock(other.mutex_); // Acquire shared (read) lock
 
-        min = other.min;
-        max = other.max;
-        min_used_for_surface_area = other.min_used_for_surface_area;
-        max_used_for_surface_area = other.max_used_for_surface_area;
-        surface_area = other.surface_area;
-    }
+    min = other.min;
+    max = other.max;
+    min_used_for_surface_area = other.min_used_for_surface_area;
+    max_used_for_surface_area = other.max_used_for_surface_area;
+    surface_area = other.surface_area;
 } 
 
 RRSBoundingBox::RRSBoundingBox() : 
@@ -93,6 +102,7 @@ void RRSBoundingBox::expand_box_no_return(const Eigen::Vector3d& input_min, cons
 
 void RRSBoundingBox::expand_box_no_return(const RRSBoundingBox& box)
 {
+    std::shared_lock lock(box.mutex_); // Acquire shared (read) lock
     expand_box_no_return(box.min, box.max);
 }
 
@@ -113,6 +123,7 @@ bool RRSBoundingBox::expand_box(const Eigen::Vector3d& input_min, const Eigen::V
 
 bool RRSBoundingBox::expand_box(const RRSBoundingBox& box)
 {
+    std::shared_lock lock(box.mutex_); // Acquire shared (read) lock
     return expand_box(box.min, box.max);
 } 
 
@@ -136,40 +147,23 @@ int RRSBoundingBox::get_longest_axis()
     return axis;
 }
 
-const double& RRSBoundingBox::get_surface_area()
+double RRSBoundingBox::get_surface_area()
 {
+    std::unique_lock lock(mutex_); // Lock for read/write
+
+    if (min != min_used_for_surface_area || max != max_used_for_surface_area) 
     {
-        std::shared_lock lock(mutex_); // Acquire shared (read) lock
+        Eigen::Vector3d dimensions = max - min;
+        double area = 2.0 * (dimensions[0] * dimensions[1] + 
+                             dimensions[1] * dimensions[2] + 
+                             dimensions[2] * dimensions[0]);
 
-        // If min and max are unchanged, return the cached surface area
-        if (min == min_used_for_surface_area && max == max_used_for_surface_area) 
-        {
-            return surface_area;
-        }
-    } // Release shared lock before acquiring unique lock
-
-    {
-        std::unique_lock lock(mutex_); // Acquire unique (write) lock
-
-        // Recheck condition to avoid race conditions
-        if (min != min_used_for_surface_area || max != max_used_for_surface_area) 
-        {
-            // Update the cached surface area
-            Eigen::Vector3d dimensions = max - min;
-            double area = 2.0 * (dimensions[0] * dimensions[1] + 
-                                 dimensions[1] * dimensions[2] + 
-                                 dimensions[2] * dimensions[0]);
-
-            // Handle invalid boxes (e.g., during deletion)
-            surface_area = std::isnan(area) ? 0.0 : area;
-
-            // Cache the updated min and max
-            min_used_for_surface_area = min;
-            max_used_for_surface_area = max;
-        }
+        surface_area = std::isnan(area) ? 0.0 : area;
+        min_used_for_surface_area = min;
+        max_used_for_surface_area = max;
     }
 
-    return surface_area;
+    return surface_area; // Return by value
 }
 
 void RRSNode::recursive_expand_parent_box()

@@ -43,7 +43,7 @@ struct RRSBoundingBox
     bool expand_box(const RRSBoundingBox& box);
     bool contains(const Eigen::Vector3d& point);
     int get_longest_axis();
-    const double& get_surface_area();
+    double get_surface_area();
 };
 
 
