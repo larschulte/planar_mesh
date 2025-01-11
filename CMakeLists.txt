@@ -65,6 +65,9 @@ target_include_directories(main
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>)
 
+target_compile_options(main PRIVATE -fsanitize=thread -g)
+target_link_options(main PRIVATE -fsanitize=thread)
+
 # install(TARGETS main DESTINATION lib/${PROJECT_NAME})
 install(TARGETS 
   main
