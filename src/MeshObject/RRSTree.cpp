@@ -333,37 +333,23 @@ void RRSNode::node_add_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
     }    
 }
 
-bool RRSNode::node_delete_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
+void RRSNode::node_delete_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
 {
-    if (!isLeaf_)
-    {
-        if (boundary_vertex->get_position()[split_axis_] < split_value_)
-        {
-            return left_->node_delete_vertex(boundary_vertex);
-        }
-        else if (boundary_vertex->get_position()[split_axis_] > split_value_)
-        {
-            return right_->node_delete_vertex(boundary_vertex);
-        }
-        else
-        {
-            return left_->node_delete_vertex(boundary_vertex) || right_->node_delete_vertex(boundary_vertex);
-        }
-    }
-    else
-    {
-        auto it = std::remove(boundary_vertices_.begin(), boundary_vertices_.end(), boundary_vertex);
-        if (it != boundary_vertices_.end())
-        {
-            boundary_vertices_.erase(it, boundary_vertices_.end());
-            boundary_vertex->node = nullptr;
-            return true;
-        }
-        else
-        {
-            return false;
-        }
-    }
+    // boundary vertex is only stored in leaf node
+
+    // remove node from vertices
+    boundary_vertex->node = nullptr;
+
+    // remove vertex from node
+    boundary_vertices_.erase(std::remove(boundary_vertices_.begin(), boundary_vertices_.end(), boundary_vertex), boundary_vertices_.end());
+
+    // keep in parent's left or right
+
+    // reset box
+    box_ = RRSBoundingBox(); // here
+
+    // shrink parent box
+    recursive_shrink_parent_box();
 }
 
 RRSReturnType RRSNode::node_reverse_radius_search(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Vertex>>& search_results)
@@ -485,24 +471,12 @@ void RRSTree::tree_delete_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
     // decrease size
     tree_size--;
 
-    // get vertex's node reference
-    const std::shared_ptr<RRSNode>& node = boundary_vertex->node;
+    // get vertex's node
+    std::shared_ptr<RRSNode> node = boundary_vertex->node;
+
+    // remove from node
     if (node == nullptr) throw std::invalid_argument("node is null.");
-
-    // make copy for later release
-    const std::shared_ptr<RRSNode> locked_node = node;
-
-    // throw if not found in node->boundary_vertices
-    const bool found = std::find(node->boundary_vertices_.begin(), node->boundary_vertices_.end(), boundary_vertex) != node->boundary_vertices_.end();
-    if (!found) throw std::invalid_argument("Vertex not found in node's boundary_vertices.");
-
-    // shrink bounding box
-    node->box_ = RRSBoundingBox(); // here
-    node->recursive_shrink_parent_box();
-
-    // delete from node
-    node->boundary_vertices_.erase(std::remove(node->boundary_vertices_.begin(), node->boundary_vertices_.end(), boundary_vertex), node->boundary_vertices_.end());
-    boundary_vertex->node = nullptr;
+    node->node_delete_vertex(boundary_vertex);
 }
 
 RRSReturnType RRSTree::tree_reverse_radius_search(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Vertex>>& search_results)

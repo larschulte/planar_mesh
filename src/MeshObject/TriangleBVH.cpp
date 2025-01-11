@@ -412,37 +412,23 @@ void Node::node_add_face(const std::shared_ptr<Face>& face)
     }
 }
 
-bool Node::node_delete_face(const std::shared_ptr<Face>& face)
+void Node::node_delete_face(const std::shared_ptr<Face>& face)
 {
-    if (!isLeaf_)
-    {
-        if (face->get_first_vertex()->get_position()[split_axis_] < split_value_)
-        {
-            return left_->node_delete_face(face);
-        }
-        else if (face->get_first_vertex()->get_position()[split_axis_] > split_value_)
-        {
-            return right_->node_delete_face(face);
-        }
-        else
-        {
-            return right_->node_delete_face(face) || right_->node_delete_face(face);
-        }
-    }
-    else
-    {
-        auto it = std::remove(faces_.begin(), faces_.end(), face);
-        if (it != faces_.end())
-        {
-            faces_.erase(it, faces_.end());
-            face->node = nullptr;
-            return true;
-        }
-        else
-        {
-            return false;
-        }
-    }
+    // face is only stored in leaf node
+
+    // remove node from face
+    face->node = nullptr;
+
+    // remove face from node
+    faces_.erase(std::remove(faces_.begin(), faces_.end(), face), faces_.end());
+
+    // keep in parent's left or right
+
+    // reset box
+    box_ = BoundingBox();
+
+    // shrink parent box
+    recursive_shrink_parent_box();
 }
 
 void Node::node_print(int level) const
@@ -491,22 +477,11 @@ void TriangleBVH::tree_delete_face(std::shared_ptr<Face> face)
     face_size--;
     
     // get face's node reference
-    const std::shared_ptr<Node>& node = face->node;
+    std::shared_ptr<Node> node = face->node;
+
+    // remove from node
     if (node == nullptr) throw std::invalid_argument("Vertex not found in BVH.");
-
-    // make copy for later release
-    const std::shared_ptr<Node> locked_node = node;
-
-    // throw if not found in node->faces
-    const bool found = std::find(node->faces_.begin(), node->faces_.end(), face) != node->faces_.end();
-    if (!found) throw std::invalid_argument("Face not found in BVH.");
-
-    node->box_ = BoundingBox(); // here
-    node->recursive_shrink_parent_box();
-
-    // delete from node
-    node->faces_.erase(std::remove(node->faces_.begin(), node->faces_.end(), face), node->faces_.end());
-    face->node = nullptr;
+    node->node_delete_face(face);
 }
 
 TriangleBVH::TriangleBVH() :

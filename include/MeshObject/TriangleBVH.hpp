@@ -67,7 +67,7 @@ class Node : public std::enable_shared_from_this<Node>
 
     BVHReturnType node_intersection_search(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Face>>& faces_intersected) const;
     void node_add_face(const std::shared_ptr<Face>& face);
-    bool node_delete_face(const std::shared_ptr<Face>& face);
+    void node_delete_face(const std::shared_ptr<Face>& face);
     void node_print(int level) const;
     void node_flatten(std::vector<std::shared_ptr<Face>>& face_list) const;
 };
