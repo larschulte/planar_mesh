@@ -75,12 +75,9 @@ class TriangleBVH
 
 private:
     static Settings settings_;
-    
-    std::shared_ptr<Node> root;
-    double rebuild_threshold;
-    int size_at_last_rebuild;
     int face_size;
     unsigned int leaf_size;
+    std::shared_ptr<Node> root;
 
     double sort_face_list_in_axis(std::vector<std::shared_ptr<Face>>& face_list, int axis, int start, int mid, int end);
     void sort_face_list_in_axis(std::vector<std::shared_ptr<Face>>& face_list, int axis, int start, int end);
@@ -99,8 +96,6 @@ private:
 
 public:
     TriangleBVH();
-    void check_rebuild();
-    void rebuild();
     std::vector<std::shared_ptr<Face>> get_face_list() const;
 
     void tree_add_face(std::shared_ptr<Face> face);

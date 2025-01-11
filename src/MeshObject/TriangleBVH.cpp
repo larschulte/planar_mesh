@@ -678,37 +678,11 @@ void TriangleBVH::tree_delete_face(std::shared_ptr<Face> face)
     face->node = nullptr;
 }
 
-TriangleBVH::TriangleBVH()
-        :rebuild_threshold(2),
-        size_at_last_rebuild(0),
+TriangleBVH::TriangleBVH() :
         face_size(0),
         leaf_size(1)
 {
-    rebuild();
-}
-
-void TriangleBVH::check_rebuild()
-{
-    if (face_size > size_at_last_rebuild * rebuild_threshold)
-    {
-        std::cout << "Rebuilding BVH ...." << std::endl;
-        rebuild();
-        std::cout << "Rebuilding BVH done" << std::endl;
-        size_at_last_rebuild = face_size;
-    }
-}
-
-void TriangleBVH::rebuild()
-{
-    if (face_size == 0)
-    {
-        root = build_node(std::vector<std::shared_ptr<Face>>(), 0, 0);
-    }
-    else
-    {
-        std::vector<std::shared_ptr<Face>> face_list = get_face_list();
-        root = build_node(face_list, 0, face_list.size());
-    }
+    root = std::make_shared<Node>();
 }
 
 void TriangleBVH::tree_add_face(std::shared_ptr<Face> face)

@@ -458,14 +458,6 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
         // log
         std::cout << "show internal vertex: " << settings_.show_internal_vertices << std::endl;
     }
-    if (event.getKeySym() == "d" && event.keyDown())
-    {
-        storage_->rebuild_tree();
-        update_display();
-
-        // log
-        std::cout << "rebuild tree" << std::endl;
-    }
     if (event.getKeySym() == "l" && event.keyDown())
     {
         // toggle generic points
@@ -483,13 +475,5 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
 
         // log
         std::cout << "restarted" << std::endl;
-    }
-    if (event.getKeySym() == "t" && event.keyDown())
-    {
-        // restart
-        app_.rebuild_tree();
-
-        // log
-        std::cout << "rebuild tree" << std::endl;
     }
 }

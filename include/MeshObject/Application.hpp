@@ -43,7 +43,6 @@ public:
     void loop();
     void process_the_rest();
     void restart();
-    void rebuild_tree();
     std::shared_ptr<Storage> get_storage();
 
     // getter

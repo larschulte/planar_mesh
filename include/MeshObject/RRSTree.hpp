@@ -72,8 +72,6 @@ private:
     static Settings settings_;
 
     std::shared_ptr<RRSNode> root;
-    double rebuild_threshold;
-    int size_at_last_rebuild;
     int tree_size;
     std::size_t leaf_size;
 
@@ -95,8 +93,6 @@ private:
 
 public:
     RRSTree();
-    void check_rebuild();
-    void rebuild();
     bool can_reverse_radius_search();
     std::vector<std::shared_ptr<Vertex>> compute_vertices_list();
     void print_size();

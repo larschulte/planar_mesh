@@ -643,33 +643,9 @@ void RRSTree::node_print(const std::shared_ptr<RRSNode>& node, int level) const
     }
 }
 
-RRSTree::RRSTree() : rebuild_threshold(5), size_at_last_rebuild(0), tree_size(0), leaf_size(1)
+RRSTree::RRSTree() : tree_size(0), leaf_size(1)
 {
-    rebuild();
-}
-
-void RRSTree::check_rebuild()
-{
-    if (tree_size > size_at_last_rebuild * rebuild_threshold)
-    {
-        std::cout << "Rebuilding RRS tree ...." << std::endl;
-        rebuild();
-        std::cout << "Rebuilding RRS tree done" << std::endl;
-        size_at_last_rebuild = tree_size;
-    }
-}
-
-void RRSTree::rebuild()
-{
-    if (tree_size == 0)
-    {
-        root = build_node(std::vector<std::shared_ptr<Vertex>>(), 0, 0);
-    }
-    else
-    {
-        std::vector<std::shared_ptr<Vertex>> boundary_vertex_list = compute_vertices_list();
-        root = build_node(boundary_vertex_list, 0, boundary_vertex_list.size());
-    }
+    root = std::make_shared<RRSNode>();
 }
 
 bool RRSTree::can_reverse_radius_search()

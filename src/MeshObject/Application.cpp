@@ -606,9 +606,6 @@ void Application<PointT>::loop()
     // print repeated queue size
     if (settings_.log.step) std::cout << "==================================================================== repeated queue size: " << storage_->get_repeated_queue_size() << std::endl;
 
-    // // check tree rebuild
-    // storage_->check_tree_rebuild();
-
     // load next cloud
     ith_cloud += 1;
     load_point_cloud();
@@ -642,12 +639,6 @@ void Application<PointT>::restart()
     
     // load point cloud
     load_point_cloud();
-}
-
-template <typename PointT>
-void Application<PointT>::rebuild_tree()
-{
-    storage_->rebuild_tree();
 }
 
 template <typename PointT>

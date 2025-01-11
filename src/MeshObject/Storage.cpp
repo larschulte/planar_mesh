@@ -1032,15 +1032,3 @@ void Storage::print_bvh() const
 {
     triangle_bvh_.tree_print();
 }
-
-void Storage::check_tree_rebuild()
-{
-    rrs_tree_.check_rebuild();
-    triangle_bvh_.check_rebuild();
-}
-
-void Storage::rebuild_tree()
-{
-    rrs_tree_.rebuild();
-    triangle_bvh_.rebuild();
-}
