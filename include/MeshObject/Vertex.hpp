@@ -37,6 +37,9 @@ public:
     mutable std::shared_mutex rwlock_interior_point_distance_publishers_;
     mutable std::shared_mutex rwlock_vertex_point_distance_subscribers_;
 
+    mutable std::shared_mutex rwlock_edges_;
+    mutable std::shared_mutex rwlock_faces_;
+    mutable std::shared_mutex rwlock_surface_;
 
     void temp_initialize(const Eigen::Vector3d& position, unsigned int id);
     std::shared_ptr<RRSNode> node;
@@ -83,11 +86,9 @@ public:
     void connect(const std::shared_ptr<Edge>& edge);
     void connect(const std::shared_ptr<Face>& face);
     void connect(const std::shared_ptr<Surface>& surface);
-    void connect(const std::shared_ptr<Vertex>& sibling_vertex);
     void disconnect(const std::shared_ptr<Edge>& edge);
     void disconnect(const std::shared_ptr<Face>& face);
     void disconnect(const std::shared_ptr<Surface>& surface);
-    void disconnect(const std::shared_ptr<Vertex>& sibling_vertex);
 
     std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> get_connected_boundary_edges() const;
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> get_connected_boundary_vertices();

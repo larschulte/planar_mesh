@@ -107,7 +107,9 @@ void Vertex::delete_()
     for (const auto& edge : edges) disconnect(edge);
     for (const auto& face : faces) disconnect(face);
     // for (const auto& neighboring_vertex : neighboring_vertices_that_affect_radius) disconnect_neighboring_vertex(neighboring_vertex);
-    if (surface_) disconnect(surface_);
+
+    std::shared_ptr<Surface> surface = surface_; // make copy to prevent cyclic reference and nullptr access
+    if (surface) disconnect(surface);
 
     // update delete count
     num_deletes_++;
@@ -117,10 +119,6 @@ void Vertex::delete_()
     {
         storage_->add_to_queue(shared_from_this());
     }
-
-    // disconnect from sibling vertices
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> sibling_vertices = sibling_vertices_;
-    for (const auto& sibling_vertex : sibling_vertices) disconnect(sibling_vertex);
 
     // log
     if (settings_.log.deletion) std::cout << "---------- vertex " << id_ << " destroyed" << std::endl;
@@ -408,6 +406,9 @@ bool Vertex::is_expired() const
 
 bool Vertex::is_boundary() const
 {
+    // read lock
+    std::shared_lock<std::shared_mutex> lock(rwlock_edges_);
+
     // becomes boundary when one of the connected edges is boundary, or when the point is alone
     bool is_boundary_flag = false;
     for (const std::shared_ptr<Edge>& edge : edges_)
@@ -438,13 +439,22 @@ void Vertex::connect(const std::shared_ptr<Edge>& edge)
     // check input
     if (edge->is_expired()) throw std::runtime_error("Attempts to connect vertex with invalid edge.");
 
-    // skip if already connected
-    for (const std::shared_ptr<Edge>& edge_ : edges_) if (edge_ == edge) return;
+    {
+        // write lock
+        std::unique_lock<std::shared_mutex> lock(rwlock_edges_);
 
-    // connect
-    edges_.push_back(edge);
-    edge->connect(shared_from_this());
+        // skip if already connected
+        for (const std::shared_ptr<Edge>& edge_ : edges_) if (edge_ == edge) return;    
+
+        // connect
+        edges_.push_back(edge);
+
+    }
+    
     check_if_update_search_tree();
+
+    // reverse connect
+    edge->connect(shared_from_this());
 }
 
 void Vertex::connect(const std::shared_ptr<Face>& face) 
@@ -452,16 +462,23 @@ void Vertex::connect(const std::shared_ptr<Face>& face)
     // check input
     if (face->is_expired()) throw std::runtime_error("Attempts to connect vertex with invalid face.");
 
-    // skip if already connected
-    for (const std::shared_ptr<Face>& face_ : faces_) if (face_ == face) return;
+    {
+        // write lock
+        std::unique_lock<std::shared_mutex> lock(rwlock_faces_);
 
-    // connect
-    faces_.push_back(face);
-    face->connect(shared_from_this());
+        // skip if already connected
+        for (const std::shared_ptr<Face>& face_ : faces_) if (face_ == face) return;
 
+        // connect
+        faces_.push_back(face);
+    }
+    
     // update confirmed status
     update_confirmed_status();
     update_singular_state();
+
+    // reverse connect
+    face->connect(shared_from_this());
 }
 
 void Vertex::connect(const std::shared_ptr<Surface>& surface)
@@ -469,38 +486,22 @@ void Vertex::connect(const std::shared_ptr<Surface>& surface)
     // check input
     if (surface->is_expired()) throw std::runtime_error("Attempts to connect vertex with invalid surface.");
 
-    // connect
-    bool inserted = surface_ != surface;
-    if (inserted) surface_ = surface;
-    if (inserted) 
     {
-        // update projected position
-        projected_position_ = surface->compute_point_projective_position(get_origin(), get_original_position());
+        // write lock
+        std::unique_lock<std::shared_mutex> lock(rwlock_surface_);
+
+        // skip if already connected
+        if (surface_ == surface) return;
+
+        // connect
+        surface_ = surface;
     }
-    if (inserted) surface->connect(shared_from_this());
-    if (inserted) is_singular_ = true;
-    if (inserted) update_singular_state();
-}
+        
+    // update projected position
+    projected_position_ = surface->compute_point_projective_position(get_origin(), get_original_position());
 
-void Vertex::connect(const std::shared_ptr<Vertex>& sibling_vertex)
-{
-    // check input
-    if (sibling_vertex->is_expired()) throw std::runtime_error("Attempts to connect vertex with invalid sibling vertex.");
-
-    // skip if try to connect to itself
-    if (sibling_vertex == shared_from_this()) return;
-
-    // connect
-    bool inserted = sibling_vertices_.insert(sibling_vertex).second;
-    // if (inserted) std::cout << "Connected vertex " << id_ << " with vertex " << sibling_vertex->get_id() << " as sibling."<< std::endl;
-    if (inserted) sibling_vertex->connect(shared_from_this());
-    if (inserted)
-    {
-        for (const std::shared_ptr<Vertex>& sibling_vertex_ : sibling_vertices_)
-        {
-            sibling_vertex_->connect(sibling_vertex);
-        }
-    }
+    // reverse connect
+    surface->connect(shared_from_this());
 }
 
 void Vertex::disconnect(const std::shared_ptr<Edge>& edge) 
@@ -508,12 +509,20 @@ void Vertex::disconnect(const std::shared_ptr<Edge>& edge)
     // check input
     if (edge->is_expired()) return;
 
-    // skip if not connected
-    auto it = std::find(edges_.begin(), edges_.end(), edge);
-    if (it == edges_.end()) return;
+    {
+        // write lock
+        std::unique_lock<std::shared_mutex> lock(rwlock_edges_);
 
-    // disconnect
-    edges_.erase(it);
+        // skip if not connected
+        auto it = std::find(edges_.begin(), edges_.end(), edge);
+        if (it == edges_.end()) return;
+
+        // disconnect
+        edges_.erase(it);
+        
+    }
+
+    // reverse disconnect
     edge->disconnect(shared_from_this());
 
     // update boundary state
@@ -528,17 +537,23 @@ void Vertex::disconnect(const std::shared_ptr<Face>& face)
     // check pointer validity
     if (face->is_expired()) return;
 
-    // skip if not connected
-    auto it = std::find(faces_.begin(), faces_.end(), face);
-    if (it == faces_.end()) return;
+    {
+        // write lock
+        std::unique_lock<std::shared_mutex> lock(rwlock_faces_);
 
-    // disconnect
-    faces_.erase(it);
+        // skip if not connected
+        auto it = std::find(faces_.begin(), faces_.end(), face);
+        if (it == faces_.end()) return;
+
+        // disconnect
+        faces_.erase(it);
+    }
+
+    // reverse disconnect
     face->disconnect(shared_from_this());
 
     // update confirmed status
     update_confirmed_status();
-    update_singular_state();
 
     // do not self destruct when have no face
     // check self destruct
@@ -547,38 +562,28 @@ void Vertex::disconnect(const std::shared_ptr<Face>& face)
 
 void Vertex::disconnect(const std::shared_ptr<Surface>& surface)
 {
-    // lock node
-    std::shared_ptr<RRSNode> node_copy = node ? node : std::make_shared<RRSNode>(); // lock if node exists
-    while (!omp_test_nest_lock(&node_copy->omp_lock)) 
-    {
-        std::cout << "disconnect vertex waiting " << id_ << std::endl;
-    }
-
     // check input
     if (surface->is_expired()) return;
-    
-    // disconnect
-    bool erased = surface_ == surface;
-    if (erased) surface->disconnect(shared_from_this());
-    if (erased) is_singular_ = false;
-    if (erased) surface_ = nullptr;
-    if (erased) projected_position_ = Eigen::Vector3d::Zero();
+
+    {
+        // write lock
+        std::unique_lock<std::shared_mutex> lock(rwlock_surface_);
+
+        // skip if not connected
+        if (surface_ != surface) return;
+
+        // disconnect
+        surface_ = nullptr;
+    }
+
+    // update projected position
+    projected_position_ = Eigen::Vector3d::Zero();
+
+    // reverse disconnect
+    surface->disconnect(shared_from_this());
 
     // check self destruct
-    if (!deleting_ && erased && can_self_destruct_) storage_->delete_vertex(shared_from_this());
-
-    // release lock
-    omp_unset_nest_lock(&node_copy->omp_lock);
-}
-
-void Vertex::disconnect(const std::shared_ptr<Vertex>& sibling_vertex)
-{
-    // check input
-    if (sibling_vertex->is_expired()) return;
-
-    // disconnect
-    bool erased = sibling_vertices_.erase(sibling_vertex);
-    if (erased) sibling_vertex->disconnect(shared_from_this());
+    if (!deleting_ && can_self_destruct_) storage_->delete_vertex(shared_from_this());
 }
 
 std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> Vertex::get_connected_boundary_edges() const

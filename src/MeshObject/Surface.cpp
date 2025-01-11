@@ -151,6 +151,9 @@ double Surface::compute_point_projective_distance_with_improved_covariance(const
 
 Eigen::Vector3d Surface::compute_point_projective_position(const Eigen::Vector3d& origin, const Eigen::Vector3d& point) const
 {
+    // read lock
+    std::shared_lock lock(rwlock_surface_fitting_);
+
     // if surface is seed surface, return original point as projected point
     if (get_total_point_size() < settings_.fit_plane_threshold) return point;
 
