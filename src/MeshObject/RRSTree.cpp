@@ -16,9 +16,6 @@ std::ostream& operator<<(std::ostream& os, const RRSReturnType& type)
         case RRSReturnType::SKIP:
             os << "_ S _";
             break;
-        case RRSReturnType::ABORT:
-            os << "_ _ A";
-            break;
         default:
             os << "? ? ?";
             break;
@@ -382,9 +379,7 @@ RRSReturnType RRSNode::node_reverse_radius_search(const std::shared_ptr<GenericP
     {
         // search left and right
         RRSReturnType left_return = left->node_reverse_radius_search(generic_point, search_results);
-        if (left_return == RRSReturnType::ABORT) return RRSReturnType::ABORT;
         RRSReturnType right_return = right->node_reverse_radius_search(generic_point, search_results);
-        if (right_return == RRSReturnType::ABORT) return RRSReturnType::ABORT;
 
         // skip if both is skip
         if (left_return == RRSReturnType::SKIP && right_return == RRSReturnType::SKIP) return RRSReturnType::SKIP;
@@ -415,7 +410,6 @@ RRSReturnType RRSNode::node_reverse_radius_search(const std::shared_ptr<GenericP
             return RRSReturnType::SKIP;
         }
 
-        // abort if can't lock vertex's surface
         const std::shared_ptr<Surface>& surface = boundary_vertex->get_surface_check();
         generic_point->intersected_surfaces.insert(surface);
 

@@ -17,9 +17,6 @@ std::ostream& operator<<(std::ostream& os, const BVHReturnType& type)
         case BVHReturnType::SKIP:
             os << "_ S _";
             break;
-        case BVHReturnType::ABORT:
-            os << "_ _ A";
-            break;
         default:
             os << "? ? ?";
             break;
@@ -226,9 +223,7 @@ BVHReturnType Node::node_intersection_search(const std::shared_ptr<GenericPoint>
     {
         // search left and right
         BVHReturnType left_return = left->node_intersection_search(generic_point, faces_intersected);
-        if (left_return == BVHReturnType::ABORT) return BVHReturnType::ABORT;
         BVHReturnType right_return = right->node_intersection_search(generic_point, faces_intersected);
-        if (right_return == BVHReturnType::ABORT) return BVHReturnType::ABORT;
 
         // skip if both is skip
         if (left_return == BVHReturnType::SKIP && right_return == BVHReturnType::SKIP) return BVHReturnType::SKIP;
@@ -259,7 +254,6 @@ BVHReturnType Node::node_intersection_search(const std::shared_ptr<GenericPoint>
             return BVHReturnType::SKIP;
         }
 
-        // abort if can't lock face's surface
         const std::shared_ptr<Surface>& surface = face->get_surface();
         generic_point->intersected_surfaces.insert(surface);
 

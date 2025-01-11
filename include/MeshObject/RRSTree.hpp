@@ -42,8 +42,7 @@ struct RRSBoundingBox
 enum class RRSReturnType
 {
     INTERSECTED,
-    SKIP,
-    ABORT
+    SKIP
 };
 
 class RRSNode : public std::enable_shared_from_this<RRSNode>
