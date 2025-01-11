@@ -37,6 +37,14 @@ protected:
     void delete_();
 
 public:
+
+    // read and write lock
+    mutable std::shared_mutex rwlock_surface_fitting_;
+    mutable std::shared_mutex rwlock_vertices_;
+    mutable std::shared_mutex rwlock_edges_;
+    mutable std::shared_mutex rwlock_faces_;
+    mutable std::shared_mutex rwlock_interior_points_;
+
     Surface();
     ~Surface();
 
