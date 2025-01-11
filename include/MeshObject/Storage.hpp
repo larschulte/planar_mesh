@@ -78,7 +78,6 @@ public: // to user
     void add_or_remove_vertices_from_rrs_tree();
     void add_or_remove_faces_from_bvh_tree();
 
-    bool can_reverse_radius_search();
     RRSReturnType reverse_radius_search(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Vertex>>& result);
     BVHReturnType face_intersection_search(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Face>>& result);
 

@@ -79,17 +79,10 @@ private:
     unsigned int leaf_size;
     std::shared_ptr<Node> root;
 
-    double sort_face_list_in_axis(std::vector<std::shared_ptr<Face>>& face_list, int axis, int start, int mid, int end);
-    void sort_face_list_in_axis(std::vector<std::shared_ptr<Face>>& face_list, int axis, int start, int end);
-    
-    std::shared_ptr<Node> build_node(const std::vector<std::shared_ptr<Face>>& face_list, const int& start, const int& end);
-    void convert_leaf_to_branch(const std::shared_ptr<Node>& node);
-
     BVHReturnType node_intersection_search(Node* node, const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Face>>& faces_intersected) const;
 
     std::shared_ptr<Node> find_best_node(const std::shared_ptr<Node>& node, const std::shared_ptr<Face>& face);
     void node_add_face(const std::shared_ptr<Node>& node, const std::shared_ptr<Face>& face);
-    double calculate_sah(BoundingBox& parent_box, BoundingBox& left_box, BoundingBox& right_box, int left_count, int right_count);
     bool node_delete_face(const std::shared_ptr<Node>& node, const std::shared_ptr<Face>& face);
     void node_print(const std::shared_ptr<Node>& node, int level) const;
     void node_flatten(const std::shared_ptr<Node>& node, std::vector<std::shared_ptr<Face>>& face_list) const;

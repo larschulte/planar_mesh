@@ -908,11 +908,6 @@ int Storage::get_next_surface_id() { return next_surface_id_++; }
 int Storage::get_next_generic_point_id() { return next_genertic_point_id_++; }
 int Storage::get_next_interior_point_id() { return next_interior_point_id_++; }
 
-bool Storage::can_reverse_radius_search() 
-{ 
-    return rrs_tree_.can_reverse_radius_search(); 
-}
-
 RRSReturnType Storage::reverse_radius_search(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Vertex>>& result) 
 {
     return rrs_tree_.tree_reverse_radius_search(generic_point, result);

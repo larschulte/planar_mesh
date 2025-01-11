@@ -213,25 +213,6 @@ void Node::recursive_shrink_parent_box()
     }
 }
 
-double TriangleBVH::sort_face_list_in_axis(std::vector<std::shared_ptr<Face>>& face_list, int axis, int start, int mid, int end)
-{
-    std::sort(face_list.begin() + start, face_list.begin() + end, 
-        [&](const std::shared_ptr<Face>& triangle_a, const std::shared_ptr<Face>& triangle_b) 
-        {
-            return triangle_a->get_first_vertex()->get_position()[axis] < triangle_b->get_first_vertex()->get_position()[axis];
-        });
-    return face_list[mid]->get_first_vertex()->get_position()[axis];
-}
-
-void TriangleBVH::sort_face_list_in_axis(std::vector<std::shared_ptr<Face>>& face_list, int axis, int start, int end)
-{
-    std::sort(face_list.begin() + start, face_list.begin() + end, 
-        [&](const std::shared_ptr<Face>& triangle_a, const std::shared_ptr<Face>& triangle_b) 
-        {
-            return triangle_a->get_first_vertex()->get_position()[axis] < triangle_b->get_first_vertex()->get_position()[axis];
-        });
-}
-
 BVHReturnType TriangleBVH::node_intersection_search(Node* node, const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Face>>& faces_intersected) const
 {   
     // skip if not intersected
@@ -291,133 +272,6 @@ BVHReturnType TriangleBVH::node_intersection_search(Node* node, const std::share
 
         return BVHReturnType::INTERSECTED;
     }
-}
-
-void TriangleBVH::convert_leaf_to_branch(const std::shared_ptr<Node>& node)
-{
-    int start = 0;
-    int end = node->faces.size();
-    int split_axis;     // value to be computed
-    double split_value; // value to be computed
-    int split_index;    // value to be computed
-
-    // fill in value to be computed
-    const bool use_sah = (node->faces.size() > 2) && !settings_.turn_off_sah;
-    if (!use_sah)
-    {
-        // use simple median split
-        split_index = (start + end) / 2;
-        split_axis = node->box.get_longest_axis();
-        split_value = sort_face_list_in_axis(node->faces, split_axis, start, split_index, end);
-    }
-    else
-    {
-        // use SAH
-        
-        // loop through all axes to find the optimal split axis and value
-        double min_sah_cost = std::numeric_limits<double>::infinity();
-        int best_split_axis = -1;
-        double best_split_value = 0;
-        int best_split_index = -1;
-        for (int axis = 0; axis < 3; axis++)  // Assuming 3 axes (x, y, z)
-        {
-            // Sort boundary vertices along this axis
-            sort_face_list_in_axis(node->faces, axis, start, end);
-
-            // Recompute the min_suffix and max_suffix after sorting
-            std::vector<Eigen::Vector3d> min_suffix(end - start);
-            std::vector<Eigen::Vector3d> max_suffix(end - start);
-
-            // Initialize suffix arrays with the last element
-            min_suffix[end - start - 1] = node->faces[end - 1]->get_min();
-            max_suffix[end - start - 1] = node->faces[end - 1]->get_max();
-
-            // Compute suffix bounding boxes for the right side
-            for (int j = end - 2; j >= start; --j)
-            {
-                min_suffix[j - start] = min_suffix[j - start + 1].cwiseMin(node->faces[j]->get_min());
-                max_suffix[j - start] = max_suffix[j - start + 1].cwiseMax(node->faces[j]->get_max());
-            }
-
-            // Initialize the left bounding box
-            BoundingBox left_box;
-            Eigen::Vector3d min_left = node->faces[start]->get_min();
-            Eigen::Vector3d max_left = node->faces[start]->get_max();
-
-            // Iterate through potential split points and evaluate SAH cost
-            for (int i = start + 1; i < end; i++)
-            {
-                // Update left bounding box incrementally
-                min_left = min_left.cwiseMin(node->faces[i - 1]->get_min());
-                max_left = max_left.cwiseMax(node->faces[i - 1]->get_max());
-                left_box.expand_box_no_return(min_left, max_left);
-
-                // Use precomputed right bounding box from suffix arrays
-                BoundingBox right_box;
-                right_box.expand_box_no_return(min_suffix[i - start], max_suffix[i - start]);
-
-                // Calculate SAH cost for this split
-                double sah_cost = calculate_sah(node->box, left_box, right_box, i - start, end - i);
-
-                if (sah_cost < min_sah_cost)
-                {
-                    min_sah_cost = sah_cost;
-                    best_split_axis = axis;
-                    best_split_value = node->faces[i]->get_first_vertex()->get_position()[axis];
-                    best_split_index = i;
-                }
-            }
-        }
-        sort_face_list_in_axis(node->faces, best_split_axis, start, end);
-
-        // fill in computed value
-        split_axis = best_split_axis;
-        split_value = best_split_value;
-        split_index = best_split_index;
-    }
-
-    // Create left and right child nodes
-    node->split_axis = split_axis;
-    node->split_value = split_value;
-    node->left = build_node(node->faces, start, split_index);
-    node->right = build_node(node->faces, split_index, end);
-    node->left->parent = node;
-    node->right->parent = node;
-    node->left->sibling = node->right;
-    node->right->sibling = node->left;
-    node->faces.clear();
-
-    // Locking as before
-    node->locked_children = true;
-    node->isLeaf = false;
-
-    // return
-    return;
-}
-
-std::shared_ptr<Node> TriangleBVH::build_node(const std::vector<std::shared_ptr<Face>>& face_list, const int& start, const int& end)
-{
-    auto node = std::make_shared<Node>();
-    
-    // expand box
-    for (int i = start; i < end; i++)
-    {
-        node->box.expand_box_no_return(face_list[i]->get_min(), face_list[i]->get_max());
-    }
-
-    // store faces    
-    node->faces = std::vector<std::shared_ptr<Face>>(face_list.begin() + start, face_list.begin() + end);
-
-    // store node pointer in faces
-    for (const std::shared_ptr<Face>& face : node->faces)
-    {
-        face->node = node;
-    }
-
-    // convert to branch
-    if (node->faces.size() > leaf_size) convert_leaf_to_branch(node);
-
-    return node;
 }
 
 std::shared_ptr<Node> TriangleBVH::find_best_node(const std::shared_ptr<Node>& node, const std::shared_ptr<Face>& face)
@@ -566,19 +420,6 @@ void TriangleBVH::node_add_face(const std::shared_ptr<Node>& node, const std::sh
         // change to branch
         node->isLeaf = false;
     }
-}
-
-double TriangleBVH::calculate_sah(BoundingBox& parent_box, BoundingBox& left_box, BoundingBox& right_box, int left_count, int right_count)
-{
-    double S_parent = parent_box.get_surface_area();  // Surface area of parent node
-    double S_left = left_box.get_surface_area();     // Surface area of left child
-    double S_right = right_box.get_surface_area();   // Surface area of right child
-
-    // The cost of traversing the node, typically set to a constant, e.g., 1.0
-    const double traversal_cost = 1.0;
-
-    // SAH cost formula
-    return traversal_cost + (S_left / S_parent) * left_count + (S_right / S_parent) * right_count;
 }
 
 bool TriangleBVH::node_delete_face(const std::shared_ptr<Node>& node, const std::shared_ptr<Face>& face)

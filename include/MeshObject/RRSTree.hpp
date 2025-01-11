@@ -75,17 +75,8 @@ private:
     int tree_size;
     std::size_t leaf_size;
 
-    double sort_boundary_vertex_list_in_axis(std::vector<std::shared_ptr<Vertex>>& boundary_vertex_list, int axis, int start, int mid, int end);
-    void sort_boundary_vertex_list_in_axis(std::vector<std::shared_ptr<Vertex>>& boundary_vertex_list, int axis, int start, int end);
-    // void expand_node_box(const std::shared_ptr<RRSNode>& node, const std::shared_ptr<Vertex>& boundary_vertex);
-
-    std::shared_ptr<RRSNode> build_node(const std::vector<std::shared_ptr<Vertex>>& boundary_vertex_list, const int& start, const int& end);
-    void convert_leaf_to_branch(const std::shared_ptr<RRSNode>& node);
-
     std::shared_ptr<RRSNode> find_best_node(const std::shared_ptr<RRSNode>& root, const std::shared_ptr<Vertex>& boundary_vertex);
     void node_add_vertex(const std::shared_ptr<RRSNode>& node, const std::shared_ptr<Vertex>& boundary_vertex);
-    double calculate_sah(RRSBoundingBox& parent_box, RRSBoundingBox& left_box, RRSBoundingBox& right_box, int left_count, int right_count);
-    void node_increase_radius(const std::shared_ptr<RRSNode>& node, const std::shared_ptr<Vertex>& boundary_vertex);
     bool node_delete_vertex(const std::shared_ptr<RRSNode>& node, const std::shared_ptr<Vertex>& boundary_vertex);
     RRSReturnType node_reverse_radius_search(RRSNode* node, const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Vertex>>& search_results);
     void node_print(const std::shared_ptr<RRSNode>& node, int level) const;
@@ -93,13 +84,11 @@ private:
 
 public:
     RRSTree();
-    bool can_reverse_radius_search();
     std::vector<std::shared_ptr<Vertex>> compute_vertices_list();
     void print_size();
     unsigned int get_size() const;
     
     void tree_add_vertex(const std::shared_ptr<Vertex>& boundary_vertex);
-    void tree_increase_radius(std::shared_ptr<Vertex> boundary_vertex);
     void tree_delete_vertex(const std::shared_ptr<Vertex>& boundary_vertex);
     RRSReturnType tree_reverse_radius_search(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Vertex>> &search_results);
     void tree_print() const;
