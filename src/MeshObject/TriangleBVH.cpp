@@ -169,18 +169,6 @@ const double& BoundingBox::get_surface_area()
     return surface_area;
 }
 
-void Node::recursive_unlock()
-{
-    omp_unset_nest_lock(&omp_lock);
-    if (locked_children)
-    {
-        if (!left || !right) throw std::runtime_error("Node has locked children but one of them is null.");
-        left->recursive_unlock();
-        right->recursive_unlock();
-        locked_children = false;
-    }
-}
-
 void Node::recursive_expand_parent_box()
 {
     if (parent)
@@ -246,23 +234,9 @@ void TriangleBVH::sort_face_list_in_axis(std::vector<std::shared_ptr<Face>>& fac
 
 BVHReturnType TriangleBVH::node_intersection_search(Node* node, const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Face>>& faces_intersected) const
 {   
-    // Double-Checked Locking
-    if (!node->box.intersect(generic_point->get_position(), generic_point->get_inv_direction()))
-    {
-        return BVHReturnType::SKIP;
-    }
-
-    // lock the node for exclusive read/write (abort if can't lock node -> someone else is reading/writing this node)
-    if (!omp_test_nest_lock(&node->omp_lock))
-    {
-        // std::cout << "_ X waiting ..." << std::endl;
-        return BVHReturnType::ABORT;
-    }
-    
     // skip if not intersected
     if (!node->box.intersect(generic_point->get_position(), generic_point->get_inv_direction()))
     {
-        omp_unset_nest_lock(&node->omp_lock);
         return BVHReturnType::SKIP;
     }
     
@@ -272,8 +246,6 @@ BVHReturnType TriangleBVH::node_intersection_search(Node* node, const std::share
         // get copy of left and right node
         Node* left = node->left.get();
         Node* right = node->right.get();
-        // unlock node
-        omp_unset_nest_lock(&node->omp_lock);
 
         // search left and right
         BVHReturnType left_return = node_intersection_search(left, generic_point, faces_intersected);
@@ -291,7 +263,6 @@ BVHReturnType TriangleBVH::node_intersection_search(Node* node, const std::share
         // skip if no faces
         if (node->faces.size() == 0)
         {
-            omp_unset_nest_lock(&node->omp_lock);
             return BVHReturnType::SKIP;
         }
         const std::shared_ptr<Face>& face = node->faces[0];
@@ -299,15 +270,7 @@ BVHReturnType TriangleBVH::node_intersection_search(Node* node, const std::share
         // Double-Checked Locking
         if (face->is_expired() || !face->intersects_point(generic_point->get_origin(), generic_point->get_direction()))
         {
-            omp_unset_nest_lock(&node->omp_lock);
             return BVHReturnType::SKIP;
-        }
-
-        // abort if can't lock face lock
-        if (!omp_test_nest_lock(&face->face_lock))
-        {
-            omp_unset_nest_lock(&node->omp_lock);
-            return BVHReturnType::ABORT;
         }
 
         // we lock the face during face->delete_() call, and then release it before locking it again when removing it from the bvh tree
@@ -316,27 +279,16 @@ BVHReturnType TriangleBVH::node_intersection_search(Node* node, const std::share
         // thus we need to check if the face is expired and skip if it is
         if (face->is_expired() || !face->intersects_point(generic_point->get_origin(), generic_point->get_direction()))
         {
-            omp_unset_nest_lock(&face->face_lock);
-            omp_unset_nest_lock(&node->omp_lock);
             return BVHReturnType::SKIP;
         }
 
         // abort if can't lock face's surface
         const std::shared_ptr<Surface>& surface = face->get_surface();
         generic_point->intersected_surfaces.insert(surface);
-        if (!omp_test_nest_lock(&surface->lock)) // nest lock here since a ray could intersect two faces of the same surface in two nodes
-        {
-            generic_point->contented_surfaces[surface]++;
-            omp_unset_nest_lock(&face->face_lock);
-            omp_unset_nest_lock(&node->omp_lock);
-            // std::cout << "_ _ X _ _ _ _ _" << std::endl;
-            return BVHReturnType::ABORT;
-        }
 
         // return
         faces_intersected.push_back(face);
 
-        omp_unset_nest_lock(&face->face_lock);
         return BVHReturnType::INTERSECTED;
     }
 }
@@ -447,12 +399,6 @@ std::shared_ptr<Node> TriangleBVH::build_node(const std::vector<std::shared_ptr<
 {
     auto node = std::make_shared<Node>();
     
-    // lock before creating link between face and node
-    while (!omp_test_nest_lock(&node->omp_lock))
-    {
-        std::cout << "BVH lock node inside build node waiting ..." << std::endl;
-    };
-
     // expand box
     for (int i = start; i < end; i++)
     {
@@ -556,12 +502,6 @@ std::shared_ptr<Node> TriangleBVH::find_best_node(const std::shared_ptr<Node>& n
 
 void TriangleBVH::node_add_face(const std::shared_ptr<Node>& node, const std::shared_ptr<Face>& face)
 {
-    // lock before adding vertex
-    while (!omp_test_nest_lock(&node->omp_lock))
-    {
-        std::cout << "BVH lock node inside add face waiting ... " << std::endl;
-    };
-
     // after locking the node
     
     // create new node
@@ -626,9 +566,6 @@ void TriangleBVH::node_add_face(const std::shared_ptr<Node>& node, const std::sh
         // change to branch
         node->isLeaf = false;
     }
-    
-    // unlock
-    node->recursive_unlock();
 }
 
 double TriangleBVH::calculate_sah(BoundingBox& parent_box, BoundingBox& left_box, BoundingBox& right_box, int left_count, int right_count)
@@ -726,12 +663,6 @@ void TriangleBVH::tree_delete_face(std::shared_ptr<Face> face)
     const std::shared_ptr<Node>& node = face->node;
     if (node == nullptr) throw std::invalid_argument("Vertex not found in BVH.");
 
-    // lock node
-    while (!omp_test_nest_lock(&node->omp_lock)) 
-    {
-        std::cout << "delete face waiting for " << std::endl;
-    }
-
     // make copy for later release
     const std::shared_ptr<Node> locked_node = node;
 
@@ -745,9 +676,6 @@ void TriangleBVH::tree_delete_face(std::shared_ptr<Face> face)
     // delete from node
     node->faces.erase(std::remove(node->faces.begin(), node->faces.end(), face), node->faces.end());
     face->node = nullptr;
-
-    // release lock
-    omp_unset_nest_lock(&locked_node->omp_lock);
 }
 
 TriangleBVH::TriangleBVH()
@@ -781,9 +709,6 @@ void TriangleBVH::rebuild()
         std::vector<std::shared_ptr<Face>> face_list = get_face_list();
         root = build_node(face_list, 0, face_list.size());
     }
-
-    // release lock
-    root->recursive_unlock();
 }
 
 void TriangleBVH::tree_add_face(std::shared_ptr<Face> face)

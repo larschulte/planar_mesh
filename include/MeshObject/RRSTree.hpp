@@ -10,7 +10,7 @@
 #include <array>
 #include <iostream> 
 
-#include "utilities/omp_utilities.hpp"
+#include <shared_mutex>
 #include <set>
 #include "MeshObject/Settings.hpp"
 
@@ -50,12 +50,8 @@ struct RRSNode
     std::atomic<bool> isLeaf = true;
     std::vector<std::shared_ptr<Vertex>> boundary_vertices;
 
-    mutable custom::custom_lock custom_lock;
-    omp_nest_lock_t omp_lock;
-
     bool locked_children = false;
 
-    void recursive_unlock();
     void recursive_expand_parent_box();
     void recursive_shrink_parent_box();
 };

@@ -80,12 +80,6 @@ void Vertex::initialize_(const std::shared_ptr<Storage>& storage, const std::sha
 
 void Vertex::delete_()
 {
-    // lock vertex
-    while (!omp_test_nest_lock(&vertex_lock)) 
-    {
-        std::cout << "waiting to lock vertex " << id_ << std::endl;
-    }
-
     // add to update rrs tree vertex set
     storage_->add_to_set_of_vertices_to_update_rrs_tree(shared_from_this());
 
@@ -125,9 +119,6 @@ void Vertex::delete_()
 
     // set expired
     is_expired_ = true;
-
-    // release vertex lock
-    omp_unset_nest_lock(&vertex_lock);
 }
 
 void Vertex::temp_initialize(const Eigen::Vector3d& position, unsigned int id)
@@ -224,10 +215,6 @@ const std::shared_ptr<Surface>& Vertex::get_surface() const
 
 const std::shared_ptr<Surface>& Vertex::get_surface_check() const
 {    
-    // check if have node lock
-    if (!omp_test_nest_lock(&node->omp_lock)) throw std::runtime_error("Can't lock node in BVH.");
-    // release
-    omp_unset_nest_lock(&node->omp_lock);
     return surface_;
 }
 
@@ -810,21 +797,8 @@ void Vertex::delete_subscribers()
     std::vector<std::shared_ptr<Vertex>> vertex_point_distance_subscribers_copy = vertex_point_distance_subscribers_;
     for (const auto& vertex_point_subscriber : vertex_point_distance_subscribers_copy)
     {
-        // try lock vertex and surface
-        if(!omp_test_nest_lock(&vertex_point_subscriber->vertex_lock)) continue;
-        if (!omp_test_nest_lock(&vertex_point_subscriber->get_surface()->lock)) 
-        {
-            // unlock vertex
-            omp_unset_nest_lock(&vertex_point_subscriber->vertex_lock);
-            continue;
-        }
-
         // delete
         delete_vertex_point_distance_subscriber(vertex_point_subscriber);
-
-        // unlock vertex and surface
-        omp_unset_nest_lock(&vertex_point_subscriber->get_surface()->lock);
-        omp_unset_nest_lock(&vertex_point_subscriber->vertex_lock);
     }
 }
 
@@ -1094,9 +1068,6 @@ void Vertex::try_update_node_box()
 
     if (node)
     {
-        // skip if can't lock node
-        if (!omp_test_nest_lock(&node->omp_lock)) return;
-
         // update node
         if (current_rrs_half_size > previous_rrs_half_size)
         {
@@ -1108,9 +1079,6 @@ void Vertex::try_update_node_box()
             node->box = RRSBoundingBox(min_, max_);
             node->recursive_shrink_parent_box();
         }
-
-        // release lock
-        omp_unset_nest_lock(&node->omp_lock);
     }
 }
 

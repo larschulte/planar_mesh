@@ -24,8 +24,6 @@ protected:
     void delete_();
 
 public:
-    omp_nest_lock_t face_lock;
-
     // read write lock
     mutable std::shared_mutex rwlock_vertices_;
     mutable std::shared_mutex rwlock_edges_;

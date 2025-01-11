@@ -272,21 +272,8 @@ void InteriorPoint::delete_subscribers()
     std::vector<std::shared_ptr<Vertex>> interior_point_distance_subscribers_copy = interior_point_distance_subscribers_;
     for (const auto& interior_point_subscriber : interior_point_distance_subscribers_copy)
     {
-        // try lock vertex and surface
-        if(!omp_test_nest_lock(&interior_point_subscriber->vertex_lock)) continue;
-        if (!omp_test_nest_lock(&interior_point_subscriber->get_surface()->lock)) 
-        {
-            // unlock vertex
-            omp_unset_nest_lock(&interior_point_subscriber->vertex_lock);
-            continue;
-        }
-
         // delete
         delete_interior_point_distance_subscriber(interior_point_subscriber);
-
-        // unlock vertex and surface
-        omp_unset_nest_lock(&interior_point_subscriber->get_surface()->lock);
-        omp_unset_nest_lock(&interior_point_subscriber->vertex_lock);
     }
 }
 

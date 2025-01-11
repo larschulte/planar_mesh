@@ -124,18 +124,6 @@ const double& RRSBoundingBox::get_surface_area()
     return surface_area;
 }
 
-void RRSNode::recursive_unlock()
-{
-    omp_unset_nest_lock(&omp_lock);
-    if (locked_children)
-    {
-        if (!left || !right) throw std::runtime_error("RRSNode has locked children but one of them is null.");
-        left->recursive_unlock();
-        right->recursive_unlock();
-        locked_children = false;
-    }
-}
-
 void RRSNode::recursive_expand_parent_box()
 {
     if (parent)
@@ -318,12 +306,6 @@ std::shared_ptr<RRSNode> RRSTree::build_node(const std::vector<std::shared_ptr<V
 {
     auto node = std::make_shared<RRSNode>();
 
-    // lock before creating link between vertex and node
-    while (!omp_test_nest_lock(&node->omp_lock))
-    {
-        // std::cout << "RRS lock node inside build node waiting ..." << std::endl;
-    };
-
     // expand box
     for (int i = start; i < end; i++)
     {
@@ -447,12 +429,6 @@ std::shared_ptr<RRSNode> RRSTree::find_best_node(const std::shared_ptr<RRSNode>&
 // when adding vertex from storage, add to a queue. that is processed after all locks are released
 void RRSTree::node_add_vertex(const std::shared_ptr<RRSNode>& node, const std::shared_ptr<Vertex>& boundary_vertex)
 {
-    // lock before adding vertex
-    while (!omp_test_nest_lock(&node->omp_lock))
-    {
-        // std::cout << "RRS lock node inside add vertex waiting ... " << std::endl;
-    };
-
     // after locking the node
     
     // create new node
@@ -516,10 +492,7 @@ void RRSTree::node_add_vertex(const std::shared_ptr<RRSNode>& node, const std::s
 
         // change to branch
         node->isLeaf = false;
-    }
-    
-    // unlock
-    node->recursive_unlock();        
+    }    
 }
 
 void RRSTree::node_increase_radius(const std::shared_ptr<RRSNode>& node, const std::shared_ptr<Vertex>& boundary_vertex)
@@ -574,23 +547,9 @@ bool RRSTree::node_delete_vertex(const std::shared_ptr<RRSNode>& node, const std
 
 RRSReturnType RRSTree::node_reverse_radius_search(RRSNode* node, const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Vertex>>& search_results)
 {
-    // Double-Checked Locking
-    if (!node->box.contains(generic_point->get_position()))
-    {
-        return RRSReturnType::SKIP;
-    }
-
-    // lock the node for exclusive read/write (abort if can't lock node -> someone else is reading/writing this node)
-    if (!omp_test_nest_lock(&node->omp_lock))
-    {
-        // std::cout << "X _ waiting ..." << std::endl;
-        return RRSReturnType::ABORT;
-    }
-
     // skip if not contained
     if (!node->box.contains(generic_point->get_position()))
     {
-        omp_unset_nest_lock(&node->omp_lock);
         return RRSReturnType::SKIP;
     }
 
@@ -600,8 +559,6 @@ RRSReturnType RRSTree::node_reverse_radius_search(RRSNode* node, const std::shar
         // get copy of left and right node
         RRSNode* left = node->left.get();
         RRSNode* right = node->right.get();
-        // unlock node
-        omp_unset_nest_lock(&node->omp_lock);
 
         // search left and right
         RRSReturnType left_return = node_reverse_radius_search(left, generic_point, search_results);
@@ -619,7 +576,6 @@ RRSReturnType RRSTree::node_reverse_radius_search(RRSNode* node, const std::shar
         // skip if no vertices
         if (node->boundary_vertices.size() == 0)
         {
-            omp_unset_nest_lock(&node->omp_lock);
             return RRSReturnType::SKIP;
         }
         const std::shared_ptr<Vertex>& boundary_vertex = node->boundary_vertices[0];
@@ -627,16 +583,7 @@ RRSReturnType RRSTree::node_reverse_radius_search(RRSNode* node, const std::shar
         // Double-Checked Locking
         if (boundary_vertex->is_expired() || !boundary_vertex->approx_contains(generic_point->get_position()))
         {
-            omp_unset_nest_lock(&node->omp_lock);
             return RRSReturnType::SKIP;
-        }
-
-        // abort if can't lock vertex
-        // vertex lock prevent vertex's properties from being changed when we are accessing
-        if (!omp_test_nest_lock(&boundary_vertex->vertex_lock))
-        {
-            omp_unset_nest_lock(&node->omp_lock);
-            return RRSReturnType::ABORT;
         }
         
         // we lock the vertex during vertex->delete_() call, and then release it before locking it again when removing it from the rrs tree
@@ -645,27 +592,16 @@ RRSReturnType RRSTree::node_reverse_radius_search(RRSNode* node, const std::shar
         // thus we need to check if the vertex is expired and skip if it is
         if (boundary_vertex->is_expired() || !boundary_vertex->approx_contains(generic_point->get_position()))
         {
-            omp_unset_nest_lock(&boundary_vertex->vertex_lock);
-            omp_unset_nest_lock(&node->omp_lock);
             return RRSReturnType::SKIP;
         }
 
         // abort if can't lock vertex's surface
         const std::shared_ptr<Surface>& surface = boundary_vertex->get_surface_check();
         generic_point->intersected_surfaces.insert(surface);
-        if (!omp_test_nest_lock(&surface->lock)) 
-        {
-            generic_point->contented_surfaces[surface]++;
-            omp_unset_nest_lock(&boundary_vertex->vertex_lock);
-            omp_unset_nest_lock(&node->omp_lock);
-            // std::cout << "_ _ _ _ _ _ X _" << std::endl;
-            return RRSReturnType::ABORT;
-        }
 
         // return
         search_results.push_back(boundary_vertex);
 
-        omp_unset_nest_lock(&boundary_vertex->vertex_lock);
         return RRSReturnType::INTERSECTED;
     }
 }
@@ -721,10 +657,6 @@ void RRSTree::check_rebuild()
         std::cout << "Rebuilding RRS tree done" << std::endl;
         size_at_last_rebuild = tree_size;
     }
-
-    // release lock
-    if (root->left) root->left->recursive_unlock();
-    if (root->right) root->right->recursive_unlock();
 }
 
 void RRSTree::rebuild()
@@ -738,9 +670,6 @@ void RRSTree::rebuild()
         std::vector<std::shared_ptr<Vertex>> boundary_vertex_list = compute_vertices_list();
         root = build_node(boundary_vertex_list, 0, boundary_vertex_list.size());
     }
-
-    // release lock
-    root->recursive_unlock();
 }
 
 bool RRSTree::can_reverse_radius_search()
@@ -775,12 +704,6 @@ void RRSTree::tree_delete_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
     const std::shared_ptr<RRSNode>& node = boundary_vertex->node;
     if (node == nullptr) throw std::invalid_argument("node is null.");
 
-    // lock the node
-    while (!omp_test_nest_lock(&node->omp_lock)) // don't copy node, as node can change when other thread is adding point to the node
-    {
-        // std::cout << "delete vertex waiting ..." << std::endl;
-    }
-
     // make copy for later release
     const std::shared_ptr<RRSNode> locked_node = node;
 
@@ -795,9 +718,6 @@ void RRSTree::tree_delete_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
     // delete from node
     node->boundary_vertices.erase(std::remove(node->boundary_vertices.begin(), node->boundary_vertices.end(), boundary_vertex), node->boundary_vertices.end());
     boundary_vertex->node = nullptr;
-
-    // release
-    omp_unset_nest_lock(&locked_node->omp_lock);
 }
 
 RRSReturnType RRSTree::tree_reverse_radius_search(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Vertex>>& search_results)

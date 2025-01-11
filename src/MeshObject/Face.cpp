@@ -106,12 +106,6 @@ void Face::update_radius(const std::shared_ptr<GenericPoint>& generic_point)
 
 void Face::delete_()
 {
-    // lock face
-    while (!omp_test_nest_lock(&face_lock)) 
-    {
-        std::cout << "waiting to lock face " << id_ << std::endl;
-    }
-
     // add to affected faces set
     storage_->add_to_set_of_faces_to_update_bvh_tree(shared_from_this());
 
@@ -138,9 +132,6 @@ void Face::delete_()
 
     // set expired
     is_expired_ = true;
-
-    // release face lock
-    omp_unset_nest_lock(&face_lock);
 }
 
 void Face::temp_initialize(const Eigen::Vector3d& end_point)
