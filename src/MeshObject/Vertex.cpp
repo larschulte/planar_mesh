@@ -115,7 +115,7 @@ void Vertex::delete_()
     num_deletes_++;
 
     // only create penetrated point / generic point if sibling is empty
-    if (sibling_vertices_.empty() && can_create_generic_point_)
+    if (can_create_generic_point_)
     {
         storage_->add_to_queue(shared_from_this());
     }
@@ -244,11 +244,6 @@ const std::vector<std::shared_ptr<Edge>>& Vertex::get_edges() const
 const std::vector<std::shared_ptr<Face>>& Vertex::get_faces() const 
 { 
     return faces_; 
-}
-
-const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& Vertex::get_sibling_vertices() const 
-{ 
-    return sibling_vertices_; 
 }
 
 std::size_t Vertex::get_num_deletes() const
@@ -1119,177 +1114,6 @@ void Vertex::try_update_node_box()
     }
 }
 
-void Vertex::review_surfaces()
-{
-    // review have the following cases
-    // - high confidence and not match -> delete
-    // - high confidence and match -> need sibling info
-    // - low confidence -> need sibling info
-
-    // what about sibling interior points??
-    
-    // skip if already under review
-    if (under_review_) return;
-    under_review_ = true;
-
-    if (settings_.log.review_surfaces) std::cout << "reviewing vertex " << id_ << std::endl;
-
-    // delete if surface is high confidence and mismatched
-    std::shared_ptr<Surface> surface = get_surface();
-
-    // disconnect surface from this vertex when reviewing
-    can_self_destruct_ = false;
-    disconnect(surface);
-    can_self_destruct_ = true;
-    
-
-    bool low_confidence = surface->get_total_point_size() < settings_.fit_plane_threshold;
-    if (!low_confidence)
-    {
-        // // mismatch if observed from behind
-        // Eigen::Vector3d normal = surface->get_normal();
-        // Eigen::Vector3d direction = get_direction();
-        // bool observed_from_behind = normal.dot(direction) > 0;
-        // mismatch if not within surface
-       bool not_within_surface = surface->check_relative_position(shared_from_this()) != RelativePosition::WITHIN;
-        
-        // delete if surface is high confidence and mismatched
-        // bool mismatch = observed_from_behind || not_within_surface;
-        bool mismatch = not_within_surface;
-        if (mismatch)
-        {
-            // find connected vertices
-            std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> connected_vertices = compute_connected_vertices();
-
-            // find connected interior points
-            std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> connected_interior_points = compute_connected_interior_points();
-
-            storage_->delete_vertex(shared_from_this());
-            under_review_ = false;
-            return;
-        }
-    }
-
-    // if reached here, means either low confidence or high confidence but matched, record the surface uncertainty measure
-    current_surface_uncertainty_ = (surface->get_total_point_size() < settings_.fit_plane_threshold) ? std::numeric_limits<double>::max() : surface->get_surface_position_std_in_normal_direction();
-
-    // connect surface back
-    connect(surface);
-
-    // ask siblings to review themselves
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> sibling_vertices_copy = sibling_vertices_;
-    if (settings_.log.review_surfaces) std::cout << ">> Reviewing sibling vertices" << std::endl;
-    for (const std::shared_ptr<Vertex>& sibling : sibling_vertices_copy)
-    {
-        // skip if expired
-        if (sibling->is_expired()) continue; // some sibling vertex may be expired during previous review 
-
-        // skip if sibling is already under review
-        if (sibling->is_under_review()) continue;
-
-        // review
-        sibling->can_create_generic_point(false);
-        sibling->review_surfaces();
-        sibling->can_create_generic_point(true);
-    }
-    if (settings_.log.review_surfaces) std::cout << ">> Finished reviewing sibling vertices" << std::endl;
-
-    // skip if current one is expired during sibling review
-    if (is_expired()) return;
-
-    // given correct uncertainty envelope computation, can assume no surface will overlap each other
-    // a point will only be connected to a surface if there is edge connecting to the surface
-    
-    // Currently
-    // if a point is connected to multiple high confidence matched surface, will delete the current positional uncertainty if not lowest.
-
-    // Proposed
-    // if point is in high uncertainty surface, check if can be merged into low uncertainty surface, if not, delete the point
-    // if can merged, merge into the low uncertainty surface
-
-    // Procedure
-    // 1. collected a list of all surfaces and positional uncertainty
-    // 2. sort so surface with smallest positional uncertainty is first
-    // 3. check if the current surface can merge with the first uncertainty surface, merge into it, break
-    // 4. if can't merge, check next surface that have smaller positional uncertainty
-    // 5. if there is a surface with smaller positional uncertainty, but the current larger positoinal uncertianty surface can't merge into any, delete this vertex
-
-    // get list of siblings and their surface uncertainty
-    std::vector<std::pair<std::shared_ptr<Vertex>, double>> sibling_surface_uncertainty_list;
-    for (const std::shared_ptr<Vertex>& sibling : sibling_vertices_copy)
-    {
-        // skip if expired
-        if (sibling->is_expired()) continue;
-
-        // record
-        sibling_surface_uncertainty_list.push_back(std::make_pair(sibling, sibling->get_current_surface_uncertainty()));
-    }
-
-    // sort by surface uncertainty
-    std::sort(sibling_surface_uncertainty_list.begin(), sibling_surface_uncertainty_list.end(), 
-        [](const std::pair<std::shared_ptr<Vertex>, double>& a, const std::pair<std::shared_ptr<Vertex>, double>& b) { return a.second < b.second; });
-
-    // start from the smallest uncertainty, check if the current surface can merge into the sibling surface
-    bool exists_smaller_uncertainty = false;
-    bool merge_happened = false;
-    for (const auto& sibling_surface_uncertainty_pair : sibling_surface_uncertainty_list)
-    {
-        // extract
-        const std::shared_ptr<Vertex> sibling_vertex = sibling_surface_uncertainty_pair.first;
-        const std::shared_ptr<Surface> sibling_surface = sibling_surface_uncertainty_pair.first->get_surface();
-        double sibling_surface_uncertainty = sibling_surface_uncertainty_pair.second;
-
-        // skip if sibling surface have higher positional uncertainty than current one
-        if (sibling_surface_uncertainty > current_surface_uncertainty_) continue;
-        exists_smaller_uncertainty = true;
-        
-        // check if can merge
-        can_self_destruct_ = false;
-        disconnect(surface); // remove dupliate point before checking if can merge
-        bool can_merge = surface->can_merge(sibling_surface);
-        connect(surface);
-        can_self_destruct_ = true;
-
-        // merging
-        if (can_merge) 
-        {
-            if (settings_.log.review_surfaces) std::cout << ">> Merging between current vertex " << id_ << " with surface " << surface->get_id() << " and sibling vertex " << sibling_vertex->get_id() << " with surface " << sibling_surface->get_id() << std::endl;
-
-            // flag
-            merge_happened = true;
-
-            // merge (the smaller one is absorbed by the larger one)
-            if (sibling_surface->get_total_point_size() <= surface_->get_total_point_size())
-            {
-                absorbs(sibling_vertex);
-                storage_->delete_vertex(sibling_vertex);
-            }
-            else
-            {
-                sibling_vertex->absorbs(shared_from_this());
-                storage_->delete_vertex(shared_from_this());
-            }
-
-            // break
-            break;
-        }
-    }
-
-    if (exists_smaller_uncertainty && !merge_happened)
-    {
-        storage_->delete_vertex(shared_from_this());
-    }
-
-    // return
-    under_review_ = false;
-    return;
-}
-
-bool Vertex::is_under_review() const
-{
-    return under_review_;
-}
-
 void Vertex::update_singular_state()
 {
     // count number of faces in this surface
@@ -1361,7 +1185,6 @@ void Vertex::check_if_update_search_tree()
 void Vertex::print_info()
 {
     std::cout << "Vertex " << id_ << " at " << position_.transpose() << std::endl;
-    std::cout << "Connected to " << edges_.size() << " edges, " << faces_.size() << " faces, 1 surface, " << sibling_vertices_.size() << " sibling vertices." << std::endl;
     std::cout << "Boundary state: " << is_boundary() << std::endl;
     std::cout << "Singular state: " << is_singular_ << std::endl;
     std::cout << "Searchable state: " << is_searchable() << std::endl;

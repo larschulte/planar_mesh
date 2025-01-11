@@ -55,7 +55,6 @@ public:
     bool has_surface() const;
     const std::vector<std::shared_ptr<Edge>>& get_edges() const;
     const std::vector<std::shared_ptr<Face>>& get_faces() const;
-    const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& get_sibling_vertices() const;
     std::size_t get_num_deletes() const;
     double get_current_surface_uncertainty() const;
 
@@ -127,9 +126,6 @@ public:
     void try_break_edges();
     void try_update_node_box();
 
-    void review_surfaces();
-    bool is_under_review() const;
-
     void update_singular_state();
     bool is_singular() const;
     
@@ -160,7 +156,6 @@ private:
     static Settings settings_;
 
     bool deleting_ = false;
-    bool under_review_ = false;
     bool is_expired_ = true;
     bool is_singular_;
     bool can_self_destruct_ = true;
@@ -175,8 +170,6 @@ private:
     std::vector<std::shared_ptr<Edge>> edges_;
     std::vector<std::shared_ptr<Face>> faces_;
     std::shared_ptr<Surface> surface_;
-
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> sibling_vertices_;
 
     Eigen::Matrix3d eigenvectors_used_;
     Eigen::Vector2d surface_coordinate_;
