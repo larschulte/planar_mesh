@@ -21,11 +21,16 @@ protected:
     void delete_();
 
 public:
+
+    // read and write lock
+    mutable std::shared_mutex rwlock_vertices_;
+    mutable std::shared_mutex rwlock_faces_;
+    mutable std::shared_mutex rwlock_surface_;
+
     const int& get_id() const;
     const std::shared_ptr<Vertex>& get_vertex(int index) const;
     const std::shared_ptr<Surface>& get_surface() const;
     const std::vector<std::shared_ptr<Face>>& get_faces() const;
-    const std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& get_sibling_edges() const;
     const Eigen::Vector3d& get_center() const;
     const Eigen::Vector3d& get_max() const;
     const Eigen::Vector3d& get_min() const;
@@ -35,11 +40,9 @@ public:
     void connect(const std::shared_ptr<Vertex>& vertex);
     void connect(const std::shared_ptr<Face>& face);
     void connect(const std::shared_ptr<Surface>& surface);
-    void connect(const std::shared_ptr<Edge>& sibling_edge);
     void disconnect(const std::shared_ptr<Vertex>& vertex);
     void disconnect(const std::shared_ptr<Face>& face);
     void disconnect(const std::shared_ptr<Surface>& surface);
-    void disconnect(const std::shared_ptr<Edge>& sibling_edge);
 
     void set_can_self_destruct(bool can_self_destruct);
 
@@ -57,9 +60,6 @@ public:
     bool is_singular() const;
     bool is_deleting() const;
     void update_boundary_state();
-    void update_singular_state();
-    void update_searchable_state();
-    void remove_searchable_state();
 
     bool is_non_manifold() const;
 
@@ -90,8 +90,6 @@ private:
     std::vector<std::shared_ptr<Vertex>> vertices_;
     std::vector<std::shared_ptr<Face>> faces_;
     std::shared_ptr<Surface> surface_;
-    
-    std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> sibling_edges_;
 };
 
 bool operator<(const std::shared_ptr<Edge>& lhs, const std::shared_ptr<Edge>& rhs);
