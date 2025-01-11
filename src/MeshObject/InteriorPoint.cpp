@@ -62,17 +62,13 @@ void InteriorPoint::delete_()
     delete_subscribers();
     std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces = faces_;
     for (const auto& face : faces) disconnect(face);
-    if (surface_) disconnect(surface_);
+
+    // make copy of surface
+    std::shared_ptr<Surface> surface = surface_;
+    if (surface) disconnect(surface);
 
     // only create penetrated point / generic point if sibling is empty
-    if (sibling_interior_points_.empty())
-    {
-        storage_->add_to_queue(shared_from_this());
-    }
-    
-    // disconnect from sibling interior points
-    std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> sibling_interior_points = sibling_interior_points_;
-    for (const auto& sibling_interior_point : sibling_interior_points) disconnect(sibling_interior_point);
+    storage_->add_to_queue(shared_from_this());
 
     // log
     if (settings_.log.deletion) std::cout << "---------- InteriorPoint " << id_ << " destroyed" << std::endl;
@@ -117,11 +113,6 @@ const Eigen::Vector3d& InteriorPoint::get_direction() const
 const std::shared_ptr<Surface>& InteriorPoint::get_surface() const
 {    
     return surface_;
-}
-
-const std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash>& InteriorPoint::get_sibling_interior_points() const
-{
-    return sibling_interior_points_;
 }
 
 const double& InteriorPoint::get_radius() const
@@ -188,9 +179,19 @@ void InteriorPoint::connect(const std::shared_ptr<Face>& face)
     // check input
     if (face->is_expired()) throw std::runtime_error("Attempts to connect interior point with invalid face.");
 
-    // connect
-    bool inserted = faces_.insert(face).second;
-    if (inserted) face->connect(shared_from_this());
+    {
+        // wirte lock
+        std::unique_lock<std::shared_mutex> lock(rwlock_faces_);
+
+        // skip if already exist
+        if (faces_.find(face) != faces_.end()) return; // Already exists
+
+        // connect
+        faces_.insert(face);
+    }
+
+    // reverse connection
+    face->connect(shared_from_this());
 }
 
 void InteriorPoint::connect(const std::shared_ptr<Surface>& surface)
@@ -198,36 +199,22 @@ void InteriorPoint::connect(const std::shared_ptr<Surface>& surface)
     // check input
     if (surface->is_expired()) throw std::runtime_error("Attempts to connect interior point with invalid surface.");
 
-    // connect
-    bool inserted = surface_ != surface;
-    if (inserted) surface_ = surface;
-    if (inserted) 
     {
-        // update projected position
-        projected_position_ = surface->compute_point_projective_position(get_origin(), get_original_position());
+        // write lock
+        std::unique_lock<std::shared_mutex> lock(rwlock_surface_);
+
+        // skip if already exist
+        if (surface_ == surface) return; // Already exists
+
+        // connect
+        surface_ = surface;
     }
-    if (inserted) surface->connect(shared_from_this());    
-}
 
-void InteriorPoint::connect(const std::shared_ptr<InteriorPoint>& sibling_interior_point)
-{
-    // check input
-    if (sibling_interior_point->is_expired()) throw std::runtime_error("Attempts to connect interior point with invalid sibling interior point.");
-
-    // skip if try to connect to itself
-    if (sibling_interior_point == shared_from_this()) return;
-
-    // connect
-    bool inserted = sibling_interior_points_.insert(sibling_interior_point).second;
-    if (inserted) std::cout << "Connected interior point " << id_ << " with interiror point " << sibling_interior_point->get_id() << " as sibling."<< std::endl;
-    if (inserted) sibling_interior_point->connect(shared_from_this());
-    if (inserted)
-    {
-        for (const std::shared_ptr<InteriorPoint>& sibling_interior_point_ : sibling_interior_points_)
-        {
-            sibling_interior_point_->connect(sibling_interior_point);
-        }
-    }
+    // compute projected position
+    projected_position_ = surface->compute_point_projective_position(get_origin(), get_original_position());
+    
+    // reverse connection
+    surface->connect(shared_from_this());    
 }
 
 void InteriorPoint::disconnect(const std::shared_ptr<Face>& face)
@@ -235,9 +222,19 @@ void InteriorPoint::disconnect(const std::shared_ptr<Face>& face)
     // check input
     if (face->is_expired()) return;
 
-    // disconnect
-    bool erased = faces_.erase(face);
-    if (erased) face->disconnect(shared_from_this());
+    {
+        // write lock
+        std::unique_lock<std::shared_mutex> lock(rwlock_faces_);
+
+        // skip if not exist
+        if (faces_.find(face) == faces_.end()) return; // skip if not exist
+
+        // disconnect
+        faces_.erase(face);
+    }
+
+    // reverse disconnection
+    face->disconnect(shared_from_this());
 
     // self destruct
     if (!deleting_ && faces_.empty()) storage_->delete_interior_point(shared_from_this());
@@ -248,24 +245,25 @@ void InteriorPoint::disconnect(const std::shared_ptr<Surface>& surface)
     // check input
     if (surface->is_expired()) return;
 
-    // disconnect
-    bool erased = surface_ == surface;
-    if (erased) surface->disconnect(shared_from_this());
-    if (erased) surface_ = nullptr;
-    if (erased) projected_position_ = Eigen::Vector3d::Zero();
+    {
+        // write lock
+        std::unique_lock<std::shared_mutex> lock(rwlock_surface_);
+
+        // skip if not exist
+        if (surface_ != surface) return; // skip if not exist
+
+        // disconnect
+        surface_ = nullptr;
+    }
+
+    // reset projected position
+    projected_position_ = Eigen::Vector3d::Zero();
+
+    // reverse disconnection
+    surface->disconnect(shared_from_this());
 
     // self destruct
-    if (!deleting_ && erased && can_self_destruct_) storage_->delete_interior_point(shared_from_this());
-}
-
-void InteriorPoint::disconnect(const std::shared_ptr<InteriorPoint>& sibling_interior_point)
-{
-    // check input
-    if (sibling_interior_point->is_expired()) return;
-
-    // disconnect
-    bool erased = sibling_interior_points_.erase(sibling_interior_point);
-    if (erased) sibling_interior_point->disconnect(shared_from_this());
+    if (!deleting_ && can_self_destruct_) storage_->delete_interior_point(shared_from_this());
 }
 
 void InteriorPoint::delete_subscribers()

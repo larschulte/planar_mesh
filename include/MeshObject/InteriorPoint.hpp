@@ -28,6 +28,9 @@ public:
     // read write locks
     mutable std::shared_mutex rwlock_interior_point_distance_subscribers_;
 
+    mutable std::shared_mutex rwlock_faces_;
+    mutable std::shared_mutex rwlock_surface_;
+
     const int& get_id() const;
     const Eigen::Vector3d& get_original_position() const;
     const Eigen::Vector3d& get_position() const;
@@ -35,7 +38,6 @@ public:
     const double& get_distance_travelled() const;
     const Eigen::Vector3d& get_direction() const;
     const std::shared_ptr<Surface>& get_surface() const;
-    const std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash>& get_sibling_interior_points() const;
     const double& get_radius() const;
     bool is_expired() const;
 
@@ -50,10 +52,8 @@ public:
 
     void connect(const std::shared_ptr<Face>& face);
     void connect(const std::shared_ptr<Surface>& surface);
-    void connect(const std::shared_ptr<InteriorPoint>& sibling_interior_point);
     void disconnect(const std::shared_ptr<Face>& face);
     void disconnect(const std::shared_ptr<Surface>& surface);
-    void disconnect(const std::shared_ptr<InteriorPoint>& sibling_interior_point);
 
     void delete_subscribers();
     
@@ -79,8 +79,6 @@ private:
 
     std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces_;
     std::shared_ptr<Surface> surface_;
-
-    std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> sibling_interior_points_;
 
     Eigen::Vector3d position_;
     Eigen::Vector3d origin_;
