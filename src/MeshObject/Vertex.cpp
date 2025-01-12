@@ -903,7 +903,6 @@ void Vertex::add_vertex_point_distance_subscriber(const std::shared_ptr<Vertex> 
 
     // add self to subscriber vertex as publisher
     vertex_point_subscriber->add_vertex_point_distance_publisher(shared_from_this());
-    vertex_point_subscriber->upon_adding_publisher();
 }
 
 void Vertex::delete_vertex_point_distance_subscriber(const std::shared_ptr<Vertex> vertex_point_subscriber)

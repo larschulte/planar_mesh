@@ -295,7 +295,6 @@ void InteriorPoint::add_interior_point_distance_subscriber(const std::shared_ptr
 
     // add self to subscriber vertex as publisher
     interior_point_subscriber->add_interior_point_distance_publisher(shared_from_this());
-    interior_point_subscriber->upon_adding_publisher();
 }
 
 void InteriorPoint::delete_interior_point_distance_subscriber(const std::shared_ptr<Vertex> interior_point_subscriber)
