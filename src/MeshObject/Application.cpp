@@ -308,6 +308,9 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
         std::sort(surfaces_bvh_within_sorted.begin(), surfaces_bvh_within_sorted.end(), 
             [](const std::shared_ptr<Surface>& a, const std::shared_ptr<Surface>& b) 
             {
+                // Check for null pointers
+                if (!a || !b) return false;
+                
                 // read lock
                 std::shared_lock<std::shared_mutex> lock_a(a->rwlock_lifecycle_);
                 std::shared_lock<std::shared_mutex> lock_b(b->rwlock_lifecycle_);
@@ -331,6 +334,9 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
         std::sort(surfaces_rrs_within_sorted.begin(), surfaces_rrs_within_sorted.end(), 
             [](const std::shared_ptr<Surface>& a, const std::shared_ptr<Surface>& b) 
             { 
+                // Check for null pointers
+                if (!a || !b) return false;
+
                 // read lock
                 std::shared_lock<std::shared_mutex> lock_a(a->rwlock_lifecycle_);
                 std::shared_lock<std::shared_mutex> lock_b(b->rwlock_lifecycle_);
