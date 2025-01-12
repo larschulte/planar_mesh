@@ -30,9 +30,9 @@ public:
     mutable std::shared_mutex rwlock_lifecycle_;
 
     const int& get_id() const;
-    const std::shared_ptr<Vertex>& get_vertex(int index) const;
-    const std::shared_ptr<Surface>& get_surface() const;
-    const std::vector<std::shared_ptr<Face>>& get_faces() const;
+    std::shared_ptr<Vertex> get_vertex(int index) const;
+    std::shared_ptr<Surface> get_surface() const;
+    std::vector<std::shared_ptr<Face>> get_faces() const;
     const Eigen::Vector3d& get_center() const;
     const Eigen::Vector3d& get_max() const;
     const Eigen::Vector3d& get_min() const;

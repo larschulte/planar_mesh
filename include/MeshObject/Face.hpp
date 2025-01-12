@@ -40,12 +40,12 @@ public:
 
     const int& get_id() const;
     const Eigen::Vector3d& get_center() const;
-    const std::vector<std::shared_ptr<Vertex>>& get_vertices() const;
-    const std::vector<std::shared_ptr<InteriorPoint>>& get_interior_points() const;
-    const std::vector<std::shared_ptr<Edge>>& get_edges() const;
-    const std::shared_ptr<Vertex>& get_vertex(int index) const;
+    std::vector<std::shared_ptr<Vertex>> get_vertices() const;
+    std::vector<std::shared_ptr<InteriorPoint>> get_interior_points() const;
+    std::vector<std::shared_ptr<Edge>> get_edges() const;
+    std::shared_ptr<Vertex> get_vertex(int index) const;
+    std::shared_ptr<Surface> get_surface() const;
     const std::shared_ptr<Vertex>& get_first_vertex() const;
-    const std::shared_ptr<Surface>& get_surface() const;
     const Eigen::Vector3d& get_min() const;
     const Eigen::Vector3d& get_max() const;
     bool is_expired() const;

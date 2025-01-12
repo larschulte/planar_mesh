@@ -182,28 +182,27 @@ const Eigen::Vector3d& Vertex::get_direction() const
     return direction_; 
 }
 
-const std::shared_ptr<Surface>& Vertex::get_surface() const
+std::shared_ptr<Surface> Vertex::get_surface() const
 {    
+    // read lock
+    std::shared_lock<std::shared_mutex> lock(rwlock_surface_);
+
     return surface_;
 }
 
-const std::shared_ptr<Surface>& Vertex::get_surface_check() const
-{    
-    return surface_;
-}
-
-bool Vertex::has_surface() const
-{
-    return surface_ != nullptr;
-}
-
-const std::vector<std::shared_ptr<Edge>>& Vertex::get_edges() const 
+std::vector<std::shared_ptr<Edge>> Vertex::get_edges() const 
 { 
+    // read lock
+    std::shared_lock<std::shared_mutex> lock(rwlock_edges_);
+
     return edges_; 
 }
 
-const std::vector<std::shared_ptr<Face>>& Vertex::get_faces() const 
+std::vector<std::shared_ptr<Face>> Vertex::get_faces() const 
 { 
+    // read lock
+    std::shared_lock<std::shared_mutex> lock(rwlock_faces_);
+
     return faces_; 
 }
 
@@ -224,8 +223,17 @@ double& Vertex::get_projected_uncertainty()
 
 const std::shared_ptr<Edge>& Vertex::get_edge(const std::shared_ptr<Vertex>& vertex) const
 {
+    // read lock
+    std::shared_lock<std::shared_mutex> lock(rwlock_edges_);
+
     for (const std::shared_ptr<Edge>& edge : edges_)
     {
+        // read lock
+        std::shared_lock<std::shared_mutex> lock(edge->rwlock_lifecycle_);
+
+        // skip if expired
+        if (edge->is_expired()) continue; 
+
         if (edge->has_vertex(vertex)) return edge;
     }
 

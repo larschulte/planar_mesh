@@ -50,11 +50,9 @@ public:
     const Eigen::Vector3d& get_origin() const;
     const double& get_distance_travelled() const;
     const Eigen::Vector3d& get_direction() const;
-    const std::shared_ptr<Surface>& get_surface() const;
-    const std::shared_ptr<Surface>& get_surface_check() const;
-    bool has_surface() const;
-    const std::vector<std::shared_ptr<Edge>>& get_edges() const;
-    const std::vector<std::shared_ptr<Face>>& get_faces() const;
+    std::shared_ptr<Surface> get_surface() const;
+    std::vector<std::shared_ptr<Edge>> get_edges() const;
+    std::vector<std::shared_ptr<Face>> get_faces() const;
     std::size_t get_num_deletes() const;
     double get_current_surface_uncertainty() const;
 

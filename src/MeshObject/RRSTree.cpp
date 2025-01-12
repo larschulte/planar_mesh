@@ -448,7 +448,7 @@ RRSReturnType RRSNode::node_reverse_radius_search(const std::shared_ptr<GenericP
             return RRSReturnType::SKIP;
         }
 
-        const std::shared_ptr<Surface>& surface = boundary_vertex->get_surface_check();
+        std::shared_ptr<Surface> surface = boundary_vertex->get_surface();
         generic_point->intersected_surfaces.insert(surface);
 
         // return

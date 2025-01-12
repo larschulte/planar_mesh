@@ -297,8 +297,11 @@ const int& Edge::get_id() const
     return id_; 
 }
 
-const std::shared_ptr<Vertex>& Edge::get_vertex(int index) const
+std::shared_ptr<Vertex> Edge::get_vertex(int index) const
 {
+    // read lock
+    std::shared_lock lock(rwlock_vertices_);
+
     if (is_expired_) throw std::runtime_error("Accessing expired edge.");
     if (index < 0 || index > 1) throw std::runtime_error("Invalid vertex index.");
     if (vertices_.size() != 2) throw std::runtime_error("Edge does not have 2 vertices.");
@@ -369,13 +372,17 @@ bool Edge::is_non_manifold() const
     return faces_.size() > 2;
 }
 
-const std::shared_ptr<Surface>& Edge::get_surface() const
+std::shared_ptr<Surface> Edge::get_surface() const
 {
+    // read lock
+    std::shared_lock lock(rwlock_surface_);
     return surface_;
 }
 
-const std::vector<std::shared_ptr<Face>>& Edge::get_faces() const
+std::vector<std::shared_ptr<Face>> Edge::get_faces() const
 {
+    // read lock
+    std::shared_lock lock(rwlock_faces_);
     return faces_;
 }
 

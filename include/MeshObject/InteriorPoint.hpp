@@ -39,7 +39,7 @@ public:
     const Eigen::Vector3d& get_origin() const;
     const double& get_distance_travelled() const;
     const Eigen::Vector3d& get_direction() const;
-    const std::shared_ptr<Surface>& get_surface() const;
+    std::shared_ptr<Surface> get_surface() const;
     const double& get_radius() const;
     bool is_expired() const;
 

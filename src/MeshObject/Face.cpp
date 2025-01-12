@@ -169,23 +169,31 @@ const Eigen::Vector3d& Face::get_center() const
     return center_;
 }
 
-const std::vector<std::shared_ptr<Vertex>>& Face::get_vertices() const
+std::vector<std::shared_ptr<Vertex>> Face::get_vertices() const
 {
+    // read lock
+    std::shared_lock<std::shared_mutex> lock(rwlock_vertices_);
     return vertices_;
 }
 
-const std::vector<std::shared_ptr<InteriorPoint>>& Face::get_interior_points() const
+std::vector<std::shared_ptr<InteriorPoint>> Face::get_interior_points() const
 {
+    // read lock
+    std::shared_lock<std::shared_mutex> lock(rwlock_interior_points_);
     return interior_points_;
 }
 
-const std::vector<std::shared_ptr<Edge>>& Face::get_edges() const
+std::vector<std::shared_ptr<Edge>> Face::get_edges() const
 {
+    // read lock
+    std::shared_lock<std::shared_mutex> lock(rwlock_edges_);
     return edges_;
 }
 
-const std::shared_ptr<Vertex>& Face::get_vertex(int index) const
+std::shared_ptr<Vertex> Face::get_vertex(int index) const
 {
+    // read lock
+    std::shared_lock<std::shared_mutex> lock(rwlock_vertices_);
     if (index < 0 || index > 2) throw std::runtime_error("Invalid index for vertex.");
     auto it = vertices_.begin();
     for (int i = 0; i < index; i++) it++;
@@ -197,8 +205,10 @@ const std::shared_ptr<Vertex>& Face::get_first_vertex() const
     return first_vertex_;
 }
 
-const std::shared_ptr<Surface>& Face::get_surface() const
+std::shared_ptr<Surface> Face::get_surface() const
 {
+    // read lock
+    std::shared_lock<std::shared_mutex> lock(rwlock_surface_);
     return surface_;
 }
 

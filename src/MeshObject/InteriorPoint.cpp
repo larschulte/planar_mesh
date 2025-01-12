@@ -113,8 +113,10 @@ const Eigen::Vector3d& InteriorPoint::get_direction() const
     return direction_;
 }
 
-const std::shared_ptr<Surface>& InteriorPoint::get_surface() const
+std::shared_ptr<Surface> InteriorPoint::get_surface() const
 {    
+    // read lock
+    std::shared_lock<std::shared_mutex> lock(rwlock_surface_);
     return surface_;
 }
 
