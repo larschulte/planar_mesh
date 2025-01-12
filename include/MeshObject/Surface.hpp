@@ -44,7 +44,6 @@ public:
     mutable std::shared_mutex rwlock_edges_;
     mutable std::shared_mutex rwlock_faces_;
     mutable std::shared_mutex rwlock_interior_points_;
-    mutable std::shared_mutex rwlock_edge_bvh_;
 
     mutable std::shared_mutex rwlock_lifecycle_;
 
