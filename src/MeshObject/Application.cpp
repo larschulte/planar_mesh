@@ -252,6 +252,9 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_rrs_in_front;
     for (const std::shared_ptr<Surface>& surface : bvh_surfaces)
     {
+        // read lock
+        std::shared_lock<std::shared_mutex> lock(surface->rwlock_lifecycle_);
+
         // skip if the surface is expired
         if (surface->is_expired()) continue;
 
@@ -272,6 +275,9 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
     }
     for (const std::shared_ptr<Surface>& surface : rrs_surfaces)
     {
+        // read lock
+        std::shared_lock<std::shared_mutex> lock(surface->rwlock_lifecycle_);
+
         // skip if the surface is expired
         if (surface->is_expired()) continue;
 
@@ -300,7 +306,18 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
         // sort by surface size
         std::vector<std::shared_ptr<Surface>> surfaces_bvh_within_sorted(surfaces_bvh_within.begin(), surfaces_bvh_within.end());
         std::sort(surfaces_bvh_within_sorted.begin(), surfaces_bvh_within_sorted.end(), 
-            [](const std::shared_ptr<Surface>& a, const std::shared_ptr<Surface>& b) { return a->get_total_point_size() > b->get_total_point_size(); });
+            [](const std::shared_ptr<Surface>& a, const std::shared_ptr<Surface>& b) 
+            {
+                // read lock
+                std::shared_lock<std::shared_mutex> lock_a(a->rwlock_lifecycle_);
+                std::shared_lock<std::shared_mutex> lock_b(b->rwlock_lifecycle_);
+
+                // skip if the surface is expired
+                if (a->is_expired() || b->is_expired()) return false;
+
+                // sort by surface size 
+                return a->get_total_point_size() > b->get_total_point_size(); 
+            });
 
         // add to list
         list_of_surfaces_to_add_to.insert(list_of_surfaces_to_add_to.end(), surfaces_bvh_within_sorted.begin(), surfaces_bvh_within_sorted.end());
@@ -312,7 +329,18 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
         // sort by surface size
         std::vector<std::shared_ptr<Surface>> surfaces_rrs_within_sorted(surfaces_rrs_within.begin(), surfaces_rrs_within.end());
         std::sort(surfaces_rrs_within_sorted.begin(), surfaces_rrs_within_sorted.end(), 
-            [](const std::shared_ptr<Surface>& a, const std::shared_ptr<Surface>& b) { return a->get_total_point_size() > b->get_total_point_size(); });
+            [](const std::shared_ptr<Surface>& a, const std::shared_ptr<Surface>& b) 
+            { 
+                // read lock
+                std::shared_lock<std::shared_mutex> lock_a(a->rwlock_lifecycle_);
+                std::shared_lock<std::shared_mutex> lock_b(b->rwlock_lifecycle_);
+
+                // skip if the surface is expired
+                if (a->is_expired() || b->is_expired()) return false;
+
+                // sort by surface size
+                return a->get_total_point_size() > b->get_total_point_size(); 
+            });
 
         // add to list
         list_of_surfaces_to_add_to.insert(list_of_surfaces_to_add_to.end(), surfaces_rrs_within_sorted.begin(), surfaces_rrs_within_sorted.end());
@@ -325,6 +353,12 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
         std::unordered_map<std::shared_ptr<Surface>, double, MeshObjectHash> surfaces_rrs_seed_distances;
         for (std::shared_ptr<Surface> surface : surfaces_rrs_seed)
         {
+            // read lock
+            std::shared_lock<std::shared_mutex> lock(surface->rwlock_lifecycle_);
+
+            // skip if the surface is expired
+            if (surface->is_expired()) continue;
+
             for (std::shared_ptr<Vertex> vertex : rrs_results)
             {
                 // read lock
@@ -346,7 +380,18 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
         }
         std::vector<std::shared_ptr<Surface>> surfaces_rrs_seed_sorted(surfaces_rrs_seed.begin(), surfaces_rrs_seed.end());
         std::sort(surfaces_rrs_seed_sorted.begin(), surfaces_rrs_seed_sorted.end(), 
-            [&surfaces_rrs_seed_distances](const std::shared_ptr<Surface>& a, const std::shared_ptr<Surface>& b) { return surfaces_rrs_seed_distances[a] < surfaces_rrs_seed_distances[b]; });
+            [&surfaces_rrs_seed_distances](const std::shared_ptr<Surface>& a, const std::shared_ptr<Surface>& b) 
+            { 
+                // read lock
+                std::shared_lock<std::shared_mutex> lock_a(a->rwlock_lifecycle_);
+                std::shared_lock<std::shared_mutex> lock_b(b->rwlock_lifecycle_);
+
+                // skip if the surface is expired
+                if (a->is_expired() || b->is_expired()) return false;
+
+                // sort by distance
+                return surfaces_rrs_seed_distances[a] < surfaces_rrs_seed_distances[b]; 
+            });
 
         // add to list
         list_of_surfaces_to_add_to.insert(list_of_surfaces_to_add_to.end(), surfaces_rrs_seed_sorted.begin(), surfaces_rrs_seed_sorted.end());
@@ -358,6 +403,12 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
     std::shared_ptr<Vertex> new_vertex = nullptr;
     for (std::shared_ptr<Surface> surface : list_of_surfaces_to_add_to)
     {
+        // read lock
+        std::shared_lock<std::shared_mutex> lock(surface->rwlock_lifecycle_);
+
+        // skip if the surface is expired
+        if (surface->is_expired()) continue;
+
         // store current surface to add to
         surface_to_add_to = surface;
 
