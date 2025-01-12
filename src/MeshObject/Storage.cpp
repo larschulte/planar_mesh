@@ -206,7 +206,7 @@ void Storage::delete_vertex(const std::shared_ptr<Vertex> vertex)
 void Storage::delete_edge(const std::shared_ptr<Edge> edge) 
 {
     // check input
-    if (edge->is_expired()) throw std::runtime_error("Attempts to delete expired edge.");
+    if (edge->is_expired()) return; // edge already deleted
 
     {
         // lock
