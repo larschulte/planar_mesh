@@ -580,9 +580,19 @@ std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> Vertex::get_connecte
 
 bool Vertex::check_connected_by_edge(const std::shared_ptr<Vertex>& vertex)
 {
+    // read lock
+    std::shared_lock<std::shared_mutex> lock(rwlock_edges_);
+
     // check if connected by edge
     for (const auto& edge : edges_)
     {
+        // read lock
+        std::shared_lock<std::shared_mutex> lock(edge->rwlock_lifecycle_);
+
+        // skip if expired
+        if (edge->is_expired()) continue;
+
+        // check if connected
         if (edge->get_vertex(0) == vertex || edge->get_vertex(1) == vertex) return true;
     }
 
