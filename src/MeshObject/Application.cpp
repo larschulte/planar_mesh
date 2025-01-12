@@ -498,14 +498,14 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
         if (new_vertex) new_vertex->add_vertex_point_distance_subscriber(vertex);
     }    
 
-    // rrs - upon adding publisher
-    for (const std::shared_ptr<Vertex>& vertex : rrs_results)
-    {
-        // skip if expired
-        if (vertex->is_expired()) continue;
+    // // rrs - upon adding publisher
+    // for (const std::shared_ptr<Vertex>& vertex : rrs_results)
+    // {
+    //     // skip if expired
+    //     if (vertex->is_expired()) continue;
 
-        vertex->upon_adding_publisher();
-    }
+    //     vertex->upon_adding_publisher();
+    // }
 }
 
 template <typename PointT>
