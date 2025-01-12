@@ -303,18 +303,19 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
     // 1. surfaces_bvh_within
     if (surfaces_bvh_within.size() > 0)
     {
+        // read lock all surfaces
+        std::vector<std::shared_lock<std::shared_mutex>> surface_locks;
+        for (const std::shared_ptr<Surface>& surface : surfaces_bvh_within)
+        {
+            // read lock
+            surface_locks.emplace_back(surface->rwlock_lifecycle_);
+        }
+
         // sort by surface size
         std::vector<std::shared_ptr<Surface>> surfaces_bvh_within_sorted(surfaces_bvh_within.begin(), surfaces_bvh_within.end());
         std::sort(surfaces_bvh_within_sorted.begin(), surfaces_bvh_within_sorted.end(), 
             [](const std::shared_ptr<Surface>& a, const std::shared_ptr<Surface>& b) 
             {
-                // Check for null pointers
-                if (!a || !b) return false;
-                
-                // read lock
-                std::shared_lock<std::shared_mutex> lock_a(a->rwlock_lifecycle_);
-                std::shared_lock<std::shared_mutex> lock_b(b->rwlock_lifecycle_);
-
                 // skip if the surface is expired
                 if (a->is_expired() || b->is_expired()) return false;
 
@@ -329,18 +330,19 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
     // 2. surfaces_rrs_within
     if (surfaces_rrs_within.size() > 0)
     {
+        // read lock all surfaces
+        std::vector<std::shared_lock<std::shared_mutex>> surface_locks;
+        for (const std::shared_ptr<Surface>& surface : surfaces_rrs_within)
+        {
+            // read lock
+            surface_locks.emplace_back(surface->rwlock_lifecycle_);
+        }
+
         // sort by surface size
         std::vector<std::shared_ptr<Surface>> surfaces_rrs_within_sorted(surfaces_rrs_within.begin(), surfaces_rrs_within.end());
         std::sort(surfaces_rrs_within_sorted.begin(), surfaces_rrs_within_sorted.end(), 
             [](const std::shared_ptr<Surface>& a, const std::shared_ptr<Surface>& b) 
             { 
-                // Check for null pointers
-                if (!a || !b) return false;
-
-                // read lock
-                std::shared_lock<std::shared_mutex> lock_a(a->rwlock_lifecycle_);
-                std::shared_lock<std::shared_mutex> lock_b(b->rwlock_lifecycle_);
-
                 // skip if the surface is expired
                 if (a->is_expired() || b->is_expired()) return false;
 
