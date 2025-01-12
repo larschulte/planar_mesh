@@ -52,36 +52,9 @@ void Face::initialize_(const std::shared_ptr<Storage>& storage, const std::share
     first_vertex_ = vertex0;
 
     // get edges
-    std::shared_ptr<Edge> edge0;
-    std::shared_ptr<Edge> edge1;
-    std::shared_ptr<Edge> edge2;
-    for (const std::shared_ptr<Edge>& edge : vertex0->get_edges())
-    {
-        if (edge->get_surface() != surface_) continue;
-        if (edge->has_vertex(vertex1))
-        {
-            edge0 = edge;
-            break;
-        }
-    }
-    for (const std::shared_ptr<Edge>& edge : vertex1->get_edges())
-    {
-        if (edge->get_surface() != surface_) continue;
-        if (edge->has_vertex(vertex2))
-        {
-            edge1 = edge;
-            break;
-        }
-    }
-    for (const std::shared_ptr<Edge>& edge : vertex2->get_edges())
-    {
-        if (edge->get_surface() != surface_) continue;
-        if (edge->has_vertex(vertex0))
-        {
-            edge2 = edge;
-            break;
-        }
-    }
+    std::shared_ptr<Edge> edge0 = vertex0->get_edge(vertex1);
+    std::shared_ptr<Edge> edge1 = vertex1->get_edge(vertex2);
+    std::shared_ptr<Edge> edge2 = vertex2->get_edge(vertex0);
     connect(edge0);
     connect(edge1);
     connect(edge2);
