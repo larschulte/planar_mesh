@@ -326,6 +326,23 @@ void EdgeBVH::Node::node_add_edge(const std::shared_ptr<Edge>& edge)
     }    
 }
 
+void EdgeBVH::Node::node_delete_edge(const std::shared_ptr<Edge>& edge)
+{
+    // remove node from edge
+    edge->node = nullptr;
+
+    // edge from node
+    edges.erase(std::remove(edges.begin(), edges.end(), edge), edges.end());
+    
+    // keep in parent's left or right
+
+    // reset box
+    box = BoundingBox();
+    
+    // shrink parent box
+    recursive_shrink_parent_box();
+}
+
 void EdgeBVH::Node::node_print(int level) const
 {
     if (!isLeaf())
@@ -373,22 +390,10 @@ void EdgeBVH::tree_delete_edge(const std::shared_ptr<Edge>& edge)
 
     // get node
     std::shared_ptr<Node> node = edge->node;
+    
+    // remove from node
     if (!node) throw std::runtime_error("Edge does not belong to any node.");
-    
-    // delete from BVH
-    auto it = std::remove(node->edges.begin(), node->edges.end(), edge);
-    node->edges.erase(it, node->edges.end());
-    edge->node = nullptr;
-    
-    // recompute box
-    node->box = BoundingBox();
-    for (const std::shared_ptr<Edge>& edge : node->edges)
-    {
-        node->box.expand_box_no_return(edge);
-    }
-
-    // shrink parent box
-    node->recursive_shrink_parent_box();
+    node->node_delete_edge(edge);
 }
 
 EdgeBVH::EdgeBVH() : edge_size(0)

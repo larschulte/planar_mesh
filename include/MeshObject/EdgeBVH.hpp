@@ -54,6 +54,7 @@ public:
         void recursive_shrink_parent_box();
 
         void node_add_edge(const std::shared_ptr<Edge>& edge);
+        void node_delete_edge(const std::shared_ptr<Edge>& edge);
         bool node_intersect_edge(const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2);
         void node_print(int level) const;    
         void node_flatten(std::vector<std::shared_ptr<Edge>>& flat_vector) const;
