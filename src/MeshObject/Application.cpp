@@ -426,8 +426,10 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
             // add as interior point
             new_interior_point = storage_->add_interior_point(generic_point);
 
+            // connect to surface
+            new_interior_point->connect(surface_to_add_to);
+
             // get the first face
-            std::shared_ptr<Face> face_to_add_to;
             for (const std::shared_ptr<Face>& face : bvh_results)
             {
                 // read lock
@@ -439,14 +441,10 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
                 // skip if the face is not from the surface
                 if (face->get_surface() != surface_to_add_to) continue;
 
-                // set face_to_add_to
-                face_to_add_to = face;
+                // else, connect to face
+                new_interior_point->connect(face);
                 break;
             }
-
-            // add
-            new_interior_point->connect(surface_to_add_to);
-            new_interior_point->connect(face_to_add_to);
 
             // return
             break;
