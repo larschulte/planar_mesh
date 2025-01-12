@@ -170,6 +170,9 @@ void EdgeBVH::Node::recursive_shrink_parent_box()
 
 bool EdgeBVH::Node::node_intersect_edge(const std::shared_ptr<Vertex>& vertex0, const std::shared_ptr<Vertex>& vertex1)
 {
+    // read lock
+    std::shared_lock<std::shared_mutex> lock(rwlock_node_);
+
     // skip if not intersected
     bool intersected = box_.intersect(vertex0->get_position(), vertex1->get_position());
     if (!intersected) return false;
@@ -187,6 +190,9 @@ bool EdgeBVH::Node::node_intersect_edge(const std::shared_ptr<Vertex>& vertex0, 
         // skip if no edge
         if (edges_.size() == 0) return false;
         std::shared_ptr<Edge> edge = edges_[0];
+
+        // read lock edge
+        std::shared_lock<std::shared_mutex> lock(edge->rwlock_lifecycle_);
         
         // skip if edge is expired
         if (edge->is_expired()) return false;
@@ -226,6 +232,9 @@ std::shared_ptr<EdgeBVH::Node> EdgeBVH::find_best_node(const std::shared_ptr<Edg
 
         // skip if inherited cost is already greater than best cost
         if (inherited_cost > best_cost) continue;
+
+        // read lock
+        std::shared_lock<std::shared_mutex> lock(current_node->rwlock_node_);
 
         // cost to add a branch that contains current node and leaf node
         {
@@ -283,6 +292,9 @@ std::shared_ptr<EdgeBVH::Node> EdgeBVH::find_best_node(const std::shared_ptr<Edg
 
 void EdgeBVH::Node::node_add_edge(const std::shared_ptr<Edge>& edge)
 {    
+    // write lock
+    std::unique_lock<std::shared_mutex> lock(rwlock_node_);
+
     // create new node
     std::shared_ptr<EdgeBVH::Node> new_node = std::make_shared<EdgeBVH::Node>();
     {
@@ -341,6 +353,9 @@ void EdgeBVH::Node::node_add_edge(const std::shared_ptr<Edge>& edge)
 
 void EdgeBVH::Node::node_delete_edge(const std::shared_ptr<Edge>& edge)
 {
+    // write lock
+    std::unique_lock<std::shared_mutex> lock(rwlock_node_);
+
     // remove node from edge
     edge->node = nullptr;
 

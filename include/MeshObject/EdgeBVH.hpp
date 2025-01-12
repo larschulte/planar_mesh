@@ -8,6 +8,9 @@
 #include <memory>
 #include <array>
 
+#include <shared_mutex>
+#include <mutex>
+
 // forward declarations
 class Vertex;
 class Edge;
@@ -52,6 +55,9 @@ public:
 
         void recursive_expand_parent_box();
         void recursive_shrink_parent_box();
+
+        // read write lock
+        mutable std::shared_mutex rwlock_node_;
 
         void node_add_edge(const std::shared_ptr<Edge>& edge);
         void node_delete_edge(const std::shared_ptr<Edge>& edge);
