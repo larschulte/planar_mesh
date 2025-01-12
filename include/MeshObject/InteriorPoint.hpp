@@ -31,6 +31,8 @@ public:
     mutable std::shared_mutex rwlock_faces_;
     mutable std::shared_mutex rwlock_surface_;
 
+    mutable std::shared_mutex rwlock_lifecycle_;
+
     const int& get_id() const;
     const Eigen::Vector3d& get_original_position() const;
     const Eigen::Vector3d& get_position() const;

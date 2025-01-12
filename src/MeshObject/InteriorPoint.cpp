@@ -52,6 +52,9 @@ void InteriorPoint::initialize_(const std::shared_ptr<Storage>& storage, const s
 
 void InteriorPoint::delete_()
 {
+    // write lock
+    std::unique_lock<std::shared_mutex> lock(rwlock_lifecycle_);
+
     // log
     if (settings_.log.deletion) std::cout << "Destroying InteriorPoint " << id_ << std::endl;
 
