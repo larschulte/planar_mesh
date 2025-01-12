@@ -649,7 +649,7 @@ void Surface::connect(const std::shared_ptr<Vertex>& vertex)
     else
     {
         // within the check relative position, the uncertainty will be updated
-        if (check_relative_position(vertex) != RelativePosition::WITHIN) throw std::runtime_error("Vertex is not within the surface.");
+        check_relative_position(vertex);
         vertex->weight_ = 1.0 / (vertex->get_projected_uncertainty() * vertex->get_projected_uncertainty());
     }
 
@@ -844,7 +844,7 @@ void Surface::connect(const std::shared_ptr<InteriorPoint>& interior_point)
     else
     {
         // within the check relative position, the uncertainty will be updated
-        if (check_relative_position(interior_point) != RelativePosition::WITHIN) throw std::runtime_error("Vertex is not within the surface.");
+        check_relative_position(interior_point);
         interior_point->weight_ = 1.0 / (interior_point->get_projected_uncertainty() * interior_point->get_projected_uncertainty());
     }
 
