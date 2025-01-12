@@ -431,20 +431,6 @@ const Eigen::Vector3d& Surface::get_normal() const
     return normal_;
 }
 
-std::size_t Surface::get_approximate_normal_hash()
-{
-    double factor = 100.0;
-    Eigen::Vector3d approximate_normal = (normal_ * factor).array().round() / factor;
-    approximate_normal = approximate_normal.normalized();
-
-    std::size_t h1 = std::hash<double>{}(approximate_normal.x());
-    std::size_t h2 = std::hash<double>{}(approximate_normal.y());
-    std::size_t h3 = std::hash<double>{}(approximate_normal.z());
-    std::size_t hash = h1 ^ (h2 << 1) ^ (h3 << 2); // Combining hashes
-
-    return hash;
-}
-
 std::size_t Surface::get_total_point_size() const
 {
     return vertices_.size() + interior_points_.size();
@@ -504,12 +490,12 @@ const std::vector<double>& Surface::get_projective_distance_stats()
         // add
         for (const auto& vertex : vertices_)
         {
-            double projective_distance = vertex->buffer_compute_projected_distance(shared_from_this());
+            double projective_distance = vertex->compute_projected_distance();
             stored_projective_distance_stats_.push_back(projective_distance);
         }
         for (const auto& interior_point : interior_points_)
         {
-            double projective_distance = interior_point->buffer_compute_projected_distance(shared_from_this());
+            double projective_distance = interior_point->compute_projected_distance();
             stored_projective_distance_stats_.push_back(projective_distance);
         }
 
@@ -725,7 +711,7 @@ void Surface::compute_surface_position_std_in_normal_direction()
         double ratio = std::fabs(normal_.dot(vertex->get_direction()));
 
         // mean and informaiton
-        double mean = ratio * vertex->buffer_compute_projected_distance(shared_from_this());
+        double mean = ratio * vertex->compute_projected_distance();
         double std = ratio * settings_.range_precision;
         double information = 1.0 / (std * std);
         
@@ -739,7 +725,7 @@ void Surface::compute_surface_position_std_in_normal_direction()
         double ratio = std::fabs(normal_.dot(interior_point->get_direction()));
 
         // mean and informaiton
-        double mean = ratio * interior_point->buffer_compute_projected_distance(shared_from_this());
+        double mean = ratio * interior_point->compute_projected_distance();
         double std = ratio * settings_.range_precision;
         double information = 1.0 / (std * std);
         
@@ -1106,33 +1092,21 @@ void Surface::add_point_to_surface_fitting(const Eigen::Vector3d& position, cons
 
     if (!update_normal_position_std_) return;
 
-    // approximate_normal hash
-    std::size_t hash = get_approximate_normal_hash();
+    // incrementally update
+    double old_distance = previous_normal_distance_;
+    double old_std = previous_normal_std_;
+    double old_information = 1.0 / (old_std * old_std);
 
-    if (hash != previous_approximate_normal_hash_)
-    {
-        // recompute
-        compute_surface_position_std_in_normal_direction();
-        previous_approximate_normal_hash_ = hash;
-    }
-    else
-    {
-        // incrementally update
-        double old_distance = previous_normal_distance_;
-        double old_std = previous_normal_std_;
-        double old_information = 1.0 / (old_std * old_std);
+    double new_distance = compute_point_projective_distance(origin, position);
+    double new_std = settings_.range_precision;
+    double new_information = 1.0 / (new_std * new_std);
 
-        double new_distance = compute_point_projective_distance(origin, position);
-        double new_std = settings_.range_precision;
-        double new_information = 1.0 / (new_std * new_std);
+    double combined_distance = merge_information_weighted_mean(old_distance, new_distance, old_information, new_information);
+    double combined_information = merge_information(old_information, new_information);
+    double combined_std = 1.0 / std::sqrt(combined_information);
 
-        double combined_distance = merge_information_weighted_mean(old_distance, new_distance, old_information, new_information);
-        double combined_information = merge_information(old_information, new_information);
-        double combined_std = 1.0 / std::sqrt(combined_information);
-
-        previous_normal_distance_ = combined_distance;
-        previous_normal_std_ = combined_std;
-    }
+    previous_normal_distance_ = combined_distance;
+    previous_normal_std_ = combined_std;
 }
 
 void Surface::remove_point_from_surface_fitting(const Eigen::Vector3d& position, const Eigen::Vector3d& origin, double distance_travelled, double weight)
@@ -1191,33 +1165,21 @@ void Surface::remove_point_from_surface_fitting(const Eigen::Vector3d& position,
 
     if (!update_normal_position_std_) return;
 
-    // approximate_normal hash
-    std::size_t hash = get_approximate_normal_hash();
+    // incrementally update
+    double combined_distance = previous_normal_distance_;
+    double combined_std = previous_normal_std_;
+    double combined_information = 1.0 / (combined_std * combined_std);
 
-    if (hash != previous_approximate_normal_hash_)
-    {
-        // recompute
-        compute_surface_position_std_in_normal_direction();
-        previous_approximate_normal_hash_ = hash;
-    }
-    else
-    {
-        // incrementally update
-        double combined_distance = previous_normal_distance_;
-        double combined_std = previous_normal_std_;
-        double combined_information = 1.0 / (combined_std * combined_std);
+    double new_distance = compute_point_projective_distance(origin, position);
+    double new_std = settings_.range_precision;
+    double new_information = 1.0 / (new_std * new_std);
 
-        double new_distance = compute_point_projective_distance(origin, position);
-        double new_std = settings_.range_precision;
-        double new_information = 1.0 / (new_std * new_std);
+    double old_distance = remove_information_weighted_mean(combined_distance, new_distance, combined_information, new_information);
+    double old_information = remove_information(combined_information, new_information);
+    double old_std = 1.0 / std::sqrt(old_information);
 
-        double old_distance = remove_information_weighted_mean(combined_distance, new_distance, combined_information, new_information);
-        double old_information = remove_information(combined_information, new_information);
-        double old_std = 1.0 / std::sqrt(old_information);
-
-        previous_normal_distance_ = old_distance;
-        previous_normal_std_ = old_std;
-    }
+    previous_normal_distance_ = old_distance;
+    previous_normal_std_ = old_std;
 }
 
 void Surface::set_random_color()

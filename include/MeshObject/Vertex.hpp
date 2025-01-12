@@ -67,10 +67,8 @@ public:
 
     // void try_merge_surfaces();
 
-    const Eigen::Vector3d& buffer_compute_projected_position(const std::shared_ptr<Surface> surface);
-    const Eigen::Vector3d& buffer_compute_projected_position();
-    const double& buffer_compute_projected_distance(const std::shared_ptr<Surface> surface);
-    const double& buffer_compute_projected_distance();
+    Eigen::Vector3d compute_projected_position();
+    double compute_projected_distance();
     const Eigen::Vector2d& get_surface_coordinate(const std::shared_ptr<Surface>& surface);
     const Eigen::Vector2d& get_surface_coordinate();
 

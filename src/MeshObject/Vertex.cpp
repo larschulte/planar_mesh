@@ -157,44 +157,15 @@ const Eigen::Vector3d& Vertex::get_position() const
     return projected_position_;
 }
 
-const Eigen::Vector3d& Vertex::buffer_compute_projected_position(const std::shared_ptr<Surface> surface)
-{
-    // do cartersian rounding now, swtich to Locality Sensitive Hashing later
-
-    // compute hash
-    std::size_t hash = surface->get_approximate_normal_hash();
-
-    // add to cache if not exist
-    if (!buffer_projected_position_.exists(hash)) 
-    {
-        const Eigen::Vector3d computedResult = surface->compute_point_projective_position(get_origin(), get_original_position());
-        buffer_projected_position_.put(hash, computedResult);
-    }
-
-    // return
-    return buffer_projected_position_.get(hash);
+Eigen::Vector3d Vertex::compute_projected_position() 
+{ 
+    return get_surface()->compute_point_projective_position(get_origin(), get_original_position());
 }
 
-const double& Vertex::buffer_compute_projected_distance(const std::shared_ptr<Surface> surface)
-{
-    // do cartersian rounding now, swtich to Locality Sensitive Hashing later
-
-    // compute hash
-    std::size_t hash = surface->get_approximate_normal_hash();
-
-    // add to cache if not exist
-    if (!buffer_projected_distance_.exists(hash)) 
-    {
-        const double computedResult = surface->compute_point_projective_distance(get_origin(), get_original_position());
-        buffer_projected_distance_.put(hash, computedResult);
-    }
-
-    // return
-    return buffer_projected_distance_.get(hash);
+double Vertex::compute_projected_distance() 
+{ 
+    return get_surface()->compute_point_projective_distance(get_origin(), get_original_position());
 }
-
-const Eigen::Vector3d& Vertex::buffer_compute_projected_position() { return buffer_compute_projected_position(get_surface()); }
-const double& Vertex::buffer_compute_projected_distance() { return buffer_compute_projected_distance(get_surface()); }
 
 const Eigen::Vector3d& Vertex::get_origin() const 
 { 

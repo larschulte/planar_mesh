@@ -709,9 +709,9 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_interior_poi
         pcl::PointXYZRGB point;
         if (settings.point_mode == PointMode::PROJECTED)
         {
-            point.x = interior_point->buffer_compute_projected_position()[0];
-            point.y = interior_point->buffer_compute_projected_position()[1];
-            point.z = interior_point->buffer_compute_projected_position()[2];
+            point.x = interior_point->compute_projected_position()[0];
+            point.y = interior_point->compute_projected_position()[1];
+            point.z = interior_point->compute_projected_position()[2];
         }
         else if (settings.point_mode == PointMode::ORIGINAL)
         {
@@ -734,7 +734,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_interior_poi
         }
         else if (settings.color_mode == ColorMode::POSITIONAL_UNCERTAINTY)
         {
-            double distance = std::fabs(interior_point->buffer_compute_projected_distance() / 0.05);
+            double distance = std::fabs(interior_point->compute_projected_distance() / 0.05);
             std::tuple<int, int, int> color = valueToJet(distance);
             point.r = std::get<0>(color);
             point.g = std::get<1>(color);
@@ -745,7 +745,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_interior_poi
             // print
             std::cout << "uncertainty: " << interior_point->get_projected_uncertainty() << std::endl;
 
-            double distance = std::abs(interior_point->buffer_compute_projected_distance()) / interior_point->get_projected_uncertainty() / 3.f;
+            double distance = std::abs(interior_point->compute_projected_distance()) / interior_point->get_projected_uncertainty() / 3.f;
             std::tuple<int, int, int> color = valueToJet(distance);
             point.r = std::get<0>(color);
             point.g = std::get<1>(color);
@@ -876,9 +876,9 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_vertex_point
         pcl::PointXYZRGB point;
         if (setting.point_mode == PointMode::PROJECTED)
         {
-            point.x = vertex->buffer_compute_projected_position()[0];
-            point.y = vertex->buffer_compute_projected_position()[1];
-            point.z = vertex->buffer_compute_projected_position()[2];
+            point.x = vertex->compute_projected_position()[0];
+            point.y = vertex->compute_projected_position()[1];
+            point.z = vertex->compute_projected_position()[2];
         }
         else if (setting.point_mode == PointMode::ORIGINAL)
         {
@@ -901,7 +901,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_vertex_point
         }
         else if (setting.color_mode == ColorMode::POSITIONAL_UNCERTAINTY)
         {
-            double distance = std::abs(vertex->buffer_compute_projected_distance() / 0.05);
+            double distance = std::abs(vertex->compute_projected_distance() / 0.05);
             std::tuple<int, int, int> color = valueToJet(distance);
             point.r = std::get<0>(color);
             point.g = std::get<1>(color);
@@ -909,7 +909,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_vertex_point
         }
         else if (setting.color_mode == ColorMode::POSITIONAL_UNCERTAINTY_NORMALIZED)
         {
-            double distance = std::abs(vertex->buffer_compute_projected_distance()) / vertex->get_projected_uncertainty() / 3.f;
+            double distance = std::abs(vertex->compute_projected_distance()) / vertex->get_projected_uncertainty() / 3.f;
             std::tuple<int, int, int> color = valueToJet(distance);
             point.r = std::get<0>(color);
             point.g = std::get<1>(color);

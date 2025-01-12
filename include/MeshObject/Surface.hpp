@@ -75,7 +75,6 @@ public:
     const Eigen::Matrix3d& get_eigenvectors() const;
     const Eigen::Vector3d& get_eigenvalues() const;
     const Eigen::Vector3d& get_normal() const;
-    std::size_t get_approximate_normal_hash();
     std::size_t get_total_point_size() const;
     double get_average_distance_travelled() const;
     double get_smallest_distance_travelled() const;
@@ -164,8 +163,7 @@ private:
     std::size_t previous_total_point_size_for_point_to_plane_;
 
     FIFOCache<std::size_t, double> buffer_surface_position_std_in_normal_direction{std::numeric_limits<std::size_t>::max()};
-
-    std::size_t previous_approximate_normal_hash_;
+    
     double previous_normal_distance_;
     double previous_normal_std_;
 
