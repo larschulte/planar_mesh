@@ -38,8 +38,9 @@ public:
         const double& get_surface_area();
     };
 
-    struct Node 
+    class Node : public std::enable_shared_from_this<EdgeBVH::Node>
     {
+        public:
         BoundingBox box;
         double split_value;
         int split_axis;
@@ -51,6 +52,11 @@ public:
 
         void recursive_expand_parent_box();
         void recursive_shrink_parent_box();
+
+        void node_add_edge(const std::shared_ptr<Edge>& edge);
+        bool node_intersect_edge(const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2);
+        void node_print(int level) const;    
+        void node_flatten(std::vector<std::shared_ptr<Edge>>& flat_vector) const;
     };
 
 private:
@@ -59,11 +65,6 @@ private:
     
     // use SAH for EdgeBVH
     std::shared_ptr<EdgeBVH::Node> find_best_node(const std::shared_ptr<EdgeBVH::Node>& root, const std::shared_ptr<Edge>& edge);
-
-    void node_add_edge(const std::shared_ptr<EdgeBVH::Node>& node, const std::shared_ptr<Edge>& edge);
-    bool node_intersect_edge(const std::shared_ptr<EdgeBVH::Node>& node, const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2);
-    void node_print(const std::shared_ptr<EdgeBVH::Node>& node, int level) const;    
-    void node_flatten(const std::shared_ptr<EdgeBVH::Node>& node, std::vector<std::shared_ptr<Edge>>& flat_vector) const;
 
 public:
     EdgeBVH();
