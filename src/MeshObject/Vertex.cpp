@@ -678,32 +678,32 @@ bool Vertex::try_close_holes_between_self_and(std::shared_ptr<Vertex>& vertex0, 
         lock = std::shared_lock<std::shared_mutex>(vertex0->get_edge(vertex1)->rwlock_lifecycle_);
     }
 
-    // // skip if edge between 0 and 1 is not boundary
-    // if (!vertex0->get_edge(vertex1)->is_boundary()) return changed;
+    // skip if edge between 0 and 1 is not boundary
+    if (!vertex0->get_edge(vertex1)->is_boundary()) return changed;
 
-    // // create face if face does not exist
-    // const bool face_exist = check_connected_by_face(vertex0, vertex1);
-    // if (!face_exist)
-    // {
-    //     // create face
-    //     std::shared_ptr<Face> new_face = storage_->add_face(get_surface(), shared_from_this(), vertex0, vertex1);
-    //     get_surface()->connect(new_face);
+    // create face if face does not exist
+    const bool face_exist = check_connected_by_face(vertex0, vertex1);
+    if (!face_exist)
+    {
+        // create face
+        std::shared_ptr<Face> new_face = storage_->add_face(get_surface(), shared_from_this(), vertex0, vertex1);
+        get_surface()->connect(new_face);
 
-    //     // un-add the face if face is non-manifold
-    //     if (new_face->is_non_manifold())
-    //     {
-    //         // un-add face
-    //         new_face->un_add_face();
+        // un-add the face if face is non-manifold
+        if (new_face->is_non_manifold())
+        {
+            // un-add face
+            new_face->un_add_face();
 
-    //         // update flag
-    //         changed = false;
-    //     }
-    //     else
-    //     {
-    //         // update flag
-    //         changed = true;
-    //     }
-    // }
+            // update flag
+            changed = false;
+        }
+        else
+        {
+            // update flag
+            changed = true;
+        }
+    }
 
     // return changed
     return changed;
@@ -1079,17 +1079,17 @@ void Vertex::try_break_edges()
         }
     }
 
-    // delete edges
-    for (const std::shared_ptr<Edge>& edge : edges_to_delete)
-    {
-        // skip if expired
-        if (is_expired()) return;
+    // // delete edges
+    // for (const std::shared_ptr<Edge>& edge : edges_to_delete)
+    // {
+    //     // skip if expired
+    //     if (is_expired()) return;
 
-        // skip if edge is expired
-        if (edge->is_expired()) continue; 
+    //     // skip if edge is expired
+    //     if (edge->is_expired()) continue; 
 
-        storage_->delete_edge(edge);
-    }
+    //     storage_->delete_edge(edge);
+    // }
 }
 
 void Vertex::try_update_node_box()
