@@ -641,6 +641,9 @@ void Surface::connect(const std::shared_ptr<Vertex>& vertex)
 
 bool Surface::tree_intersect_edge(const std::shared_ptr<Vertex>& vertex0, const std::shared_ptr<Vertex>& vertex1)
 {
+    // read lock
+    std::shared_lock lock(rwlock_edge_bvh_);
+
     return edge_bvh_.tree_intersect_edge(vertex0, vertex1);
 }
 
@@ -1010,11 +1013,17 @@ void Surface::resume_normal_std_update()
 
 void Surface::add_searchable_edge(const std::shared_ptr<Edge>& edge)
 {
+    // write lock
+    std::unique_lock lock(rwlock_edge_bvh_);
+
     edge_bvh_.tree_add_edge(edge);
 }
 
 void Surface::remove_searchable_edge(const std::shared_ptr<Edge>& edge)
-{    
+{
+    // write lock
+    std::unique_lock lock(rwlock_edge_bvh_);
+    
     edge_bvh_.tree_delete_edge(edge);
 }
 
