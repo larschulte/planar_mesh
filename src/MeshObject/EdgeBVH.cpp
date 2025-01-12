@@ -170,6 +170,7 @@ void EdgeBVH::Node::recursive_shrink_parent_box()
 
 bool EdgeBVH::Node::node_intersect_edge(const std::shared_ptr<Vertex>& vertex0, const std::shared_ptr<Vertex>& vertex1)
 {
+    // skip if not intersected
     bool intersected = box_.intersect(vertex0->get_position(), vertex1->get_position());
     if (!intersected) return false;
     
@@ -177,16 +178,25 @@ bool EdgeBVH::Node::node_intersect_edge(const std::shared_ptr<Vertex>& vertex0, 
     {
         if (left_->node_intersect_edge(vertex0, vertex1)) return true;
         if (right_->node_intersect_edge(vertex0, vertex1)) return true;   
+        
+        // else return false
+        return false;
     }
     else
     {
-        for (const std::shared_ptr<Edge>& edge : edges_)
-        {
-            if (edge->intersects_edge(vertex0, vertex1)) return true;
-        }
-    }
+        // skip if no edge
+        if (edges_.size() == 0) return false;
+        std::shared_ptr<Edge> edge = edges_[0];
+        
+        // skip if edge is expired
+        if (edge->is_expired()) return false;
 
-    return false;
+        // check if edge intersects
+        if (edge->intersects_edge(vertex0, vertex1)) return true;
+
+        // else return false
+        return false;   
+    }
 }
 
 std::shared_ptr<EdgeBVH::Node> EdgeBVH::find_best_node(const std::shared_ptr<EdgeBVH::Node>& node, const std::shared_ptr<Edge>& edge)
@@ -199,6 +209,10 @@ std::shared_ptr<EdgeBVH::Node> EdgeBVH::find_best_node(const std::shared_ptr<Edg
     double best_cost = std::numeric_limits<double>::infinity();
     EdgeBVH::Node* best_node = nullptr;
 
+    // compute lower bound cost to add branch node
+    EdgeBVH::BoundingBox smallest_branch_box(edge);
+    const double lower_bound_cost = smallest_branch_box.get_surface_area();
+
     // while queue is not empty
     while (!queue.empty())
     {
@@ -210,8 +224,10 @@ std::shared_ptr<EdgeBVH::Node> EdgeBVH::find_best_node(const std::shared_ptr<Edg
         EdgeBVH::Node* current_node = current.first;
         double inherited_cost = current.second;
 
-        // cost to branch from current node
-        double cost;
+        // skip if inherited cost is already greater than best cost
+        if (inherited_cost > best_cost) continue;
+
+        // cost to add a branch that contains current node and leaf node
         {
             // cost of creating a new branch node
             EdgeBVH::BoundingBox new_branch_box = current_node->box_;
@@ -219,13 +235,14 @@ std::shared_ptr<EdgeBVH::Node> EdgeBVH::find_best_node(const std::shared_ptr<Edg
             double new_branch_node_cost = new_branch_box.get_surface_area();
 
             // total cost
-            cost = inherited_cost + new_branch_node_cost;
-        }
+            double cost = inherited_cost + new_branch_node_cost;
 
-        if (cost < best_cost)
-        {
-            best_cost = cost;
-            best_node = current_node;
+            // update best cost and best node
+            if (cost < best_cost)
+            {
+                best_cost = cost;
+                best_node = current_node;
+            }
         }
 
         // check if it is worth it to go to the children
@@ -236,10 +253,6 @@ std::shared_ptr<EdgeBVH::Node> EdgeBVH::find_best_node(const std::shared_ptr<Edg
             expanded_box.expand_box_no_return(edge);
             double change_to_inherited = expanded_box.get_surface_area() - current_node->box_.get_surface_area();
 
-            // compute lower bound cost to add branch node
-            EdgeBVH::BoundingBox smallest_branch_box(edge);
-            double lower_bound_cost = smallest_branch_box.get_surface_area();
-            
             if (inherited_cost + change_to_inherited + lower_bound_cost > best_cost)
             {
                 // it is not worth it to go to the children
