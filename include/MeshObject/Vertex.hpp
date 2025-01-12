@@ -39,6 +39,8 @@ public:
     mutable std::shared_mutex rwlock_faces_;
     mutable std::shared_mutex rwlock_surface_;
 
+    mutable std::shared_mutex rwlock_lifecycle_;
+
     void temp_initialize(const Eigen::Vector3d& position, unsigned int id);
     std::shared_ptr<RRSNode> node;
 

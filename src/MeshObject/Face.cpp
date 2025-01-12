@@ -106,6 +106,9 @@ void Face::update_radius(const std::shared_ptr<GenericPoint>& generic_point)
 
 void Face::delete_()
 {
+    // write lock
+    std::unique_lock<std::shared_mutex> lock(rwlock_lifecycle_);
+
     // add to affected faces set
     storage_->add_to_set_of_faces_to_update_bvh_tree(shared_from_this());
 

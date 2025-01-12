@@ -80,6 +80,9 @@ void Vertex::initialize_(const std::shared_ptr<Storage>& storage, const std::sha
 
 void Vertex::delete_()
 {
+    // write lock
+    std::unique_lock<std::shared_mutex> lock(rwlock_lifecycle_);
+
     // add to update rrs tree vertex set
     storage_->add_to_set_of_vertices_to_update_rrs_tree(shared_from_this());
 

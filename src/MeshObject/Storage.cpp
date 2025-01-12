@@ -804,6 +804,9 @@ void Storage::add_or_remove_vertices_from_rrs_tree()
         // // skip if vertex is expired, but really we should reduce the number of expired vertex in the set
         // if (vertex->is_expired()) continue;
 
+        // read lock for the vertex
+        std::shared_lock<std::shared_mutex> lock(vertex->rwlock_lifecycle_);
+
         // check if vertex needs to be added or removed or unchanged from rrs_tree
         if (vertex->is_expired())
         {
@@ -841,6 +844,9 @@ void Storage::add_or_remove_faces_from_bvh_tree()
         // this should allow face to be expired. since when deleting face, it will become expired.
         // // skip if face is expired, but really there should not have been any expired face in the set
         // if (face->is_expired()) continue;
+
+        // read lock for the face
+        std::shared_lock<std::shared_mutex> lock(face->rwlock_lifecycle_);
 
         if (face->is_expired())
         {

@@ -30,6 +30,8 @@ public:
     mutable std::shared_mutex rwlock_interior_points_;
     mutable std::shared_mutex rwlock_surface_;
 
+    mutable std::shared_mutex rwlock_lifecycle_;
+
     void temp_initialize(const Eigen::Vector3d& end_point);
 
     void un_add_face();
