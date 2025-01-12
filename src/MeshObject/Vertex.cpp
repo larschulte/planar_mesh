@@ -1042,12 +1042,23 @@ void Vertex::try_update_radius()
 
 void Vertex::try_break_edges()
 {
+    // copy of edges
+    std::vector<std::shared_ptr<Edge>> edges_copy;
+    {
+        // read lock
+        std::shared_lock<std::shared_mutex> lock(rwlock_edges_);
+
+        edges_copy = edges_;
+    }
+
     // collect edges to delete
     std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges_to_delete;
-    for (const std::shared_ptr<Edge>& edge : edges_)
+    for (const std::shared_ptr<Edge>& edge : edges_copy)
     {
+        // read lock
+        std::shared_lock<std::shared_mutex> lock(edge->rwlock_lifecycle_);
+
         if (edge->is_expired()) continue; // could turn expired if below deletes an edge which then deletes a face
-        if (edge->is_deleting()) continue; // could be deleting
 
         const double edge_length = edge->get_length();
         const double radius0 = edge->get_vertex(0)->get_radius();
