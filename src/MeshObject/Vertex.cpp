@@ -625,6 +625,18 @@ bool Vertex::check_connected_by_face(const std::shared_ptr<Vertex>& vertex0, con
 
 bool Vertex::try_close_holes_repeatedly()
 {
+    // i need to lock all connected vertices and edges to prevent them from being deleted while i am trying to close holes
+    std::vector<std::shared_lock<std::shared_mutex>> connected_vertices_locks;
+    std::vector<std::shared_lock<std::shared_mutex>> connected_edges_locks;
+    for (const auto& vertex : compute_connected_vertices())
+    {
+        connected_vertices_locks.push_back(std::shared_lock<std::shared_mutex>(vertex->rwlock_lifecycle_));
+    }
+    for (const auto& edge : get_edges())
+    {
+        connected_edges_locks.push_back(std::shared_lock<std::shared_mutex>(edge->rwlock_lifecycle_));
+    }
+
     // initialize
     bool changed = false;
 
@@ -652,16 +664,29 @@ bool Vertex::try_close_holes_between_self_and(std::shared_ptr<Vertex>& vertex0, 
     // skip if edge intersects
     if (get_surface()->tree_intersect_edge(vertex0, vertex1)) return changed;
 
+    // read lock on the inter edge
+    std::shared_lock<std::shared_mutex> lock;
+
     // create edge if edge does not exist
     const bool edge_exist = vertex0->check_connected_by_edge(vertex1);
     if (!edge_exist)
     {
         // create edge
         std::shared_ptr<Edge> new_edge = storage_->add_edge(vertex0, vertex1);
+
+        // read lock on the inter edge
+        lock = std::shared_lock<std::shared_mutex>(new_edge->rwlock_lifecycle_);
+
+        // connect
         get_surface()->connect(new_edge);
 
         // update flag
         changed = true;
+    }
+    else
+    {
+        // read lock on the inter edge
+        lock = std::shared_lock<std::shared_mutex>(vertex0->get_edge(vertex1)->rwlock_lifecycle_);
     }
 
     // skip if edge between 0 and 1 is not boundary

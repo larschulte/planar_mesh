@@ -666,9 +666,16 @@ bool Surface::tree_intersect_edge(const std::shared_ptr<Vertex>& vertex0, const 
 
 bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& all_nearby_vertices)
 {
+    // read lock
+    std::shared_lock<std::shared_mutex> lock(vertex->rwlock_lifecycle_);
+    // no need to check expired since it is not yet connected to anything
+
     // try create edge with nearby vertices
     for (const auto& nearby_vertex : all_nearby_vertices)
     {
+        // read lock
+        std::shared_lock<std::shared_mutex> lock(nearby_vertex->rwlock_lifecycle_);
+
         // check input
         if (nearby_vertex->is_expired()) continue;
 
