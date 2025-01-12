@@ -203,6 +203,20 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
 template <typename PointT>
 void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& generic_point, std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> bvh_results, std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> rrs_results)
 {
+    // skip if closer than some distance
+    const double minimum_distance = 0.1;
+    for (const std::shared_ptr<Vertex>& vertex : rrs_results)
+    {
+        // read lock
+        std::shared_lock<std::shared_mutex> lock(vertex->rwlock_lifecycle_);
+
+        // skip if expired
+        if (vertex->is_expired()) continue;
+
+        // return if closer than 0.1m
+        if ((generic_point->get_position() - vertex->get_position()).norm() < minimum_distance) return;
+    }
+
     // from bvh results and rrs results, get surfaces
     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> bvh_surfaces;
     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> rrs_surfaces;
