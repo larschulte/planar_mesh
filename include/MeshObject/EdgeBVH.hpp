@@ -41,14 +41,14 @@ public:
     class Node : public std::enable_shared_from_this<EdgeBVH::Node>
     {
         public:
-        BoundingBox box;
-        double split_value;
-        int split_axis;
-        std::shared_ptr<EdgeBVH::Node> parent;
-        std::shared_ptr<EdgeBVH::Node> left;
-        std::shared_ptr<EdgeBVH::Node> right;
+        BoundingBox box_;
+        double split_value_;
+        int split_axis_;
+        std::shared_ptr<EdgeBVH::Node> parent_;
+        std::shared_ptr<EdgeBVH::Node> left_;
+        std::shared_ptr<EdgeBVH::Node> right_;
         bool isLeaf() const;
-        std::vector<std::shared_ptr<Edge>> edges;
+        std::vector<std::shared_ptr<Edge>> edges_;
 
         void recursive_expand_parent_box();
         void recursive_shrink_parent_box();
@@ -61,8 +61,8 @@ public:
     };
 
 private:
-    std::shared_ptr<EdgeBVH::Node> root;
-    int edge_size;
+    std::shared_ptr<EdgeBVH::Node> root_;
+    int edge_size_;
     
     // use SAH for EdgeBVH
     std::shared_ptr<EdgeBVH::Node> find_best_node(const std::shared_ptr<EdgeBVH::Node>& root, const std::shared_ptr<Edge>& edge);
