@@ -54,6 +54,9 @@ void Edge::initialize_(const std::shared_ptr<Storage>& storage, const std::share
 
 void Edge::delete_()
 {
+    // write lock
+    std::unique_lock<std::shared_mutex> lock(rwlock_lifecycle_);
+
     // log
     if (settings_.log.deletion) std::cout << "Destroying edge " << id_ << std::endl;
     

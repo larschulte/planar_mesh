@@ -27,6 +27,8 @@ public:
     mutable std::shared_mutex rwlock_faces_;
     mutable std::shared_mutex rwlock_surface_;
 
+    mutable std::shared_mutex rwlock_lifecycle_;
+
     const int& get_id() const;
     const std::shared_ptr<Vertex>& get_vertex(int index) const;
     const std::shared_ptr<Surface>& get_surface() const;
