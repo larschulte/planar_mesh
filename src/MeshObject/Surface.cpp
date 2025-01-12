@@ -46,6 +46,9 @@ void Surface::initialize_(const std::shared_ptr<Storage>& storage)
 
 void Surface::delete_()
 {
+    // write lock
+    std::unique_lock<std::shared_mutex> lock(rwlock_lifecycle_);
+
     // log
     if (settings_.log.deletion) std::cout << "Destroying surface " << id_ << std::endl;
 

@@ -46,6 +46,8 @@ public:
     mutable std::shared_mutex rwlock_interior_points_;
     mutable std::shared_mutex rwlock_edge_bvh_;
 
+    mutable std::shared_mutex rwlock_lifecycle_;
+
     double compute_point_to_plane_distance(const Eigen::Vector3d& point) const;
     double compute_point_projective_distance(const Eigen::Vector3d& origin, const Eigen::Vector3d& point) const;
     double compute_point_projective_distance(const std::shared_ptr<GenericPoint>& generic_point) const;
