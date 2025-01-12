@@ -534,8 +534,8 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
             if (surfaces_bvh_in_front.find(face->get_surface()) != surfaces_bvh_in_front.end()) continue;
         }
 
-        // delete penetrated face
-        storage_->delete_face(face);
+        // // delete penetrated face
+        // storage_->delete_face(face);
     }
     
     // rrs - reduce radius
