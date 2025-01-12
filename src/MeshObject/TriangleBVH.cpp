@@ -287,11 +287,8 @@ BVHReturnType Node::node_intersection_search(const std::shared_ptr<GenericPoint>
         }
         const std::shared_ptr<Face>& face = faces_[0];
 
-        // Double-Checked Locking
-        if (face->is_expired() || !face->intersects_point(generic_point->get_origin(), generic_point->get_direction()))
-        {
-            return BVHReturnType::SKIP;
-        }
+        // read lock
+        std::shared_lock<std::shared_mutex> lock(face->rwlock_lifecycle_);
 
         // we lock the face during face->delete_() call, and then release it before locking it again when removing it from the bvh tree
         // thus this thread may have lock this face during the gap

@@ -208,6 +208,9 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> rrs_surfaces;
     for (const std::shared_ptr<Face>& face : bvh_results)
     {
+        // read lock
+        std::shared_lock<std::shared_mutex> lock(face->rwlock_lifecycle_);
+
         // skip if expired
         if (face->is_expired()) continue;
 
@@ -215,6 +218,9 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
     }
     for (const std::shared_ptr<Vertex>& vertex : rrs_results)
     {
+        // read lock
+        std::shared_lock<std::shared_mutex> lock(vertex->rwlock_lifecycle_); // this to prevent vertex from being deleted
+
         // skip if expired
         if (vertex->is_expired()) continue;
         
@@ -307,6 +313,9 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
         {
             for (std::shared_ptr<Vertex> vertex : rrs_results)
             {
+                // read lock
+                std::shared_lock<std::shared_mutex> lock(vertex->rwlock_lifecycle_); // this to prevent vertex from being deleted
+
                 // skip if the vertex is expired
                 if (vertex->is_expired()) continue;
 
@@ -348,6 +357,9 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
             std::shared_ptr<Face> face_to_add_to;
             for (const std::shared_ptr<Face>& face : bvh_results)
             {
+                // read lock
+                std::shared_lock<std::shared_mutex> lock(face->rwlock_lifecycle_);
+
                 // skip if the face is expired
                 if (face->is_expired()) continue;
 
@@ -376,6 +388,9 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
             // reduce radius of the new vertex
             for (std::shared_ptr<Vertex> vertex : rrs_results)
             {
+                // read lock
+                std::shared_lock<std::shared_mutex> lock(vertex->rwlock_lifecycle_); // this to prevent vertex from being deleted
+
                 // skip if the vertex is expired
                 if (vertex->is_expired()) continue;
 
@@ -413,6 +428,9 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
         // reduce radius of the new vertex
         for (std::shared_ptr<Vertex> vertex : rrs_results)
         {
+            // read lock
+            std::shared_lock<std::shared_mutex> lock(vertex->rwlock_lifecycle_); // this to prevent vertex from being deleted
+
             // skip if the vertex is expired
             if (vertex->is_expired()) continue;
 
@@ -428,17 +446,22 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
     // bvh - delete penetrated 
     for (const std::shared_ptr<Face>& face : bvh_results)
     {
-        // skip if expired
-        if (face->is_expired()) continue;
+        {
+            // read lock
+            std::shared_lock<std::shared_mutex> lock(face->rwlock_lifecycle_);
 
-        // skip if same surface
-        if (face->get_surface() == surface_to_add_to) continue;
+            // skip if expired
+            if (face->is_expired()) continue;
 
-        // skip if no relative position
-        if (surfaces_bvh_seed.find(face->get_surface()) != surfaces_bvh_seed.end()) continue;
+            // skip if same surface
+            if (face->get_surface() == surface_to_add_to) continue;
 
-        // skip if in front 
-        if (surfaces_bvh_in_front.find(face->get_surface()) != surfaces_bvh_in_front.end()) continue;
+            // skip if no relative position
+            if (surfaces_bvh_seed.find(face->get_surface()) != surfaces_bvh_seed.end()) continue;
+
+            // skip if in front 
+            if (surfaces_bvh_in_front.find(face->get_surface()) != surfaces_bvh_in_front.end()) continue;
+        }
 
         // delete penetrated face
         storage_->delete_face(face);
@@ -447,6 +470,9 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
     // rrs - reduce radius
     for (const std::shared_ptr<Vertex>& vertex : rrs_results)
     {
+        // read lock
+        std::shared_lock<std::shared_mutex> lock(vertex->rwlock_lifecycle_); // this to prevent vertex from being deleted
+
         // skip if expired
         if (vertex->is_expired()) continue;
 
