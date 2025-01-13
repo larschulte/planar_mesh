@@ -150,6 +150,7 @@ private:
     double characteristic_length_;
     double normal_uncertainty_ = 0;
     double sum_of_average_distance_travelled_;
+    unsigned int total_point_size_ = 0;
 
     std::vector<double> stored_projective_distance_stats_;
     std::vector<double> stored_point_to_plane_distance_stats_;

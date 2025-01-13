@@ -423,7 +423,7 @@ const Eigen::Vector3d& Surface::get_normal() const
 
 std::size_t Surface::get_total_point_size() const
 {
-    return vertices_.size() + interior_points_.size();
+    return total_point_size_;
 }
 
 double Surface::get_average_distance_travelled() const
@@ -1064,6 +1064,7 @@ void Surface::add_point_to_surface_fitting(const Eigen::Vector3d& position, cons
     normal_ = new_normal;
 
     sum_of_average_distance_travelled_ += distance_travelled;
+    total_point_size_ += 1;
 
     // store characteristic length
     characteristic_length_ = std::max(characteristic_length_, (position -  mean_).norm());
@@ -1129,6 +1130,7 @@ void Surface::remove_point_from_surface_fitting(const Eigen::Vector3d& position,
     normal_ = normal1;
 
     sum_of_average_distance_travelled_ -= distance_travelled;
+    total_point_size_ -= 1;
 
     // update approximate uncertainty envelope
     // if approximate normal is the same as last time, incrementally update the uncertianty envelope
