@@ -330,8 +330,6 @@ void RRSNode::node_add_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
     std::shared_ptr<RRSNode> duplicate_node = std::make_shared<RRSNode>();
     {
         duplicate_node->box_ = box_;
-        duplicate_node->split_value_ = split_value_;
-        duplicate_node->split_axis_ = split_axis_;
         
         // if node is leaf, copy boundary vertices
         if (isLeaf_)
@@ -360,12 +358,6 @@ void RRSNode::node_add_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
         // expand current node box
         box_.expand_box_no_return(new_node->box_);
         recursive_expand_parent_box();
-
-        // get split axis
-        split_axis_ = box_.get_longest_axis();
-
-        // get split value  
-        split_value_ = boundary_vertex->get_position()[split_axis_];
 
         // put into children
         left_ = duplicate_node;

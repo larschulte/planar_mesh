@@ -45,8 +45,6 @@ public:
     {
         public:
         BoundingBox box_;
-        double split_value_;
-        int split_axis_;
         std::shared_ptr<EdgeBVH::Node> parent_;
         std::shared_ptr<EdgeBVH::Node> left_;
         std::shared_ptr<EdgeBVH::Node> right_;

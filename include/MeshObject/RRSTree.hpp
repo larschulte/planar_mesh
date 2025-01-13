@@ -57,8 +57,6 @@ class RRSNode : public std::enable_shared_from_this<RRSNode>
 {
     public:
     RRSBoundingBox box_;
-    double split_value_;
-    int split_axis_;
     std::shared_ptr<RRSNode> parent_;
     std::shared_ptr<RRSNode> left_;
     std::shared_ptr<RRSNode> right_;

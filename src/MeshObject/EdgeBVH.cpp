@@ -307,8 +307,6 @@ void EdgeBVH::Node::node_add_edge(const std::shared_ptr<Edge>& edge)
     std::shared_ptr<EdgeBVH::Node> duplicate_node = std::make_shared<EdgeBVH::Node>();
     {
         duplicate_node->box_ = box_;
-        duplicate_node->split_value_ = split_value_;
-        duplicate_node->split_axis_ = split_axis_;
         
         // if node is leaf, copy boundary vertices
         if (isLeaf())
@@ -335,12 +333,6 @@ void EdgeBVH::Node::node_add_edge(const std::shared_ptr<Edge>& edge)
         // expand current node box
         box_.expand_box_no_return(new_node->box_);
         recursive_expand_parent_box();
-
-        // get split axis
-        split_axis_ = box_.get_longest_axis();
-
-        // get split value  
-        split_value_ = edge->get_center()[split_axis_];
 
         // put into children
         left_ = duplicate_node;

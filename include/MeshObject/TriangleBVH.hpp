@@ -59,8 +59,6 @@ class Node : public std::enable_shared_from_this<Node>
 {
     public:
     BoundingBox box_;
-    double split_value_;
-    int split_axis_;
     std::shared_ptr<Node> parent_;
     std::shared_ptr<Node> left_;
     std::shared_ptr<Node> right_;
