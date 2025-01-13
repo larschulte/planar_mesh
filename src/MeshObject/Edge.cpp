@@ -67,15 +67,16 @@ void Edge::delete_()
     // set deletion flag
     deleting_ = true;
 
+    // disconnect surface first (to remove self from EdgeBVH search)
+    std::shared_ptr<Surface> surface = surface_;
+    if (surface) disconnect(surface);
+
     // disconnect
     // make copy of vertices_ and faces_ to avoid iterator invalidation
     std::vector<std::shared_ptr<Vertex>> vertices = vertices_;
     std::vector<std::shared_ptr<Face>> faces = faces_;
     for (const auto& vertex : vertices) disconnect(vertex);
     for (const auto& face : faces) disconnect(face);
-    // make copy of surfaces
-    std::shared_ptr<Surface> surface = surface_;
-    if (surface) disconnect(surface);
 
     // log
     if (settings_.log.deletion) std::cout << "---------- edge " << id_ << " destroyed" << std::endl;
