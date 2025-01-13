@@ -406,14 +406,7 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
         std::sort(surfaces_rrs_seed_sorted.begin(), surfaces_rrs_seed_sorted.end(), 
             [&surfaces_rrs_seed_distances](const std::shared_ptr<Surface>& a, const std::shared_ptr<Surface>& b) 
             { 
-                // read lock
-                std::shared_lock<std::shared_mutex> lock_a(a->rwlock_lifecycle_);
-                std::shared_lock<std::shared_mutex> lock_b(b->rwlock_lifecycle_);
-
-                // skip if the surface is expired
-                if (a->is_expired() || b->is_expired()) return false;
-
-                // sort by distance
+                // sort by surface distance
                 return surfaces_rrs_seed_distances[a] < surfaces_rrs_seed_distances[b]; 
             });
 
