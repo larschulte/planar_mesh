@@ -469,7 +469,13 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
             }
             new_vertex->upon_adding_publisher();
 
-            if (!surface_to_add_to->connect_by_edges_and_faces(new_vertex, rrs_results))
+            // need to prevent vertex from being deleted from newly connected edges
+            new_vertex->set_connecting_to_edges_and_faces(true);
+            const bool connected = surface_to_add_to->connect_by_edges_and_faces(new_vertex, rrs_results);
+            new_vertex->set_connecting_to_edges_and_faces(false);
+
+            // if not connected, delete the vertex
+            if (!connected)
             {
                 // delete this and retry
                 new_vertex->can_create_generic_point(false);

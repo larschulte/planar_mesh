@@ -491,7 +491,7 @@ void Vertex::disconnect(const std::shared_ptr<Edge>& edge)
     check_if_update_search_tree();
 
     // check self destruct
-    if (!deleting_ && edges_.empty() && can_self_destruct_) storage_->delete_vertex(shared_from_this());
+    if (!deleting_ && edges_.empty() && can_self_destruct_ && !connecting_to_edges_and_faces_) storage_->delete_vertex(shared_from_this());
 }
 
 void Vertex::disconnect(const std::shared_ptr<Face>& face)
@@ -516,7 +516,7 @@ void Vertex::disconnect(const std::shared_ptr<Face>& face)
 
     // do not self destruct when have no face
     // check self destruct
-    if (!deleting_ && faces_.empty() && can_self_destruct_) storage_->delete_vertex(shared_from_this());
+    if (!deleting_ && faces_.empty() && can_self_destruct_ && !connecting_to_edges_and_faces_) storage_->delete_vertex(shared_from_this());
 }
 
 void Vertex::disconnect(const std::shared_ptr<Surface>& surface)
@@ -781,6 +781,11 @@ void Vertex::remove_all_edges()
 void Vertex::set_can_self_destruct(bool can_self_destruct)
 {
     can_self_destruct_ = can_self_destruct;
+}
+
+void Vertex::set_connecting_to_edges_and_faces(bool connecting_to_edges_and_faces)
+{
+    connecting_to_edges_and_faces_ = connecting_to_edges_and_faces;
 }
 
 bool Vertex::is_non_manifold() const

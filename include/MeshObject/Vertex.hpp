@@ -96,6 +96,7 @@ public:
 
     // can self destruct flag
     void set_can_self_destruct(bool can_self_destruct);
+    void set_connecting_to_edges_and_faces(bool connecting_to_edges_and_faces);
 
     // non manifold
     bool is_non_manifold() const;
@@ -162,6 +163,8 @@ private:
 
     int id_;
     std::shared_ptr<Storage> storage_;
+
+    bool connecting_to_edges_and_faces_ = false;
 
     std::vector<std::shared_ptr<Edge>> edges_;
     std::vector<std::shared_ptr<Face>> faces_;
