@@ -80,6 +80,15 @@ public: // to user
     void add_or_remove_faces_from_bvh_tree();
     void add_or_remove_edges_from_edgeBVH_tree();
 
+    void add_vertex_to_be_deleted(const std::shared_ptr<Vertex>& vertex);
+    void add_edge_to_be_deleted(const std::shared_ptr<Edge>& edge);
+    void add_face_to_be_deleted(const std::shared_ptr<Face>& face);
+    void add_interior_point_to_be_deleted(const std::shared_ptr<InteriorPoint>& interior_point);
+
+    void delete_to_be_deleted_repeatedly();
+    void delete_to_be_deleted();
+
+
     void add_to_set_of_vertices_to_update_rrs_tree(const std::shared_ptr<Vertex>& vertex);
     void add_to_set_of_faces_to_update_bvh_tree(const std::shared_ptr<Face>& face);
     void add_to_set_of_edge_to_update_edgeBVH_tree(const std::shared_ptr<Edge>& edge, const std::shared_ptr<Surface>& surface);
@@ -142,6 +151,11 @@ private:
     std::vector<std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>> smaller_set_of_vertices_to_update_rrs_tree;
     std::vector<std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>> smaller_set_of_faces_to_update_rrs_tree;
     std::vector<std::vector<std::pair<std::shared_ptr<Edge>, std::shared_ptr<Surface>>> > smaller_set_of_edges_to_update_edgeBVH_tree;
+
+    std::vector<std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>> thread_vertices_to_be_deleted_;
+    std::vector<std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>> thread_edges_to_be_deleted_;
+    std::vector<std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>> thread_faces_to_be_deleted_;
+    std::vector<std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash>> thread_interior_points_to_be_deleted_;
 
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertices_;
     std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges_;

@@ -28,6 +28,10 @@ Storage::Storage()
     smaller_set_of_vertices_to_update_rrs_tree.resize(settings_.num_threads);
     smaller_set_of_faces_to_update_rrs_tree.resize(settings_.num_threads);
     smaller_set_of_edges_to_update_edgeBVH_tree.resize(settings_.num_threads);
+    thread_vertices_to_be_deleted_.resize(settings_.num_threads);
+    thread_edges_to_be_deleted_.resize(settings_.num_threads);
+    thread_faces_to_be_deleted_.resize(settings_.num_threads);
+    thread_interior_points_to_be_deleted_.resize(settings_.num_threads);
     
     // initialize with queue or stack
     for (size_t i = 0; i < settings_.num_threads; ++i)
@@ -885,6 +889,63 @@ void Storage::add_or_remove_edges_from_edgeBVH_tree()
 
     // clear
     smaller_set_of_edges_to_update_edgeBVH_tree[omp_get_thread_num()].clear();
+}
+
+void Storage::add_vertex_to_be_deleted(const std::shared_ptr<Vertex>& vertex)
+{
+    thread_vertices_to_be_deleted_[omp_get_thread_num()].insert(vertex);
+}
+
+void Storage::add_edge_to_be_deleted(const std::shared_ptr<Edge>& edge)
+{
+    thread_edges_to_be_deleted_[omp_get_thread_num()].insert(edge);
+}
+
+void Storage::add_face_to_be_deleted(const std::shared_ptr<Face>& face)
+{
+    thread_faces_to_be_deleted_[omp_get_thread_num()].insert(face);
+}
+
+void Storage::add_interior_point_to_be_deleted(const std::shared_ptr<InteriorPoint>& interior_point)
+{
+    thread_interior_points_to_be_deleted_[omp_get_thread_num()].insert(interior_point);
+}
+
+void Storage::delete_to_be_deleted_repeatedly()
+{
+    bool repeat = true;
+    while (repeat)
+    {
+        // delete
+        delete_to_be_deleted();
+
+        // check if there is any new vertex to be deleted
+        repeat = thread_vertices_to_be_deleted_[omp_get_thread_num()].size() > 0
+            || thread_edges_to_be_deleted_[omp_get_thread_num()].size() > 0
+            || thread_faces_to_be_deleted_[omp_get_thread_num()].size() > 0
+            || thread_interior_points_to_be_deleted_[omp_get_thread_num()].size() > 0;
+    }
+}
+
+void Storage::delete_to_be_deleted()
+{
+    // make copy
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertices_to_be_deleted = thread_vertices_to_be_deleted_[omp_get_thread_num()];
+    std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges_to_be_deleted = thread_edges_to_be_deleted_[omp_get_thread_num()];
+    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces_to_be_deleted = thread_faces_to_be_deleted_[omp_get_thread_num()];
+    std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> interior_points_to_be_deleted = thread_interior_points_to_be_deleted_[omp_get_thread_num()];
+
+    // clear
+    thread_vertices_to_be_deleted_[omp_get_thread_num()].clear();
+    thread_edges_to_be_deleted_[omp_get_thread_num()].clear();
+    thread_faces_to_be_deleted_[omp_get_thread_num()].clear();
+    thread_interior_points_to_be_deleted_[omp_get_thread_num()].clear();
+
+    // delete
+    for (const std::shared_ptr<Vertex>& vertex : vertices_to_be_deleted) delete_vertex(vertex);
+    for (const std::shared_ptr<Edge>& edge : edges_to_be_deleted) delete_edge(edge);
+    for (const std::shared_ptr<Face>& face : faces_to_be_deleted) delete_face(face);
+    for (const std::shared_ptr<InteriorPoint>& interior_point : interior_points_to_be_deleted) delete_interior_point(interior_point);
 }
 
 void Storage::remove_searchable_vertex(const std::shared_ptr<Vertex>& vertex)

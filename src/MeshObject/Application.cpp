@@ -196,6 +196,7 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
     num_of_concurrent_processes--;
     
     // after unlocking all locks, add the point in queue to the search tree
+    storage_->delete_to_be_deleted_repeatedly();
     storage_->add_or_remove_vertices_from_rrs_tree();
     storage_->add_or_remove_faces_from_bvh_tree();
     storage_->add_or_remove_edges_from_edgeBVH_tree();
@@ -538,7 +539,7 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
         }
 
         // delete penetrated face
-        storage_->delete_face(face);
+        storage_->add_face_to_be_deleted(face);
     }
     
     // rrs - reduce radius

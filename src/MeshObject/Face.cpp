@@ -417,7 +417,7 @@ void Face::disconnect(const std::shared_ptr<Vertex>& vertex)
     vertex->disconnect(shared_from_this());
 
     // self destruct
-    if (!deleting_ && can_self_destruct_) storage_->delete_face(shared_from_this());
+    if (!deleting_ && can_self_destruct_) storage_->add_face_to_be_deleted(shared_from_this());
 }
 
 void Face::disconnect(const std::shared_ptr<Edge>& edge)
@@ -441,7 +441,7 @@ void Face::disconnect(const std::shared_ptr<Edge>& edge)
     edge->disconnect(shared_from_this());
 
     // self destruct
-    if (!deleting_) storage_->delete_face(shared_from_this());
+    if (!deleting_) storage_->add_face_to_be_deleted(shared_from_this());
 }
 
 void Face::disconnect(const std::shared_ptr<Surface>& surface)
@@ -464,7 +464,7 @@ void Face::disconnect(const std::shared_ptr<Surface>& surface)
     surface->disconnect(shared_from_this());
 
     // self destruct
-    if (!deleting_ && can_self_destruct_) storage_->delete_face(shared_from_this());
+    if (!deleting_ && can_self_destruct_) storage_->add_face_to_be_deleted(shared_from_this());
 }
 
 void Face::disconnect(const std::shared_ptr<InteriorPoint>& interior_point)
@@ -486,9 +486,6 @@ void Face::disconnect(const std::shared_ptr<InteriorPoint>& interior_point)
 
     // reverse connection
     interior_point->disconnect(shared_from_this());
-
-    // self destruct
-    if (!deleting_) storage_->delete_face(shared_from_this());
 }
 
 bool Face::is_connected_to_boundary_edges(std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& all_connected_faces, std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& all_connected_edges) const

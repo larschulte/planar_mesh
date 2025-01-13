@@ -491,7 +491,7 @@ void Vertex::disconnect(const std::shared_ptr<Edge>& edge)
     check_if_update_search_tree();
 
     // check self destruct
-    if (!deleting_ && edges_.empty() && can_self_destruct_ && !connecting_to_edges_and_faces_) storage_->delete_vertex(shared_from_this());
+    if (!deleting_ && edges_.empty() && can_self_destruct_ && !connecting_to_edges_and_faces_) storage_->add_vertex_to_be_deleted(shared_from_this());
 }
 
 void Vertex::disconnect(const std::shared_ptr<Face>& face)
@@ -538,7 +538,7 @@ void Vertex::disconnect(const std::shared_ptr<Surface>& surface)
     surface->disconnect(shared_from_this());
 
     // check self destruct
-    if (!deleting_ && can_self_destruct_) storage_->delete_vertex(shared_from_this());
+    if (!deleting_ && can_self_destruct_) storage_->add_vertex_to_be_deleted(shared_from_this());
 }
 
 std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> Vertex::get_connected_boundary_edges() const
@@ -1057,7 +1057,7 @@ void Vertex::try_break_edges()
         // skip if edge is expired
         if (edge->is_expired()) continue; 
 
-        storage_->delete_edge(edge);
+        storage_->add_edge_to_be_deleted(edge);
     }
 }
 

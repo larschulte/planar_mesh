@@ -175,7 +175,7 @@ void Edge::disconnect(const std::shared_ptr<Vertex>& vertex)
     vertex->disconnect(shared_from_this());
 
     // self destruct
-    if (!deleting_ && can_self_destruct_) storage_->delete_edge(shared_from_this());
+    if (!deleting_ && can_self_destruct_) storage_->add_edge_to_be_deleted(shared_from_this());
 }
 
 void Edge::disconnect(const std::shared_ptr<Face>& face)
@@ -203,7 +203,7 @@ void Edge::disconnect(const std::shared_ptr<Face>& face)
 
     // do not self destruct when have no face
     // check self destruct
-    if (faces_.empty() && !deleting_ && can_self_destruct_) storage_->delete_edge(shared_from_this());
+    if (faces_.empty() && !deleting_ && can_self_destruct_) storage_->add_edge_to_be_deleted(shared_from_this());
 }
 
 void Edge::disconnect(const std::shared_ptr<Surface>& surface)
@@ -229,7 +229,7 @@ void Edge::disconnect(const std::shared_ptr<Surface>& surface)
     surface->disconnect(shared_from_this());
 
     // check self destruct
-    if (!deleting_ && can_self_destruct_) storage_->delete_edge(shared_from_this());
+    if (!deleting_ && can_self_destruct_) storage_->add_edge_to_be_deleted(shared_from_this());
 }
 
 void Edge::set_can_self_destruct(bool can_self_destruct)

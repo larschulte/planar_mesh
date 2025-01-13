@@ -213,7 +213,7 @@ void InteriorPoint::disconnect(const std::shared_ptr<Face>& face)
     face->disconnect(shared_from_this());
 
     // self destruct
-    if (!deleting_ && faces_.empty()) storage_->delete_interior_point(shared_from_this());
+    if (!deleting_ && faces_.empty()) storage_->add_interior_point_to_be_deleted(shared_from_this());
 }
 
 void InteriorPoint::disconnect(const std::shared_ptr<Surface>& surface)
@@ -239,7 +239,7 @@ void InteriorPoint::disconnect(const std::shared_ptr<Surface>& surface)
     surface->disconnect(shared_from_this());
 
     // self destruct
-    if (!deleting_ && can_self_destruct_) storage_->delete_interior_point(shared_from_this());
+    if (!deleting_ && can_self_destruct_) storage_->add_interior_point_to_be_deleted(shared_from_this());
 }
 
 void InteriorPoint::delete_subscribers()
