@@ -1047,17 +1047,17 @@ void Vertex::try_break_edges()
         }
     }
 
-    // // delete edges
-    // for (const std::shared_ptr<Edge>& edge : edges_to_delete)
-    // {
-    //     // skip if expired
-    //     if (is_expired()) return;
+    // delete edges
+    for (const std::shared_ptr<Edge>& edge : edges_to_delete)
+    {
+        // skip if expired
+        if (is_expired()) return;
 
-    //     // skip if edge is expired
-    //     if (edge->is_expired()) continue; 
+        // skip if edge is expired
+        if (edge->is_expired()) continue; 
 
-    //     storage_->delete_edge(edge);
-    // }
+        storage_->delete_edge(edge);
+    }
 }
 
 void Vertex::try_update_node_box()
