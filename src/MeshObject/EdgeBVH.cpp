@@ -402,18 +402,17 @@ std::vector<std::shared_ptr<Edge>> EdgeBVH::get_edge_list() const
 
 void EdgeBVH::tree_delete_edge(const std::shared_ptr<Edge>& edge)
 {
-    // check input
-    if (edge->is_expired()) throw std::runtime_error("Attempts to delete expired edge.");
+    // get node
+    std::shared_ptr<Node> node = edge->node;
+
+    // skip if edge not in tree
+    if (!node) return;
+    
+    // remove from node
+    node->node_delete_edge(edge);
 
     // decrement size
     edge_size_--;
-
-    // get node
-    std::shared_ptr<Node> node = edge->node;
-    
-    // remove from node
-    if (!node) throw std::runtime_error("Edge does not belong to any node.");
-    node->node_delete_edge(edge);
 }
 
 EdgeBVH::EdgeBVH() : edge_size_(0)
@@ -423,17 +422,20 @@ EdgeBVH::EdgeBVH() : edge_size_(0)
 
 void EdgeBVH::tree_add_edge(const std::shared_ptr<Edge>& edge)
 {
-    // check input
-    if (edge->is_expired()) throw std::runtime_error("Attempts to add expired edge.");
+    // get node
+    std::shared_ptr<Node> node = edge->node;
 
-    // increment count
-    edge_size_++;
+    // skip if edge already in tree
+    if (node) return;
 
     // find best node to add
     std::shared_ptr<Node> best_node = find_best_node(root_, edge);
 
     // add to best node
     best_node->node_add_edge(edge);
+
+    // increment count
+    edge_size_++;
 }
 
 bool EdgeBVH::tree_intersect_edge(const std::shared_ptr<Vertex>& vertex0, const std::shared_ptr<Vertex>& vertex1)

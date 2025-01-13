@@ -765,9 +765,8 @@ void Surface::connect(const std::shared_ptr<Edge>& edge)
         edges_.insert(edge);
     }
 
-    // add to searchable edge
-    add_searchable_edge(edge);
-
+    storage_->add_to_set_of_edge_to_update_edgeBVH_tree(edge, shared_from_this());
+    
     // reverse connection
     edge->connect(shared_from_this());
 }
@@ -866,7 +865,7 @@ void Surface::disconnect(const std::shared_ptr<Edge>& edge)
         edges_.erase(it);
     }
 
-    remove_searchable_edge(edge);
+    storage_->add_to_set_of_edge_to_update_edgeBVH_tree(edge, shared_from_this());
 
     // reverse disconnect
     edge->disconnect(shared_from_this());

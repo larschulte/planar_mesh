@@ -494,33 +494,35 @@ RRSTree::RRSTree() : tree_size(0), leaf_size(1)
 
 void RRSTree::tree_add_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
 {   
-    // check input
-    if (boundary_vertex->is_expired()) throw std::invalid_argument("Invalid vertex in boundary_vertex_list");
+    // get vertex's node
+    std::shared_ptr<RRSNode> node = boundary_vertex->node;
 
-    // increase size
-    tree_size++;
+    // skip if vertex already in tree
+    if (node != nullptr) return;
 
     // find best node to add
     std::shared_ptr<RRSNode> best_node = find_best_node(root, boundary_vertex);
 
     // add to best node
     best_node->node_add_vertex(boundary_vertex);
+
+    // increase size
+    tree_size++;
 }
 
 void RRSTree::tree_delete_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
 {
-    // check input
-    // if (boundary_vertex->is_expired()) throw std::invalid_argument("Invalid vertex in boundary_vertex_list");
-
-    // decrease size
-    tree_size--;
-
     // get vertex's node
     std::shared_ptr<RRSNode> node = boundary_vertex->node;
 
+    // skip if vertex not in tree
+    if (node == nullptr) return;
+
     // remove from node
-    if (node == nullptr) throw std::invalid_argument("node is null.");
     node->node_delete_vertex(boundary_vertex);
+
+    // decrease size
+    tree_size--;
 }
 
 RRSReturnType RRSTree::tree_reverse_radius_search(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Vertex>>& search_results)

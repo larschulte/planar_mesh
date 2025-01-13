@@ -198,6 +198,7 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
     // after unlocking all locks, add the point in queue to the search tree
     storage_->add_or_remove_vertices_from_rrs_tree();
     storage_->add_or_remove_faces_from_bvh_tree();
+    storage_->add_or_remove_edges_from_edgeBVH_tree();
 }
 
 template <typename PointT>

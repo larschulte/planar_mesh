@@ -27,6 +27,7 @@ Storage::Storage()
     smaller_add_searchable_vertices_queue_.resize(settings_.num_threads);
     smaller_set_of_vertices_to_update_rrs_tree.resize(settings_.num_threads);
     smaller_set_of_faces_to_update_rrs_tree.resize(settings_.num_threads);
+    smaller_set_of_edges_to_update_edgeBVH_tree.resize(settings_.num_threads);
     
     // initialize with queue or stack
     for (size_t i = 0; i < settings_.num_threads; ++i)
@@ -800,36 +801,25 @@ void Storage::add_or_remove_vertices_from_rrs_tree()
 {
     for (const std::shared_ptr<Vertex>& vertex : smaller_set_of_vertices_to_update_rrs_tree[omp_get_thread_num()])
     {
-        // this should allow vertex to be expired. since when deleting vertex, it will become expired.
-        // // skip if vertex is expired, but really we should reduce the number of expired vertex in the set
-        // if (vertex->is_expired()) continue;
-
-        // read lock for the vertex
-        std::shared_lock<std::shared_mutex> lock(vertex->rwlock_lifecycle_);
-
-        // check if vertex needs to be added or removed or unchanged from rrs_tree
-        if (vertex->is_expired())
+        // at this point in time, is the vertex expired?
+        bool is_expired;
         {
-            if (vertex->is_searchable())
-            {
-                rrs_tree_.tree_delete_vertex(vertex);
-            }
-            else
-            {
-                // do nothing
-            }
+            // read lock the vertex
+            std::shared_lock<std::shared_mutex> lock(vertex->rwlock_lifecycle_);
+
+            // check if vertex is expired
+            is_expired = vertex->is_expired();
         }
+
+        // if expired, remove from tree
+        if (is_expired)
+        {
+            rrs_tree_.tree_delete_vertex(vertex);
+        }
+        // if not expired, remove from tree
         else
         {
-            if (vertex->is_boundary() && !vertex->is_searchable())
-            {
-                rrs_tree_.tree_add_vertex(vertex);
-            }
-
-            if (!vertex->is_boundary() && vertex->is_searchable())
-            {
-                rrs_tree_.tree_delete_vertex(vertex);
-            }
+            rrs_tree_.tree_add_vertex(vertex);
         }
     }
 
@@ -841,33 +831,25 @@ void Storage::add_or_remove_faces_from_bvh_tree()
 {
     for (const std::shared_ptr<Face>& face : smaller_set_of_faces_to_update_rrs_tree[omp_get_thread_num()])
     {
-        // this should allow face to be expired. since when deleting face, it will become expired.
-        // // skip if face is expired, but really there should not have been any expired face in the set
-        // if (face->is_expired()) continue;
-
-        // read lock for the face
-        std::shared_lock<std::shared_mutex> lock(face->rwlock_lifecycle_);
-
-        if (face->is_expired())
+        // at this point in time, is the face expired?
+        bool is_expired;
         {
-            if (face->is_searchable())
-            {
-                // remove from rrs_tree
-                triangle_bvh_.tree_delete_face(face);
-            }
-            else
-            {
-                // do nothing
-            }
+            // read lock the face
+            std::shared_lock<std::shared_mutex> lock(face->rwlock_lifecycle_);
+
+            // check if face is expired
+            is_expired = face->is_expired();
         }
+
+        // if expired, remove from tree
+        if (is_expired)
+        {
+            triangle_bvh_.tree_delete_face(face);
+        }
+        // if not expired, remove from tree
         else
         {
-            // face should always be searchable
-            if (!face->is_searchable())
-            {
-                // add to rrs_tree
-                triangle_bvh_.tree_add_face(face);
-            }
+            triangle_bvh_.tree_add_face(face);
         }
     }
 
@@ -875,6 +857,35 @@ void Storage::add_or_remove_faces_from_bvh_tree()
     smaller_set_of_faces_to_update_rrs_tree[omp_get_thread_num()].clear();
 }
 
+void Storage::add_or_remove_edges_from_edgeBVH_tree()
+{
+    for (const std::pair<std::shared_ptr<Edge>, std::shared_ptr<Surface>>& edge_surface_pair : smaller_set_of_edges_to_update_edgeBVH_tree[omp_get_thread_num()])
+    {
+        // at this point in time, is the edge expired?
+        bool is_expired;
+        {
+            // read lock the edge
+            std::shared_lock<std::shared_mutex> lock(edge_surface_pair.first->rwlock_lifecycle_);
+
+            // check if edge is expired
+            is_expired = edge_surface_pair.first->is_expired();
+        }
+
+        // if expired, remove from tree
+        if (is_expired)
+        {
+            edge_surface_pair.second->remove_searchable_edge(edge_surface_pair.first);
+        }
+        // if not expired, remove from tree
+        else
+        {
+            edge_surface_pair.second->add_searchable_edge(edge_surface_pair.first);
+        }
+    }
+
+    // clear
+    smaller_set_of_edges_to_update_edgeBVH_tree[omp_get_thread_num()].clear();
+}
 
 void Storage::remove_searchable_vertex(const std::shared_ptr<Vertex>& vertex)
 {
@@ -892,6 +903,12 @@ void Storage::add_to_set_of_faces_to_update_bvh_tree(const std::shared_ptr<Face>
 {
     // add to affected vertices set
     smaller_set_of_faces_to_update_rrs_tree[omp_get_thread_num()].insert(face);
+}
+
+void Storage::add_to_set_of_edge_to_update_edgeBVH_tree(const std::shared_ptr<Edge>& edge, const std::shared_ptr<Surface>& surface)
+{
+    // add to affected vertices set
+    smaller_set_of_edges_to_update_edgeBVH_tree[omp_get_thread_num()].emplace_back(edge, surface);
 }
 
 void Storage::add_searchable_face(const std::shared_ptr<Face>& face)

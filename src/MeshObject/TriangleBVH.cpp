@@ -513,19 +513,18 @@ std::vector<std::shared_ptr<Face>> TriangleBVH::get_face_list() const
 }
 
 void TriangleBVH::tree_delete_face(std::shared_ptr<Face> face)
-{
-    // check input
-    // if (face->is_expired()) throw std::runtime_error("Attempts to delete expired face.");
-
-    // decrement face size
-    face_size--;
-    
+{    
     // get face's node reference
     std::shared_ptr<Node> node = face->node;
 
-    // remove from node
-    if (node == nullptr) throw std::invalid_argument("Vertex not found in BVH.");
+    // skip if face not in tree
+    if (node == nullptr) return; 
+
+    // delete face from node
     node->node_delete_face(face);
+
+    // decrement face size
+    face_size--;
 }
 
 TriangleBVH::TriangleBVH() :
@@ -537,17 +536,20 @@ TriangleBVH::TriangleBVH() :
 
 void TriangleBVH::tree_add_face(std::shared_ptr<Face> face)
 {
-    // check input
-    if (face->is_expired()) throw std::runtime_error("Attempts to add expired face.");
+    // get face's node reference
+    std::shared_ptr<Node> node = face->node;
 
-    // increment face size
-    face_size++;
+    // skip if face already in tree
+    if (node != nullptr) return;
 
     // find best node to add
     std::shared_ptr<Node> best_node = find_best_node(root, face);
 
     // add to best node
     best_node->node_add_face(face);
+
+    // increment face size
+    face_size++;
 }
 
 BVHReturnType TriangleBVH::tree_intersection_search(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Face>>& faces_intersected) const
