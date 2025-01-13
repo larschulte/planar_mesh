@@ -73,7 +73,6 @@ public:
     const Eigen::Vector3d& get_normal() const;
     std::size_t get_total_point_size() const;
     double get_average_distance_travelled() const;
-    double get_smallest_distance_travelled() const;
     const std::tuple<int, int, int>& get_color() const;
     const std::vector<double>& get_point_to_plane_distance_stats();
     const std::vector<double>& get_projective_distance_stats();
@@ -151,7 +150,6 @@ private:
     double characteristic_length_;
     double normal_uncertainty_ = 0;
     double sum_of_average_distance_travelled_;
-    double smallest_distance_travelled_ = std::numeric_limits<double>::max();
 
     std::vector<double> stored_projective_distance_stats_;
     std::vector<double> stored_point_to_plane_distance_stats_;

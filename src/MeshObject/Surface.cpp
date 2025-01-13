@@ -180,8 +180,8 @@ RelativePosition Surface::check_relative_position(double distance_travelled, con
         double odometry_angular_uncertainty_rate = settings_.odometry_angular_uncertainty_rate;
         double epsilon = 1e-6;
         // - uncertainties
-        double odometry_position_uncertainty = std::abs(distance_travelled - get_smallest_distance_travelled()) * odometry_position_uncertainty_rate;
-        double odometry_angular_uncertainty = std::abs(distance_travelled - get_smallest_distance_travelled()) * odometry_angular_uncertainty_rate / 180.0 * M_PI;
+        double odometry_position_uncertainty = std::abs(distance_travelled - get_average_distance_travelled()) * odometry_position_uncertainty_rate;
+        double odometry_angular_uncertainty = std::abs(distance_travelled - get_average_distance_travelled()) * odometry_angular_uncertainty_rate / 180.0 * M_PI;
         double normal_angular_uncertainty = normal_uncertainty_;
         double plane_position_uncertainty = get_surface_position_std_in_normal_direction();
         // - computation
@@ -429,11 +429,6 @@ std::size_t Surface::get_total_point_size() const
 double Surface::get_average_distance_travelled() const
 {
     return sum_of_average_distance_travelled_ / get_total_point_size();
-}
-
-double Surface::get_smallest_distance_travelled() const
-{
-    return smallest_distance_travelled_;
 }
 
 const std::tuple<int, int, int>& Surface::get_color() const
@@ -1069,7 +1064,6 @@ void Surface::add_point_to_surface_fitting(const Eigen::Vector3d& position, cons
     normal_ = new_normal;
 
     sum_of_average_distance_travelled_ += distance_travelled;
-    if (distance_travelled < smallest_distance_travelled_) smallest_distance_travelled_ = distance_travelled;
 
     // store characteristic length
     characteristic_length_ = std::max(characteristic_length_, (position -  mean_).norm());
@@ -1135,18 +1129,6 @@ void Surface::remove_point_from_surface_fitting(const Eigen::Vector3d& position,
     normal_ = normal1;
 
     sum_of_average_distance_travelled_ -= distance_travelled;
-    if (distance_travelled == smallest_distance_travelled_)
-    {
-        smallest_distance_travelled_ = std::numeric_limits<double>::max();
-        for (const auto& vertex : vertices_)
-        {
-            if (vertex->get_distance_travelled() < smallest_distance_travelled_) smallest_distance_travelled_ = vertex->get_distance_travelled();
-        }
-        for (const auto& interior_point : interior_points_)
-        {
-            if (interior_point->get_distance_travelled() < smallest_distance_travelled_) smallest_distance_travelled_ = interior_point->get_distance_travelled();
-        }
-    }
 
     // update approximate uncertainty envelope
     // if approximate normal is the same as last time, incrementally update the uncertianty envelope
