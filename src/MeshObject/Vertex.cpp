@@ -513,10 +513,6 @@ void Vertex::disconnect(const std::shared_ptr<Face>& face)
 
     // reverse disconnect
     face->disconnect(shared_from_this());
-
-    // do not self destruct when have no face
-    // check self destruct
-    if (!deleting_ && faces_.empty() && can_self_destruct_ && !connecting_to_edges_and_faces_) storage_->delete_vertex(shared_from_this());
 }
 
 void Vertex::disconnect(const std::shared_ptr<Surface>& surface)
