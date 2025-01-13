@@ -303,8 +303,8 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
     // 1. surfaces_bvh_within
     if (surfaces_bvh_within.size() > 0)
     {
-        // create vector of surface
-        std::vector<std::shared_ptr<Surface>> surfaces_bvh_within_sorted;
+        // create vector of surface paired with size
+        std::vector<std::pair<std::shared_ptr<Surface>, double>> surfaces_bvh_within_sorted;
         for (const std::shared_ptr<Surface>& surface : surfaces_bvh_within)
         {
             // read lock
@@ -317,29 +317,29 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
             if (surface->is_expired()) continue;
 
             // add to list
-            surfaces_bvh_within_sorted.push_back(surface);
+            surfaces_bvh_within_sorted.emplace_back(surface, surface->get_total_point_size());
         }
 
         // sort by surface size
         std::sort(surfaces_bvh_within_sorted.begin(), surfaces_bvh_within_sorted.end(), 
-            [](const std::shared_ptr<Surface>& a, const std::shared_ptr<Surface>& b) 
+            [](const std::pair<std::shared_ptr<Surface>, double>& a, const std::pair<std::shared_ptr<Surface>, double>& b) 
             {
-                // skip if the surface is expired
-                if (a->is_expired() || b->is_expired()) return false;
-
-                // sort by surface size 
-                return a->get_total_point_size() > b->get_total_point_size(); 
+                // sort by surface size
+                return a.second > b.second; 
             });
 
         // add to list
-        list_of_surfaces_to_add_to.insert(list_of_surfaces_to_add_to.end(), surfaces_bvh_within_sorted.begin(), surfaces_bvh_within_sorted.end());
+        for (const std::pair<std::shared_ptr<Surface>, double>& surface : surfaces_bvh_within_sorted)
+        {
+            list_of_surfaces_to_add_to.push_back(surface.first);
+        }
     }
 
     // 2. surfaces_rrs_within
     if (surfaces_rrs_within.size() > 0)
     {
-        // create vector of surface
-        std::vector<std::shared_ptr<Surface>> surfaces_rrs_within_sorted;
+        // create vector of surface paired with size
+        std::vector<std::pair<std::shared_ptr<Surface>, double>> surfaces_rrs_within_sorted;
         for (const std::shared_ptr<Surface>& surface : surfaces_rrs_within)
         {
             // read lock
@@ -352,22 +352,22 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
             if (surface->is_expired()) continue;
 
             // add to list
-            surfaces_rrs_within_sorted.push_back(surface);
+            surfaces_rrs_within_sorted.emplace_back(surface, surface->get_total_point_size());
         }
 
         // sort by surface size
         std::sort(surfaces_rrs_within_sorted.begin(), surfaces_rrs_within_sorted.end(), 
-            [](const std::shared_ptr<Surface>& a, const std::shared_ptr<Surface>& b) 
+            [](const std::pair<std::shared_ptr<Surface>, double>& a, const std::pair<std::shared_ptr<Surface>, double>& b)
             { 
-                // skip if the surface is expired
-                if (a->is_expired() || b->is_expired()) return false;
-
                 // sort by surface size
-                return a->get_total_point_size() > b->get_total_point_size(); 
+                return a.second > b.second;
             });
 
         // add to list
-        list_of_surfaces_to_add_to.insert(list_of_surfaces_to_add_to.end(), surfaces_rrs_within_sorted.begin(), surfaces_rrs_within_sorted.end());
+        for (const std::pair<std::shared_ptr<Surface>, double>& surface : surfaces_rrs_within_sorted)
+        {
+            list_of_surfaces_to_add_to.push_back(surface.first);
+        }
     }
 
     // 3. surfaces_rrs_seed
