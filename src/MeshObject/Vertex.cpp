@@ -996,38 +996,6 @@ double Vertex::compute_radius()
     std::shared_lock<std::shared_mutex> lock_vertex_point_distance_publishers(rwlock_vertex_point_distance_publishers_);
     std::shared_lock<std::shared_mutex> lock_interior_point_distance_publishers(rwlock_interior_point_distance_publishers_);
 
-    // remove expired entries
-    for (auto it = vertex_point_distance_publishers_.begin(); it != vertex_point_distance_publishers_.end();)
-    {
-        // read lock
-        std::shared_lock<std::shared_mutex> lock(it->first->rwlock_lifecycle_);
-
-        if (it->first->is_expired())
-        {
-            it = vertex_point_distance_publishers_.erase(it);
-        }
-        else
-        {
-            ++it;
-        }
-    }
-
-    // remove expired entries
-    for (auto it = interior_point_distance_publishers_.begin(); it != interior_point_distance_publishers_.end();)
-    {
-        // read lock
-        std::shared_lock<std::shared_mutex> lock(it->first->rwlock_lifecycle_);
-
-        if (it->first->is_expired())
-        {
-            it = interior_point_distance_publishers_.erase(it);
-        }
-        else
-        {
-            ++it;
-        }
-    }
-
     // reduce value
     for (const auto& [neighboring_vertex, distance] : vertex_point_distance_publishers_)
     {
