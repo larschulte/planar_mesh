@@ -221,12 +221,19 @@ double& Vertex::get_projected_uncertainty()
     return projected_uncertainty_;
 }
 
-const std::shared_ptr<Edge>& Vertex::get_edge(const std::shared_ptr<Vertex>& vertex) const
+std::shared_ptr<Edge> Vertex::get_edge(const std::shared_ptr<Vertex>& vertex) const
 {
-    // read lock
-    std::shared_lock<std::shared_mutex> lock(rwlock_edges_);
+    // copy edge list
+    std::vector<std::shared_ptr<Edge>> edges;
+    {
+        // read lock
+        std::shared_lock<std::shared_mutex> lock(rwlock_edges_);
 
-    for (const std::shared_ptr<Edge>& edge : edges_)
+        // copy
+        edges = edges_;
+    }
+    
+    for (const std::shared_ptr<Edge>& edge : edges)
     {
         // read lock
         std::shared_lock<std::shared_mutex> lock(edge->rwlock_lifecycle_);
@@ -332,12 +339,25 @@ const Eigen::Vector2d& Vertex::get_surface_coordinate()
 
 std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> Vertex::compute_connected_vertices()
 {
+    // make copy of edges
+    std::vector<std::shared_ptr<Edge>> edges;
+    {
+        // read lock
+        std::shared_lock<std::shared_mutex> lock(rwlock_edges_);
+
+        // copy
+        edges = edges_;
+    }
+
     // iterate through all edges and get connected vertices
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> connected_vertices;
-    for (const std::shared_ptr<Edge>& edge : edges_)
+    for (const std::shared_ptr<Edge>& edge : edges)
     {
+        // read lock
+        std::shared_lock<std::shared_mutex> lock(edge->rwlock_lifecycle_);
+
         // skip if edge is deleting
-        if (edge->is_deleting()) continue;
+        if (edge->is_expired()) continue;
         
         connected_vertices.insert(edge->get_vertex(0));
         connected_vertices.insert(edge->get_vertex(1));
@@ -576,11 +596,18 @@ std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> Vertex::get_connecte
 
 bool Vertex::check_connected_by_edge(const std::shared_ptr<Vertex>& vertex)
 {
-    // read lock
-    std::shared_lock<std::shared_mutex> lock(rwlock_edges_);
+    // make copy of edges 
+    std::vector<std::shared_ptr<Edge>> edges;
+    {
+        // read lock
+        std::shared_lock<std::shared_mutex> lock(rwlock_edges_);
+
+        // copy
+        edges = edges_;
+    }
 
     // check if connected by edge
-    for (const auto& edge : edges_)
+    for (const auto& edge : edges)
     {
         // read lock
         std::shared_lock<std::shared_mutex> lock(edge->rwlock_lifecycle_);

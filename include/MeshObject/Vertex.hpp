@@ -61,7 +61,7 @@ public:
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> get_vertex_ray_publishers() const;
     std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> get_interior_ray_publishers() const;
 
-    const std::shared_ptr<Edge>& get_edge(const std::shared_ptr<Vertex>& vertex) const;
+    std::shared_ptr<Edge> get_edge(const std::shared_ptr<Vertex>& vertex) const;
 
     // void try_merge_surfaces();
 
