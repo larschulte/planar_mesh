@@ -795,14 +795,28 @@ bool Vertex::is_non_manifold() const
 void Vertex::delete_publishers()
 {
     // vertex point publisher
-    std::vector<std::pair<std::shared_ptr<Vertex>, double>> vertex_point_distance_publishers_copy = vertex_point_distance_publishers_;
+    std::vector<std::pair<std::shared_ptr<Vertex>, double>> vertex_point_distance_publishers_copy;
+    {
+        // lock
+        std::shared_lock<std::shared_mutex> lock(rwlock_vertex_point_distance_publishers_);
+
+        // copy
+        vertex_point_distance_publishers_copy = vertex_point_distance_publishers_;
+    }
     for (const auto& [vertex_point_publisher, distance] : vertex_point_distance_publishers_copy)
     {
         delete_vertex_point_distance_publisher(vertex_point_publisher);
     }
 
     // interior point publisher
-    std::vector<std::pair<std::shared_ptr<InteriorPoint>, double>> interior_point_distance_publishers_copy = interior_point_distance_publishers_;
+    std::vector<std::pair<std::shared_ptr<InteriorPoint>, double>> interior_point_distance_publishers_copy;
+    {
+        // lock
+        std::shared_lock<std::shared_mutex> lock(rwlock_interior_point_distance_publishers_);
+
+        // copy
+        interior_point_distance_publishers_copy = interior_point_distance_publishers_;
+    }
     for (const auto& [interior_point_publisher, distance] : interior_point_distance_publishers_copy)
     {
         delete_interior_point_distance_publisher(interior_point_publisher);
@@ -811,8 +825,16 @@ void Vertex::delete_publishers()
 
 void Vertex::delete_subscribers()
 {
-    // vertex point subscribers
-    std::vector<std::shared_ptr<Vertex>> vertex_point_distance_subscribers_copy = vertex_point_distance_subscribers_;
+    // make copy of vertex point subscribers
+    std::vector<std::shared_ptr<Vertex>> vertex_point_distance_subscribers_copy;
+    {
+        // lock
+        std::shared_lock<std::shared_mutex> lock(rwlock_vertex_point_distance_subscribers_);
+
+        // copy
+        vertex_point_distance_subscribers_copy = vertex_point_distance_subscribers_;
+    }
+
     for (const auto& vertex_point_subscriber : vertex_point_distance_subscribers_copy)
     {
         // delete

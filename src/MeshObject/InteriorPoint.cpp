@@ -245,7 +245,15 @@ void InteriorPoint::disconnect(const std::shared_ptr<Surface>& surface)
 void InteriorPoint::delete_subscribers()
 {
     // interior point subscribers
-    std::vector<std::shared_ptr<Vertex>> interior_point_distance_subscribers_copy = interior_point_distance_subscribers_;
+    std::vector<std::shared_ptr<Vertex>> interior_point_distance_subscribers_copy;
+    {
+        // lock
+        std::shared_lock<std::shared_mutex> lock(rwlock_interior_point_distance_subscribers_);
+
+        // copy
+        interior_point_distance_subscribers_copy = interior_point_distance_subscribers_;
+    }
+    
     for (const auto& interior_point_subscriber : interior_point_distance_subscribers_copy)
     {
         // delete
