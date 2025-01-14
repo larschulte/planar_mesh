@@ -31,7 +31,7 @@ RRSBoundingBox& RRSBoundingBox::operator=(const RRSBoundingBox& other)
         Eigen::Vector3d other_min, other_max, other_min_used, other_max_used;
         double other_surface_area;
         {
-            std::shared_lock lock_other(other.mutex_); // Lock the other box
+            // std::shared_lock lock_other(other.mutex_); // Lock the other box
             other_min = other.min;
             other_max = other.max;
             other_min_used = other.min_used_for_surface_area;
@@ -41,7 +41,7 @@ RRSBoundingBox& RRSBoundingBox::operator=(const RRSBoundingBox& other)
 
         // Step 2: Lock the current box and store the copied data
         {
-            std::unique_lock lock_this(mutex_); // Lock this box
+            // std::unique_lock lock_this(mutex_); // Lock this box
             min = other_min;
             max = other_max;
             min_used_for_surface_area = other_min_used;
@@ -54,7 +54,7 @@ RRSBoundingBox& RRSBoundingBox::operator=(const RRSBoundingBox& other)
 
 RRSBoundingBox::RRSBoundingBox(const RRSBoundingBox& other)
 {
-    std::shared_lock lock(other.mutex_); // Acquire shared (read) lock
+    // std::shared_lock lock(other.mutex_); // Acquire shared (read) lock
 
     min = other.min;
     max = other.max;
@@ -71,7 +71,7 @@ RRSBoundingBox::RRSBoundingBox(const Eigen::Vector3d& min, const Eigen::Vector3d
 
 bool RRSBoundingBox::expand(const Eigen::Vector3d& point)
 {
-    std::unique_lock lock(mutex_); // Acquire unique (write) lock
+    // std::unique_lock lock(mutex_); // Acquire unique (write) lock
 
     Eigen::Vector3d oldMin = min;
     Eigen::Vector3d oldMax = max;
@@ -88,7 +88,7 @@ bool RRSBoundingBox::expand(const Eigen::Vector3d& point)
 
 void RRSBoundingBox::expand_box_no_return(const Eigen::Vector3d& input_min, const Eigen::Vector3d& input_max)
 {
-    std::unique_lock lock(mutex_); // Acquire unique (write) lock
+    // std::unique_lock lock(mutex_); // Acquire unique (write) lock
 
     // Component-wise min and max without calling Eigen's functions
     if (input_min[0] < min[0]) min[0] = input_min[0];
@@ -102,7 +102,7 @@ void RRSBoundingBox::expand_box_no_return(const Eigen::Vector3d& input_min, cons
 
 void RRSBoundingBox::expand_box_no_return(const RRSBoundingBox& box)
 {
-    std::shared_lock lock(box.mutex_); // Acquire shared (read) lock
+    // std::shared_lock lock(box.mutex_); // Acquire shared (read) lock
     expand_box_no_return(box.min, box.max);
 }
 
@@ -123,13 +123,13 @@ bool RRSBoundingBox::expand_box(const Eigen::Vector3d& input_min, const Eigen::V
 
 bool RRSBoundingBox::expand_box(const RRSBoundingBox& box)
 {
-    std::shared_lock lock(box.mutex_); // Acquire shared (read) lock
+    // std::shared_lock lock(box.mutex_); // Acquire shared (read) lock
     return expand_box(box.min, box.max);
 } 
 
 bool RRSBoundingBox::contains(const Eigen::Vector3d& point)
 {
-    std::shared_lock lock(mutex_); // Acquire shared (read) lock
+    // std::shared_lock lock(mutex_); // Acquire shared (read) lock
 
     return (point[0] >= min[0] && point[0] <= max[0] &&
             point[1] >= min[1] && point[1] <= max[1] &&
@@ -138,7 +138,7 @@ bool RRSBoundingBox::contains(const Eigen::Vector3d& point)
 
 int RRSBoundingBox::get_longest_axis()
 {
-    std::shared_lock lock(mutex_); // Acquire shared (read) lock
+    // std::shared_lock lock(mutex_); // Acquire shared (read) lock
 
     Eigen::Vector3d diagonal_line = max - min;
     int axis = 0;
@@ -149,7 +149,7 @@ int RRSBoundingBox::get_longest_axis()
 
 double RRSBoundingBox::get_surface_area()
 {
-    std::unique_lock lock(mutex_); // Lock for read/write
+    // std::unique_lock lock(mutex_); // Lock for read/write
 
     if (min != min_used_for_surface_area || max != max_used_for_surface_area) 
     {

@@ -22,8 +22,8 @@ class GenericPoint;
 
 struct RRSBoundingBox 
 {
-    // include a read write lock
-    mutable std::shared_mutex mutex_; // Read-write lock
+    // // include a read write lock
+    // mutable std::shared_mutex mutex_; // Read-write lock
 
     // copy assigmnet operator
     RRSBoundingBox& operator=(const RRSBoundingBox& other);
