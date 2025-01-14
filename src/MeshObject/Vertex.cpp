@@ -663,18 +663,6 @@ bool Vertex::check_connected_by_face(const std::shared_ptr<Vertex>& vertex0, con
 
 bool Vertex::try_close_holes_repeatedly()
 {
-    // i need to lock all connected vertices and edges to prevent them from being deleted while i am trying to close holes
-    std::vector<std::shared_lock<std::shared_mutex>> connected_vertices_locks;
-    std::vector<std::shared_lock<std::shared_mutex>> connected_edges_locks;
-    for (const auto& vertex : compute_connected_vertices())
-    {
-        connected_vertices_locks.push_back(std::shared_lock<std::shared_mutex>(vertex->rwlock_lifecycle_));
-    }
-    for (const auto& edge : get_edges())
-    {
-        connected_edges_locks.push_back(std::shared_lock<std::shared_mutex>(edge->rwlock_lifecycle_));
-    }
-
     // initialize
     bool changed = false;
 
@@ -688,74 +676,134 @@ bool Vertex::try_close_holes_repeatedly()
     return changed;
 }
 
-bool Vertex::try_close_holes_between_self_and(std::shared_ptr<Vertex>& vertex0, std::shared_ptr<Vertex>& vertex1) 
+bool Vertex::try_close_holes_between_self_and(std::shared_ptr<Vertex>& vertex0, std::shared_ptr<Vertex>& vertex1, std::shared_ptr<Edge>& edge0, std::shared_ptr<Edge>& edge1)
 {
-    // initialize flag
-    bool changed = false;
+    // read lock
+    std::shared_lock<std::shared_mutex> vertex0_lock(vertex0->rwlock_lifecycle_, std::defer_lock);
+    std::shared_lock<std::shared_mutex> vertex1_lock(vertex1->rwlock_lifecycle_, std::defer_lock);
+    std::lock(vertex0_lock, vertex1_lock);
+
+    // skip if expired
+    if (vertex0->is_expired() || vertex1->is_expired()) return false;
+
+    // try lock the edge connecting the two vertices
+    std::shared_lock<std::shared_mutex> edge0_lock(edge0->rwlock_lifecycle_, std::defer_lock);
+    std::shared_lock<std::shared_mutex> edge1_lock(edge1->rwlock_lifecycle_, std::defer_lock);
+    std::lock(edge0_lock, edge1_lock);
+
+    // skip if expired
+    if (edge0->is_expired() || edge1->is_expired()) return false;
+    
 
     // skip if edge is not short enough
     const double edge_length = (vertex0->get_position() - vertex1->get_position()).norm();
     const double radius0 = vertex0->get_radius();
     const double radius1 = vertex1->get_radius();
-    if (!settings_.edge_is_short_enough(edge_length, radius0, radius1)) return changed;
+    if (!settings_.edge_is_short_enough(edge_length, radius0, radius1)) return false;
 
     // skip if edge intersects
-    if (get_surface()->tree_intersect_edge(vertex0, vertex1)) return changed;
+    if (get_surface()->tree_intersect_edge(vertex0, vertex1)) return false;
 
-    // read lock on the inter edge
-    std::shared_lock<std::shared_mutex> lock;
+    // get inter edge and its lock
+    std::shared_ptr<Edge> inter_edge = nullptr;
+    std::shared_lock<std::shared_mutex> inter_edge_lock;
 
-    // create edge if edge does not exist
-    const bool edge_exist = vertex0->check_connected_by_edge(vertex1);
-    if (!edge_exist)
+    // make copy of edges 
+    std::vector<std::shared_ptr<Edge>> vertex_0_edges = vertex0->get_edges();
+
+    // get inter edge if exists
+    for (const auto& vertex_0_edge : vertex_0_edges)
+    {
+        // read lock
+        inter_edge_lock = std::shared_lock<std::shared_mutex>(vertex_0_edge->rwlock_lifecycle_);
+
+        // skip if expired
+        if (vertex_0_edge->is_expired()) continue;
+
+        std::shared_ptr<Vertex> vertex_0_edge_vertex0 = vertex_0_edge->get_vertex(0);
+        std::shared_ptr<Vertex> vertex_0_edge_vertex1 = vertex_0_edge->get_vertex(1);
+
+        // skip if nullptr
+        if (!vertex_0_edge_vertex0 || !vertex_0_edge_vertex1) continue;
+
+        // skip if none is vertex1
+        if (vertex_0_edge_vertex0 != vertex1 && vertex_0_edge_vertex1 != vertex1) continue;
+
+        // get inter edge
+        inter_edge = vertex_0_edge;
+    }
+
+    if (!inter_edge)
     {
         // create edge
-        std::shared_ptr<Edge> new_edge = storage_->add_edge(vertex0, vertex1);
+        inter_edge = storage_->add_edge(vertex0, vertex1);
 
         // read lock on the inter edge
-        lock = std::shared_lock<std::shared_mutex>(new_edge->rwlock_lifecycle_);
+        inter_edge_lock = std::shared_lock<std::shared_mutex>(inter_edge->rwlock_lifecycle_);
+
+        // skip if inter_edge is expired
+        if (inter_edge->is_expired()) return false;
 
         // connect
-        get_surface()->connect(new_edge);
-
-        // update flag
-        changed = true;
+        get_surface()->connect(inter_edge);
     }
-    else
+
+    // skip if inter_edge is not boundary
+    if (!inter_edge->is_boundary()) return false;
+
+    // make copy of faces
+    std::vector<std::shared_ptr<Face>> faces;
     {
-        // read lock on the inter edge
-        lock = std::shared_lock<std::shared_mutex>(vertex0->get_edge(vertex1)->rwlock_lifecycle_);
+        // read lock
+        std::shared_lock<std::shared_mutex> lock(rwlock_faces_);
+
+        // copy
+        faces = faces_;
     }
 
-    // skip if edge between 0 and 1 is not boundary
-    if (!vertex0->get_edge(vertex1)->is_boundary()) return changed;
-
-    // create face if face does not exist
-    const bool face_exist = check_connected_by_face(vertex0, vertex1);
-    if (!face_exist)
+    // skip if face already exists
+    for (const auto& face : faces)
     {
-        // create face
-        std::shared_ptr<Face> new_face = storage_->add_face(get_surface(), shared_from_this(), vertex0, vertex1);
-        get_surface()->connect(new_face);
+        // read lock face
+        std::shared_lock<std::shared_mutex> lock(face->rwlock_lifecycle_);
 
-        // un-add the face if face is non-manifold
-        if (new_face->is_non_manifold())
-        {
-            // un-add face
-            new_face->un_add_face();
-
-            // update flag
-            changed = false;
-        }
-        else
-        {
-            // update flag
-            changed = true;
-        }
+        // skip if exists
+        if (face->has_vertex(vertex0) && face->has_vertex(vertex1)) return false;
     }
+
+    // skip if inter_edge is expired
+    inter_edge_lock = std::shared_lock<std::shared_mutex>(inter_edge->rwlock_lifecycle_);
+    if (inter_edge->is_expired()) return false;
+    
+    // create face
+    std::shared_ptr<Face> new_face = storage_->add_face(get_surface(), shared_from_this(), vertex0, vertex1, edge0, edge1, inter_edge);
+
+    // read lock face
+    std::shared_lock<std::shared_mutex> lock(new_face->rwlock_lifecycle_);
+
+    // skip if expired
+    if (new_face->is_expired()) return false;
+
+    // connect
+    get_surface()->connect(new_face);
+
+    // // un-add the face if face is non-manifold
+    // if (new_face->is_non_manifold())
+    // {
+    //     // un-add face
+    //     new_face->un_add_face();
+
+    //     // update flag
+    //     changed = false;
+    // }
+    // else
+    // {
+    //     // update flag
+    //     changed = true;
+    // }
 
     // return changed
-    return changed;
+    return true;
 }
 
 bool Vertex::try_close_holes()
@@ -769,8 +817,64 @@ bool Vertex::try_close_holes()
     {
         repeat_loop = false;
 
-        // get connected boundary vertices
-        std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> connected_boundary_vertices = get_connected_boundary_vertices();
+        // copy edges
+        std::vector<std::shared_ptr<Edge>> edges;
+        {
+            // read lock
+            std::shared_lock<std::shared_mutex> lock(rwlock_edges_);
+
+            // copy
+            edges = edges_;
+        }
+
+        // get boundary edges
+        std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> connected_boundary_edges;
+        for (const auto& edge : edges)
+        {
+            // read lock
+            std::shared_lock<std::shared_mutex> lock(edge->rwlock_lifecycle_);
+
+            // skip if expired
+            if (edge->is_expired()) continue;
+
+            // skip if not boundary
+            if (!edge->is_boundary()) continue;
+
+            // add to list
+            connected_boundary_edges.insert(edge);
+        }
+
+        // get boundary vertices
+        std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> connected_boundary_vertices;
+        // boundary vertices to edge map
+        std::unordered_map<std::shared_ptr<Vertex>, std::shared_ptr<Edge>, MeshObjectHash> boundary_vertices_to_edge_map;
+        for (const auto& edge : connected_boundary_edges)
+        {
+            // read lock
+            std::shared_lock<std::shared_mutex> lock(edge->rwlock_lifecycle_);
+
+            // skip if expired
+            if (edge->is_expired()) continue;
+
+            // vertex 
+            std::shared_ptr<Vertex> vertex0 = edge->get_vertex(0);
+            std::shared_ptr<Vertex> vertex1 = edge->get_vertex(1);
+
+            // skip if nullptr
+            if (!vertex0 || !vertex1) continue;
+
+            if (vertex0 != shared_from_this())
+            {
+                connected_boundary_vertices.insert(vertex0);
+                boundary_vertices_to_edge_map[vertex0] = edge;
+            }
+            
+            if (vertex1 != shared_from_this())
+            {
+                connected_boundary_vertices.insert(vertex1);
+                boundary_vertices_to_edge_map[vertex1] = edge;
+            }
+        }
 
         // skip if less than two connected boundary vertex (this includes when the vertex itself is not boundary)
         if (connected_boundary_vertices.size() < 2)
@@ -782,6 +886,12 @@ bool Vertex::try_close_holes()
         std::vector<std::pair<std::shared_ptr<Vertex>, double>> connected_boundary_vertices_with_angle;
         for (const auto& vertex : connected_boundary_vertices)
         {
+            // read lock
+            std::shared_lock<std::shared_mutex> lock(vertex->rwlock_lifecycle_);
+
+            // skip if expired
+            if (vertex->is_expired()) continue;
+
             // use projected position
             Eigen::Vector2d direction = vertex->get_surface_coordinate() - get_surface_coordinate();
             double angle = std::atan2(direction.y(), direction.x());
@@ -791,7 +901,11 @@ bool Vertex::try_close_holes()
         }
 
         // sort by angle
-        std::sort(connected_boundary_vertices_with_angle.begin(), connected_boundary_vertices_with_angle.end(), [](const std::pair<std::shared_ptr<Vertex>, double>& a, const std::pair<std::shared_ptr<Vertex>, double>& b) { return a.second < b.second; });
+        std::sort(connected_boundary_vertices_with_angle.begin(), connected_boundary_vertices_with_angle.end(), 
+            [](const std::pair<std::shared_ptr<Vertex>, double>& a, const std::pair<std::shared_ptr<Vertex>, double>& b) 
+            { 
+                return a.second < b.second; 
+            });
 
         // create pairs of connected boundary vertices
         std::vector<std::pair<std::shared_ptr<Vertex>, std::shared_ptr<Vertex>>> connected_boundary_vertex_pairs;
@@ -803,7 +917,7 @@ bool Vertex::try_close_holes()
         // try close holes between the two vertices
         for (auto& [vertex0, vertex1] : connected_boundary_vertex_pairs)
         {
-            if (try_close_holes_between_self_and(vertex0, vertex1)) 
+            if (try_close_holes_between_self_and(vertex0, vertex1, boundary_vertices_to_edge_map[vertex0], boundary_vertices_to_edge_map[vertex1]))
             {
                 changed = true;
                 repeat_loop = true;

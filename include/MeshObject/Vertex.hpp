@@ -90,7 +90,7 @@ public:
     bool check_connected_by_edge(const std::shared_ptr<Vertex>& vertex);
     bool check_connected_by_face(const std::shared_ptr<Vertex>& vertex0, const std::shared_ptr<Vertex>& vertex1);
     bool try_close_holes_repeatedly();
-    bool try_close_holes_between_self_and(std::shared_ptr<Vertex>& vertex0, std::shared_ptr<Vertex>& vertex1);
+    bool try_close_holes_between_self_and(std::shared_ptr<Vertex>& vertex0, std::shared_ptr<Vertex>& vertex1, std::shared_ptr<Edge>& edge0, std::shared_ptr<Edge>& edge1);
     bool try_close_holes();
     void remove_all_edges();
 
