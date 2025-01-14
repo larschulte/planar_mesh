@@ -112,6 +112,26 @@ const std::shared_ptr<Face>& Storage::add_face(const std::shared_ptr<Surface>& s
     return *faces_.insert(face).first;
 }
 
+const std::shared_ptr<Face>& Storage::add_face(
+    const std::shared_ptr<Surface>& surface, 
+    const std::shared_ptr<Vertex>& vertex1, 
+    const std::shared_ptr<Vertex>& vertex2, 
+    const std::shared_ptr<Vertex>& vertex3, 
+    const std::shared_ptr<Edge>& edge1, 
+    const std::shared_ptr<Edge>& edge2, 
+    const std::shared_ptr<Edge>& edge3) 
+{
+    // create
+    std::shared_ptr<Face> face = std::make_shared<Face>();
+    face->initialize_(shared_from_this(), surface, vertex1, vertex2, vertex3, edge1, edge2, edge3);
+
+    // lock 
+    std::lock_guard<std::mutex> lock(faces_mutex_);
+
+    // store
+    return *faces_.insert(face).first;
+} 
+
 const std::shared_ptr<Surface>& Storage::add_surface() 
 {
     // create

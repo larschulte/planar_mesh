@@ -73,6 +73,74 @@ void Face::initialize_(const std::shared_ptr<Storage>& storage, const std::share
     if (settings_.log.initialize) std::cout << "Face " << id_ << " created between vertex " << vertex0->get_id() << ", vertex " << vertex1->get_id() << " and vertex " << vertex2->get_id() << std::endl;
 }
 
+void Face::initialize_(
+    const std::shared_ptr<Storage>& storage, 
+    const std::shared_ptr<Surface> surface, 
+    const std::shared_ptr<Vertex>& vertex0, 
+    const std::shared_ptr<Vertex>& vertex1, 
+    const std::shared_ptr<Vertex>& vertex2,
+    const std::shared_ptr<Edge>& edge0,
+    const std::shared_ptr<Edge>& edge1,
+    const std::shared_ptr<Edge>& edge2)
+{
+    // set expired
+    is_expired_ = false;
+
+    // check pointer validity
+    if (storage->is_expired()) throw std::runtime_error("Attempts to create face with invalid storage.");
+    if (vertex0->is_expired()) throw std::runtime_error("Attempts to create face with invalid vertex0.");
+    if (vertex1->is_expired()) throw std::runtime_error("Attempts to create face with invalid vertex1.");
+    if (vertex2->is_expired()) throw std::runtime_error("Attempts to create face with invalid vertex2.");
+
+    // store
+    storage_ = storage;
+
+    // get id
+    id_ = storage_->get_next_face_id();
+
+    // connect surface
+    connect(surface);
+
+    // connect
+    connect(vertex0);
+    connect(vertex1);
+    connect(vertex2);
+
+    // store vertices position
+    v0_ = vertex0->get_position();
+    v1_ = vertex1->get_position();
+    v2_ = vertex2->get_position();
+
+    // compute min and max
+    BoundingBox box;
+    box.expand(vertex0->get_position());
+    box.expand(vertex1->get_position());
+    box.expand(vertex2->get_position());
+    min_ = box.min;
+    max_ = box.max;
+
+    // first vertex
+    first_vertex_ = vertex0;
+
+    // get edges
+    connect(edge0);
+    connect(edge1);
+    connect(edge2);
+
+    // compute center
+    const Eigen::Vector3d& pos0 = vertex0->get_position();
+    const Eigen::Vector3d& pos1 = vertex1->get_position();
+    const Eigen::Vector3d& pos2 = vertex2->get_position();
+    center_ = (pos0 + pos1 + pos2) / 3;
+
+    // add to search
+    // storage_->add_searchable_face(shared_from_this());
+    storage_->add_to_set_of_faces_to_update_bvh_tree(shared_from_this());
+
+    // log
+    if (settings_.log.initialize) std::cout << "Face " << id_ << " created between vertex " << vertex0->get_id() << ", vertex " << vertex1->get_id() << " and vertex " << vertex2->get_id() << std::endl;
+}
+
 void Face::update_radius(const std::shared_ptr<GenericPoint>& generic_point)
 {
 }
