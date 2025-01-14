@@ -83,38 +83,70 @@ void Vertex::delete_()
     // write lock
     std::unique_lock<std::shared_mutex> lock(rwlock_lifecycle_);
 
-    // add to update rrs tree vertex set
-    storage_->add_to_set_of_vertices_to_update_rrs_tree(shared_from_this());
-
-    // log
-    if (settings_.log.deletion) std::cout << "Destroying vertex " << id_ << std::endl;
-
     // set deletion flag
     deleting_ = true;
     
-    // // cascade radius reduction
-    // cascade_radius_reduction_to_connected_vertices();
-
-    // disconnect
-    delete_publishers();
-    delete_subscribers();
-    std::vector<std::shared_ptr<Edge>> edges = edges_;
-    std::vector<std::shared_ptr<Face>> faces = faces_;
-    // std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> neighboring_vertices_that_affect_radius = neighboring_vertices_that_affect_radius_;
-    for (const auto& edge : edges) disconnect(edge);
-    for (const auto& face : faces) disconnect(face);
-    // for (const auto& neighboring_vertex : neighboring_vertices_that_affect_radius) disconnect_neighboring_vertex(neighboring_vertex);
-
-    std::shared_ptr<Surface> surface = surface_; // make copy to prevent cyclic reference and nullptr access
-    if (surface) disconnect(surface);
-
-    // update delete count
-    num_deletes_++;
-
-    // only create penetrated point / generic point if sibling is empty
-    if (can_create_generic_point_)
+    // log
+    if (settings_.log.deletion) std::cout << "Destroying vertex " << id_ << std::endl;
+    
+    // publishers
     {
-        storage_->add_to_queue(shared_from_this());
+        delete_publishers();
+        delete_subscribers();
+    }
+
+    // surface (disconnect)
+    {
+        // read lock
+        std::shared_lock<std::shared_mutex> lock_surface(rwlock_surface_);
+
+        // ask to be removed from surface
+        surface_->disconnect(shared_from_this());
+
+        // clear surface
+        surface_ = nullptr;
+    }
+
+    // edges (delete)
+    {
+        // read lock
+        std::shared_lock<std::shared_mutex> lock_edges(rwlock_edges_);
+
+        // delete edge
+        for (const auto& edge : edges_) storage_->add_edge_to_be_deleted(edge);
+
+        // clear
+        edges_.clear();
+    }
+    
+    // faces (delete)
+    {
+        // read lock
+        std::shared_lock<std::shared_mutex> lock_faces(rwlock_faces_);
+
+        // delete face
+        for (const auto& face : faces_) storage_->add_face_to_be_deleted(face);
+
+        // clear
+        faces_.clear();
+    }
+
+    // create generic point
+    {
+        // update delete count
+        num_deletes_++;
+
+        // only create penetrated point / generic point if sibling is empty
+        if (can_create_generic_point_)
+        {
+            storage_->add_to_queue(shared_from_this());
+        }
+    }
+
+    // update tree
+    {
+        // add to update rrs tree vertex set
+        storage_->add_to_set_of_vertices_to_update_rrs_tree(shared_from_this());
     }
 
     // log
@@ -504,9 +536,6 @@ void Vertex::disconnect(const std::shared_ptr<Edge>& edge)
         
     }
 
-    // reverse disconnect
-    edge->disconnect(shared_from_this());
-
     // update boundary state
     check_if_update_search_tree();
 
@@ -530,9 +559,6 @@ void Vertex::disconnect(const std::shared_ptr<Face>& face)
         // disconnect
         faces_.erase(it);
     }
-
-    // reverse disconnect
-    face->disconnect(shared_from_this());
 }
 
 void Vertex::disconnect(const std::shared_ptr<Surface>& surface)

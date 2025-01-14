@@ -57,27 +57,48 @@ void Edge::delete_()
     // write lock
     std::unique_lock<std::shared_mutex> lock(rwlock_lifecycle_);
 
-    // skip if already deleted
-    if (is_expired_) return;
-
-    // log
-    if (settings_.log.deletion) std::cout << "Destroying edge " << id_ << std::endl;
-    
-
     // set deletion flag
     deleting_ = true;
 
-    // disconnect surface first (to remove self from EdgeBVH search)
-    std::shared_ptr<Surface> surface = surface_;
-    if (surface) disconnect(surface);
+    // log
+    if (settings_.log.deletion) std::cout << "Destroying edge " << id_ << std::endl;
 
-    // disconnect
-    // make copy of vertices_ and faces_ to avoid iterator invalidation
-    std::vector<std::shared_ptr<Vertex>> vertices = vertices_;
-    std::vector<std::shared_ptr<Face>> faces = faces_;
-    for (const auto& vertex : vertices) disconnect(vertex);
-    for (const auto& face : faces) disconnect(face);
+    // surface (disconnect)
+    {
+        // read lock
+        std::shared_lock<std::shared_mutex> lock_surface_(rwlock_surface_);
 
+        // disconnect
+        surface_->disconnect(shared_from_this());
+        
+        // clear surface
+        surface_ = nullptr;
+    }
+
+    // vertices (disconnect)
+    {
+        // read lock
+        std::shared_lock<std::shared_mutex> lock_vertices(rwlock_vertices_);
+
+        // disconnect from vertices
+        for (const auto& vertex : vertices_) vertex->disconnect(shared_from_this());
+
+        // clear vertices
+        vertices_.clear();
+    }
+
+    // faces (delete)
+    {
+        // read lock
+        std::shared_lock<std::shared_mutex> lock_faces(rwlock_faces_);
+
+        // delete face
+        for (const auto& face : faces_) storage_->add_face_to_be_deleted(face);
+
+        // clear faces
+        faces_.clear();
+    }
+    
     // log
     if (settings_.log.deletion) std::cout << "---------- edge " << id_ << " destroyed" << std::endl;
 
@@ -197,9 +218,6 @@ void Edge::disconnect(const std::shared_ptr<Face>& face)
 
     // update boundary state
     update_boundary_state();
-
-    // reverse disconnect
-    face->disconnect(shared_from_this());
 
     // do not self destruct when have no face
     // check self destruct

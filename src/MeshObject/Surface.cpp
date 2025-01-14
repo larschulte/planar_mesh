@@ -843,9 +843,6 @@ void Surface::disconnect(const std::shared_ptr<Vertex>& vertex)
     }
 
     remove_point_from_surface_fitting(vertex->get_original_position(), vertex->get_origin(), vertex->get_distance_travelled(), vertex->weight_);
-
-    // reverse disconnect
-    vertex->disconnect(shared_from_this());
 }
 
 void Surface::disconnect(const std::shared_ptr<Edge>& edge)
@@ -866,9 +863,6 @@ void Surface::disconnect(const std::shared_ptr<Edge>& edge)
     }
 
     storage_->add_to_set_of_edge_to_update_edgeBVH_tree(edge, shared_from_this());
-
-    // reverse disconnect
-    edge->disconnect(shared_from_this());
 }
 
 void Surface::disconnect(const std::shared_ptr<Face>& face)
@@ -887,9 +881,6 @@ void Surface::disconnect(const std::shared_ptr<Face>& face)
         // erase
         faces_.erase(it);
     }
-
-    // reverse disconnect
-    face->disconnect(shared_from_this());
 }
 
 void Surface::disconnect(const std::shared_ptr<InteriorPoint>& interior_point)
@@ -910,9 +901,6 @@ void Surface::disconnect(const std::shared_ptr<InteriorPoint>& interior_point)
     }
 
     remove_point_from_surface_fitting(interior_point->get_original_position(), interior_point->get_origin(), interior_point->get_distance_travelled(), interior_point->weight_);
-    
-    // reverse disconnect
-    interior_point->disconnect(shared_from_this());
 }
 
 std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> Surface::get_boundary_vertices()

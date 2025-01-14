@@ -55,23 +55,42 @@ void InteriorPoint::delete_()
     // write lock
     std::unique_lock<std::shared_mutex> lock(rwlock_lifecycle_);
 
-    // log
-    if (settings_.log.deletion) std::cout << "Destroying InteriorPoint " << id_ << std::endl;
-
     // set deletion flag
     deleting_ = true;
 
-    // disconnect
-    delete_subscribers();
-    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces = faces_;
-    for (const auto& face : faces) disconnect(face);
+    // log
+    if (settings_.log.deletion) std::cout << "Destroying InteriorPoint " << id_ << std::endl;
 
-    // make copy of surface
-    std::shared_ptr<Surface> surface = surface_;
-    if (surface) disconnect(surface);
+    // subscribers and publishers
+    {
+        delete_subscribers();
+    }
 
-    // only create penetrated point / generic point if sibling is empty
-    storage_->add_to_queue(shared_from_this());
+    // surface (disconnect)
+    {
+        // write lock
+        std::unique_lock<std::shared_mutex> lock(rwlock_surface_);
+
+        // disconnect from surface
+        surface_->disconnect(shared_from_this());
+    }
+
+    // faces (disconnect)
+    {
+        // write lock
+        std::unique_lock<std::shared_mutex> lock(rwlock_faces_);
+
+        // disconnect from faces
+        for (const auto& face : faces_) face->disconnect(shared_from_this());
+
+        // clear
+        faces_.clear();
+    }
+    
+    // create generic point
+    {
+        storage_->add_to_queue(shared_from_this());
+    }
 
     // log
     if (settings_.log.deletion) std::cout << "---------- InteriorPoint " << id_ << " destroyed" << std::endl;

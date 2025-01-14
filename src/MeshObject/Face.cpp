@@ -149,27 +149,66 @@ void Face::delete_()
 {
     // write lock
     std::unique_lock<std::shared_mutex> lock(rwlock_lifecycle_);
-
-    // add to affected faces set
-    storage_->add_to_set_of_faces_to_update_bvh_tree(shared_from_this());
+    
+    // set deletion flag
+    deleting_ = true;
 
     // log
     if (settings_.log.deletion) std::cout << "Destroying face " << id_ << std::endl;
 
-    // set deletion flag
-    deleting_ = true;
+    // surface (disconnect)
+    {
+        // write lock
+        std::unique_lock<std::shared_mutex> lock(rwlock_surface_);
 
-    // disconnect
-    // make a copy of the set to avoid iterator invalidation
-    std::vector<std::shared_ptr<Vertex>> vertices = vertices_;
-    std::vector<std::shared_ptr<Edge>> edges = edges_;
-    std::vector<std::shared_ptr<InteriorPoint>> interior_points = interior_points_;
-    for (const auto& vertex : vertices) disconnect(vertex);
-    for (const auto& edge : edges) disconnect(edge);
-    for (const auto& interior_point : interior_points) disconnect(interior_point);
-    // make copy of surface
-    std::shared_ptr<Surface> surface = surface_;
-    if (surface != nullptr) disconnect(surface);
+        // disconnect surface
+        surface_->disconnect(shared_from_this());
+
+        // clear surface
+        surface_ = nullptr;
+    }
+
+    // vertices (disconnect)
+    {
+        // write lock
+        std::unique_lock<std::shared_mutex> lock(rwlock_vertices_);
+
+        // disconnect vertices
+        for (const auto& vertex : vertices_) vertex->disconnect(shared_from_this());
+
+        // clear vertices
+        vertices_.clear();
+    }
+
+    // edges (disconnect)
+    {
+        // write lock
+        std::unique_lock<std::shared_mutex> lock(rwlock_edges_);
+
+        // disconnect edges
+        for (const auto& edge : edges_) edge->disconnect(shared_from_this());
+
+        // clear edges
+        edges_.clear();
+    }
+
+    // interior points (delete)
+    {
+        // write lock
+        std::unique_lock<std::shared_mutex> lock(rwlock_interior_points_);
+
+        // delete interior points
+        for (const auto& interior_point : interior_points_) storage_->add_interior_point_to_be_deleted(interior_point);
+
+        // clear interior points
+        interior_points_.clear();
+    }
+
+    // update tree
+    {
+        // add to affected faces set
+        storage_->add_to_set_of_faces_to_update_bvh_tree(shared_from_this());
+    }
 
     // log
     if (settings_.log.deletion) std::cout << "---------- face " << id_ << " destroyed" << std::endl;
