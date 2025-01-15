@@ -123,6 +123,12 @@ void InteractiveViewer<PointT>::update_display(bool export_ply)
         pcl::toPCLPointCloud2(*vertex_pointcloud, boundary_mesh.cloud);
         for (const std::shared_ptr<Edge>& edge : boundary_edges)
         {
+            // read lock edge
+            std::shared_lock<std::shared_mutex> lock(edge->rwlock_lifecycle_);
+            
+            // skip if expired // for some reason, storage would return expired edges ...
+            if (edge->is_expired()) continue;
+
             // skip if singular
             if (!settings_.show_singular_edge && edge->is_singular()) continue;
             
