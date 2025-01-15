@@ -796,21 +796,23 @@ void Storage::add_or_remove_vertices_from_rrs_tree()
     {
         // at this point in time, is the vertex expired?
         bool is_expired;
+        bool is_searchable;
         {
             // read lock the vertex
             std::shared_lock<std::shared_mutex> lock(vertex->rwlock_lifecycle_);
 
             // check if vertex is expired
             is_expired = vertex->is_expired();
+            is_searchable = vertex->is_searchable();
         }
 
-        // if expired, remove from tree
-        if (is_expired)
+        // if expired but still in the tree, remove from tree
+        if (is_expired || is_searchable)
         {
             rrs_tree_.tree_delete_vertex(vertex);
         }
-        // if not expired, remove from tree
-        else
+        // if not expired but not in the tree, add to the tree
+        else if (!is_expired && !is_searchable)
         {
             rrs_tree_.tree_add_vertex(vertex);
         }
