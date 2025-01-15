@@ -29,9 +29,6 @@ void Face::initialize_(const std::shared_ptr<Storage>& storage, const std::share
 
     // connect surface
     {
-        // write lock
-        std::unique_lock lock_surface(rwlock_surface_);
-
         // connect surface
         surface_ = surface;
         surface_->connect(shared_from_this());
@@ -119,9 +116,6 @@ void Face::initialize_(
 
     // connect surface
     {
-        // write lock
-        std::unique_lock lock_surface(rwlock_surface_);
-
         // connect surface
         surface_ = surface;
         surface_->connect(shared_from_this());
@@ -194,9 +188,6 @@ void Face::delete_()
 
     // surface (disconnect)
     {
-        // write lock
-        std::unique_lock<std::shared_mutex> lock(rwlock_surface_);
-
         // disconnect surface
         surface_->disconnect(shared_from_this());
 
@@ -206,9 +197,6 @@ void Face::delete_()
 
     // vertices (disconnect)
     {
-        // write lock
-        std::unique_lock<std::shared_mutex> lock(rwlock_vertices_);
-
         // disconnect vertices
         for (const auto& vertex : vertices_) vertex->disconnect(shared_from_this());
 
@@ -218,9 +206,6 @@ void Face::delete_()
 
     // edges (disconnect)
     {
-        // write lock
-        std::unique_lock<std::shared_mutex> lock(rwlock_edges_);
-
         // disconnect edges
         for (const auto& edge : edges_) edge->disconnect(shared_from_this());
 
@@ -312,10 +297,8 @@ const Eigen::Vector3d& Face::get_center() const
     return center_;
 }
 
-std::vector<std::shared_ptr<Vertex>> Face::get_vertices() const
+const std::vector<std::shared_ptr<Vertex>>& Face::get_vertices() const
 {
-    // read lock
-    std::shared_lock<std::shared_mutex> lock(rwlock_vertices_);
     return vertices_;
 }
 
@@ -326,17 +309,13 @@ std::vector<std::shared_ptr<InteriorPoint>> Face::get_interior_points() const
     return interior_points_;
 }
 
-std::vector<std::shared_ptr<Edge>> Face::get_edges() const
+const std::vector<std::shared_ptr<Edge>>& Face::get_edges() const
 {
-    // read lock
-    std::shared_lock<std::shared_mutex> lock(rwlock_edges_);
     return edges_;
 }
 
-std::shared_ptr<Vertex> Face::get_vertex(int index) const
+const std::shared_ptr<Vertex>& Face::get_vertex(int index) const
 {
-    // read lock
-    std::shared_lock<std::shared_mutex> lock(rwlock_vertices_);
     if (index < 0 || index > 2) throw std::runtime_error("Invalid index for vertex.");
     auto it = vertices_.begin();
     for (int i = 0; i < index; i++) it++;
@@ -348,10 +327,8 @@ const std::shared_ptr<Vertex>& Face::get_first_vertex() const
     return first_vertex_;
 }
 
-std::shared_ptr<Surface> Face::get_surface() const
+const std::shared_ptr<Surface>& Face::get_surface() const
 {
-    // read lock
-    std::shared_lock<std::shared_mutex> lock(rwlock_surface_);
     return surface_;
 }
 

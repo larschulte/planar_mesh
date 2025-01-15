@@ -25,15 +25,13 @@ public:
     std::shared_ptr<EdgeBVH::Node> node;
 
     // read and write lock
-    mutable std::shared_mutex rwlock_vertices_;
     mutable std::shared_mutex rwlock_faces_;
-    mutable std::shared_mutex rwlock_surface_;
 
     mutable std::shared_mutex rwlock_lifecycle_;
 
     const int& get_id() const;
-    std::shared_ptr<Vertex> get_vertex(int index) const;
-    std::shared_ptr<Surface> get_surface() const;
+    const std::shared_ptr<Vertex>& get_vertex(int index) const;
+    const std::shared_ptr<Surface>& get_surface() const;
     std::vector<std::shared_ptr<Face>> get_faces() const;
     const Eigen::Vector3d& get_center() const;
     const Eigen::Vector3d& get_max() const;

@@ -37,7 +37,6 @@ public:
 
     mutable std::shared_mutex rwlock_edges_;
     mutable std::shared_mutex rwlock_faces_;
-    mutable std::shared_mutex rwlock_surface_;
 
     mutable std::shared_mutex rwlock_lifecycle_;
 
@@ -50,7 +49,7 @@ public:
     const Eigen::Vector3d& get_origin() const;
     const double& get_distance_travelled() const;
     const Eigen::Vector3d& get_direction() const;
-    std::shared_ptr<Surface> get_surface() const;
+    const std::shared_ptr<Surface>& get_surface() const;
     std::vector<std::shared_ptr<Edge>> get_edges() const;
     std::vector<std::shared_ptr<Face>> get_faces() const;
     std::size_t get_num_deletes() const;

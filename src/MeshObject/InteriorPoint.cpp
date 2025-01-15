@@ -34,9 +34,6 @@ void InteriorPoint::initialize_(const std::shared_ptr<Storage>& storage, const s
 
     // connect to surface
     {
-        // write lock
-        std::unique_lock<std::shared_mutex> lock(rwlock_surface_);
-
         // connect to surface
         surface_ = surface;
         surface_->connect(shared_from_this());
@@ -47,9 +44,6 @@ void InteriorPoint::initialize_(const std::shared_ptr<Storage>& storage, const s
 
     // connect to face
     {
-        // write lock
-        std::unique_lock<std::shared_mutex> lock(rwlock_faces_);
-
         // connect to face
         face_ = face;
         face_->connect(shared_from_this());
@@ -77,18 +71,12 @@ void InteriorPoint::delete_()
 
     // surface (disconnect)
     {
-        // write lock
-        std::unique_lock<std::shared_mutex> lock(rwlock_surface_);
-
         // disconnect from surface
         surface_->disconnect(shared_from_this());
     }
 
     // faces (disconnect)
     {
-        // write lock
-        std::unique_lock<std::shared_mutex> lock(rwlock_faces_);
-
         // disconnect from faces
         face_->disconnect(shared_from_this());
 
@@ -141,10 +129,8 @@ const Eigen::Vector3d& InteriorPoint::get_direction() const
     return direction_;
 }
 
-std::shared_ptr<Surface> InteriorPoint::get_surface() const
+const std::shared_ptr<Surface>& InteriorPoint::get_surface() const
 {    
-    // read lock
-    std::shared_lock<std::shared_mutex> lock(rwlock_surface_);
     return surface_;
 }
 

@@ -26,9 +26,6 @@ public:
     // read write locks
     mutable std::shared_mutex rwlock_interior_point_distance_subscribers_;
 
-    mutable std::shared_mutex rwlock_faces_;
-    mutable std::shared_mutex rwlock_surface_;
-
     mutable std::shared_mutex rwlock_lifecycle_;
 
     const int& get_id() const;
@@ -37,7 +34,7 @@ public:
     const Eigen::Vector3d& get_origin() const;
     const double& get_distance_travelled() const;
     const Eigen::Vector3d& get_direction() const;
-    std::shared_ptr<Surface> get_surface() const;
+    const std::shared_ptr<Surface>& get_surface() const;
     const double& get_radius() const;
     bool is_expired() const;
 
@@ -54,8 +51,6 @@ public:
     void delete_interior_point_distance_subscriber(const std::shared_ptr<Vertex> interior_point_subscriber);
 
     void set_reverse_radius_search_radius(double radius);
-    
-    void swap(const std::shared_ptr<Surface>& surface1, const std::shared_ptr<Surface>& surface2);
 
 private:
     static Settings settings_;

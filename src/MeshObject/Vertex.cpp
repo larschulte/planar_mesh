@@ -36,9 +36,6 @@ void Vertex::initialize_(const std::shared_ptr<Storage>& storage, const std::sha
 
     // connect to surface
     {
-        // write lock
-        std::unique_lock<std::shared_mutex> lock_surface(rwlock_surface_);
-
         // connect to surface
         surface_ = surface;
         surface_->connect(shared_from_this());
@@ -107,9 +104,6 @@ void Vertex::delete_()
 
     // surface (disconnect)
     {
-        // read lock
-        std::shared_lock<std::shared_mutex> lock_surface(rwlock_surface_);
-
         // ask to be removed from surface
         surface_->disconnect(shared_from_this());
 
@@ -224,11 +218,8 @@ const Eigen::Vector3d& Vertex::get_direction() const
     return direction_; 
 }
 
-std::shared_ptr<Surface> Vertex::get_surface() const
+const std::shared_ptr<Surface>& Vertex::get_surface() const
 {    
-    // read lock
-    std::shared_lock<std::shared_mutex> lock(rwlock_surface_);
-
     return surface_;
 }
 

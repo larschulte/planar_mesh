@@ -45,9 +45,6 @@ void Edge::initialize_(const std::shared_ptr<Storage>& storage, const std::share
 
     // connect to surface
     {
-        // write lock
-        std::unique_lock lock_surface(rwlock_surface_);
-
         // connect to surface
         surface_ = surface;
         surface_->connect(shared_from_this());
@@ -85,9 +82,6 @@ void Edge::delete_()
 
     // surface (disconnect)
     {
-        // read lock
-        std::shared_lock<std::shared_mutex> lock_surface_(rwlock_surface_);
-
         // disconnect
         surface_->disconnect(shared_from_this());
         
@@ -97,9 +91,6 @@ void Edge::delete_()
 
     // vertices (disconnect)
     {
-        // read lock
-        std::shared_lock<std::shared_mutex> lock_vertices(rwlock_vertices_);
-
         // disconnect from vertices
         for (const auto& vertex : vertices_) vertex->disconnect(shared_from_this());
 
@@ -200,11 +191,8 @@ const int& Edge::get_id() const
     return id_; 
 }
 
-std::shared_ptr<Vertex> Edge::get_vertex(int index) const
+const std::shared_ptr<Vertex>& Edge::get_vertex(int index) const
 {
-    // read lock
-    std::shared_lock lock(rwlock_vertices_);
-
     if (is_expired_) throw std::runtime_error("Accessing expired edge.");
     if (index < 0 || index > 1) throw std::runtime_error("Invalid vertex index.");
     if (vertices_.size() != 2) throw std::runtime_error("Edge does not have 2 vertices.");
@@ -275,10 +263,8 @@ bool Edge::is_non_manifold() const
     return faces_.size() > 2;
 }
 
-std::shared_ptr<Surface> Edge::get_surface() const
+const std::shared_ptr<Surface>& Edge::get_surface() const
 {
-    // read lock
-    std::shared_lock lock(rwlock_surface_);
     return surface_;
 }
 
