@@ -677,6 +677,8 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
         // connect
         connect(new_edge);
     }
+    // add edges to edgeBVH tree
+    storage_->add_or_remove_edges_from_edgeBVH_tree();
 
     // false if no edge is created
     if (vertex->get_edges().empty()) return false;
