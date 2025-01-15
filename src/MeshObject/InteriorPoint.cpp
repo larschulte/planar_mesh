@@ -9,7 +9,7 @@
 
 Settings InteriorPoint::settings_;
 
-void InteriorPoint::initialize_(const std::shared_ptr<Storage>& storage, const Eigen::Vector3d& position, const Eigen::Vector3d& origin, const double& radius, double distance_travelled)
+void InteriorPoint::initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<Surface>& surface, const std::shared_ptr<Face>& face, const std::shared_ptr<GenericPoint>& generic_point)
 {
     // set expired
     is_expired_ = false;
@@ -24,30 +24,39 @@ void InteriorPoint::initialize_(const std::shared_ptr<Storage>& storage, const E
     id_ = storage_->get_next_interior_point_id();
 
     // store
-    position_ = position;
-    origin_ = origin;
-    distance_travelled_ = distance_travelled;
+    position_ = generic_point->get_position();
+    origin_ = generic_point->get_origin();
+    distance_travelled_ = generic_point->get_distance_travelled();
     direction_ = (position_ - origin_).normalized();
-    radius_ = radius;
+    radius_ = generic_point->get_radius();
+    num_deletes_ = generic_point->get_num_deletes();
+    projected_uncertainty_ = generic_point->get_projected_uncertainty();
 
-    num_deletes_ = 0;
+    // connect to surface
+    {
+        // write lock
+        std::unique_lock<std::shared_mutex> lock(rwlock_surface_);
+
+        // connect to surface
+        surface_ = surface;
+        surface_->connect(shared_from_this());
+
+        // projected position
+        projected_position_ = surface_->compute_point_projective_position(origin_, position_);
+    }
+
+    // connect to face
+    {
+        // write lock
+        std::unique_lock<std::shared_mutex> lock(rwlock_faces_);
+
+        // connect to face
+        face_ = face;
+        face_->connect(shared_from_this());
+    }
 
     // log
     if (settings_.log.initialize) std::cout << "InteriorPoint " << id_ << " created.\n";
-}
-
-void InteriorPoint::initialize_(const std::shared_ptr<Storage>& storage, const Eigen::Vector3d& position, const Eigen::Vector3d& origin, double distance_travelled)
-{
-    std::shared_ptr<GenericPoint> generic_point = storage->add_generic_point(position, origin, distance_travelled);
-    initialize_(storage, generic_point);
-    storage->delete_generic_point(generic_point);
-}
-
-void InteriorPoint::initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<GenericPoint>& generic_point)
-{
-    initialize_(storage, generic_point->get_position(), generic_point->get_origin(), generic_point->get_radius(), generic_point->get_distance_travelled());
-    num_deletes_ = generic_point->get_num_deletes();
-    projected_uncertainty_ = generic_point->get_projected_uncertainty();
 }
 
 void InteriorPoint::delete_()
@@ -81,10 +90,10 @@ void InteriorPoint::delete_()
         std::unique_lock<std::shared_mutex> lock(rwlock_faces_);
 
         // disconnect from faces
-        for (const auto& face : faces_) face->disconnect(shared_from_this());
+        face_->disconnect(shared_from_this());
 
         // clear
-        faces_.clear();
+        face_ = nullptr;
     }
     
     // create generic point
@@ -169,75 +178,6 @@ std::size_t InteriorPoint::get_num_deletes() const
     return num_deletes_;
 }
 
-void InteriorPoint::connect(const std::shared_ptr<Face>& face)
-{
-    // check input
-    if (face->is_expired()) throw std::runtime_error("Attempts to connect interior point with invalid face.");
-
-    {
-        // wirte lock
-        std::unique_lock<std::shared_mutex> lock(rwlock_faces_);
-
-        // skip if already exist
-        if (faces_.find(face) != faces_.end()) return; // Already exists
-
-        // connect
-        faces_.insert(face);
-    }
-
-    // reverse connection
-    face->connect(shared_from_this());
-}
-
-void InteriorPoint::connect(const std::shared_ptr<Surface>& surface)
-{
-    // check input
-    if (surface->is_expired()) throw std::runtime_error("Attempts to connect interior point with invalid surface.");
-
-    {
-        // write lock
-        std::unique_lock<std::shared_mutex> lock(rwlock_surface_);
-
-        // skip if already exist
-        if (surface_ == surface) return; // Already exists
-
-        // connect
-        surface_ = surface;
-    }
-
-    // compute projected position
-    projected_position_ = surface->compute_point_projective_position(get_origin(), get_original_position());
-    
-    // reverse connection
-    surface->connect(shared_from_this());    
-}
-
-void InteriorPoint::disconnect(const std::shared_ptr<Surface>& surface)
-{
-    // check input
-    if (surface->is_expired()) return;
-
-    {
-        // write lock
-        std::unique_lock<std::shared_mutex> lock(rwlock_surface_);
-
-        // skip if not exist
-        if (surface_ != surface) return; // skip if not exist
-
-        // disconnect
-        surface_ = nullptr;
-    }
-
-    // reset projected position
-    projected_position_ = Eigen::Vector3d::Zero();
-
-    // reverse disconnection
-    surface->disconnect(shared_from_this());
-
-    // self destruct
-    if (!deleting_ && can_self_destruct_) storage_->add_interior_point_to_be_deleted(shared_from_this());
-}
-
 void InteriorPoint::delete_subscribers()
 {
     // interior point subscribers
@@ -302,27 +242,6 @@ void InteriorPoint::delete_interior_point_distance_subscriber(const std::shared_
 void InteriorPoint::set_reverse_radius_search_radius(double radius)
 {
     radius_ = radius;
-}
-
-// swap surface1 with surface2
-void InteriorPoint::swap(const std::shared_ptr<Surface>& surface1, const std::shared_ptr<Surface>& surface2)
-{
-    // if contains surfacce1
-    if (surface_ == surface1)
-    {
-        // std::cout << "Swapping interior point " << id_ << " surface " << surface1->get_id() << " with surface " << surface2->get_id() << std::endl;
-        
-        can_self_destruct_ = false;
-        disconnect(surface1);
-        connect(surface2);
-        can_self_destruct_ = true;
-
-        // cascade swap
-        for (const std::shared_ptr<Face>& face : faces_)
-        {
-            face->swap(surface1, surface2);
-        }
-    }
 }
 
 bool operator<(const std::shared_ptr<InteriorPoint>& lhs, const std::shared_ptr<InteriorPoint>& rhs)

@@ -28,7 +28,14 @@ void Face::initialize_(const std::shared_ptr<Storage>& storage, const std::share
     id_ = storage_->get_next_face_id();
 
     // connect surface
-    connect(surface);
+    {
+        // write lock
+        std::unique_lock lock_surface(rwlock_surface_);
+
+        // connect surface
+        surface_ = surface;
+        surface_->connect(shared_from_this());
+    }
 
     // add to vertices
     vertices_.push_back(vertex0);
@@ -111,7 +118,14 @@ void Face::initialize_(
     id_ = storage_->get_next_face_id();
 
     // connect surface
-    connect(surface);
+    {
+        // write lock
+        std::unique_lock lock_surface(rwlock_surface_);
+
+        // connect surface
+        surface_ = surface;
+        surface_->connect(shared_from_this());
+    }
 
     // add to vertices
     vertices_.push_back(vertex0);
@@ -438,26 +452,6 @@ Eigen::Vector3d Face::compute_intersection_point(const Eigen::Vector3d& origin, 
     return origin + direction * t;
 }
 
-void Face::connect(const std::shared_ptr<Surface>& surface)
-{
-    // check input
-    if (surface->is_expired()) throw std::runtime_error("Attempts to connect face with invalid surface.");
-
-    {
-        // write lock
-        std::unique_lock<std::shared_mutex> lock(rwlock_surface_);
-
-        // skip if already connected
-        if (surface_ == surface) return;
-
-        // connect
-        surface_ = surface;
-    }
-
-    // reverse connection
-    surface->connect(shared_from_this());
-}
-
 void Face::connect(const std::shared_ptr<InteriorPoint>& interior_point)
 {
     // check input
@@ -473,32 +467,6 @@ void Face::connect(const std::shared_ptr<InteriorPoint>& interior_point)
         // connect
         interior_points_.push_back(interior_point);
     }
-
-    // reverse connection
-    interior_point->connect(shared_from_this());
-}
-
-void Face::disconnect(const std::shared_ptr<Surface>& surface)
-{
-    // check input
-    if (surface->is_expired()) return;
-
-    {
-        // write lock
-        std::unique_lock<std::shared_mutex> lock(rwlock_surface_);
-
-        // skip if not connected
-        if (surface_ != surface) return;
-
-        // disconnect
-        surface_ = nullptr;
-    }
-
-    // reverse connection
-    surface->disconnect(shared_from_this());
-
-    // self destruct
-    if (!deleting_ && can_self_destruct_) storage_->add_face_to_be_deleted(shared_from_this());
 }
 
 void Face::disconnect(const std::shared_ptr<InteriorPoint>& interior_point)
@@ -546,35 +514,6 @@ bool Face::is_non_manifold() const
     std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> all_connected_edges;
 
     return !is_connected_to_boundary_edges(all_connected_faces, all_connected_edges);
-}
-
-// swap surface1 with surface2
-void Face::swap(const std::shared_ptr<Surface>& surface1, const std::shared_ptr<Surface>& surface2)
-{
-    // if contains surfacce1    
-    if (surface_ == surface1)
-    {
-        // std::cout << "Swapping face " << id_ << " surface " << surface1->get_id() << " with surface " << surface2->get_id() << std::endl;
-
-        can_self_destruct_ = false;
-        disconnect(surface1);
-        connect(surface2);
-        can_self_destruct_ = true;
-
-        // cascade swap
-        for (const std::shared_ptr<Vertex>& vertex : vertices_)
-        {
-            vertex->swap(surface1, surface2);
-        }
-        for (const std::shared_ptr<Edge>& edge : edges_)
-        {
-            edge->swap(surface1, surface2);
-        }
-        for (const std::shared_ptr<InteriorPoint>& interior_point : interior_points_)
-        {
-            interior_point->swap(surface1, surface2);
-        }
-    }
 }
 
 bool operator<(const std::shared_ptr<Face>& lhs, const std::shared_ptr<Face>& rhs)

@@ -18,7 +18,7 @@ class Edge : public std::enable_shared_from_this<Edge>, public MeshObject
 {
 protected:
     friend class Storage;
-    void initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2);
+    void initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<Surface>& surface, const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2);
     void delete_();
 
 public:
@@ -42,15 +42,11 @@ public:
     bool is_expired() const;
 
     void connect(const std::shared_ptr<Face>& face);
-    void connect(const std::shared_ptr<Surface>& surface);
     void disconnect(const std::shared_ptr<Face>& face);
-    void disconnect(const std::shared_ptr<Surface>& surface);
 
     void set_can_self_destruct(bool can_self_destruct);
 
     bool is_connected_to_boundary_edges(std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& all_connected_faces, std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& all_connected_edges) const;
-
-    void swap(const std::shared_ptr<Surface>& surface1, const std::shared_ptr<Surface>& surface2);
 
     bool has_vertex(const std::shared_ptr<Vertex>& vertex) const;
     bool is_boundary() const;

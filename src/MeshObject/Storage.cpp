@@ -86,11 +86,11 @@ const std::shared_ptr<Vertex>& Storage::add_vertex(const std::shared_ptr<Surface
     return *vertices_.insert(vertex).first;
 }
 
-const std::shared_ptr<Edge>& Storage::add_edge(const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2)
+const std::shared_ptr<Edge>& Storage::add_edge(const std::shared_ptr<Surface>& surface, const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2)
 {    
     // create
     std::shared_ptr<Edge> edge = std::make_shared<Edge>();
-    edge->initialize_(shared_from_this(), vertex1, vertex2);
+    edge->initialize_(shared_from_this(), surface, vertex1, vertex2);
 
     // lock
     std::lock_guard<std::mutex> lock(edges_mutex_);
@@ -184,24 +184,11 @@ const std::shared_ptr<GenericPoint>& Storage::add_generic_point(const std::share
     return *genertic_points_.insert(genertic_point).first;
 }
 
-const std::shared_ptr<InteriorPoint>& Storage::add_interior_point(const Eigen::Vector3d& position, const Eigen::Vector3d& origin, double distance_travelled) 
+const std::shared_ptr<InteriorPoint>& Storage::add_interior_point(const std::shared_ptr<Surface>& surface, const std::shared_ptr<Face>& face, const std::shared_ptr<GenericPoint>& generic_point) 
 {
     // create
     std::shared_ptr<InteriorPoint> interior_point = std::make_shared<InteriorPoint>();
-    interior_point->initialize_(shared_from_this(), position, origin, distance_travelled);
-
-    // lock
-    std::lock_guard<std::mutex> lock(interior_points_mutex_);
-
-    // store
-    return *interior_points_.insert(interior_point).first;
-}
-
-const std::shared_ptr<InteriorPoint>& Storage::add_interior_point(const std::shared_ptr<GenericPoint>& generic_point) 
-{
-    // create
-    std::shared_ptr<InteriorPoint> interior_point = std::make_shared<InteriorPoint>();
-    interior_point->initialize_(shared_from_this(), generic_point);
+    interior_point->initialize_(shared_from_this(), surface, face, generic_point);
 
     // lock
     std::lock_guard<std::mutex> lock(interior_points_mutex_);

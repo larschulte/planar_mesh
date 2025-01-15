@@ -18,9 +18,7 @@ class InteriorPoint : public std::enable_shared_from_this<InteriorPoint>, public
 {
 protected:
     friend class Storage;
-    void initialize_(const std::shared_ptr<Storage>& storage, const Eigen::Vector3d& position, const Eigen::Vector3d& origin, const double& radius, double distance_travelled);
-    void initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<GenericPoint>& generic_point);
-    void initialize_(const std::shared_ptr<Storage>& storage, const Eigen::Vector3d& position, const Eigen::Vector3d& origin, double distance_travelled);
+    void initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<Surface>& surface, const std::shared_ptr<Face>& face, const std::shared_ptr<GenericPoint>& generic_point);
     void delete_(); 
 
 public:
@@ -50,10 +48,6 @@ public:
     Eigen::Vector3d compute_projected_position();
     double compute_projected_distance();
 
-    void connect(const std::shared_ptr<Face>& face);
-    void connect(const std::shared_ptr<Surface>& surface);
-    void disconnect(const std::shared_ptr<Surface>& surface);
-
     void delete_subscribers();
     
     void add_interior_point_distance_subscriber(const std::shared_ptr<Vertex> interior_point_subscriber);
@@ -76,7 +70,7 @@ private:
     int id_;
     std::shared_ptr<Storage> storage_;
 
-    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces_;
+    std::shared_ptr<Face> face_;
     std::shared_ptr<Surface> surface_;
 
     Eigen::Vector3d position_;

@@ -66,15 +66,11 @@ public:
     bool intersects_point(const std::shared_ptr<GenericPoint>& generic_point);
     Eigen::Vector3d compute_intersection_point(const Eigen::Vector3d& origin, const Eigen::Vector3d& direction);
 
-    void connect(const std::shared_ptr<Surface>& surface);
     void connect(const std::shared_ptr<InteriorPoint>& interior_point);
-    void disconnect(const std::shared_ptr<Surface>& surface);
     void disconnect(const std::shared_ptr<InteriorPoint>& interior_point);
 
     bool is_connected_to_boundary_edges(std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& all_connected_faces, std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& all_connected_edges) const;
     bool is_non_manifold() const;
-
-    void swap(const std::shared_ptr<Surface>& surface1, const std::shared_ptr<Surface>& surface2);
 
     void update_radius(const std::shared_ptr<GenericPoint>& generic_point);
 

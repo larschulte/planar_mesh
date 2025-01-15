@@ -80,10 +80,8 @@ public:
 
     void connect(const std::shared_ptr<Edge>& edge);
     void connect(const std::shared_ptr<Face>& face);
-    void connect(const std::shared_ptr<Surface>& surface);
     void disconnect(const std::shared_ptr<Edge>& edge);
     void disconnect(const std::shared_ptr<Face>& face);
-    void disconnect(const std::shared_ptr<Surface>& surface);
 
     std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> get_connected_boundary_edges() const;
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> get_connected_boundary_vertices();
@@ -126,8 +124,6 @@ public:
     void update_singular_state();
     bool is_singular() const;
     
-    void swap(const std::shared_ptr<Surface>& surface1, const std::shared_ptr<Surface>& surface2);
-
     void check_if_update_search_tree();
 
     void print_info();

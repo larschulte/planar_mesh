@@ -34,8 +34,18 @@ void Vertex::initialize_(const std::shared_ptr<Storage>& storage, const std::sha
     // num of deletes
     num_deletes_ = 0;
 
-    // connect
-    connect(surface);
+    // connect to surface
+    {
+        // write lock
+        std::unique_lock<std::shared_mutex> lock_surface(rwlock_surface_);
+
+        // connect to surface
+        surface_ = surface;
+        surface_->connect(shared_from_this());
+
+        // projected position
+        projected_position_ = surface_->compute_point_projective_position(origin_, position_);
+    }
 
     // check if update search tree
     check_if_update_search_tree();
@@ -489,29 +499,6 @@ void Vertex::connect(const std::shared_ptr<Face>& face)
     update_singular_state();
 }
 
-void Vertex::connect(const std::shared_ptr<Surface>& surface)
-{
-    // check input
-    if (surface->is_expired()) throw std::runtime_error("Attempts to connect vertex with invalid surface.");
-
-    {
-        // write lock
-        std::unique_lock<std::shared_mutex> lock(rwlock_surface_);
-
-        // skip if already connected
-        if (surface_ == surface) return;
-
-        // connect
-        surface_ = surface;
-    }
-        
-    // update projected position
-    projected_position_ = surface->compute_point_projective_position(get_origin(), get_original_position());
-
-    // reverse connect
-    surface->connect(shared_from_this());
-}
-
 void Vertex::disconnect(const std::shared_ptr<Edge>& edge) 
 {
     // check input
@@ -553,32 +540,6 @@ void Vertex::disconnect(const std::shared_ptr<Face>& face)
         // disconnect
         faces_.erase(it);
     }
-}
-
-void Vertex::disconnect(const std::shared_ptr<Surface>& surface)
-{
-    // check input
-    if (surface->is_expired()) return;
-
-    {
-        // write lock
-        std::unique_lock<std::shared_mutex> lock(rwlock_surface_);
-
-        // skip if not connected
-        if (surface_ != surface) return;
-
-        // disconnect
-        surface_ = nullptr;
-    }
-
-    // update projected position
-    projected_position_ = Eigen::Vector3d::Zero();
-
-    // reverse disconnect
-    surface->disconnect(shared_from_this());
-
-    // check self destruct
-    if (!deleting_ && can_self_destruct_) storage_->add_vertex_to_be_deleted(shared_from_this());
 }
 
 std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> Vertex::get_connected_boundary_edges() const
@@ -730,7 +691,7 @@ bool Vertex::try_close_holes_between_self_and(std::shared_ptr<Vertex>& vertex0, 
     if (!inter_edge)
     {
         // create edge
-        inter_edge = storage_->add_edge(vertex0, vertex1);
+        inter_edge = storage_->add_edge(surface_, vertex0, vertex1);
 
         // read lock on the inter edge
         inter_edge_lock = std::shared_lock<std::shared_mutex>(inter_edge->rwlock_lifecycle_);
@@ -1284,31 +1245,6 @@ void Vertex::update_singular_state()
 bool Vertex::is_singular() const
 {
     return is_singular_;
-}
-
-// swap surface1 with surface2
-void Vertex::swap(const std::shared_ptr<Surface>& surface1, const std::shared_ptr<Surface>& surface2)
-{
-    // if contains surface1
-    if (surface_ == surface1)
-    {
-        // std::cout << "Swapping vertex " << id_ << " surface " << surface1->get_id() << " with surface " << surface2->get_id() << std::endl;
-
-        can_self_destruct_ = false;
-        disconnect(surface1);
-        connect(surface2);
-        can_self_destruct_ = true;
-
-        // cascade swap
-        for (const std::shared_ptr<Edge>& edge : edges_)
-        {
-            edge->swap(surface1, surface2);
-        }
-        for (const std::shared_ptr<Face>& face : faces_)
-        {
-            face->swap(surface1, surface2);
-        }
-    }
 }
 
 void Vertex::check_if_update_search_tree()

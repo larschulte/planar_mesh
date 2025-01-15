@@ -31,7 +31,7 @@ public: // to user
     const std::shared_ptr<Vertex>& add_vertex(const std::shared_ptr<Surface>& surface, const Eigen::Vector3d& origin, const Eigen::Vector3d& position, double distance_travelled);
     const std::shared_ptr<Vertex>& add_vertex(const std::shared_ptr<Surface>& surface, const Eigen::Vector3d& origin, const Eigen::Vector3d& position, const double& radius, double distance_travelled);
     const std::shared_ptr<Vertex>& add_vertex(const std::shared_ptr<Surface>& surface, const std::shared_ptr<GenericPoint>& generic_point);
-    const std::shared_ptr<Edge>& add_edge(const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2);
+    const std::shared_ptr<Edge>& add_edge(const std::shared_ptr<Surface>& surface, const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2);
     const std::shared_ptr<Face>& add_face(const std::shared_ptr<Surface>& surface, const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2, const std::shared_ptr<Vertex>& vertex3);
     const std::shared_ptr<Face>& add_face(
         const std::shared_ptr<Surface>& surface, 
@@ -45,8 +45,7 @@ public: // to user
     const std::shared_ptr<GenericPoint>& add_generic_point(const Eigen::Vector3d& position, const Eigen::Vector3d& origin, double distance_travelled);
     const std::shared_ptr<GenericPoint>& add_generic_point(const std::shared_ptr<Vertex>& vertex);
     const std::shared_ptr<GenericPoint>& add_generic_point(const std::shared_ptr<InteriorPoint>& interior_point);
-    const std::shared_ptr<InteriorPoint>& add_interior_point(const Eigen::Vector3d& position, const Eigen::Vector3d& origin, double distance_travelled);
-    const std::shared_ptr<InteriorPoint>& add_interior_point(const std::shared_ptr<GenericPoint>& generic_point);
+    const std::shared_ptr<InteriorPoint>& add_interior_point(const std::shared_ptr<Surface>& surface, const std::shared_ptr<Face>& face, const std::shared_ptr<GenericPoint>& generic_point);
     
     void delete_vertex(const std::shared_ptr<Vertex> vertex);
     void delete_edge(const std::shared_ptr<Edge> edge);

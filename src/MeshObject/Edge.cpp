@@ -7,7 +7,7 @@
 
 Settings Edge::settings_;
 
-void Edge::initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2)
+void Edge::initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<Surface>& surface, const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2)
 {
     // set expired
     is_expired_ = false;
@@ -41,6 +41,16 @@ void Edge::initialize_(const std::shared_ptr<Storage>& storage, const std::share
         // connect to vertices
         vertex1_valid->connect(shared_from_this());
         vertex2_valid->connect(shared_from_this());
+    }
+
+    // connect to surface
+    {
+        // write lock
+        std::unique_lock lock_surface(rwlock_surface_);
+
+        // connect to surface
+        surface_ = surface;
+        surface_->connect(shared_from_this());
     }
 
     // center min and max are computed once, and are not updated, otherwise BVH tree will cause search error
@@ -137,30 +147,6 @@ void Edge::connect(const std::shared_ptr<Face>& face)
     update_boundary_state();
 }
 
-void Edge::connect(const std::shared_ptr<Surface>& surface)
-{
-    // check input
-    if (surface->is_expired()) throw std::runtime_error("Attempts to connect edge with invalid surface.");
-
-    {
-        // write lock
-        std::unique_lock lock(rwlock_surface_);
-
-        // skip if already connected
-        if (surface_ == surface) return;
-
-        // connect
-        surface_ = surface;
-    }
-
-    // boundary state
-    is_boundary_ = false;
-    update_boundary_state();
-
-    // reverse connection
-    surface->connect(shared_from_this());
-}
-
 void Edge::disconnect(const std::shared_ptr<Face>& face)
 {
     // check input
@@ -186,32 +172,6 @@ void Edge::disconnect(const std::shared_ptr<Face>& face)
     if (faces_.empty() && !deleting_ && can_self_destruct_) storage_->add_edge_to_be_deleted(shared_from_this());
 }
 
-void Edge::disconnect(const std::shared_ptr<Surface>& surface)
-{
-    // check input
-    if (surface->is_expired()) return;
-
-    {
-        // write lock
-        std::unique_lock lock(rwlock_surface_);
-
-        // skip if not connected
-        if (surface_ != surface) return;
-        
-        // disconnect
-        surface_ = nullptr;
-    }
-
-    // update boundary state
-    is_boundary_ = false;
-
-    // reverse disconnect
-    surface->disconnect(shared_from_this());
-
-    // check self destruct
-    if (!deleting_ && can_self_destruct_) storage_->add_edge_to_be_deleted(shared_from_this());
-}
-
 void Edge::set_can_self_destruct(bool can_self_destruct)
 {
     can_self_destruct_ = can_self_destruct;
@@ -233,30 +193,6 @@ bool Edge::is_connected_to_boundary_edges(std::unordered_set<std::shared_ptr<Fac
     }
 
     return false;
-}
-
-// swap surface1 with surface2
-void Edge::swap(const std::shared_ptr<Surface>& surface1, const std::shared_ptr<Surface>& surface2)
-{
-    if (surface_ == surface1)
-    {
-        // std::cout << "Swapping edge " << id_ << " surface " << surface1->get_id() << " with surface " << surface2->get_id() << std::endl;
-
-        can_self_destruct_ = false;
-        disconnect(surface1);
-        connect(surface2);
-        can_self_destruct_ = true;
-
-        // cascade swap
-        for (const std::shared_ptr<Vertex>& vertex : vertices_)
-        {
-            vertex->swap(surface1, surface2);
-        }
-        for (const std::shared_ptr<Face>& face : faces_)
-        {
-            face->swap(surface1, surface2);
-        }
-    }
 }
 
 const int& Edge::get_id() const 
