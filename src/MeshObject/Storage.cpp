@@ -1048,32 +1048,57 @@ std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> Storage::get_boundary_
     return boundary_edges;
 }
 
+std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> Storage::get_vertices() const
 {
+    // read lock
+    std::shared_lock<std::shared_mutex> lock(rwlock_vertices_);
+
+    // return
     return vertices_;
 }
 
-const std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& Storage::get_edges() const
+std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> Storage::get_edges() const
 {
+    // read lock
+    std::shared_lock<std::shared_mutex> lock(rwlock_edges_);
+
+    // return
     return edges_;
 }
 
-const std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& Storage::get_faces() const
+std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> Storage::get_faces() const
 {
+    // read lock
+    std::shared_lock<std::shared_mutex> lock(rwlock_faces_);
+
+    // return
     return faces_;
 }
 
-const std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash>& Storage::get_surfaces() const
+std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> Storage::get_surfaces() const
 {
+    // read lock
+    std::shared_lock<std::shared_mutex> lock(rwlock_surfaces_);
+
+    // return
     return surfaces_;
 }
 
-const std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash>& Storage::get_generic_points() const
+std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash> Storage::get_generic_points() const
 {
+    // read lock
+    std::shared_lock<std::shared_mutex> lock(rwlock_genertic_points_);
+
+    // return
     return genertic_points_;
 }
 
-const std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash>& Storage::get_interior_points() const
+std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> Storage::get_interior_points() const
 {
+    // read lock
+    std::shared_lock<std::shared_mutex> lock(rwlock_interior_points_);
+
+    // return
     return interior_points_;
 }
 

@@ -105,12 +105,12 @@ public: // to user
 
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> get_boundary_vertices() const;
     std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> get_boundary_edges() const;
-    const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& get_vertices() const;
-    const std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& get_edges() const;
-    const std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& get_faces() const;
-    const std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash>& get_surfaces() const;
-    const std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash>& get_generic_points() const;
-    const std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash>& get_interior_points() const;
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> get_vertices() const;
+    std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> get_edges() const;
+    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> get_faces() const;
+    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> get_surfaces() const;
+    std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash> get_generic_points() const;
+    std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> get_interior_points() const;
 
     std::vector<std::shared_ptr<Vertex>> get_rrs_vertices();
     std::map<std::shared_ptr<Vertex>, int> get_vertex_to_cloud_indices_map() const;
