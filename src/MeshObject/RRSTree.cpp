@@ -237,9 +237,6 @@ std::shared_ptr<RRSNode> RRSTree::find_best_node(const std::shared_ptr<RRSNode>&
 
         // skip if inherited cost is already greater than best cost
         if (inherited_cost + lower_bound_cost > best_cost) continue;
-
-        // read lock
-        std::shared_lock<std::shared_mutex> lock(current_node->rwlock_node_);
         
         // cost to add a branch that contains current node and leaf node
         {
