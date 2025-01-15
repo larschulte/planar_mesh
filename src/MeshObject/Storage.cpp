@@ -200,8 +200,8 @@ const std::shared_ptr<InteriorPoint>& Storage::add_interior_point(const std::sha
 // need to ensure the vertex/edge/face are only stored using shared_ptr here and nowhere else
 void Storage::delete_vertex(const std::shared_ptr<Vertex> vertex) 
 {
-    // skip if already deleted by other thread
-    if (vertex->is_expired()) return;
+    // member delete
+    vertex->delete_();    
 
     {
         // write lock
@@ -210,15 +210,12 @@ void Storage::delete_vertex(const std::shared_ptr<Vertex> vertex)
         // storage delete
         vertices_.erase(vertex);
     }
-    
-    // member delete
-    vertex->delete_();    
 }
 
 void Storage::delete_edge(const std::shared_ptr<Edge> edge) 
 {
-    // check input
-    if (edge->is_expired()) return; // edge already deleted
+    // member delete
+    edge->delete_();
 
     {
         // write lock
@@ -226,16 +223,13 @@ void Storage::delete_edge(const std::shared_ptr<Edge> edge)
 
         // storage delete
         edges_.erase(edge);
-    }
-    
-    // member delete
-    edge->delete_();
+    }    
 }
 
 void Storage::delete_face(const std::shared_ptr<Face> face) 
 {
-    // check input
-    if (face->is_expired()) return; // face might be already deleted due to reducion in radius
+    // member delete
+    face->delete_();
 
     {
         // write lock
@@ -244,15 +238,12 @@ void Storage::delete_face(const std::shared_ptr<Face> face)
         // storage delete
         faces_.erase(face);
     }
-
-    // member delete
-    face->delete_();
 }
 
 void Storage::delete_surface(const std::shared_ptr<Surface> surface) 
 {
-    // check input
-    if (surface->is_expired()) throw std::runtime_error("Attempts to delete expired surface.");
+    // member delete
+    surface->delete_();
 
     {    
         // write lock
@@ -260,20 +251,14 @@ void Storage::delete_surface(const std::shared_ptr<Surface> surface)
         
         // storage delete
         surfaces_.erase(surface);
-    }
-
-    // member delete
-    surface->delete_();
+    }    
 }
 
 void Storage::delete_generic_point(const std::shared_ptr<GenericPoint> genertic_point) 
 {
-    // check input
-    if (genertic_point->is_expired()) throw std::runtime_error("Attempts to delete expired genertic point.");
-
-    // make a copy of the generic point
-    std::shared_ptr<GenericPoint> genertic_point_copy = genertic_point;
-
+    // member delete
+    genertic_point->delete_();
+    
     {
         // write lock
         std::unique_lock<std::shared_mutex> lock(rwlock_genertic_points_);
@@ -281,9 +266,6 @@ void Storage::delete_generic_point(const std::shared_ptr<GenericPoint> genertic_
         // storage delete
         genertic_points_.erase(genertic_point);
     }
-
-    // member delete
-    genertic_point_copy->delete_();
 }
 
 void Storage::delete_interior_point(const std::shared_ptr<InteriorPoint> interior_point) 
