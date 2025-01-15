@@ -32,8 +32,7 @@ public:
     
     // algorithm
     void process_point(const std::shared_ptr<GenericPoint>& generic_point);
-    bool add_point_by_intersection_search(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Face>>& searched_faces, std::vector<std::shared_ptr<Vertex>>& rrs_results, std::shared_ptr<Surface>& added_surface, std::shared_ptr<Face>& face_added_by_intersection_search);
-    bool add_point_by_radius_search(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Vertex>>& neighboring_vertices_vector, std::vector<std::shared_ptr<Face>>& bvh_results, std::shared_ptr<Surface>& added_surface, std::shared_ptr<Vertex>& vertex_added_by_radius_search);
+    void add_point_to_map(const std::shared_ptr<GenericPoint>& generic_point, std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> bvh_results, std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> rrs_results);
     
     // interaction
     void refine_surfaces();
@@ -44,7 +43,6 @@ public:
     void loop();
     void process_the_rest();
     void restart();
-    void rebuild_tree();
     std::shared_ptr<Storage> get_storage();
 
     // getter
@@ -55,7 +53,6 @@ public:
     const std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& get_faces();
     const std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& get_edges();
     std::vector<std::shared_ptr<Vertex>> get_rrs_vertices();
-    std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> get_boundary_edges();
     
     // data
     void load_point_cloud();

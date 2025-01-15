@@ -41,8 +41,8 @@ void InteractiveViewer<PointT>::update_display(bool export_ply)
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr vertex_pointcloud = app_.compute_vertex_point_pointcloud(settings_);
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr interior_point_cloud = app_.compute_interior_point_pointcloud(settings_);
     std::map<std::shared_ptr<Vertex>, int> vertex_to_cloud_indices_map = app_.get_vertex_to_cloud_indices_map();
-    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces = app_.get_faces();
-    std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> boundary_edges = app_.get_boundary_edges();
+    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces = storage_->get_faces();
+    std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> boundary_edges = storage_->get_boundary_edges();
 
     // vertex points
     viewer_->removeShape("point_cloud");
@@ -95,8 +95,10 @@ void InteractiveViewer<PointT>::update_display(bool export_ply)
         pcl::toPCLPointCloud2(*vertex_pointcloud, triangle_mesh.cloud);
         for (const std::shared_ptr<Face>& face : faces)
         {
-            // skip if not confirmed
-            if (settings_.show_confirmed_only && !face->is_confirmed()) continue;
+            // skip if can't find all indices
+            if (vertex_to_cloud_indices_map.find(face->get_vertex(0)) == vertex_to_cloud_indices_map.end()) continue;
+            if (vertex_to_cloud_indices_map.find(face->get_vertex(1)) == vertex_to_cloud_indices_map.end()) continue;
+            if (vertex_to_cloud_indices_map.find(face->get_vertex(2)) == vertex_to_cloud_indices_map.end()) continue;
 
             pcl::Vertices triangle;
             triangle.vertices.push_back(vertex_to_cloud_indices_map.at(face->get_vertex(0)));
@@ -121,8 +123,11 @@ void InteractiveViewer<PointT>::update_display(bool export_ply)
         pcl::toPCLPointCloud2(*vertex_pointcloud, boundary_mesh.cloud);
         for (const std::shared_ptr<Edge>& edge : boundary_edges)
         {
-            // skip if not confirmed
-            if (settings_.show_confirmed_only && !edge->is_confirmed()) continue;
+            // read lock edge
+            std::shared_lock<std::shared_mutex> lock(edge->rwlock_lifecycle_);
+            
+            // skip if expired // for some reason, storage would return expired edges ...
+            if (edge->is_expired()) continue;
 
             // skip if singular
             if (!settings_.show_singular_edge && edge->is_singular()) continue;
@@ -403,15 +408,6 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
         // log
         std::cout << "point mode: " << settings_.point_mode << std::endl;
     }
-    if (event.getKeySym() == "z" && event.keyDown())
-    {
-        // show confirmed only
-        settings_.show_confirmed_only = !settings_.show_confirmed_only;
-        update_display();
-
-        // log
-        std::cout << "show_confirmed_only: " << settings_.show_confirmed_only << std::endl;
-    }
     if (event.getKeySym() == "v" && event.keyDown())
     {
         settings_.show_wireframe = !settings_.show_wireframe;
@@ -460,6 +456,14 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
         // log
         std::cout << "remove non manifold faces" << std::endl;
     }
+    if (event.getKeySym() == "semicolon" && event.keyDown())
+    {
+        settings_.show_internal_vertices = !settings_.show_internal_vertices;
+        update_display();
+
+        // log
+        std::cout << "show internal vertex: " << settings_.show_internal_vertices << std::endl;
+    }
     if (event.getKeySym() == "l" && event.keyDown())
     {
         // toggle generic points
@@ -473,17 +477,10 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
     {
         // restart
         app_.restart();
+        storage_ = app_.get_storage();
         update_display();
 
         // log
         std::cout << "restarted" << std::endl;
-    }
-    if (event.getKeySym() == "t" && event.keyDown())
-    {
-        // restart
-        app_.rebuild_tree();
-
-        // log
-        std::cout << "rebuild tree" << std::endl;
     }
 }

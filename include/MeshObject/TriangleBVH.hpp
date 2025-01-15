@@ -9,8 +9,10 @@
 #include <memory>
 #include <array>
 
-#include "utilities/omp_utilities.hpp"
+#include <shared_mutex>
+#include <mutex>
 #include "MeshObject/Settings.hpp"
+#include <shared_mutex>
 
 #include <set>
 
@@ -23,6 +25,13 @@ bool ray_triangle_intersect(const Eigen::Vector3d& orig, const Eigen::Vector3d& 
 
 struct BoundingBox 
 {
+    // // include a read write lock
+    // mutable std::shared_mutex mutex_; // Read-write lock
+    
+    // copy assigmnet operator
+    BoundingBox& operator=(const BoundingBox& other);
+    BoundingBox(const BoundingBox&);
+
     Eigen::Vector3d min;
     Eigen::Vector3d max;
     Eigen::Vector3d min_used_for_surface_area;
@@ -38,37 +47,38 @@ struct BoundingBox
     bool intersect(const Eigen::Vector3d& orig, const Eigen::Vector3d& invdir, double& tMin, double& tMax) const;
     bool intersect(const Eigen::Vector3d& orig, const Eigen::Vector3d& invdir) const;
     int get_longest_axis();
-    double compute_surface_area() const;
-    const double& get_surface_area();
-};
-
-struct Node 
-{
-    BoundingBox box;
-    double split_value;
-    int split_axis;
-    std::shared_ptr<Node> parent;
-    std::shared_ptr<Node> left;
-    std::shared_ptr<Node> right;
-    std::shared_ptr<Node> sibling;
-    std::atomic<bool> isLeaf = true;
-    std::vector<std::shared_ptr<Face>> faces;
-
-    custom::custom_lock custom_lock;
-    omp_nest_lock_t omp_lock;
-
-    bool locked_children = false;
-
-    void recursive_unlock();
-    void recursive_expand_parent_box();
-    void recursive_shrink_parent_box();
+    double get_surface_area();
 };
 
 enum class BVHReturnType
 {
     INTERSECTED,
-    SKIP,
-    ABORT
+    SKIP
+};
+class Node : public std::enable_shared_from_this<Node>
+{
+    public:
+    BoundingBox box_;
+    std::shared_ptr<Node> parent_;
+    std::shared_ptr<Node> left_;
+    std::shared_ptr<Node> right_;
+    std::shared_ptr<Node> sibling_;
+    std::atomic<bool> isLeaf_ = true;
+    std::shared_ptr<Face> face_;
+
+    bool locked_children = false;
+
+    // read write lock
+    mutable std::shared_mutex rwlock_node_;
+
+    void recursive_expand_parent_box();
+    void recursive_shrink_parent_box();
+
+    BVHReturnType node_intersection_search(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Face>>& faces_intersected) const;
+    void node_add_face(const std::shared_ptr<Face>& face);
+    void node_delete_face(const std::shared_ptr<Face>& face);
+    void node_print(int level) const;
+    void node_flatten(std::vector<std::shared_ptr<Face>>& face_list) const;
 };
 
 // overload <<
@@ -79,32 +89,13 @@ class TriangleBVH
 
 private:
     static Settings settings_;
-    
-    std::shared_ptr<Node> root;
-    double rebuild_threshold;
-    int size_at_last_rebuild;
     int face_size;
     unsigned int leaf_size;
-
-    double sort_face_list_in_axis(std::vector<std::shared_ptr<Face>>& face_list, int axis, int start, int mid, int end);
-    void sort_face_list_in_axis(std::vector<std::shared_ptr<Face>>& face_list, int axis, int start, int end);
-    
-    std::shared_ptr<Node> build_node(const std::vector<std::shared_ptr<Face>>& face_list, const int& start, const int& end);
-    void convert_leaf_to_branch(const std::shared_ptr<Node>& node);
-
-    BVHReturnType node_intersection_search(const std::shared_ptr<Node>& node, const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Face>>& faces_intersected) const;
-
+    std::shared_ptr<Node> root;
     std::shared_ptr<Node> find_best_node(const std::shared_ptr<Node>& node, const std::shared_ptr<Face>& face);
-    void node_add_face(const std::shared_ptr<Node>& node, const std::shared_ptr<Face>& face);
-    double calculate_sah(BoundingBox& parent_box, BoundingBox& left_box, BoundingBox& right_box, int left_count, int right_count);
-    bool node_delete_face(const std::shared_ptr<Node>& node, const std::shared_ptr<Face>& face);
-    void node_print(const std::shared_ptr<Node>& node, int level) const;
-    void node_flatten(const std::shared_ptr<Node>& node, std::vector<std::shared_ptr<Face>>& face_list) const;
 
 public:
     TriangleBVH();
-    void check_rebuild();
-    void rebuild();
     std::vector<std::shared_ptr<Face>> get_face_list() const;
 
     void tree_add_face(std::shared_ptr<Face> face);

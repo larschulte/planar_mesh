@@ -8,6 +8,9 @@
 #include <memory>
 #include <array>
 
+#include <shared_mutex>
+#include <mutex>
+
 // forward declarations
 class Vertex;
 class Edge;
@@ -15,53 +18,61 @@ class Surface;
 
 class EdgeBVH
 {
-private:
+public:
     struct BoundingBox 
     {
         Eigen::Vector3d min;
         Eigen::Vector3d max;
+        Eigen::Vector3d min_used_for_surface_area;
+        Eigen::Vector3d max_used_for_surface_area;
+        double surface_area;
         BoundingBox();
+        BoundingBox(const std::shared_ptr<Edge>& edge);
         void expand(const Eigen::Vector3d& point);
-        bool intersect(const Eigen::Vector3d& orig, const Eigen::Vector3d& dir, double& tMin, double& tMax) const;
+        void expand_box_no_return(const Eigen::Vector3d& input_min, const Eigen::Vector3d& input_max);
+        void expand_box_no_return(const std::shared_ptr<Edge>& edge);
+        void expand_box_no_return(const BoundingBox& box);
+        bool expand_box(const Eigen::Vector3d& input_min, const Eigen::Vector3d& input_max);
+        bool expand_box(const EdgeBVH::BoundingBox& box);
+        bool intersect(const Eigen::Vector3d& orig, const Eigen::Vector3d& dir_inv, double& tMin, double& tMax) const;
         bool intersect(const Eigen::Vector3d& a, const Eigen::Vector3d& b) const;
         int get_longest_axis();
+        double compute_surface_area() const;
+        const double& get_surface_area();
     };
 
-    struct Node 
+    class Node : public std::enable_shared_from_this<EdgeBVH::Node>
     {
-        BoundingBox box;
-        double split_value;
-        int split_axis;
-        std::shared_ptr<Node> left;
-        std::shared_ptr<Node> right;
-        bool isLeaf() const;
-        std::vector<std::shared_ptr<Edge>> edges;
+        public:
+        BoundingBox box_;
+        std::shared_ptr<EdgeBVH::Node> parent_;
+        std::shared_ptr<EdgeBVH::Node> left_;
+        std::shared_ptr<EdgeBVH::Node> right_;
+        std::atomic<bool> isLeaf_ = true;
+        std::shared_ptr<Edge> edge_;
+
+        void recursive_expand_parent_box();
+        void recursive_shrink_parent_box();
+
+        // read write lock
+        mutable std::shared_mutex rwlock_node_;
+
+        void node_add_edge(const std::shared_ptr<Edge>& edge);
+        void node_delete_edge(const std::shared_ptr<Edge>& edge);
+        bool node_intersect_edge(const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2);
+        void node_print(int level) const;    
+        void node_flatten(std::vector<std::shared_ptr<Edge>>& flat_vector) const;
     };
 
 private:
-    std::shared_ptr<Surface> surface_;
-
-    std::shared_ptr<Node> root;
-    double rebuild_threshold;
-    int size_at_last_rebuild;
-    int edge_size;
-
-    double sort_edge_list_in_axis(std::vector<std::shared_ptr<Edge>>& edge_list, int axis, int start, int mid, int end);
-    void expand_node_box(const std::shared_ptr<Node>& node, const std::shared_ptr<Edge>& edge);
+    std::shared_ptr<EdgeBVH::Node> root_;
+    int edge_size_;
     
-    std::shared_ptr<EdgeBVH::Node> build_node(const std::vector<std::shared_ptr<Edge>>& edge_list, const int& start, const int& end);
-    void convert_leaf_to_branch(const std::shared_ptr<Node>& node);
-
-    void node_add_edge(const std::shared_ptr<Node>& node, const std::shared_ptr<Edge>& edge);
-    bool node_delete_edge(const std::shared_ptr<Node>& node, const std::shared_ptr<Edge>& edge);
-    bool node_intersect_edge(const std::shared_ptr<Node>& node, const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2);
-    void node_print(const std::shared_ptr<Node>& node, int level) const;    
-    void node_flatten(const std::shared_ptr<Node>& node, std::vector<std::shared_ptr<Edge>>& flat_vector) const;
+    // use SAH for EdgeBVH
+    std::shared_ptr<EdgeBVH::Node> find_best_node(const std::shared_ptr<EdgeBVH::Node>& root, const std::shared_ptr<Edge>& edge);
 
 public:
     EdgeBVH();
-    void set_surface(const std::shared_ptr<Surface>& surface);
-    void rebuild();
     std::vector<std::shared_ptr<Edge>> get_edge_list() const;
 
     void tree_add_edge(const std::shared_ptr<Edge>& edge);

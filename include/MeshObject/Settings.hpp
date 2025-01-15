@@ -79,6 +79,9 @@ struct Settings
 {
     Settings();
 
+    bool edge_is_short_enough(const double& edge_length, const double& radius0, const double& radius1) const;
+    double compute_rrs_half_size(const double& radius) const;
+
     // data loader settings
     DataLoader_Settings data_loader_settings;
 
@@ -96,6 +99,9 @@ struct Settings
     double radius_ratio; // distance to radius ratio
     std::size_t process_every_n_points;
     double duplicated_point_distance_threshold;
+    
+    double odometry_position_uncertainty_rate;
+    double odometry_angular_uncertainty_rate;
 
     double abnormal_size; // number of std
     double envelope_size; // number of std
@@ -123,12 +129,12 @@ struct Settings
     // interactive viewer settings
     bool update_display;
     bool flip_color;
+    bool show_internal_vertices;
     bool show_generic_points;
     bool show_interior_points;
     bool show_pointcloud;
     bool show_triangle;
     bool show_edge;
-    bool show_confirmed_only;
     bool show_keycode;
     bool show_singular_edge;
     bool show_singular_vertex;

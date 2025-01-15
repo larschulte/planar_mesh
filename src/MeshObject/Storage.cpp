@@ -27,6 +27,11 @@ Storage::Storage()
     smaller_add_searchable_vertices_queue_.resize(settings_.num_threads);
     smaller_set_of_vertices_to_update_rrs_tree.resize(settings_.num_threads);
     smaller_set_of_faces_to_update_rrs_tree.resize(settings_.num_threads);
+    smaller_set_of_edges_to_update_edgeBVH_tree.resize(settings_.num_threads);
+    thread_vertices_to_be_deleted_.resize(settings_.num_threads);
+    thread_edges_to_be_deleted_.resize(settings_.num_threads);
+    thread_faces_to_be_deleted_.resize(settings_.num_threads);
+    thread_interior_points_to_be_deleted_.resize(settings_.num_threads);
     
     // initialize with queue or stack
     for (size_t i = 0; i < settings_.num_threads; ++i)
@@ -48,8 +53,8 @@ const std::shared_ptr<Vertex>& Storage::add_vertex(const std::shared_ptr<Surface
     std::shared_ptr<Vertex> vertex = std::make_shared<Vertex>();
     vertex->initialize_(shared_from_this(), surface, position, origin, distance_travelled);
 
-    // lock
-    std::lock_guard<std::mutex> lock(vertices_mutex_);
+    // write lock
+    std::unique_lock<std::shared_mutex> lock(rwlock_vertices_);
 
     // store
     return *vertices_.insert(vertex).first;
@@ -61,8 +66,8 @@ const std::shared_ptr<Vertex>& Storage::add_vertex(const std::shared_ptr<Surface
     std::shared_ptr<Vertex> vertex = std::make_shared<Vertex>();
     vertex->initialize_(shared_from_this(), surface, position, origin, radius, distance_travelled);
 
-    // lock
-    std::lock_guard<std::mutex> lock(vertices_mutex_);
+    // write lock
+    std::unique_lock<std::shared_mutex> lock(rwlock_vertices_);
 
     // store
     return *vertices_.insert(vertex).first;
@@ -74,21 +79,21 @@ const std::shared_ptr<Vertex>& Storage::add_vertex(const std::shared_ptr<Surface
     std::shared_ptr<Vertex> vertex = std::make_shared<Vertex>();
     vertex->initialize_(shared_from_this(), surface, generic_point);
 
-    // lock
-    std::lock_guard<std::mutex> lock(vertices_mutex_);
+    // write lock
+    std::unique_lock<std::shared_mutex> lock(rwlock_vertices_);
 
     // store
     return *vertices_.insert(vertex).first;
 }
 
-const std::shared_ptr<Edge>& Storage::add_edge(const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2)
+const std::shared_ptr<Edge>& Storage::add_edge(const std::shared_ptr<Surface>& surface, const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2)
 {    
     // create
     std::shared_ptr<Edge> edge = std::make_shared<Edge>();
-    edge->initialize_(shared_from_this(), vertex1, vertex2);
+    edge->initialize_(shared_from_this(), surface, vertex1, vertex2);
 
-    // lock
-    std::lock_guard<std::mutex> lock(edges_mutex_);
+    // write lock
+    std::unique_lock<std::shared_mutex> lock(rwlock_edges_);
 
     // store
     return *edges_.insert(edge).first;
@@ -100,12 +105,32 @@ const std::shared_ptr<Face>& Storage::add_face(const std::shared_ptr<Surface>& s
     std::shared_ptr<Face> face = std::make_shared<Face>();
     face->initialize_(shared_from_this(), surface, vertex1, vertex2, vertex3);
 
-    // lock 
-    std::lock_guard<std::mutex> lock(faces_mutex_);
+    // write lock 
+    std::unique_lock<std::shared_mutex> lock(rwlock_faces_);
 
     // store
     return *faces_.insert(face).first;
 }
+
+const std::shared_ptr<Face>& Storage::add_face(
+    const std::shared_ptr<Surface>& surface, 
+    const std::shared_ptr<Vertex>& vertex1, 
+    const std::shared_ptr<Vertex>& vertex2, 
+    const std::shared_ptr<Vertex>& vertex3, 
+    const std::shared_ptr<Edge>& edge1, 
+    const std::shared_ptr<Edge>& edge2, 
+    const std::shared_ptr<Edge>& edge3) 
+{
+    // create
+    std::shared_ptr<Face> face = std::make_shared<Face>();
+    face->initialize_(shared_from_this(), surface, vertex1, vertex2, vertex3, edge1, edge2, edge3);
+
+    // write lock
+    std::unique_lock<std::shared_mutex> lock(rwlock_faces_);
+
+    // store
+    return *faces_.insert(face).first;
+} 
 
 const std::shared_ptr<Surface>& Storage::add_surface() 
 {
@@ -113,9 +138,9 @@ const std::shared_ptr<Surface>& Storage::add_surface()
     std::shared_ptr<Surface> surface = std::make_shared<Surface>();
     surface->initialize_(shared_from_this());
 
-    // lock
-    std::lock_guard<std::mutex> lock(surfaces_mutex_);
-
+    // write lock
+    std::unique_lock<std::shared_mutex> lock(rwlock_surfaces_);
+    
     // store
     return *surfaces_.insert(surface).first;
 }
@@ -126,8 +151,8 @@ const std::shared_ptr<GenericPoint>& Storage::add_generic_point(const Eigen::Vec
     std::shared_ptr<GenericPoint> genertic_point = std::make_shared<GenericPoint>();
     genertic_point->initialize_(shared_from_this(), position, origin, distance_travelled);
 
-    // lock
-    std::lock_guard<std::mutex> lock(genertic_points_mutex_);
+    // write lock
+    std::unique_lock<std::shared_mutex> lock(rwlock_genertic_points_);
 
     // store
     return *genertic_points_.insert(genertic_point).first;
@@ -139,8 +164,8 @@ const std::shared_ptr<GenericPoint>& Storage::add_generic_point(const std::share
     std::shared_ptr<GenericPoint> genertic_point = std::make_shared<GenericPoint>();
     genertic_point->initialize_(shared_from_this(), vertex);
 
-    // lock
-    std::lock_guard<std::mutex> lock(genertic_points_mutex_);
+    // write lock
+    std::unique_lock<std::shared_mutex> lock(rwlock_genertic_points_);
 
     // store
     return *genertic_points_.insert(genertic_point).first;
@@ -152,136 +177,105 @@ const std::shared_ptr<GenericPoint>& Storage::add_generic_point(const std::share
     std::shared_ptr<GenericPoint> genertic_point = std::make_shared<GenericPoint>();
     genertic_point->initialize_(shared_from_this(), interiror_point);
 
-    // lock
-    std::lock_guard<std::mutex> lock(genertic_points_mutex_);
+    // write lock
+    std::unique_lock<std::shared_mutex> lock(rwlock_genertic_points_);
 
     // store
     return *genertic_points_.insert(genertic_point).first;
 }
 
-const std::shared_ptr<InteriorPoint>& Storage::add_interior_point(const Eigen::Vector3d& position, const Eigen::Vector3d& origin, double distance_travelled) 
+const std::shared_ptr<InteriorPoint>& Storage::add_interior_point(const std::shared_ptr<Surface>& surface, const std::shared_ptr<Face>& face, const std::shared_ptr<GenericPoint>& generic_point) 
 {
     // create
     std::shared_ptr<InteriorPoint> interior_point = std::make_shared<InteriorPoint>();
-    interior_point->initialize_(shared_from_this(), position, origin, distance_travelled);
+    interior_point->initialize_(shared_from_this(), surface, face, generic_point);
 
-    // lock
-    std::lock_guard<std::mutex> lock(interior_points_mutex_);
-
-    // store
-    return *interior_points_.insert(interior_point).first;
-}
-
-const std::shared_ptr<InteriorPoint>& Storage::add_interior_point(const std::shared_ptr<GenericPoint>& generic_point) 
-{
-    // create
-    std::shared_ptr<InteriorPoint> interior_point = std::make_shared<InteriorPoint>();
-    interior_point->initialize_(shared_from_this(), generic_point);
-
-    // lock
-    std::lock_guard<std::mutex> lock(interior_points_mutex_);
+    // write lock
+    std::unique_lock<std::shared_mutex> lock(rwlock_interior_points_);
 
     // store
     return *interior_points_.insert(interior_point).first;
 }
 
 // need to ensure the vertex/edge/face are only stored using shared_ptr here and nowhere else
-void Storage::delete_vertex(const std::shared_ptr<Vertex>& vertex) 
+void Storage::delete_vertex(const std::shared_ptr<Vertex> vertex) 
 {
-    // check input
-    if (vertex->is_expired()) throw std::runtime_error("Attempts to delete expired vertex.");
+    // member delete
+    vertex->delete_();    
 
     {
-        // lock
-        std::lock_guard<std::mutex> lock(vertices_mutex_);
+        // write lock
+        std::unique_lock<std::shared_mutex> lock(rwlock_vertices_);
         
         // storage delete
         vertices_.erase(vertex);
     }
-    
-    // member delete
-    vertex->delete_();    
 }
 
-void Storage::delete_edge(const std::shared_ptr<Edge>& edge) 
+void Storage::delete_edge(const std::shared_ptr<Edge> edge) 
 {
-    // check input
-    if (edge->is_expired()) throw std::runtime_error("Attempts to delete expired edge.");
+    // member delete
+    edge->delete_();
 
     {
-        // lock
-        std::lock_guard<std::mutex> lock(edges_mutex_);
+        // write lock
+        std::unique_lock<std::shared_mutex> lock(rwlock_edges_);
 
         // storage delete
         edges_.erase(edge);
-    }
-    
-    // member delete
-    edge->delete_();
+    }    
 }
 
-void Storage::delete_face(const std::shared_ptr<Face>& face) 
+void Storage::delete_face(const std::shared_ptr<Face> face) 
 {
-    // check input
-    if (face->is_expired()) return; // face might be already deleted due to reducion in radius
+    // member delete
+    face->delete_();
 
     {
-        // lock 
-        std::lock_guard<std::mutex> lock(faces_mutex_);
+        // write lock
+        std::unique_lock<std::shared_mutex> lock(rwlock_faces_);
 
         // storage delete
         faces_.erase(face);
     }
-
-    // member delete
-    face->delete_();
 }
 
-void Storage::delete_surface(const std::shared_ptr<Surface>& surface) 
+void Storage::delete_surface(const std::shared_ptr<Surface> surface) 
 {
-    // check input
-    if (surface->is_expired()) throw std::runtime_error("Attempts to delete expired surface.");
+    // member delete
+    surface->delete_();
 
     {    
-        // lock
-        std::lock_guard<std::mutex> lock(surfaces_mutex_);
+        // write lock
+        std::unique_lock<std::shared_mutex> lock(rwlock_surfaces_);
         
         // storage delete
         surfaces_.erase(surface);
-    }
-
-    // member delete
-    surface->delete_();
+    }    
 }
 
-void Storage::delete_generic_point(const std::shared_ptr<GenericPoint>& genertic_point) 
+void Storage::delete_generic_point(const std::shared_ptr<GenericPoint> genertic_point) 
 {
-    // check input
-    if (genertic_point->is_expired()) throw std::runtime_error("Attempts to delete expired genertic point.");
-
-    // make a copy of the generic point
-    std::shared_ptr<GenericPoint> genertic_point_copy = genertic_point;
-
+    // member delete
+    genertic_point->delete_();
+    
     {
-        // lock
-        std::lock_guard<std::mutex> lock(genertic_points_mutex_);
+        // write lock
+        std::unique_lock<std::shared_mutex> lock(rwlock_genertic_points_);
 
         // storage delete
         genertic_points_.erase(genertic_point);
     }
-
-    // member delete
-    genertic_point_copy->delete_();
 }
 
-void Storage::delete_interior_point(const std::shared_ptr<InteriorPoint>& interior_point) 
+void Storage::delete_interior_point(const std::shared_ptr<InteriorPoint> interior_point) 
 {
     // check input
     if (interior_point->is_expired()) throw std::runtime_error("Attempts to delete expired interior point.");
 
     {
-        // lock
-        std::lock_guard<std::mutex> lock(interior_points_mutex_);
+        // write lock
+        std::unique_lock<std::shared_mutex> lock(rwlock_interior_points_);
 
         // storage delete
         interior_points_.erase(interior_point);
@@ -427,6 +421,37 @@ void Storage::print_main_queue_stats()
         }
 
         std::cout << "Num of point with no surface " << num_point_with_no_surface << std::endl;
+    }
+}
+
+void Storage::split_main_queue_into_smaller_queues_by_angle(Eigen::Vector3d origin)
+{
+    // Define angle thresholds for splitting
+    double angle_step = 360.0 / settings_.num_threads; // Divide the sphere into equal segments
+
+    // Initialize the smaller queues
+    for (auto& queue : smaller_queues_) {
+        while (!queue.empty()) {
+            queue.pop(); // Ensure the smaller queues are empty before starting
+        }
+    }
+
+    // Process each point in the main queue
+    while (!main_queue_.empty()) {
+        // Get the point from the main queue
+        std::shared_ptr<GenericPoint> point = main_queue_.front();
+        main_queue_.pop();
+
+        // Compute the angle of the point
+        Eigen::Vector3d position = point->get_position();
+        Eigen::Vector3d direction = position - origin;
+        double angle = std::atan2(direction[1], direction[0]) * 180.0 / M_PI;
+
+        // Determine the target queue based on the angle
+        int queue_index = static_cast<int>(angle / angle_step) % settings_.num_threads;
+
+        // Add the point to the appropriate smaller queue
+        smaller_queues_[queue_index].push(point);
     }
 }
 
@@ -769,33 +794,25 @@ void Storage::add_or_remove_vertices_from_rrs_tree()
 {
     for (const std::shared_ptr<Vertex>& vertex : smaller_set_of_vertices_to_update_rrs_tree[omp_get_thread_num()])
     {
-        // this should allow vertex to be expired. since when deleting vertex, it will become expired.
-        // // skip if vertex is expired, but really we should reduce the number of expired vertex in the set
-        // if (vertex->is_expired()) continue;
-
-        // check if vertex needs to be added or removed or unchanged from rrs_tree
-        if (vertex->is_expired())
+        // at this point in time, is the vertex expired?
+        bool is_expired;
         {
-            if (vertex->is_searchable())
-            {
-                rrs_tree_.tree_delete_vertex(vertex);
-            }
-            else
-            {
-                // do nothing
-            }
+            // read lock the vertex
+            std::shared_lock<std::shared_mutex> lock(vertex->rwlock_lifecycle_);
+
+            // check if vertex is expired
+            is_expired = vertex->is_expired();
         }
+
+        // if expired, remove from tree
+        if (is_expired)
+        {
+            rrs_tree_.tree_delete_vertex(vertex);
+        }
+        // if not expired, remove from tree
         else
         {
-            if (vertex->is_boundary() && !vertex->is_searchable())
-            {
-                rrs_tree_.tree_add_vertex(vertex);
-            }
-
-            if (!vertex->is_boundary() && vertex->is_searchable())
-            {
-                rrs_tree_.tree_delete_vertex(vertex);
-            }
+            rrs_tree_.tree_add_vertex(vertex);
         }
     }
 
@@ -807,30 +824,25 @@ void Storage::add_or_remove_faces_from_bvh_tree()
 {
     for (const std::shared_ptr<Face>& face : smaller_set_of_faces_to_update_rrs_tree[omp_get_thread_num()])
     {
-        // this should allow face to be expired. since when deleting face, it will become expired.
-        // // skip if face is expired, but really there should not have been any expired face in the set
-        // if (face->is_expired()) continue;
-
-        if (face->is_expired())
+        // at this point in time, is the face expired?
+        bool is_expired;
         {
-            if (face->is_searchable())
-            {
-                // remove from rrs_tree
-                triangle_bvh_.tree_delete_face(face);
-            }
-            else
-            {
-                // do nothing
-            }
+            // read lock the face
+            std::shared_lock<std::shared_mutex> lock(face->rwlock_lifecycle_);
+
+            // check if face is expired
+            is_expired = face->is_expired();
         }
+
+        // if expired, remove from tree
+        if (is_expired)
+        {
+            triangle_bvh_.tree_delete_face(face);
+        }
+        // if not expired, remove from tree
         else
         {
-            // face should always be searchable
-            if (!face->is_searchable())
-            {
-                // add to rrs_tree
-                triangle_bvh_.tree_add_face(face);
-            }
+            triangle_bvh_.tree_add_face(face);
         }
     }
 
@@ -838,6 +850,92 @@ void Storage::add_or_remove_faces_from_bvh_tree()
     smaller_set_of_faces_to_update_rrs_tree[omp_get_thread_num()].clear();
 }
 
+void Storage::add_or_remove_edges_from_edgeBVH_tree()
+{
+    for (const std::pair<std::shared_ptr<Edge>, std::shared_ptr<Surface>>& edge_surface_pair : smaller_set_of_edges_to_update_edgeBVH_tree[omp_get_thread_num()])
+    {
+        // at this point in time, is the edge expired?
+        bool is_expired;
+        {
+            // read lock the edge
+            std::shared_lock<std::shared_mutex> lock(edge_surface_pair.first->rwlock_lifecycle_);
+
+            // check if edge is expired
+            is_expired = edge_surface_pair.first->is_expired();
+        }
+
+        // if expired, remove from tree
+        if (is_expired)
+        {
+            edge_surface_pair.second->remove_searchable_edge(edge_surface_pair.first);
+        }
+        // if not expired, remove from tree
+        else
+        {
+            edge_surface_pair.second->add_searchable_edge(edge_surface_pair.first);
+        }
+    }
+
+    // clear
+    smaller_set_of_edges_to_update_edgeBVH_tree[omp_get_thread_num()].clear();
+}
+
+void Storage::add_vertex_to_be_deleted(const std::shared_ptr<Vertex>& vertex)
+{
+    thread_vertices_to_be_deleted_[omp_get_thread_num()].insert(vertex);
+}
+
+void Storage::add_edge_to_be_deleted(const std::shared_ptr<Edge>& edge)
+{
+    thread_edges_to_be_deleted_[omp_get_thread_num()].insert(edge);
+}
+
+void Storage::add_face_to_be_deleted(const std::shared_ptr<Face>& face)
+{
+    thread_faces_to_be_deleted_[omp_get_thread_num()].insert(face);
+}
+
+void Storage::add_interior_point_to_be_deleted(const std::shared_ptr<InteriorPoint>& interior_point)
+{
+    thread_interior_points_to_be_deleted_[omp_get_thread_num()].insert(interior_point);
+}
+
+void Storage::delete_to_be_deleted_repeatedly()
+{
+    bool repeat = true;
+    while (repeat)
+    {
+        // delete
+        delete_to_be_deleted();
+
+        // check if there is any new vertex to be deleted
+        repeat = thread_vertices_to_be_deleted_[omp_get_thread_num()].size() > 0
+            || thread_edges_to_be_deleted_[omp_get_thread_num()].size() > 0
+            || thread_faces_to_be_deleted_[omp_get_thread_num()].size() > 0
+            || thread_interior_points_to_be_deleted_[omp_get_thread_num()].size() > 0;
+    }
+}
+
+void Storage::delete_to_be_deleted()
+{
+    // make copy
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertices_to_be_deleted = thread_vertices_to_be_deleted_[omp_get_thread_num()];
+    std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges_to_be_deleted = thread_edges_to_be_deleted_[omp_get_thread_num()];
+    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces_to_be_deleted = thread_faces_to_be_deleted_[omp_get_thread_num()];
+    std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> interior_points_to_be_deleted = thread_interior_points_to_be_deleted_[omp_get_thread_num()];
+
+    // clear
+    thread_vertices_to_be_deleted_[omp_get_thread_num()].clear();
+    thread_edges_to_be_deleted_[omp_get_thread_num()].clear();
+    thread_faces_to_be_deleted_[omp_get_thread_num()].clear();
+    thread_interior_points_to_be_deleted_[omp_get_thread_num()].clear();
+
+    // delete
+    for (const std::shared_ptr<Vertex>& vertex : vertices_to_be_deleted) delete_vertex(vertex);
+    for (const std::shared_ptr<Edge>& edge : edges_to_be_deleted) delete_edge(edge);
+    for (const std::shared_ptr<Face>& face : faces_to_be_deleted) delete_face(face);
+    for (const std::shared_ptr<InteriorPoint>& interior_point : interior_points_to_be_deleted) delete_interior_point(interior_point);
+}
 
 void Storage::remove_searchable_vertex(const std::shared_ptr<Vertex>& vertex)
 {
@@ -855,6 +953,12 @@ void Storage::add_to_set_of_faces_to_update_bvh_tree(const std::shared_ptr<Face>
 {
     // add to affected vertices set
     smaller_set_of_faces_to_update_rrs_tree[omp_get_thread_num()].insert(face);
+}
+
+void Storage::add_to_set_of_edge_to_update_edgeBVH_tree(const std::shared_ptr<Edge>& edge, const std::shared_ptr<Surface>& surface)
+{
+    // add to affected vertices set
+    smaller_set_of_edges_to_update_edgeBVH_tree[omp_get_thread_num()].emplace_back(edge, surface);
 }
 
 void Storage::add_searchable_face(const std::shared_ptr<Face>& face)
@@ -877,11 +981,6 @@ int Storage::get_next_surface_id() { return next_surface_id_++; }
 int Storage::get_next_generic_point_id() { return next_genertic_point_id_++; }
 int Storage::get_next_interior_point_id() { return next_interior_point_id_++; }
 
-bool Storage::can_reverse_radius_search() 
-{ 
-    return rrs_tree_.can_reverse_radius_search(); 
-}
-
 RRSReturnType Storage::reverse_radius_search(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Vertex>>& result) 
 {
     return rrs_tree_.tree_reverse_radius_search(generic_point, result);
@@ -892,33 +991,96 @@ BVHReturnType Storage::face_intersection_search(const std::shared_ptr<GenericPoi
     return triangle_bvh_.tree_intersection_search(generic_point, result);
 }
 
-const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& Storage::get_vertices() const
+std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> Storage::get_boundary_vertices() const
 {
+    // initialize
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> boundary_vertices;
+
+    // get vertices
+    const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& vertices = get_vertices();
+
+    for (const std::shared_ptr<Vertex>& vertex : vertices)
+    {
+        if (vertex->is_boundary()) boundary_vertices.insert(vertex);
+    }    
+
+    // return
+    return boundary_vertices;
+}
+
+std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> Storage::get_boundary_edges() const
+{
+    // initialize
+    std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> boundary_edges;
+    {
+        // lock
+        std::shared_lock<std::shared_mutex> lock(rwlock_edges_);
+
+        // get edges
+        for (const std::shared_ptr<Edge>& edge : edges_)
+        {
+            // read lock
+            std::shared_lock<std::shared_mutex> lock(edge->rwlock_lifecycle_);
+
+            if (edge->is_boundary()) boundary_edges.insert(edge);
+        }    
+    }
+    
+    // return
+    return boundary_edges;
+}
+
+std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> Storage::get_vertices() const
+{
+    // read lock
+    std::shared_lock<std::shared_mutex> lock(rwlock_vertices_);
+
+    // return
     return vertices_;
 }
 
-const std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& Storage::get_edges() const
+std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> Storage::get_edges() const
 {
+    // read lock
+    std::shared_lock<std::shared_mutex> lock(rwlock_edges_);
+
+    // return
     return edges_;
 }
 
-const std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& Storage::get_faces() const
+std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> Storage::get_faces() const
 {
+    // read lock
+    std::shared_lock<std::shared_mutex> lock(rwlock_faces_);
+
+    // return
     return faces_;
 }
 
-const std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash>& Storage::get_surfaces() const
+std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> Storage::get_surfaces() const
 {
+    // read lock
+    std::shared_lock<std::shared_mutex> lock(rwlock_surfaces_);
+
+    // return
     return surfaces_;
 }
 
-const std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash>& Storage::get_generic_points() const
+std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash> Storage::get_generic_points() const
 {
+    // read lock
+    std::shared_lock<std::shared_mutex> lock(rwlock_genertic_points_);
+
+    // return
     return genertic_points_;
 }
 
-const std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash>& Storage::get_interior_points() const
+std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> Storage::get_interior_points() const
 {
+    // read lock
+    std::shared_lock<std::shared_mutex> lock(rwlock_interior_points_);
+
+    // return
     return interior_points_;
 }
 
@@ -949,20 +1111,14 @@ bool Storage::is_expired() const
     return is_expired_;
 }
 
-// get edge
-const std::shared_ptr<Edge>& Storage::get_edge(std::shared_ptr<Vertex> vertex1, std::shared_ptr<Vertex> vertex2) const
+unsigned int Storage::get_rrs_size() const
 {
-    // check input
-    if (vertex1->is_expired() || vertex2->is_expired()) throw std::runtime_error("Attempts to get edge with invalid vertex.");
+    return rrs_tree_.get_size();
+}
 
-    // search
-    for (const std::shared_ptr<Edge>& edge : edges_)
-    {
-        if (edge->has_vertex(vertex1) && edge->has_vertex(vertex2)) return edge;
-    }
-
-    // not found
-    throw std::runtime_error("Edge not found.");
+unsigned int Storage::get_bvh_size() const
+{
+    return triangle_bvh_.get_size();
 }
 
 void Storage::print_rrs() const
@@ -973,21 +1129,4 @@ void Storage::print_rrs() const
 void Storage::print_bvh() const
 {
     triangle_bvh_.tree_print();
-}
-
-void Storage::check_tree_rebuild()
-{
-    rrs_tree_.check_rebuild();
-    triangle_bvh_.check_rebuild();
-}
-
-void Storage::rebuild_tree()
-{
-    rrs_tree_.rebuild();
-    triangle_bvh_.rebuild();
-}
-
-unsigned int Storage::get_bvh_size() const
-{
-    return triangle_bvh_.get_size();
 }

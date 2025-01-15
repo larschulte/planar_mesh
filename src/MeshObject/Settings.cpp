@@ -39,7 +39,7 @@ Settings::Settings()
         "/home/jiahao/datasets/abingdon logs/2024-12-03_10-25-53_rec001_rad301_run2/slam_pose_graph.slam"
     );
 
-    std::string dataset = "nottinghill";
+    std::string dataset = "christchurch";
     data_loader_settings.pcd_file_folder = dataset_map[dataset].first;
     data_loader_settings.pose_file_path = dataset_map[dataset].second;
 
@@ -75,12 +75,15 @@ Settings::Settings()
     extra_radius = 0.1;
     duplicated_point_distance_threshold = 0.0; // if two points are closer than this distance, they are considered the same point
 
+    odometry_position_uncertainty_rate = 0.001; // kitti sota 0.005m/m (0.5%)
+    odometry_angular_uncertainty_rate = 0.001; // kitti sota 0.001 deg/m
+
     abnormal_size = 1.5;
     envelope_size = 3.5;
 
     num_of_delete_before_put_to_repeated_queue = 2;
     
-    num_threads = 4;
+    num_threads = 28;
     record_countent_surface_count = false;
 
     use_queue = true;
@@ -136,12 +139,12 @@ Settings::Settings()
     // interactive viewer settings
     update_display = true;
     flip_color = false;
+    show_internal_vertices = true;
     show_generic_points = false;
     show_interior_points = true;
     show_pointcloud = true;
     show_triangle = true;
     show_edge = true;
-    show_confirmed_only = false;
     show_keycode = false;
     show_singular_edge = false;
     show_singular_vertex = false;
@@ -155,4 +158,16 @@ Settings::Settings()
     show_wireframe = true;
     show_sphere = false;
     number_of_spheres_to_display = 60;
+}
+
+bool Settings::edge_is_short_enough(const double& edge_length, const double& radius0, const double& radius1) const
+{
+    const double minimum_edge_length = 0.0f;
+    return edge_length < radius0 + minimum_edge_length && edge_length < radius1 + minimum_edge_length;
+}
+
+double Settings::compute_rrs_half_size(const double& radius) const
+{
+    const double minimum_rrs_half_size = 0.0f;
+    return std::max(minimum_rrs_half_size, radius);
 }

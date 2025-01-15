@@ -31,24 +31,32 @@ public: // to user
     const std::shared_ptr<Vertex>& add_vertex(const std::shared_ptr<Surface>& surface, const Eigen::Vector3d& origin, const Eigen::Vector3d& position, double distance_travelled);
     const std::shared_ptr<Vertex>& add_vertex(const std::shared_ptr<Surface>& surface, const Eigen::Vector3d& origin, const Eigen::Vector3d& position, const double& radius, double distance_travelled);
     const std::shared_ptr<Vertex>& add_vertex(const std::shared_ptr<Surface>& surface, const std::shared_ptr<GenericPoint>& generic_point);
-    const std::shared_ptr<Edge>& add_edge(const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2);
+    const std::shared_ptr<Edge>& add_edge(const std::shared_ptr<Surface>& surface, const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2);
     const std::shared_ptr<Face>& add_face(const std::shared_ptr<Surface>& surface, const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2, const std::shared_ptr<Vertex>& vertex3);
+    const std::shared_ptr<Face>& add_face(
+        const std::shared_ptr<Surface>& surface, 
+        const std::shared_ptr<Vertex>& vertex1, 
+        const std::shared_ptr<Vertex>& vertex2, 
+        const std::shared_ptr<Vertex>& vertex3,
+        const std::shared_ptr<Edge>& edge1,
+        const std::shared_ptr<Edge>& edge2,
+        const std::shared_ptr<Edge>& edge3);
     const std::shared_ptr<Surface>& add_surface();
     const std::shared_ptr<GenericPoint>& add_generic_point(const Eigen::Vector3d& position, const Eigen::Vector3d& origin, double distance_travelled);
     const std::shared_ptr<GenericPoint>& add_generic_point(const std::shared_ptr<Vertex>& vertex);
     const std::shared_ptr<GenericPoint>& add_generic_point(const std::shared_ptr<InteriorPoint>& interior_point);
-    const std::shared_ptr<InteriorPoint>& add_interior_point(const Eigen::Vector3d& position, const Eigen::Vector3d& origin, double distance_travelled);
-    const std::shared_ptr<InteriorPoint>& add_interior_point(const std::shared_ptr<GenericPoint>& generic_point);
+    const std::shared_ptr<InteriorPoint>& add_interior_point(const std::shared_ptr<Surface>& surface, const std::shared_ptr<Face>& face, const std::shared_ptr<GenericPoint>& generic_point);
     
-    void delete_vertex(const std::shared_ptr<Vertex>& vertex);
-    void delete_edge(const std::shared_ptr<Edge>& edge);
-    void delete_face(const std::shared_ptr<Face>& face);
-    void delete_surface(const std::shared_ptr<Surface>& surface);
-    void delete_generic_point(const std::shared_ptr<GenericPoint>& genertic_point);
-    void delete_interior_point(const std::shared_ptr<InteriorPoint>& interior_point);
+    void delete_vertex(const std::shared_ptr<Vertex> vertex);
+    void delete_edge(const std::shared_ptr<Edge> edge);
+    void delete_face(const std::shared_ptr<Face> face);
+    void delete_surface(const std::shared_ptr<Surface> surface);
+    void delete_generic_point(const std::shared_ptr<GenericPoint> genertic_point);
+    void delete_interior_point(const std::shared_ptr<InteriorPoint> interior_point);
 
     void add_to_main_queue(const Eigen::Vector3d& position, const Eigen::Vector3d& origin, double distance_travelled);
     void split_main_queue_into_smaller_queues();
+    void split_main_queue_into_smaller_queues_by_angle(Eigen::Vector3d origin);
     void split_main_queue_into_smaller_queues_by_contention();
     void print_main_queue_stats();
 
@@ -74,40 +82,51 @@ public: // to user
     void update_radius();
 
     void add_points_in_add_searchable_vertex_queue();
+
     void add_or_remove_vertices_from_rrs_tree();
     void add_or_remove_faces_from_bvh_tree();
+    void add_or_remove_edges_from_edgeBVH_tree();
 
-    bool can_reverse_radius_search();
+    void add_vertex_to_be_deleted(const std::shared_ptr<Vertex>& vertex);
+    void add_edge_to_be_deleted(const std::shared_ptr<Edge>& edge);
+    void add_face_to_be_deleted(const std::shared_ptr<Face>& face);
+    void add_interior_point_to_be_deleted(const std::shared_ptr<InteriorPoint>& interior_point);
+
+    void delete_to_be_deleted_repeatedly();
+    void delete_to_be_deleted();
+
+
+    void add_to_set_of_vertices_to_update_rrs_tree(const std::shared_ptr<Vertex>& vertex);
+    void add_to_set_of_faces_to_update_bvh_tree(const std::shared_ptr<Face>& face);
+    void add_to_set_of_edge_to_update_edgeBVH_tree(const std::shared_ptr<Edge>& edge, const std::shared_ptr<Surface>& surface);
+
     RRSReturnType reverse_radius_search(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Vertex>>& result);
     BVHReturnType face_intersection_search(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Face>>& result);
 
-    const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& get_vertices() const;
-    const std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& get_edges() const;
-    const std::shared_ptr<Edge>& get_edge(std::shared_ptr<Vertex> vertex1, std::shared_ptr<Vertex> vertex2) const;
-    const std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& get_faces() const;
-    const std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash>& get_surfaces() const;
-    const std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash>& get_generic_points() const;
-    const std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash>& get_interior_points() const;
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> get_boundary_vertices() const;
+    std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> get_boundary_edges() const;
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> get_vertices() const;
+    std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> get_edges() const;
+    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> get_faces() const;
+    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> get_surfaces() const;
+    std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash> get_generic_points() const;
+    std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> get_interior_points() const;
 
     std::vector<std::shared_ptr<Vertex>> get_rrs_vertices();
     std::map<std::shared_ptr<Vertex>, int> get_vertex_to_cloud_indices_map() const;
     bool is_expired() const;
 
+    unsigned int get_rrs_size() const;
+    unsigned int get_bvh_size() const;
+
     void print_rrs() const;
     void print_bvh() const;
-    void check_tree_rebuild();
-    void rebuild_tree();
-
-    unsigned int get_bvh_size() const;
 
 private: // to Vertex and Face class
     friend class Vertex;
     friend class Face;
     void add_searchable_vertex(const std::shared_ptr<Vertex>& vertex);
     void remove_searchable_vertex(const std::shared_ptr<Vertex>& vertex);
-
-    void add_to_set_of_vertices_to_update_rrs_tree(const std::shared_ptr<Vertex>& vertex);
-    void add_to_set_of_faces_to_update_bvh_tree(const std::shared_ptr<Face>& face);
 
     void add_searchable_face(const std::shared_ptr<Face>& face);
     void remove_searchable_face(const std::shared_ptr<Face>& face);
@@ -138,6 +157,12 @@ private:
     std::vector<std::queue<std::shared_ptr<Vertex>>> smaller_add_searchable_vertices_queue_;
     std::vector<std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>> smaller_set_of_vertices_to_update_rrs_tree;
     std::vector<std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>> smaller_set_of_faces_to_update_rrs_tree;
+    std::vector<std::vector<std::pair<std::shared_ptr<Edge>, std::shared_ptr<Surface>>> > smaller_set_of_edges_to_update_edgeBVH_tree;
+
+    std::vector<std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>> thread_vertices_to_be_deleted_;
+    std::vector<std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>> thread_edges_to_be_deleted_;
+    std::vector<std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>> thread_faces_to_be_deleted_;
+    std::vector<std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash>> thread_interior_points_to_be_deleted_;
 
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertices_;
     std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges_;
@@ -146,12 +171,13 @@ private:
     std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> interior_points_;
     std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash> genertic_points_;
 
-    std::mutex vertices_mutex_;
-    std::mutex edges_mutex_;
-    std::mutex faces_mutex_;
-    std::mutex surfaces_mutex_;
-    std::mutex interior_points_mutex_;
-    std::mutex genertic_points_mutex_;
+    // read write lock
+    mutable std::shared_mutex rwlock_vertices_;
+    mutable std::shared_mutex rwlock_edges_;
+    mutable std::shared_mutex rwlock_faces_;
+    mutable std::shared_mutex rwlock_surfaces_;
+    mutable std::shared_mutex rwlock_interior_points_;
+    mutable std::shared_mutex rwlock_genertic_points_;
 
     std::atomic<int> next_vertex_id_{0};
     std::atomic<int> next_edge_id_{0};

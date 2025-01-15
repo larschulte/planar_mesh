@@ -30,7 +30,15 @@ protected:
     void delete_();
 
 public:
-    omp_nest_lock_t vertex_lock;
+    // read write locks for shared resources
+    mutable std::shared_mutex rwlock_vertex_point_distance_publishers_;
+    mutable std::shared_mutex rwlock_interior_point_distance_publishers_;
+    mutable std::shared_mutex rwlock_vertex_point_distance_subscribers_;
+
+    mutable std::shared_mutex rwlock_edges_;
+    mutable std::shared_mutex rwlock_faces_;
+
+    mutable std::shared_mutex rwlock_lifecycle_;
 
     void temp_initialize(const Eigen::Vector3d& position, unsigned int id);
     std::shared_ptr<RRSNode> node;
@@ -42,24 +50,22 @@ public:
     const double& get_distance_travelled() const;
     const Eigen::Vector3d& get_direction() const;
     const std::shared_ptr<Surface>& get_surface() const;
-    const std::shared_ptr<Surface>& get_surface_check() const;
-    bool has_surface() const;
-    const std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& get_edges() const;
-    const std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& get_faces() const;
-    const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& get_sibling_vertices() const;
+    std::vector<std::shared_ptr<Edge>> get_edges() const;
+    std::vector<std::shared_ptr<Face>> get_faces() const;
     std::size_t get_num_deletes() const;
     double get_current_surface_uncertainty() const;
 
     double& get_projected_uncertainty();
 
-    const std::shared_ptr<Edge>& get_edge(const std::shared_ptr<Vertex>& vertex) const;
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> get_vertex_ray_publishers() const;
+    std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> get_interior_ray_publishers() const;
+
+    std::shared_ptr<Edge> get_edge(const std::shared_ptr<Vertex>& vertex) const;
 
     // void try_merge_surfaces();
 
-    const Eigen::Vector3d& buffer_compute_projected_position(const std::shared_ptr<Surface> surface);
-    const Eigen::Vector3d& buffer_compute_projected_position();
-    const double& buffer_compute_projected_distance(const std::shared_ptr<Surface> surface);
-    const double& buffer_compute_projected_distance();
+    Eigen::Vector3d compute_projected_position();
+    double compute_projected_distance();
     const Eigen::Vector2d& get_surface_coordinate(const std::shared_ptr<Surface>& surface);
     const Eigen::Vector2d& get_surface_coordinate();
 
@@ -73,67 +79,50 @@ public:
 
     void connect(const std::shared_ptr<Edge>& edge);
     void connect(const std::shared_ptr<Face>& face);
-    void connect(const std::shared_ptr<Surface>& surface);
-    void connect(const std::shared_ptr<Vertex>& sibling_vertex);
     void disconnect(const std::shared_ptr<Edge>& edge);
     void disconnect(const std::shared_ptr<Face>& face);
-    void disconnect(const std::shared_ptr<Surface>& surface);
-    void disconnect(const std::shared_ptr<Vertex>& sibling_vertex);
 
     std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> get_connected_boundary_edges() const;
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> get_connected_boundary_vertices();
     bool check_connected_by_edge(const std::shared_ptr<Vertex>& vertex);
     bool check_connected_by_face(const std::shared_ptr<Vertex>& vertex0, const std::shared_ptr<Vertex>& vertex1);
     bool try_close_holes_repeatedly();
-    bool try_close_holes_between_self_and(std::shared_ptr<Vertex>& vertex0, std::shared_ptr<Vertex>& vertex1);
+    bool try_close_holes_between_self_and(std::shared_ptr<Vertex>& vertex0, std::shared_ptr<Vertex>& vertex1, std::shared_ptr<Edge>& edge0, std::shared_ptr<Edge>& edge1);
     bool try_close_holes();
     void remove_all_edges();
 
     // can self destruct flag
     void set_can_self_destruct(bool can_self_destruct);
+    void set_connecting_to_edges_and_faces(bool connecting_to_edges_and_faces);
 
     // non manifold
     bool is_non_manifold() const;
 
-    // point - nearby vertex
-    void add_nearby_vertex(const std::shared_ptr<Vertex>& rrs_vertex);
-    void delete_nearby_vertex(const std::shared_ptr<Vertex>& rrs_vertex);
-    void add_self_to_nearby_vertices();
-    void delete_self_from_nearby_vertices();
+    void delete_publishers();
+    void delete_subscribers();
 
-    // ray - being penetrated by interior point
-    void add_penetrating_interior_point(const std::shared_ptr<InteriorPoint>& interior_point);
-    void delete_penetrating_interior_point(const std::shared_ptr<InteriorPoint>& interior_point);
+    void upon_adding_publisher();
+    void upon_deleting_publisher();
 
-    // ray - being penetrated by vertex point
-    void add_penetrating_vertex_point(const std::shared_ptr<Vertex>& vertex_point);
-    void delete_penetrating_vertex_point(const std::shared_ptr<Vertex>& vertex_point);
-    void delete_self_from_penetrating_vertex_points();
+    // vertex point distance publisher and subscriber
+    void add_vertex_point_distance_publisher(const std::shared_ptr<Vertex> vertex_point_publisher);
+    void delete_vertex_point_distance_publisher(const std::shared_ptr<Vertex> vertex_point_publisher);
+    void add_vertex_point_distance_subscriber(const std::shared_ptr<Vertex> vertex_point_subscriber);
+    void delete_vertex_point_distance_subscriber(const std::shared_ptr<Vertex> vertex_point_subscriber);
 
-    // ray - penetrating vertex
-    void add_penetrated_vertex(const std::shared_ptr<Vertex>& vertex);
-    void delete_penetrated_vertex(const std::shared_ptr<Vertex>& vertex);
-    void add_self_to_penetrated_vertices();
-    void delete_self_from_penetrated_vertices();
+    // interior point distance publisher
+    void add_interior_point_distance_publisher(const std::shared_ptr<InteriorPoint> interior_point_publisher);
+    void delete_interior_point_distance_publisher(const std::shared_ptr<InteriorPoint> interior_point_publisher);
 
     // update radius
-    void cascade_radius_reduction_to_connected_vertices();
     double compute_radius();
     void try_update_radius();
     void try_break_edges();
     void try_update_node_box();
 
-    void review_surfaces();
-    bool is_under_review() const;
-
-    void update_confirmed_status();
     void update_singular_state();
-    bool is_confirmed() const;
     bool is_singular() const;
     
-    void swap(const std::shared_ptr<Surface>& surface1, const std::shared_ptr<Surface>& surface2);
-    void absorbs(const std::shared_ptr<Vertex>& input_vertex);
-
     void check_if_update_search_tree();
 
     void print_info();
@@ -141,7 +130,6 @@ public:
     void can_create_generic_point(bool can_create);
 
 public: // for reverse radius search
-    void set_reverse_radius_search_radius(double radius);
     const Eigen::Vector3d& get_min() const;
     const Eigen::Vector3d& get_max() const;
     const double& get_radius() const;
@@ -159,7 +147,6 @@ private:
     static Settings settings_;
 
     bool deleting_ = false;
-    bool under_review_ = false;
     bool is_expired_ = true;
     bool is_singular_;
     bool can_self_destruct_ = true;
@@ -168,17 +155,14 @@ private:
 
     std::size_t num_deletes_;
 
-    std::size_t num_confirmed_faces = 0;
-    bool is_confirmed_ = false;
-
     int id_;
     std::shared_ptr<Storage> storage_;
 
-    std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges_;
-    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces_;
-    std::shared_ptr<Surface> surface_;
+    bool connecting_to_edges_and_faces_ = false;
 
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> sibling_vertices_;
+    std::vector<std::shared_ptr<Edge>> edges_;
+    std::vector<std::shared_ptr<Face>> faces_;
+    std::shared_ptr<Surface> surface_;
 
     Eigen::Matrix3d eigenvectors_used_;
     Eigen::Vector2d surface_coordinate_;
@@ -196,10 +180,12 @@ private:
 
     Eigen::Vector3d projected_position_ = Eigen::Vector3d::Zero();
 
-    std::unordered_map<std::shared_ptr<Vertex>, double, MeshObjectHash> distances_to_nearby_vertices_;
-    std::unordered_map<std::shared_ptr<InteriorPoint>, double, MeshObjectHash> distances_to_ray_of_penetrating_interior_points_;
-    std::unordered_map<std::shared_ptr<Vertex>, double, MeshObjectHash> distances_to_ray_of_penetrating_vertex_points_;
-    std::unordered_map<std::shared_ptr<Vertex>, double, MeshObjectHash> distances_to_plane_of_penetrated_vertex_points_;
+    // a publisher is one that reduces radius of other vertices
+    std::vector<std::pair<std::shared_ptr<Vertex>, double>> vertex_point_distance_publishers_;
+    std::vector<std::pair<std::shared_ptr<InteriorPoint>, double>> interior_point_distance_publishers_;
+
+    // a subscriber is one that is reduced by the current vertex
+    std::vector<std::shared_ptr<Vertex>> vertex_point_distance_subscribers_;
 
 public:
     double weight_;

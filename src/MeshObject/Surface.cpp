@@ -15,16 +15,6 @@
 
 Settings Surface::settings_;
 
-Surface::Surface()
-{
-    omp_init_nest_lock(&lock);
-}
-
-Surface::~Surface()
-{
-    omp_destroy_nest_lock(&lock);
-}
-
 void Surface::initialize_(const std::shared_ptr<Storage>& storage)
 {
     // set expired
@@ -49,9 +39,6 @@ void Surface::initialize_(const std::shared_ptr<Storage>& storage)
 
     // initialize surface color
     set_random_color();
-
-    // initialize edge_bvh
-    edge_bvh_.set_surface(shared_from_this());
     
     // log
     if (settings_.log.initialize) std::cout << "Surface " << id_ << " created.\n";
@@ -59,6 +46,9 @@ void Surface::initialize_(const std::shared_ptr<Storage>& storage)
 
 void Surface::delete_()
 {
+    // write lock
+    std::unique_lock<std::shared_mutex> lock(rwlock_lifecycle_);
+
     // log
     if (settings_.log.deletion) std::cout << "Destroying surface " << id_ << std::endl;
 
@@ -151,6 +141,9 @@ double Surface::compute_point_projective_distance_with_improved_covariance(const
 
 Eigen::Vector3d Surface::compute_point_projective_position(const Eigen::Vector3d& origin, const Eigen::Vector3d& point) const
 {
+    // read lock
+    std::shared_lock lock(rwlock_surface_fitting_);
+
     // if surface is seed surface, return original point as projected point
     if (get_total_point_size() < settings_.fit_plane_threshold) return point;
 
@@ -165,6 +158,9 @@ Eigen::Vector3d Surface::compute_point_projective_position(const Eigen::Vector3d
 
 RelativePosition Surface::check_relative_position(double distance_travelled, const Eigen::Vector3d& origin, const Eigen::Vector3d& point, const Eigen::Vector3d& direction, double& projected_uncertainty)
 {
+    // lock surface fitting
+    std::shared_lock lock(rwlock_surface_fitting_); // read lock
+
     // compute point to plane projective distance std
     const bool use_improved_covariance = true;
     if (use_improved_covariance)
@@ -180,12 +176,12 @@ RelativePosition Surface::check_relative_position(double distance_travelled, con
 
         // compute covariance of ...
         // - settings
-        double odometry_position_uncertainty_rate = 0.001; // kitti sota 0.005m/m (0.5%)
-        double odometry_angular_uncertainty_rate = 0.001; // kitti sota 0.001 deg/m
+        double odometry_position_uncertainty_rate = settings_.odometry_position_uncertainty_rate;
+        double odometry_angular_uncertainty_rate = settings_.odometry_angular_uncertainty_rate;
         double epsilon = 1e-6;
         // - uncertainties
-        double odometry_position_uncertainty = std::abs(distance_travelled - get_smallest_distance_travelled()) * odometry_position_uncertainty_rate;
-        double odometry_angular_uncertainty = std::abs(distance_travelled - get_smallest_distance_travelled()) * odometry_angular_uncertainty_rate / 180.0 * M_PI;
+        double odometry_position_uncertainty = std::abs(distance_travelled - get_average_distance_travelled()) * odometry_position_uncertainty_rate;
+        double odometry_angular_uncertainty = std::abs(distance_travelled - get_average_distance_travelled()) * odometry_angular_uncertainty_rate / 180.0 * M_PI;
         double normal_angular_uncertainty = normal_uncertainty_;
         double plane_position_uncertainty = get_surface_position_std_in_normal_direction();
         // - computation
@@ -425,33 +421,14 @@ const Eigen::Vector3d& Surface::get_normal() const
     return normal_;
 }
 
-std::size_t Surface::get_approximate_normal_hash()
-{
-    double factor = 100.0;
-    Eigen::Vector3d approximate_normal = (normal_ * factor).array().round() / factor;
-    approximate_normal = approximate_normal.normalized();
-
-    std::size_t h1 = std::hash<double>{}(approximate_normal.x());
-    std::size_t h2 = std::hash<double>{}(approximate_normal.y());
-    std::size_t h3 = std::hash<double>{}(approximate_normal.z());
-    std::size_t hash = h1 ^ (h2 << 1) ^ (h3 << 2); // Combining hashes
-
-    return hash;
-}
-
 std::size_t Surface::get_total_point_size() const
 {
-    return vertices_.size() + interior_points_.size();
+    return total_point_size_;
 }
 
 double Surface::get_average_distance_travelled() const
 {
     return sum_of_average_distance_travelled_ / get_total_point_size();
-}
-
-double Surface::get_smallest_distance_travelled() const
-{
-    return smallest_distance_travelled_;
 }
 
 const std::tuple<int, int, int>& Surface::get_color() const
@@ -498,12 +475,12 @@ const std::vector<double>& Surface::get_projective_distance_stats()
         // add
         for (const auto& vertex : vertices_)
         {
-            double projective_distance = vertex->buffer_compute_projected_distance(shared_from_this());
+            double projective_distance = vertex->compute_projected_distance();
             stored_projective_distance_stats_.push_back(projective_distance);
         }
         for (const auto& interior_point : interior_points_)
         {
-            double projective_distance = interior_point->buffer_compute_projected_distance(shared_from_this());
+            double projective_distance = interior_point->compute_projected_distance();
             stored_projective_distance_stats_.push_back(projective_distance);
         }
 
@@ -621,25 +598,30 @@ void Surface::connect(const std::shared_ptr<Vertex>& vertex)
     // check input
     if (vertex->is_expired()) throw std::runtime_error("Attempts to connect surface with invalid vertex.");
 
-    // connect
-    if (vertices_.insert(vertex).second)
     {
-        vertex->connect(shared_from_this());
+        // write lock
+        std::unique_lock lock(rwlock_vertices_); 
 
-        // update uncertainty
-        if (get_total_point_size() <= settings_.fit_plane_threshold) 
-        {
-            vertex->weight_ = 1.0 / (settings_.range_precision * settings_.range_precision);
-        }
-        else
-        {
-            // within the check relative position, the uncertainty will be updated
-            if (check_relative_position(vertex) != RelativePosition::WITHIN) throw std::runtime_error("Vertex is not within the surface.");
-            vertex->weight_ = 1.0 / (vertex->get_projected_uncertainty() * vertex->get_projected_uncertainty());
-        }
+        // skip if already connected
+        if (vertices_.find(vertex) != vertices_.end()) return;
 
-        add_point_to_surface_fitting(vertex->get_original_position(), vertex->get_origin(), vertex->get_distance_travelled(), vertex->weight_);
+        // insert
+        vertices_.insert(vertex);
     }
+
+    // update uncertainty
+    if (get_total_point_size() <= settings_.fit_plane_threshold) 
+    {
+        vertex->weight_ = 1.0 / (settings_.range_precision * settings_.range_precision);
+    }
+    else
+    {
+        // within the check relative position, the uncertainty will be updated
+        check_relative_position(vertex);
+        vertex->weight_ = 1.0 / (vertex->get_projected_uncertainty() * vertex->get_projected_uncertainty());
+    }
+
+    add_point_to_surface_fitting(vertex->get_original_position(), vertex->get_origin(), vertex->get_distance_travelled(), vertex->weight_);
 }
 
 bool Surface::tree_intersect_edge(const std::shared_ptr<Vertex>& vertex0, const std::shared_ptr<Vertex>& vertex1)
@@ -649,114 +631,54 @@ bool Surface::tree_intersect_edge(const std::shared_ptr<Vertex>& vertex0, const 
 
 bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& all_nearby_vertices)
 {
-    // get nearby vertices in the same surface
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> nearby_vertices;
+    // read lock
+    std::shared_lock<std::shared_mutex> lock(vertex->rwlock_lifecycle_);
+    // no need to check expired since it is not yet connected to anything
+
+    // try create edge with nearby vertices
     for (const auto& nearby_vertex : all_nearby_vertices)
     {
+        // read lock
+        std::shared_lock<std::shared_mutex> lock(nearby_vertex->rwlock_lifecycle_);
+
         // check input
         if (nearby_vertex->is_expired()) continue;
-
-        // skip if same vertex
-        if (nearby_vertex == vertex) continue;
 
         // skip if does not belong to the same surface
         if (nearby_vertex->get_surface() != shared_from_this()) continue;
 
-        // add to nearby vertices
-        nearby_vertices.insert(nearby_vertex);
-    }
-
-    // create edges
-    std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> new_edges;
-    for (const auto& nearby_vertex : nearby_vertices)
-    {
-        // skip if vertex is not boundary
+        // skip if not boundary
         if (!nearby_vertex->is_boundary()) continue;
 
+        // skip if same vertex
+        if (nearby_vertex == vertex) continue;
+        
         // skip if edge is longer than any of the radius of vertices
-        double distance = (vertex->get_position() - nearby_vertex->get_position()).norm();
-        if (distance > vertex->get_radius(shared_from_this()) || distance > nearby_vertex->get_radius()) continue;
+        const double distance = (vertex->get_position() - nearby_vertex->get_position()).norm();
+        const double radius0 = vertex->get_radius(shared_from_this());
+        const double radius1 = nearby_vertex->get_radius();
+        if (!settings_.edge_is_short_enough(distance, radius0, radius1)) continue;
 
         // skip if edge intersects
-        if (edge_bvh_.tree_intersect_edge(vertex, nearby_vertex)) continue;
+        if (tree_intersect_edge(vertex, nearby_vertex)) continue;
 
         // create edge
-        std::shared_ptr<Edge> new_edge = storage_->add_edge(vertex, nearby_vertex);
-        connect(new_edge);
+        std::shared_ptr<Edge> new_edge = storage_->add_edge(shared_from_this(), vertex, nearby_vertex);
 
-        // store used vertices and new edges
-        new_edges.insert(new_edge);
+        // read lock edge
+        std::shared_lock<std::shared_mutex> lock_edge(new_edge->rwlock_lifecycle_);
+
+        // skip if edge is expired
+        if (new_edge->is_expired()) continue;
     }
+    // add edges to edgeBVH tree
+    storage_->add_or_remove_edges_from_edgeBVH_tree();
 
-    // create faces
-    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> new_faces;
-    for (const auto& edge0 : new_edges)
-    {
-        // get vertex0
-        std::shared_ptr<Vertex> vertex0 = edge0->get_vertex(0) != vertex ? edge0->get_vertex(0) : edge0->get_vertex(1);
-
-        for (const auto& edge1 : new_edges)
-        {            
-            // get vertex1
-            std::shared_ptr<Vertex> vertex1 = edge1->get_vertex(0) != vertex ? edge1->get_vertex(0) : edge1->get_vertex(1);
-
-            // skip if repeated
-            if (vertex0 <= vertex1) continue;
-
-            // skip if edge does not exist between the two vertices
-            bool edge_exist = false;
-            std::shared_ptr<Edge> existing_edge;
-            for (const std::shared_ptr<Edge>& edge : vertex0->get_edges())
-            {
-                if (edge->get_surface() != shared_from_this()) continue;
-                if (edge->has_vertex(vertex1))
-                {
-                    edge_exist = true;
-                    existing_edge = edge;
-                    break;
-                }
-            }
-            if (!edge_exist) continue;
-
-            // skip if edge is not boundary
-            if (!existing_edge->is_boundary()) continue;
-            // skip if edge0 is not boundary
-            if (!edge0->is_boundary()) continue;
-            // skip if edge1 is not boundary
-            if (!edge1->is_boundary()) continue;
-
-            // create face
-            std::shared_ptr<Face> new_face = storage_->add_face(shared_from_this(), vertex, vertex0, vertex1);
-            new_faces.insert(new_face);
-        }
-    }
+    // false if no edge is created
+    if (vertex->get_edges().empty()) return false;
 
     // try close holes
     vertex->try_close_holes_repeatedly();
-
-    // false if after try close holes, the vertex still have more than two boundary edges
-    if (vertex->get_connected_boundary_edges().size() > 2) return false;
-    
-    // false if new vertex don't have edges
-    if (vertex->get_edges().empty()) return false;
-
-    // false if new faces is non manifold
-    for (const auto& face : new_faces)
-    {
-        if (face->is_non_manifold()) return false;
-    }
-    
-    // false if surface have no boundary edges
-    bool has_boundary_edges = false;
-    for (const auto& edge : edges_)
-    {
-        if (edge->is_boundary()) 
-        {
-            has_boundary_edges = true;
-            break;
-        }
-    }
-    if (!has_boundary_edges) return false;
 
     // else
     return true;
@@ -775,7 +697,7 @@ void Surface::compute_surface_position_std_in_normal_direction()
         double ratio = std::fabs(normal_.dot(vertex->get_direction()));
 
         // mean and informaiton
-        double mean = ratio * vertex->buffer_compute_projected_distance(shared_from_this());
+        double mean = ratio * vertex->compute_projected_distance();
         double std = ratio * settings_.range_precision;
         double information = 1.0 / (std * std);
         
@@ -789,7 +711,7 @@ void Surface::compute_surface_position_std_in_normal_direction()
         double ratio = std::fabs(normal_.dot(interior_point->get_direction()));
 
         // mean and informaiton
-        double mean = ratio * interior_point->buffer_compute_projected_distance(shared_from_this());
+        double mean = ratio * interior_point->compute_projected_distance();
         double std = ratio * settings_.range_precision;
         double information = 1.0 / (std * std);
         
@@ -828,13 +750,18 @@ void Surface::connect(const std::shared_ptr<Edge>& edge)
     // check input
     if (edge->is_expired()) throw std::runtime_error("Attempts to connect surface with invalid edge.");
 
-    // connect
-    bool inserted = edges_.insert(edge).second;
-    if (inserted) 
     {
-        add_searchable_edge(edge);
-        edge->connect(shared_from_this());
+        // write lock
+        std::unique_lock lock(rwlock_edges_);
+
+        // skip if already connected
+        if (edges_.find(edge) != edges_.end()) return;
+
+        // insert
+        edges_.insert(edge);
     }
+
+    storage_->add_to_set_of_edge_to_update_edgeBVH_tree(edge, shared_from_this());
 }
 
 void Surface::connect(const std::shared_ptr<Face>& face)
@@ -842,9 +769,16 @@ void Surface::connect(const std::shared_ptr<Face>& face)
     // check input
     if (face->is_expired()) throw std::runtime_error("Attempts to connect surface with invalid face.");
 
-    // connect
-    bool inserted = faces_.insert(face).second;
-    if (inserted) face->connect(shared_from_this());
+    {
+        // write lock
+        std::unique_lock lock(rwlock_faces_);
+
+        // skip if already connected
+        if (faces_.find(face) != faces_.end()) return;
+
+        // insert
+        faces_.insert(face);
+    }
 }
 
 void Surface::connect(const std::shared_ptr<InteriorPoint>& interior_point)
@@ -852,28 +786,30 @@ void Surface::connect(const std::shared_ptr<InteriorPoint>& interior_point)
     // check input
     if (interior_point->is_expired()) throw std::runtime_error("Attempts to connect surface with invalid interior point.");
 
-    // connect
-    bool inserted = interior_points_.insert(interior_point).second;
-    if (inserted) interior_point->connect(shared_from_this());
-
-    // update surface fitting
-    if (inserted) 
     {
+        // write lock
+        std::unique_lock lock(rwlock_interior_points_);
 
-        // update uncertainty
-        if (get_total_point_size() <= settings_.fit_plane_threshold) 
-        {
-            interior_point->weight_ = 1.0 / (settings_.range_precision * settings_.range_precision);
-        }
-        else
-        {
-            // within the check relative position, the uncertainty will be updated
-            if (check_relative_position(interior_point) != RelativePosition::WITHIN) throw std::runtime_error("Vertex is not within the surface.");
-            interior_point->weight_ = 1.0 / (interior_point->get_projected_uncertainty() * interior_point->get_projected_uncertainty());
-        }
+        // skip if already connected
+        if (interior_points_.find(interior_point) != interior_points_.end()) return;
 
-        add_point_to_surface_fitting(interior_point->get_original_position(), interior_point->get_origin(), interior_point->get_distance_travelled(), interior_point->weight_);
+        // insert
+        interior_points_.insert(interior_point);
     }
+    
+    // update uncertainty
+    if (get_total_point_size() <= settings_.fit_plane_threshold) 
+    {
+        interior_point->weight_ = 1.0 / (settings_.range_precision * settings_.range_precision);
+    }
+    else
+    {
+        // within the check relative position, the uncertainty will be updated
+        check_relative_position(interior_point);
+        interior_point->weight_ = 1.0 / (interior_point->get_projected_uncertainty() * interior_point->get_projected_uncertainty());
+    }
+
+    add_point_to_surface_fitting(interior_point->get_original_position(), interior_point->get_origin(), interior_point->get_distance_travelled(), interior_point->weight_);
 }
 
 void Surface::disconnect(const std::shared_ptr<Vertex>& vertex)
@@ -881,16 +817,19 @@ void Surface::disconnect(const std::shared_ptr<Vertex>& vertex)
     // check input
     if (vertex->is_expired()) return;
 
-    // disconnect
-    bool erased = vertices_.erase(vertex);
-    if (erased) vertex->disconnect(shared_from_this());
-
-    // remove from surface fitting
-    if (erased) 
     {
+        // write lock
+        std::unique_lock lock(rwlock_vertices_);
 
-        remove_point_from_surface_fitting(vertex->get_original_position(), vertex->get_origin(), vertex->get_distance_travelled(), vertex->weight_);
+        // skip if not connected
+        auto it = vertices_.find(vertex);
+        if (it == vertices_.end()) return;
+
+        // erase
+        vertices_.erase(it);
     }
+
+    remove_point_from_surface_fitting(vertex->get_original_position(), vertex->get_origin(), vertex->get_distance_travelled(), vertex->weight_);
 }
 
 void Surface::disconnect(const std::shared_ptr<Edge>& edge)
@@ -898,13 +837,19 @@ void Surface::disconnect(const std::shared_ptr<Edge>& edge)
     // check input
     if (edge->is_expired()) return;
 
-    // disconnect
-    bool erased = edges_.erase(edge);
-    if (erased) 
     {
-        remove_searchable_edge(edge);
-        edge->disconnect(shared_from_this());
+        // write lock
+        std::unique_lock lock(rwlock_edges_);
+
+        // skip if not connected
+        auto it = edges_.find(edge);
+        if (it == edges_.end()) return;
+
+        // erase
+        edges_.erase(it);
     }
+
+    storage_->add_to_set_of_edge_to_update_edgeBVH_tree(edge, shared_from_this());
 }
 
 void Surface::disconnect(const std::shared_ptr<Face>& face)
@@ -912,9 +857,17 @@ void Surface::disconnect(const std::shared_ptr<Face>& face)
     // check input
     if (face->is_expired()) return;
 
-    // disconnect
-    bool erased = faces_.erase(face);
-    if (erased) face->disconnect(shared_from_this());
+    {
+        // write lock
+        std::unique_lock lock(rwlock_faces_);
+
+        // skip if not connected
+        auto it = faces_.find(face);
+        if (it == faces_.end()) return;
+
+        // erase
+        faces_.erase(it);
+    }
 }
 
 void Surface::disconnect(const std::shared_ptr<InteriorPoint>& interior_point)
@@ -922,16 +875,19 @@ void Surface::disconnect(const std::shared_ptr<InteriorPoint>& interior_point)
     // check input
     if (interior_point->is_expired()) return;
 
-    // disconnect
-    bool erased = interior_points_.erase(interior_point);
-    if (erased) interior_point->disconnect(shared_from_this());
-
-    // remove from surface fitting
-    if (erased) 
     {
+        // write lock
+        std::unique_lock lock(rwlock_interior_points_);
 
-        remove_point_from_surface_fitting(interior_point->get_original_position(), interior_point->get_origin(), interior_point->get_distance_travelled(), interior_point->weight_);
+        // skip if not connected
+        auto it = interior_points_.find(interior_point);
+        if (it == interior_points_.end()) return;
+
+        // erase
+        interior_points_.erase(it);
     }
+
+    remove_point_from_surface_fitting(interior_point->get_original_position(), interior_point->get_origin(), interior_point->get_distance_travelled(), interior_point->weight_);
 }
 
 std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> Surface::get_boundary_vertices()
@@ -1020,7 +976,7 @@ void Surface::add_searchable_edge(const std::shared_ptr<Edge>& edge)
 }
 
 void Surface::remove_searchable_edge(const std::shared_ptr<Edge>& edge)
-{
+{    
     edge_bvh_.tree_delete_edge(edge);
 }
 
@@ -1047,6 +1003,9 @@ void Surface::print_info()
 
 void Surface::add_point_to_surface_fitting(const Eigen::Vector3d& position, const Eigen::Vector3d& origin, double distance_travelled, double weight)
 {
+    // write lock
+    std::unique_lock<std::shared_mutex> lock(rwlock_surface_fitting_);
+
     // surface
     double weight1 = weight_;
     Eigen::Vector3d mean1 = mean_;
@@ -1079,7 +1038,7 @@ void Surface::add_point_to_surface_fitting(const Eigen::Vector3d& position, cons
     normal_ = new_normal;
 
     sum_of_average_distance_travelled_ += distance_travelled;
-    if (distance_travelled < smallest_distance_travelled_) smallest_distance_travelled_ = distance_travelled;
+    total_point_size_ += 1;
 
     // store characteristic length
     characteristic_length_ = std::max(characteristic_length_, (position -  mean_).norm());
@@ -1091,37 +1050,28 @@ void Surface::add_point_to_surface_fitting(const Eigen::Vector3d& position, cons
 
     if (!update_normal_position_std_) return;
 
-    // approximate_normal hash
-    std::size_t hash = get_approximate_normal_hash();
+    // incrementally update
+    double old_distance = previous_normal_distance_;
+    double old_std = previous_normal_std_;
+    double old_information = 1.0 / (old_std * old_std);
 
-    if (hash != previous_approximate_normal_hash_)
-    {
-        // recompute
-        compute_surface_position_std_in_normal_direction();
-        previous_approximate_normal_hash_ = hash;
-    }
-    else
-    {
-        // incrementally update
-        double old_distance = previous_normal_distance_;
-        double old_std = previous_normal_std_;
-        double old_information = 1.0 / (old_std * old_std);
+    double new_distance = compute_point_projective_distance(origin, position);
+    double new_std = settings_.range_precision;
+    double new_information = 1.0 / (new_std * new_std);
 
-        double new_distance = compute_point_projective_distance(origin, position);
-        double new_std = settings_.range_precision;
-        double new_information = 1.0 / (new_std * new_std);
+    double combined_distance = merge_information_weighted_mean(old_distance, new_distance, old_information, new_information);
+    double combined_information = merge_information(old_information, new_information);
+    double combined_std = 1.0 / std::sqrt(combined_information);
 
-        double combined_distance = merge_information_weighted_mean(old_distance, new_distance, old_information, new_information);
-        double combined_information = merge_information(old_information, new_information);
-        double combined_std = 1.0 / std::sqrt(combined_information);
-
-        previous_normal_distance_ = combined_distance;
-        previous_normal_std_ = combined_std;
-    }
+    previous_normal_distance_ = combined_distance;
+    previous_normal_std_ = combined_std;
 }
 
 void Surface::remove_point_from_surface_fitting(const Eigen::Vector3d& position, const Eigen::Vector3d& origin, double distance_travelled, double weight)
 {
+    // write lock
+    std::unique_lock<std::shared_mutex> lock(rwlock_surface_fitting_);
+    
     // surface
     double combined_weight = weight_;
     Eigen::Vector3d combined_mean = mean_;
@@ -1154,18 +1104,7 @@ void Surface::remove_point_from_surface_fitting(const Eigen::Vector3d& position,
     normal_ = normal1;
 
     sum_of_average_distance_travelled_ -= distance_travelled;
-    if (distance_travelled == smallest_distance_travelled_)
-    {
-        smallest_distance_travelled_ = std::numeric_limits<double>::max();
-        for (const auto& vertex : vertices_)
-        {
-            if (vertex->get_distance_travelled() < smallest_distance_travelled_) smallest_distance_travelled_ = vertex->get_distance_travelled();
-        }
-        for (const auto& interior_point : interior_points_)
-        {
-            if (interior_point->get_distance_travelled() < smallest_distance_travelled_) smallest_distance_travelled_ = interior_point->get_distance_travelled();
-        }
-    }
+    total_point_size_ -= 1;
 
     // update approximate uncertainty envelope
     // if approximate normal is the same as last time, incrementally update the uncertianty envelope
@@ -1173,33 +1112,21 @@ void Surface::remove_point_from_surface_fitting(const Eigen::Vector3d& position,
 
     if (!update_normal_position_std_) return;
 
-    // approximate_normal hash
-    std::size_t hash = get_approximate_normal_hash();
+    // incrementally update
+    double combined_distance = previous_normal_distance_;
+    double combined_std = previous_normal_std_;
+    double combined_information = 1.0 / (combined_std * combined_std);
 
-    if (hash != previous_approximate_normal_hash_)
-    {
-        // recompute
-        compute_surface_position_std_in_normal_direction();
-        previous_approximate_normal_hash_ = hash;
-    }
-    else
-    {
-        // incrementally update
-        double combined_distance = previous_normal_distance_;
-        double combined_std = previous_normal_std_;
-        double combined_information = 1.0 / (combined_std * combined_std);
+    double new_distance = compute_point_projective_distance(origin, position);
+    double new_std = settings_.range_precision;
+    double new_information = 1.0 / (new_std * new_std);
 
-        double new_distance = compute_point_projective_distance(origin, position);
-        double new_std = settings_.range_precision;
-        double new_information = 1.0 / (new_std * new_std);
+    double old_distance = remove_information_weighted_mean(combined_distance, new_distance, combined_information, new_information);
+    double old_information = remove_information(combined_information, new_information);
+    double old_std = 1.0 / std::sqrt(old_information);
 
-        double old_distance = remove_information_weighted_mean(combined_distance, new_distance, combined_information, new_information);
-        double old_information = remove_information(combined_information, new_information);
-        double old_std = 1.0 / std::sqrt(old_information);
-
-        previous_normal_distance_ = old_distance;
-        previous_normal_std_ = old_std;
-    }
+    previous_normal_distance_ = old_distance;
+    previous_normal_std_ = old_std;
 }
 
 void Surface::set_random_color()
@@ -1309,7 +1236,7 @@ void Surface::split_surface_by_connected_components()
 
         // connect to new surface
         std::shared_ptr<Surface> new_surface = storage_->add_surface();
-        root_vertex->swap(shared_from_this(), new_surface);
+        // root_vertex->swap(shared_from_this(), new_surface);
     }
 }
 

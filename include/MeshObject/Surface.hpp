@@ -37,10 +37,15 @@ protected:
     void delete_();
 
 public:
-    Surface();
-    ~Surface();
 
-    omp_nest_lock_t lock;
+    // read and write lock
+    mutable std::shared_mutex rwlock_surface_fitting_;
+    mutable std::shared_mutex rwlock_vertices_;
+    mutable std::shared_mutex rwlock_edges_;
+    mutable std::shared_mutex rwlock_faces_;
+    mutable std::shared_mutex rwlock_interior_points_;
+
+    mutable std::shared_mutex rwlock_lifecycle_;
 
     double compute_point_to_plane_distance(const Eigen::Vector3d& point) const;
     double compute_point_projective_distance(const Eigen::Vector3d& origin, const Eigen::Vector3d& point) const;
@@ -66,10 +71,8 @@ public:
     const Eigen::Matrix3d& get_eigenvectors() const;
     const Eigen::Vector3d& get_eigenvalues() const;
     const Eigen::Vector3d& get_normal() const;
-    std::size_t get_approximate_normal_hash();
     std::size_t get_total_point_size() const;
     double get_average_distance_travelled() const;
-    double get_smallest_distance_travelled() const;
     const std::tuple<int, int, int>& get_color() const;
     const std::vector<double>& get_point_to_plane_distance_stats();
     const std::vector<double>& get_projective_distance_stats();
@@ -147,7 +150,7 @@ private:
     double characteristic_length_;
     double normal_uncertainty_ = 0;
     double sum_of_average_distance_travelled_;
-    double smallest_distance_travelled_ = std::numeric_limits<double>::max();
+    unsigned int total_point_size_ = 0;
 
     std::vector<double> stored_projective_distance_stats_;
     std::vector<double> stored_point_to_plane_distance_stats_;
@@ -155,8 +158,7 @@ private:
     std::size_t previous_total_point_size_for_point_to_plane_;
 
     FIFOCache<std::size_t, double> buffer_surface_position_std_in_normal_direction{std::numeric_limits<std::size_t>::max()};
-
-    std::size_t previous_approximate_normal_hash_;
+    
     double previous_normal_distance_;
     double previous_normal_std_;
 

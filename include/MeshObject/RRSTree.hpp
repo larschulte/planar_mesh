@@ -10,9 +10,11 @@
 #include <array>
 #include <iostream> 
 
-#include "utilities/omp_utilities.hpp"
+#include <shared_mutex>
+#include <mutex>
 #include <set>
 #include "MeshObject/Settings.hpp"
+#include <shared_mutex>
 
 class Vertex;
 class Surface;
@@ -20,6 +22,13 @@ class GenericPoint;
 
 struct RRSBoundingBox 
 {
+    // // include a read write lock
+    // mutable std::shared_mutex mutex_; // Read-write lock
+
+    // copy assigmnet operator
+    RRSBoundingBox& operator=(const RRSBoundingBox& other);
+    RRSBoundingBox(const RRSBoundingBox& other);
+
     Eigen::Vector3d min;
     Eigen::Vector3d max;
     Eigen::Vector3d min_used_for_surface_area;
@@ -34,38 +43,42 @@ struct RRSBoundingBox
     bool expand_box(const RRSBoundingBox& box);
     bool contains(const Eigen::Vector3d& point);
     int get_longest_axis();
-    double compute_surface_area() const;
-    const double& get_surface_area();
+    double get_surface_area();
 };
 
-struct RRSNode 
-{
-    RRSBoundingBox box;
-    double split_value;
-    int split_axis;
-    std::shared_ptr<RRSNode> parent;
-    std::shared_ptr<RRSNode> left;
-    std::shared_ptr<RRSNode> right;
-    std::shared_ptr<RRSNode> sibling;
-    std::atomic<bool> isLeaf = true;
-    std::vector<std::shared_ptr<Vertex>> boundary_vertices;
-
-    mutable custom::custom_lock custom_lock;
-    omp_nest_lock_t omp_lock;
-
-    bool locked_children = false;
-
-    void recursive_unlock();
-    void recursive_expand_parent_box();
-    void recursive_shrink_parent_box();
-};
 
 enum class RRSReturnType
 {
     INTERSECTED,
-    SKIP,
-    ABORT
+    SKIP
 };
+
+class RRSNode : public std::enable_shared_from_this<RRSNode>
+{
+    public:
+    RRSBoundingBox box_;
+    std::shared_ptr<RRSNode> parent_;
+    std::shared_ptr<RRSNode> left_;
+    std::shared_ptr<RRSNode> right_;
+    std::shared_ptr<RRSNode> sibling_;
+    std::atomic<bool> isLeaf_ = true;
+    std::shared_ptr<Vertex> boundary_vertex_;
+
+    bool locked_children = false;
+
+    // read write lock
+    mutable std::shared_mutex rwlock_node_;
+
+    void recursive_expand_parent_box();
+    void recursive_shrink_parent_box();
+
+    void node_add_vertex(const std::shared_ptr<Vertex>& boundary_vertex);
+    void node_delete_vertex(const std::shared_ptr<Vertex>& boundary_vertex);
+    RRSReturnType node_reverse_radius_search(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Vertex>>& search_results);
+    void node_print(int level) const;
+    void node_flattern(std::vector<std::shared_ptr<Vertex>>& flatten_list);
+};
+
 
 // Overload the << operator for RRSReturnType
 std::ostream& operator<<(std::ostream& os, const RRSReturnType& type);
@@ -76,37 +89,17 @@ private:
     static Settings settings_;
 
     std::shared_ptr<RRSNode> root;
-    double rebuild_threshold;
-    int size_at_last_rebuild;
     int tree_size;
     std::size_t leaf_size;
-
-    double sort_boundary_vertex_list_in_axis(std::vector<std::shared_ptr<Vertex>>& boundary_vertex_list, int axis, int start, int mid, int end);
-    void sort_boundary_vertex_list_in_axis(std::vector<std::shared_ptr<Vertex>>& boundary_vertex_list, int axis, int start, int end);
-    // void expand_node_box(const std::shared_ptr<RRSNode>& node, const std::shared_ptr<Vertex>& boundary_vertex);
-
-    std::shared_ptr<RRSNode> build_node(const std::vector<std::shared_ptr<Vertex>>& boundary_vertex_list, const int& start, const int& end);
-    void convert_leaf_to_branch(const std::shared_ptr<RRSNode>& node);
-
     std::shared_ptr<RRSNode> find_best_node(const std::shared_ptr<RRSNode>& root, const std::shared_ptr<Vertex>& boundary_vertex);
-    void node_add_vertex(const std::shared_ptr<RRSNode>& node, const std::shared_ptr<Vertex>& boundary_vertex);
-    double calculate_sah(RRSBoundingBox& parent_box, RRSBoundingBox& left_box, RRSBoundingBox& right_box, int left_count, int right_count);
-    void node_increase_radius(const std::shared_ptr<RRSNode>& node, const std::shared_ptr<Vertex>& boundary_vertex);
-    bool node_delete_vertex(const std::shared_ptr<RRSNode>& node, const std::shared_ptr<Vertex>& boundary_vertex);
-    RRSReturnType node_reverse_radius_search(const std::shared_ptr<RRSNode>& node, const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Vertex>>& search_results);
-    void node_print(const std::shared_ptr<RRSNode>& node, int level) const;
-    void node_flattern(const std::shared_ptr<RRSNode>& node, std::vector<std::shared_ptr<Vertex>>& flatten_list);
 
 public:
     RRSTree();
-    void check_rebuild();
-    void rebuild();
-    bool can_reverse_radius_search();
     std::vector<std::shared_ptr<Vertex>> compute_vertices_list();
     void print_size();
+    unsigned int get_size() const;
     
     void tree_add_vertex(const std::shared_ptr<Vertex>& boundary_vertex);
-    void tree_increase_radius(std::shared_ptr<Vertex> boundary_vertex);
     void tree_delete_vertex(const std::shared_ptr<Vertex>& boundary_vertex);
     RRSReturnType tree_reverse_radius_search(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Vertex>> &search_results);
     void tree_print() const;
