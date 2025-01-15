@@ -341,6 +341,30 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
         // log
         std::cout << "step 1000" << std::endl;
     }
+    if (event.getKeySym() == "6" && event.keyDown())
+    {
+        for (int i = 0; i < 10; i++) app_.loop();
+        update_display();
+
+        // log
+        std::cout << "loop 10" << std::endl;
+    }
+    if (event.getKeySym() == "7" && event.keyDown())
+    {
+        for (int i = 0; i < 50; i++) app_.loop();
+        update_display();
+
+        // log
+        std::cout << "loop 50" << std::endl;
+    }
+    if (event.getKeySym() == "8" && event.keyDown())
+    {
+        for (int i = 0; i < 100; i++) app_.loop();
+        update_display();
+
+        // log
+        std::cout << "loop 100" << std::endl;
+    }
     if (event.getKeySym() == "9" && event.keyDown())
     {
         update_display(true);
