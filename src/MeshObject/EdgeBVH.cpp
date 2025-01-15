@@ -103,7 +103,11 @@ double EdgeBVH::BoundingBox::compute_surface_area() const
 {
     Eigen::Vector3d dimensions = max - min;
     double area = 2.0 * (dimensions[0] * dimensions[1] + dimensions[1] * dimensions[2] + dimensions[2] * dimensions[0]);
-    if (std::isnan(area)) throw std::runtime_error("BoundingBox::compute_surface_area() returned nan."); // throw if nan
+    if (std::isnan(area))
+    {
+        // this means the box is deleted, thus should have zero area
+        return 0;
+    }
     return area;
 }
 
