@@ -52,7 +52,6 @@ public:
 
     void connect(const std::shared_ptr<Face>& face);
     void connect(const std::shared_ptr<Surface>& surface);
-    void disconnect(const std::shared_ptr<Face>& face);
     void disconnect(const std::shared_ptr<Surface>& surface);
 
     void delete_subscribers();

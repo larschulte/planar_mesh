@@ -41,18 +41,14 @@ public:
     const double& get_length() const;
     bool is_expired() const;
 
-    void connect(const std::shared_ptr<Vertex>& vertex);
     void connect(const std::shared_ptr<Face>& face);
     void connect(const std::shared_ptr<Surface>& surface);
-    void disconnect(const std::shared_ptr<Vertex>& vertex);
     void disconnect(const std::shared_ptr<Face>& face);
     void disconnect(const std::shared_ptr<Surface>& surface);
 
     void set_can_self_destruct(bool can_self_destruct);
 
     bool is_connected_to_boundary_edges(std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& all_connected_faces, std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& all_connected_edges) const;
-
-    void swap(const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2);
 
     void swap(const std::shared_ptr<Surface>& surface1, const std::shared_ptr<Surface>& surface2);
 

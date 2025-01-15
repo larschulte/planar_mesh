@@ -468,9 +468,6 @@ void Vertex::connect(const std::shared_ptr<Edge>& edge)
     }
     
     check_if_update_search_tree();
-
-    // reverse connect
-    edge->connect(shared_from_this());
 }
 
 void Vertex::connect(const std::shared_ptr<Face>& face) 
@@ -490,9 +487,6 @@ void Vertex::connect(const std::shared_ptr<Face>& face)
     }
     
     update_singular_state();
-
-    // reverse connect
-    face->connect(shared_from_this());
 }
 
 void Vertex::connect(const std::shared_ptr<Surface>& surface)
@@ -1315,21 +1309,6 @@ void Vertex::swap(const std::shared_ptr<Surface>& surface1, const std::shared_pt
             face->swap(surface1, surface2);
         }
     }
-}
-
-// replace this vertex with the input vertex
-void Vertex::absorbs(const std::shared_ptr<Vertex>& input_vertex)
-{
-    // change input_vertex's surface to this vertex's surface
-    std::shared_ptr<Surface> current_surface = input_vertex->get_surface();
-    std::shared_ptr<Surface> new_surface = surface_;
-    input_vertex->swap(current_surface, new_surface);
-
-    // make input_vertex's edges and faces connect to this vertex
-    std::vector<std::shared_ptr<Face>> faces_copy = input_vertex->get_faces();
-    std::vector<std::shared_ptr<Edge>> edges_copy = input_vertex->get_edges();
-    for (const std::shared_ptr<Face>& face : faces_copy) face->swap(input_vertex, shared_from_this());            
-    for (const std::shared_ptr<Edge>& edge : edges_copy) edge->swap(input_vertex, shared_from_this());
 }
 
 void Vertex::check_if_update_search_tree()

@@ -212,29 +212,6 @@ void InteriorPoint::connect(const std::shared_ptr<Surface>& surface)
     surface->connect(shared_from_this());    
 }
 
-void InteriorPoint::disconnect(const std::shared_ptr<Face>& face)
-{
-    // check input
-    if (face->is_expired()) return;
-
-    {
-        // write lock
-        std::unique_lock<std::shared_mutex> lock(rwlock_faces_);
-
-        // skip if not exist
-        if (faces_.find(face) == faces_.end()) return; // skip if not exist
-
-        // disconnect
-        faces_.erase(face);
-    }
-
-    // reverse disconnection
-    face->disconnect(shared_from_this());
-
-    // self destruct
-    if (!deleting_ && faces_.empty()) storage_->add_interior_point_to_be_deleted(shared_from_this());
-}
-
 void InteriorPoint::disconnect(const std::shared_ptr<Surface>& surface)
 {
     // check input
