@@ -213,8 +213,8 @@ const std::shared_ptr<InteriorPoint>& Storage::add_interior_point(const std::sha
 // need to ensure the vertex/edge/face are only stored using shared_ptr here and nowhere else
 void Storage::delete_vertex(const std::shared_ptr<Vertex> vertex) 
 {
-    // check input
-    if (vertex->is_expired()) throw std::runtime_error("Attempts to delete expired vertex.");
+    // skip if already deleted by other thread
+    if (vertex->is_expired()) return;
 
     {
         // lock
