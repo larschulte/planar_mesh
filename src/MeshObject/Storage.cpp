@@ -53,8 +53,8 @@ const std::shared_ptr<Vertex>& Storage::add_vertex(const std::shared_ptr<Surface
     std::shared_ptr<Vertex> vertex = std::make_shared<Vertex>();
     vertex->initialize_(shared_from_this(), surface, position, origin, distance_travelled);
 
-    // lock
-    std::lock_guard<std::mutex> lock(vertices_mutex_);
+    // write lock
+    std::unique_lock<std::shared_mutex> lock(rwlock_vertices_);
 
     // store
     return *vertices_.insert(vertex).first;
@@ -66,8 +66,8 @@ const std::shared_ptr<Vertex>& Storage::add_vertex(const std::shared_ptr<Surface
     std::shared_ptr<Vertex> vertex = std::make_shared<Vertex>();
     vertex->initialize_(shared_from_this(), surface, position, origin, radius, distance_travelled);
 
-    // lock
-    std::lock_guard<std::mutex> lock(vertices_mutex_);
+    // write lock
+    std::unique_lock<std::shared_mutex> lock(rwlock_vertices_);
 
     // store
     return *vertices_.insert(vertex).first;
@@ -79,8 +79,8 @@ const std::shared_ptr<Vertex>& Storage::add_vertex(const std::shared_ptr<Surface
     std::shared_ptr<Vertex> vertex = std::make_shared<Vertex>();
     vertex->initialize_(shared_from_this(), surface, generic_point);
 
-    // lock
-    std::lock_guard<std::mutex> lock(vertices_mutex_);
+    // write lock
+    std::unique_lock<std::shared_mutex> lock(rwlock_vertices_);
 
     // store
     return *vertices_.insert(vertex).first;
@@ -92,8 +92,8 @@ const std::shared_ptr<Edge>& Storage::add_edge(const std::shared_ptr<Surface>& s
     std::shared_ptr<Edge> edge = std::make_shared<Edge>();
     edge->initialize_(shared_from_this(), surface, vertex1, vertex2);
 
-    // lock
-    std::lock_guard<std::mutex> lock(edges_mutex_);
+    // write lock
+    std::unique_lock<std::shared_mutex> lock(rwlock_edges_);
 
     // store
     return *edges_.insert(edge).first;
@@ -105,8 +105,8 @@ const std::shared_ptr<Face>& Storage::add_face(const std::shared_ptr<Surface>& s
     std::shared_ptr<Face> face = std::make_shared<Face>();
     face->initialize_(shared_from_this(), surface, vertex1, vertex2, vertex3);
 
-    // lock 
-    std::lock_guard<std::mutex> lock(faces_mutex_);
+    // write lock 
+    std::unique_lock<std::shared_mutex> lock(rwlock_faces_);
 
     // store
     return *faces_.insert(face).first;
@@ -125,8 +125,8 @@ const std::shared_ptr<Face>& Storage::add_face(
     std::shared_ptr<Face> face = std::make_shared<Face>();
     face->initialize_(shared_from_this(), surface, vertex1, vertex2, vertex3, edge1, edge2, edge3);
 
-    // lock 
-    std::lock_guard<std::mutex> lock(faces_mutex_);
+    // write lock
+    std::unique_lock<std::shared_mutex> lock(rwlock_faces_);
 
     // store
     return *faces_.insert(face).first;
@@ -138,9 +138,9 @@ const std::shared_ptr<Surface>& Storage::add_surface()
     std::shared_ptr<Surface> surface = std::make_shared<Surface>();
     surface->initialize_(shared_from_this());
 
-    // lock
-    std::lock_guard<std::mutex> lock(surfaces_mutex_);
-
+    // write lock
+    std::unique_lock<std::shared_mutex> lock(rwlock_surfaces_);
+    
     // store
     return *surfaces_.insert(surface).first;
 }
@@ -151,8 +151,8 @@ const std::shared_ptr<GenericPoint>& Storage::add_generic_point(const Eigen::Vec
     std::shared_ptr<GenericPoint> genertic_point = std::make_shared<GenericPoint>();
     genertic_point->initialize_(shared_from_this(), position, origin, distance_travelled);
 
-    // lock
-    std::lock_guard<std::mutex> lock(genertic_points_mutex_);
+    // write lock
+    std::unique_lock<std::shared_mutex> lock(rwlock_genertic_points_);
 
     // store
     return *genertic_points_.insert(genertic_point).first;
@@ -164,8 +164,8 @@ const std::shared_ptr<GenericPoint>& Storage::add_generic_point(const std::share
     std::shared_ptr<GenericPoint> genertic_point = std::make_shared<GenericPoint>();
     genertic_point->initialize_(shared_from_this(), vertex);
 
-    // lock
-    std::lock_guard<std::mutex> lock(genertic_points_mutex_);
+    // write lock
+    std::unique_lock<std::shared_mutex> lock(rwlock_genertic_points_);
 
     // store
     return *genertic_points_.insert(genertic_point).first;
@@ -177,8 +177,8 @@ const std::shared_ptr<GenericPoint>& Storage::add_generic_point(const std::share
     std::shared_ptr<GenericPoint> genertic_point = std::make_shared<GenericPoint>();
     genertic_point->initialize_(shared_from_this(), interiror_point);
 
-    // lock
-    std::lock_guard<std::mutex> lock(genertic_points_mutex_);
+    // write lock
+    std::unique_lock<std::shared_mutex> lock(rwlock_genertic_points_);
 
     // store
     return *genertic_points_.insert(genertic_point).first;
@@ -190,8 +190,8 @@ const std::shared_ptr<InteriorPoint>& Storage::add_interior_point(const std::sha
     std::shared_ptr<InteriorPoint> interior_point = std::make_shared<InteriorPoint>();
     interior_point->initialize_(shared_from_this(), surface, face, generic_point);
 
-    // lock
-    std::lock_guard<std::mutex> lock(interior_points_mutex_);
+    // write lock
+    std::unique_lock<std::shared_mutex> lock(rwlock_interior_points_);
 
     // store
     return *interior_points_.insert(interior_point).first;
@@ -204,8 +204,8 @@ void Storage::delete_vertex(const std::shared_ptr<Vertex> vertex)
     if (vertex->is_expired()) return;
 
     {
-        // lock
-        std::lock_guard<std::mutex> lock(vertices_mutex_);
+        // write lock
+        std::unique_lock<std::shared_mutex> lock(rwlock_vertices_);
         
         // storage delete
         vertices_.erase(vertex);
@@ -221,8 +221,8 @@ void Storage::delete_edge(const std::shared_ptr<Edge> edge)
     if (edge->is_expired()) return; // edge already deleted
 
     {
-        // lock
-        std::lock_guard<std::mutex> lock(edges_mutex_);
+        // write lock
+        std::unique_lock<std::shared_mutex> lock(rwlock_edges_);
 
         // storage delete
         edges_.erase(edge);
@@ -238,8 +238,8 @@ void Storage::delete_face(const std::shared_ptr<Face> face)
     if (face->is_expired()) return; // face might be already deleted due to reducion in radius
 
     {
-        // lock 
-        std::lock_guard<std::mutex> lock(faces_mutex_);
+        // write lock
+        std::unique_lock<std::shared_mutex> lock(rwlock_faces_);
 
         // storage delete
         faces_.erase(face);
@@ -255,8 +255,8 @@ void Storage::delete_surface(const std::shared_ptr<Surface> surface)
     if (surface->is_expired()) throw std::runtime_error("Attempts to delete expired surface.");
 
     {    
-        // lock
-        std::lock_guard<std::mutex> lock(surfaces_mutex_);
+        // write lock
+        std::unique_lock<std::shared_mutex> lock(rwlock_surfaces_);
         
         // storage delete
         surfaces_.erase(surface);
@@ -275,8 +275,8 @@ void Storage::delete_generic_point(const std::shared_ptr<GenericPoint> genertic_
     std::shared_ptr<GenericPoint> genertic_point_copy = genertic_point;
 
     {
-        // lock
-        std::lock_guard<std::mutex> lock(genertic_points_mutex_);
+        // write lock
+        std::unique_lock<std::shared_mutex> lock(rwlock_genertic_points_);
 
         // storage delete
         genertic_points_.erase(genertic_point);
@@ -292,8 +292,8 @@ void Storage::delete_interior_point(const std::shared_ptr<InteriorPoint> interio
     if (interior_point->is_expired()) throw std::runtime_error("Attempts to delete expired interior point.");
 
     {
-        // lock
-        std::lock_guard<std::mutex> lock(interior_points_mutex_);
+        // write lock
+        std::unique_lock<std::shared_mutex> lock(rwlock_interior_points_);
 
         // storage delete
         interior_points_.erase(interior_point);

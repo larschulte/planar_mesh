@@ -171,12 +171,13 @@ private:
     std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> interior_points_;
     std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash> genertic_points_;
 
-    std::mutex vertices_mutex_;
-    std::mutex edges_mutex_;
-    std::mutex faces_mutex_;
-    std::mutex surfaces_mutex_;
-    std::mutex interior_points_mutex_;
-    std::mutex genertic_points_mutex_;
+    // read write lock
+    mutable std::shared_mutex rwlock_vertices_;
+    mutable std::shared_mutex rwlock_edges_;
+    mutable std::shared_mutex rwlock_faces_;
+    mutable std::shared_mutex rwlock_surfaces_;
+    mutable std::shared_mutex rwlock_interior_points_;
+    mutable std::shared_mutex rwlock_genertic_points_;
 
     std::atomic<int> next_vertex_id_{0};
     std::atomic<int> next_edge_id_{0};
