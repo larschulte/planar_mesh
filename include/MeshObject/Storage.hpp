@@ -107,7 +107,6 @@ public: // to user
     std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> get_boundary_edges() const;
     const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& get_vertices() const;
     const std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& get_edges() const;
-    const std::shared_ptr<Edge>& get_edge(std::shared_ptr<Vertex> vertex1, std::shared_ptr<Vertex> vertex2) const;
     const std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& get_faces() const;
     const std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash>& get_surfaces() const;
     const std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash>& get_generic_points() const;

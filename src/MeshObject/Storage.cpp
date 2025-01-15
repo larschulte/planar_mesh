@@ -1104,22 +1104,6 @@ bool Storage::is_expired() const
     return is_expired_;
 }
 
-// get edge
-const std::shared_ptr<Edge>& Storage::get_edge(std::shared_ptr<Vertex> vertex1, std::shared_ptr<Vertex> vertex2) const
-{
-    // check input
-    if (vertex1->is_expired() || vertex2->is_expired()) throw std::runtime_error("Attempts to get edge with invalid vertex.");
-
-    // search
-    for (const std::shared_ptr<Edge>& edge : edges_)
-    {
-        if (edge->has_vertex(vertex1) && edge->has_vertex(vertex2)) return edge;
-    }
-
-    // not found
-    throw std::runtime_error("Edge not found.");
-}
-
 unsigned int Storage::get_rrs_size() const
 {
     return rrs_tree_.get_size();
