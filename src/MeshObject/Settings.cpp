@@ -38,8 +38,12 @@ Settings::Settings()
         "/home/jiahao/datasets/abingdon logs/2024-12-03_10-25-53_rec001_rad301_run2/slam_clouds/",
         "/home/jiahao/datasets/abingdon logs/2024-12-03_10-25-53_rec001_rad301_run2/slam_pose_graph.slam"
     );
+    dataset_map["bodleian"] = std::make_pair(
+        "/home/jiahao/datasets/spires_benchmark/bodleian01/undist-clouds/",
+        "/home/jiahao/datasets/spires_benchmark/bodleian01/slam-poses.csv"
+    );
 
-    std::string dataset = "christchurch";
+    std::string dataset = "bodleian";
     data_loader_settings.pcd_file_folder = dataset_map[dataset].first;
     data_loader_settings.pose_file_path = dataset_map[dataset].second;
 
