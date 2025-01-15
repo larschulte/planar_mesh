@@ -626,9 +626,6 @@ void Application<PointT>::loop()
         storage_->add_to_main_queue(thisPointVEC, thisPointOriginVEC, distance_travelled_);
     }
 
-    // add points from repeated queue to queue
-    storage_->add_points_in_smaller_repeated_queues_to_main_queue();
-
     // split the queue into smaller queues
     storage_->split_main_queue_into_smaller_queues();
 
@@ -638,59 +635,36 @@ void Application<PointT>::loop()
 
     // process all points in the queue
     unsigned int num_iteration = 0;
-    while (true)
+    #pragma omp parallel num_threads(settings_.num_threads)
     {
-        #pragma omp parallel num_threads(settings_.num_threads)
+        while (true)
         {
-            while (true)
+            std::shared_ptr<GenericPoint> generic_point = nullptr;
+            unsigned int total_points_in_queue = 0;
+
+            total_points_in_queue = storage_->get_queue_size();
+            if (total_points_in_queue > 0)
             {
-                std::shared_ptr<GenericPoint> generic_point = nullptr;
-                unsigned int total_points_in_queue = 0;
-
-                total_points_in_queue = storage_->get_queue_size();
-                if (total_points_in_queue > 0)
+                generic_point = storage_->pop_from_queue();
+                if (settings_.log.step) 
                 {
-                    generic_point = storage_->pop_from_queue();
-                    if (settings_.log.step) 
-                    {
-                        std::stringstream ss;
-                        ss << " | remaining point " << total_points_in_queue << " | Processing point " << generic_point->get_id() << " | by thread " << omp_get_thread_num() << std::endl;
-                        std::cout << ss.str();
-                    }
-                }
-
-                // If the queue is empty, break the loop
-                if (!generic_point) break;
-
-                // Process the point (outside the critical section)
-                if (generic_point)
-                {
-                    process_point(generic_point);
+                    std::stringstream ss;
+                    ss << " | remaining point " << total_points_in_queue << " | Processing point " << generic_point->get_id() << " | by thread " << omp_get_thread_num() << std::endl;
+                    std::cout << ss.str();
                 }
             }
+
+            // If the queue is empty, break the loop
+            if (!generic_point) break;
+
+            // Process the point (outside the critical section)
+            if (generic_point)
+            {
+                process_point(generic_point);
+            }
         }
-        num_iteration ++;
-
-        // std::chrono::high_resolution_clock::time_point t_end = std::chrono::high_resolution_clock::now();
-        // std::chrono::duration<double> duration = t_end - t_init;
-        // std::cout << "==================================================================== Processed " << accumulated_points << " points in " << duration.count() << " s" << std::endl;
-
-        // add all points from the abort queue to the main queue
-        storage_->add_points_in_smaller_abort_queues_to_main_queue();
-
-        storage_->print_main_queue_stats();
-
-        // break loop if no more points
-        if (storage_->get_main_queue_size() == 0)
-        {
-            // clear queue before loading next point cloud
-            storage_->clear_queues();
-            break;
-        }
-
-        // print aborted point stats
-        storage_->split_main_queue_into_smaller_queues_by_contention();
     }
+    num_iteration ++;
 
     std::chrono::high_resolution_clock::time_point t_end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = t_end - t_init;
