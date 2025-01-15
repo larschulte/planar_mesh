@@ -64,7 +64,7 @@ class Node : public std::enable_shared_from_this<Node>
     std::shared_ptr<Node> right_;
     std::shared_ptr<Node> sibling_;
     std::atomic<bool> isLeaf_ = true;
-    std::vector<std::shared_ptr<Face>> faces_;
+    std::shared_ptr<Face> face_;
 
     bool locked_children = false;
 

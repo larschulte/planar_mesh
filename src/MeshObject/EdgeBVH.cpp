@@ -170,13 +170,9 @@ void EdgeBVH::Node::recursive_shrink_parent_box()
 
 bool EdgeBVH::Node::node_intersect_edge(const std::shared_ptr<Vertex>& vertex0, const std::shared_ptr<Vertex>& vertex1)
 {
-    // read lock
-    std::shared_lock<std::shared_mutex> lock(rwlock_node_);
-
     // skip if not intersected
-    bool intersected = box_.intersect(vertex0->get_position(), vertex1->get_position());
-    if (!intersected) return false;
-    
+    if (!box_.intersect(vertex0->get_position(), vertex1->get_position())) return false;
+        
     if (!isLeaf())
     {
         if (left_->node_intersect_edge(vertex0, vertex1)) return true;
@@ -187,18 +183,20 @@ bool EdgeBVH::Node::node_intersect_edge(const std::shared_ptr<Vertex>& vertex0, 
     }
     else
     {
-        // skip if no edge
-        if (edges_.size() == 0) return false;
-        std::shared_ptr<Edge> edge = edges_[0];
+        // read lock
+        std::shared_lock<std::shared_mutex> lock2(rwlock_node_);
+
+        // skip if edge_ is nullptr
+        if (!edge_) return false;
 
         // read lock edge
-        std::shared_lock<std::shared_mutex> lock(edge->rwlock_lifecycle_);
+        std::shared_lock<std::shared_mutex> lock(edge_->rwlock_lifecycle_);
         
         // skip if edge is expired
-        if (edge->is_expired()) return false;
+        if (edge_->is_expired()) return false;
 
         // check if edge intersects
-        if (edge->intersects_edge(vertex0, vertex1)) return true;
+        if (edge_->intersects_edge(vertex0, vertex1)) return true;
 
         // else return false
         return false;   
@@ -296,11 +294,11 @@ void EdgeBVH::Node::node_add_edge(const std::shared_ptr<Edge>& edge)
     std::unique_lock<std::shared_mutex> lock(rwlock_node_);
 
     // create new node
-    std::shared_ptr<EdgeBVH::Node> new_node = std::make_shared<EdgeBVH::Node>();
+    std::shared_ptr<EdgeBVH::Node> new_leaf_node = std::make_shared<EdgeBVH::Node>();
     {
-        new_node->box_.expand_box_no_return(edge);
-        new_node->edges_.push_back(edge);
-        edge->node = new_node;
+        new_leaf_node->box_.expand_box_no_return(edge);
+        new_leaf_node->edge_ = edge;
+        new_leaf_node->edge_->node = new_leaf_node;
     }
     
     // create duplicate node of the current node added to
@@ -311,11 +309,8 @@ void EdgeBVH::Node::node_add_edge(const std::shared_ptr<Edge>& edge)
         // if node is leaf, copy boundary vertices
         if (isLeaf())
         {
-            duplicate_node->edges_ = edges_;
-            for (const std::shared_ptr<Edge>& edge : duplicate_node->edges_)
-            {
-                edge->node = duplicate_node;
-            }
+            duplicate_node->edge_ = edge_;
+            if (duplicate_node->edge_) duplicate_node->edge_->node = duplicate_node;
         }
         else
         {
@@ -331,15 +326,15 @@ void EdgeBVH::Node::node_add_edge(const std::shared_ptr<Edge>& edge)
     // make new node and duplicate node children of the current node
     {
         // expand current node box
-        box_.expand_box_no_return(new_node->box_);
+        box_.expand_box_no_return(new_leaf_node->box_);
         recursive_expand_parent_box();
 
         // put into children
         left_ = duplicate_node;
-        right_ = new_node;
+        right_ = new_leaf_node;
 
         duplicate_node->parent_ = shared_from_this();
-        new_node->parent_ = shared_from_this();
+        new_leaf_node->parent_ = shared_from_this();
     }    
 }
 
@@ -352,7 +347,7 @@ void EdgeBVH::Node::node_delete_edge(const std::shared_ptr<Edge>& edge)
     edge->node = nullptr;
 
     // edge from node
-    edges_.erase(std::remove(edges_.begin(), edges_.end(), edge), edges_.end());
+    edge_ = nullptr;
     
     // keep in parent's left or right
 
@@ -372,10 +367,8 @@ void EdgeBVH::Node::node_print(int level) const
     }
     else
     {
-        for (const std::shared_ptr<Edge>& edge : edges_)
-        {
-            std::cout << "Level: " <<  level << " | ID: " << edge->get_id() << " | Center: " << edge->get_center().transpose() << std::endl;
-        }
+        std::cout << "Level: " <<  level << " | ID: " << edge_->get_id() << " | Center: " << edge_->get_center().transpose() << std::endl;
+
         std::cout << std::endl;
     }
 }
@@ -389,7 +382,7 @@ void EdgeBVH::Node::node_flatten(std::vector<std::shared_ptr<Edge>>& edge_list) 
     }
     else
     {
-        edge_list.insert(edge_list.end(), edges_.begin(), edges_.end());
+        edge_list.push_back(edge_);
     }
 }
 

@@ -256,16 +256,13 @@ void Node::recursive_shrink_parent_box()
 }
 
 BVHReturnType Node::node_intersection_search(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Face>>& faces_intersected) const
-{   
-    // read lock
-    std::shared_lock<std::shared_mutex> lock(rwlock_node_);
-    
+{       
     // skip if not intersected
     if (!box_.intersect(generic_point->get_position(), generic_point->get_inv_direction()))
     {
         return BVHReturnType::SKIP;
     }
-    
+
     // branch if not leaf
     if (!isLeaf_)
     {
@@ -280,30 +277,26 @@ BVHReturnType Node::node_intersection_search(const std::shared_ptr<GenericPoint>
     }
     else
     {
-        // skip if no faces
-        if (faces_.size() == 0)
-        {
-            return BVHReturnType::SKIP;
-        }
-        const std::shared_ptr<Face>& face = faces_[0];
-
         // read lock
-        std::shared_lock<std::shared_mutex> lock(face->rwlock_lifecycle_);
+        std::shared_lock<std::shared_mutex> lock2(rwlock_node_);
+
+        // skip if face is nullptr
+        if (!face_) return BVHReturnType::SKIP;
+        
+        // read lock
+        std::shared_lock<std::shared_mutex> lock(face_->rwlock_lifecycle_);
 
         // we lock the face during face->delete_() call, and then release it before locking it again when removing it from the bvh tree
         // thus this thread may have lock this face during the gap
         // and see an expired face in the search tree
         // thus we need to check if the face is expired and skip if it is
-        if (face->is_expired() || !face->intersects_point(generic_point->get_origin(), generic_point->get_direction()))
+        if (face_->is_expired() || !face_->intersects_point(generic_point->get_origin(), generic_point->get_direction()))
         {
             return BVHReturnType::SKIP;
         }
 
-        const std::shared_ptr<Surface>& surface = face->get_surface();
-        generic_point->intersected_surfaces.insert(surface);
-
         // return
-        faces_intersected.push_back(face);
+        faces_intersected.push_back(face_);
 
         return BVHReturnType::INTERSECTED;
     }
@@ -398,11 +391,11 @@ void Node::node_add_face(const std::shared_ptr<Face>& face)
     std::unique_lock<std::shared_mutex> lock(rwlock_node_);
     
     // create new node
-    std::shared_ptr<Node> new_node = std::make_shared<Node>();
+    std::shared_ptr<Node> new_leaf_node = std::make_shared<Node>();
     {
-        new_node->box_.expand_box_no_return(face->get_min(), face->get_max());
-        new_node->faces_.push_back(face);
-        face->node = new_node;
+        new_leaf_node->box_.expand_box_no_return(face->get_min(), face->get_max());
+        new_leaf_node->face_ = face;
+        new_leaf_node->face_->node = new_leaf_node;
     }
     
     // create duplicate node
@@ -413,11 +406,8 @@ void Node::node_add_face(const std::shared_ptr<Face>& face)
         // if node is leaf, copy boundary vertices
         if (isLeaf_)
         {
-            duplicate_node->faces_ = faces_;
-            for (const std::shared_ptr<Face>& sub_face : duplicate_node->faces_)
-            {
-                sub_face->node = duplicate_node;
-            }
+            duplicate_node->face_ = face_;
+            if (duplicate_node->face_) duplicate_node->face_->node = duplicate_node;
         }
         else
         {
@@ -435,18 +425,18 @@ void Node::node_add_face(const std::shared_ptr<Face>& face)
     // make new node and duplicate node children of the current node
     {
         // expand current node box
-        box_.expand_box_no_return(new_node->box_);
+        box_.expand_box_no_return(new_leaf_node->box_);
         recursive_expand_parent_box();
 
         // put into children
         left_ = duplicate_node;
         duplicate_node->parent_ = shared_from_this();
-        right_ = new_node;
-        new_node->parent_ = shared_from_this();
+        right_ = new_leaf_node;
+        new_leaf_node->parent_ = shared_from_this();
 
         // assign sibling
         duplicate_node->sibling_ = sibling_;
-        new_node->sibling_ = duplicate_node;
+        new_leaf_node->sibling_ = duplicate_node;
 
         // change to branch
         isLeaf_ = false;
@@ -464,7 +454,7 @@ void Node::node_delete_face(const std::shared_ptr<Face>& face)
     face->node = nullptr;
 
     // remove face from node
-    faces_.erase(std::remove(faces_.begin(), faces_.end(), face), faces_.end());
+    face_ = nullptr;
 
     // keep in parent's left or right
 
@@ -484,10 +474,7 @@ void Node::node_print(int level) const
     }
     else
     {
-        for (const std::shared_ptr<Face>& face : faces_)
-        {
-            std::cout << "Level: " <<  level << " | ID: " << face->get_id() << " | Center: " << face->get_center().transpose() << std::endl;
-        }
+        std::cout << "Level: " <<  level << " | ID: " << face_->get_id() << " | Center: " << face_->get_center().transpose() << std::endl;
         std::cout << std::endl;
     }
 }
@@ -501,7 +488,7 @@ void Node::node_flatten(std::vector<std::shared_ptr<Face>>& face_list) const
     }
     else
     {
-        face_list.insert(face_list.end(), faces_.begin(), faces_.end());
+        face_list.push_back(face_);
     }
 }
 

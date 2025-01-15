@@ -62,7 +62,7 @@ class RRSNode : public std::enable_shared_from_this<RRSNode>
     std::shared_ptr<RRSNode> right_;
     std::shared_ptr<RRSNode> sibling_;
     std::atomic<bool> isLeaf_ = true;
-    std::vector<std::shared_ptr<Vertex>> boundary_vertices_;
+    std::shared_ptr<Vertex> boundary_vertex_;
 
     bool locked_children = false;
 

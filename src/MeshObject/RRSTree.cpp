@@ -319,11 +319,11 @@ void RRSNode::node_add_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
     std::unique_lock<std::shared_mutex> lock(rwlock_node_);
     
     // create new node
-    std::shared_ptr<RRSNode> new_node = std::make_shared<RRSNode>();
+    std::shared_ptr<RRSNode> new_leaf_node = std::make_shared<RRSNode>();
     {
-        new_node->box_.expand_box_no_return(boundary_vertex->get_min(), boundary_vertex->get_max());
-        new_node->boundary_vertices_.push_back(boundary_vertex);
-        boundary_vertex->node = new_node;
+        new_leaf_node->box_.expand_box_no_return(boundary_vertex->get_min(), boundary_vertex->get_max());
+        new_leaf_node->boundary_vertex_ = boundary_vertex;
+        new_leaf_node->boundary_vertex_->node = new_leaf_node;
     }
     
     // create duplicate node
@@ -334,11 +334,8 @@ void RRSNode::node_add_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
         // if node is leaf, copy boundary vertices
         if (isLeaf_)
         {
-            duplicate_node->boundary_vertices_ = boundary_vertices_;
-            for (const std::shared_ptr<Vertex>& vertex : duplicate_node->boundary_vertices_)
-            {
-                vertex->node = duplicate_node;
-            }
+            duplicate_node->boundary_vertex_ = boundary_vertex_;
+            if (duplicate_node->boundary_vertex_) duplicate_node->boundary_vertex_->node = duplicate_node;
         }
         else
         {
@@ -356,18 +353,18 @@ void RRSNode::node_add_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
     // make new node and duplicate node children of the current node
     {
         // expand current node box
-        box_.expand_box_no_return(new_node->box_);
+        box_.expand_box_no_return(new_leaf_node->box_);
         recursive_expand_parent_box();
 
         // put into children
         left_ = duplicate_node;
         duplicate_node->parent_ = shared_from_this();
-        right_ = new_node;
-        new_node->parent_ = shared_from_this();
+        right_ = new_leaf_node;
+        new_leaf_node->parent_ = shared_from_this();
 
         // assign sibling
         duplicate_node->sibling_ = sibling_;
-        new_node->sibling_ = duplicate_node;
+        new_leaf_node->sibling_ = duplicate_node;
 
         // change to branch
         isLeaf_ = false;
@@ -385,7 +382,7 @@ void RRSNode::node_delete_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
     boundary_vertex->node = nullptr;
 
     // remove vertex from node
-    boundary_vertices_.erase(std::remove(boundary_vertices_.begin(), boundary_vertices_.end(), boundary_vertex), boundary_vertices_.end());
+    boundary_vertex_ = nullptr;
 
     // keep in parent's left or right
 
@@ -398,9 +395,6 @@ void RRSNode::node_delete_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
 
 RRSReturnType RRSNode::node_reverse_radius_search(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Vertex>>& search_results)
 {
-    // read lock
-    std::shared_lock<std::shared_mutex> lock(rwlock_node_);
-
     // skip if not contained
     if (!box_.contains(generic_point->get_position()))
     {
@@ -421,30 +415,26 @@ RRSReturnType RRSNode::node_reverse_radius_search(const std::shared_ptr<GenericP
     }
     else
     {
-        // skip if no vertices
-        if (boundary_vertices_.size() == 0)
-        {
-            return RRSReturnType::SKIP;
-        }
-        const std::shared_ptr<Vertex>& boundary_vertex = boundary_vertices_[0];
-
         // read lock
-        std::shared_lock<std::shared_mutex> lock(boundary_vertex->rwlock_lifecycle_);
+        std::shared_lock<std::shared_mutex> lock2(rwlock_node_);
+
+        // skip if boundary vertex is nullptr
+        if (!boundary_vertex_) return RRSReturnType::SKIP;
+        
+        // read lock
+        std::shared_lock<std::shared_mutex> lock(boundary_vertex_->rwlock_lifecycle_);
 
         // we lock the vertex during vertex->delete_() call, and then release it before locking it again when removing it from the rrs tree
         // thus this thread may have lock this vertex during the gap
         // and see an expired vertex in the search tree
         // thus we need to check if the vertex is expired and skip if it is
-        if (boundary_vertex->is_expired() || !boundary_vertex->approx_contains(generic_point->get_position()))
+        if (boundary_vertex_->is_expired() || !boundary_vertex_->approx_contains(generic_point->get_position()))
         {
             return RRSReturnType::SKIP;
         }
 
-        std::shared_ptr<Surface> surface = boundary_vertex->get_surface();
-        generic_point->intersected_surfaces.insert(surface);
-
         // return
-        search_results.push_back(boundary_vertex);
+        search_results.push_back(boundary_vertex_);
 
         return RRSReturnType::INTERSECTED;
     }
@@ -459,7 +449,7 @@ void RRSNode::node_flattern(std::vector<std::shared_ptr<Vertex>>& flatten_list)
     }
     else
     {
-        flatten_list.insert(flatten_list.end(), boundary_vertices_.begin(), boundary_vertices_.end());
+        flatten_list.push_back(boundary_vertex_);
     }
 }
 
@@ -479,10 +469,7 @@ void RRSNode::node_print(int level) const
     }
     else
     {
-        for (const std::shared_ptr<Vertex>& boundary_vertex : boundary_vertices_)
-        {
-            std::cout << "Level: " <<  level << " | ID: " << boundary_vertex->get_id() << " | Position: " << boundary_vertex->get_position().transpose() << " | Radius: " << boundary_vertex->get_radius() << std::endl;
-        }
+        std::cout << "Level: " <<  level << " | ID: " << boundary_vertex_->get_id() << " | Position: " << boundary_vertex_->get_position().transpose() << " | Radius: " << boundary_vertex_->get_radius() << std::endl;
         std::cout << std::endl;
     }
 }

@@ -49,7 +49,7 @@ public:
         std::shared_ptr<EdgeBVH::Node> left_;
         std::shared_ptr<EdgeBVH::Node> right_;
         bool isLeaf() const;
-        std::vector<std::shared_ptr<Edge>> edges_;
+        std::shared_ptr<Edge> edge_;
 
         void recursive_expand_parent_box();
         void recursive_shrink_parent_box();
