@@ -557,9 +557,13 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
     // rrs - upon adding publisher
     for (const std::shared_ptr<Vertex>& vertex : rrs_results)
     {
+        // read lock vertex
+        std::shared_lock<std::shared_mutex> lock(vertex->rwlock_lifecycle_); // this to prevent vertex from being deleted
+
         // skip if expired
         if (vertex->is_expired()) continue;
 
+        // upon adding publisher
         vertex->upon_adding_publisher();
     }
 }
