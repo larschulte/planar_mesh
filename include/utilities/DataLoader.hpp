@@ -8,7 +8,7 @@
 #include "MeshObject/Settings.hpp"
 
 std::vector<std::string> read_under_folder(std::string pcd_file_folder);
-Eigen::Affine3d find_pose(std::string pcd_file, std::string pose_file);
+Eigen::Affine3d find_pose(const std::string& pcd_file, const std::string& pose_file);
 std::map<std::string, Eigen::Affine3d> create_file_to_pose_map(std::vector<std::string> pcd_file_list, std::string pose_file_path);
 
 template<typename PointT> 

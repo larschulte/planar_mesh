@@ -29,54 +29,117 @@ std::vector<std::string> read_under_folder(std::string pcd_file_folder)
     return pcd_file_list;
 }
 
-Eigen::Affine3d find_pose(std::string pcd_file, std::string pose_file)
+using Pose = std::tuple<double, double, double, double, double, double, double>;
+
+Pose parse_g2o_line(const std::string& line, const std::string& sec_str, const std::string& nsec_str, bool& pose_found) 
 {
-    // get sec and nsec from pcd_file, using split
+    std::istringstream iss(line);
+    std::string type;
+    iss >> type;
+
+    if (type == "VERTEX_SE3:QUAT_TIME") {
+        int vertex_id;
+        double x, y, z, qx, qy, qz, qw;
+        int timestamp_sec, timestamp_nsec;
+        iss >> vertex_id >> x >> y >> z >> qx >> qy >> qz >> qw >> timestamp_sec >> timestamp_nsec;
+
+        if (timestamp_sec == std::stoi(sec_str) && timestamp_nsec == std::stoi(nsec_str)) {
+            pose_found = true;
+            return {x, y, z, qx, qy, qz, qw};
+        }
+    }
+
+    return {0, 0, 0, 0, 0, 0, 0}; // Default pose
+}
+
+Pose parse_csv_line(const std::string& line, const std::string& sec_str, const std::string& nsec_str, bool& pose_found) 
+{
+    if (line[0] == '#') 
+    {
+        return {0, 0, 0, 0, 0, 0, 0}; // Default pose
+    }
+
+    std::istringstream iss(line);
+    std::string token;
+    std::vector<std::string> tokens;
+
+    while (std::getline(iss, token, ',')) 
+    {
+        tokens.push_back(token);
+    }
+
+    if (tokens.size() >= 10) 
+    {
+        int timestamp_sec = std::stoi(tokens[1]);
+        int timestamp_nsec = std::stoi(tokens[2]);
+
+        if (timestamp_sec == std::stoi(sec_str) && timestamp_nsec == std::stoi(nsec_str)) 
+        {
+            double x = std::stod(tokens[3]);
+            double y = std::stod(tokens[4]);
+            double z = std::stod(tokens[5]);
+            double qx = std::stod(tokens[6]);
+            double qy = std::stod(tokens[7]);
+            double qz = std::stod(tokens[8]);
+            double qw = std::stod(tokens[9]);
+            pose_found = true;
+            return {x, y, z, qx, qy, qz, qw};
+        }
+    }
+
+    return {0, 0, 0, 0, 0, 0, 0}; // Default pose
+}
+
+Eigen::Affine3d find_pose(const std::string& pcd_file, const std::string& pose_file) 
+{
+    // Extract sec and nsec from the pcd_file name
     std::string pcd_file_name = pcd_file.substr(pcd_file.find_last_of("/\\") + 1);
     std::string sec_str = pcd_file_name.substr(6, 10);
     std::string nsec_str = pcd_file_name.substr(17, 9);
 
-    // find pose 
+    // Determine file type and set parser function
     std::ifstream pose_stream(pose_file);
-    std::string line;
-    double pose_x, pose_y, pose_z, pose_qx, pose_qy, pose_qz, pose_qw;
-    bool pose_found = false;
-    while (std::getline(pose_stream, line))
-    {
-        std::istringstream iss(line);
-        std::string type;
-        iss >> type;
-        if (type == "VERTEX_SE3:QUAT_TIME")
-        {
-            int vertex_id;
-            double x, y, z, qx, qy, qz, qw;
-            int timestamp_sec, timestamp_nsec;
-            iss >> vertex_id >> x >> y >> z >> qx >> qy >> qz >> qw >> timestamp_sec >> timestamp_nsec;
+    std::string extension = pose_file.substr(pose_file.find_last_of(".") + 1);
 
-            if (timestamp_sec == std::stoi(sec_str) && timestamp_nsec == std::stoi(nsec_str))
-            {
-                pose_x = x;
-                pose_y = y;
-                pose_z = z;
-                pose_qx = qx;
-                pose_qy = qy;
-                pose_qz = qz;
-                pose_qw = qw;
-                pose_found = true;
-                break;
-            }
-        }
-    }
-    if (!pose_found)
+    std::function<Pose(const std::string&, const std::string&, const std::string&, bool&)> parser;
+    if (extension == "g2o" || extension == "slam") 
     {
-        std::cout << "pose not found for time " << sec_str << " " << nsec_str << std::endl;
+        parser = parse_g2o_line;
+    } 
+    else if (extension == "csv") 
+    {
+        parser = parse_csv_line;
+    } 
+    else 
+    {
+        std::cerr << "Unsupported file format: " << extension << std::endl;
         return Eigen::Isometry3d::Identity();
     }
 
-    // convert pose to eigen::isometry3d
+    // Parse the file and find the pose
+    std::string line;
+    bool pose_found = false;
+    Pose pose;
+
+    while (std::getline(pose_stream, line)) 
+    {
+        pose = parser(line, sec_str, nsec_str, pose_found);
+        if (pose_found) 
+        {
+            break;
+        }
+    }
+
+    if (!pose_found) 
+    {
+        std::cout << "Pose not found for time " << sec_str << " " << nsec_str << std::endl;
+        return Eigen::Isometry3d::Identity();
+    }
+
+    // Convert the pose to Eigen::Affine3d
     Eigen::Affine3d pose_eigen = Eigen::Isometry3d::Identity();
-    pose_eigen.translation() << pose_x, pose_y, pose_z;
-    Eigen::Quaterniond q(pose_qw, pose_qx, pose_qy, pose_qz);
+    pose_eigen.translation() << std::get<0>(pose), std::get<1>(pose), std::get<2>(pose);
+    Eigen::Quaterniond q(std::get<6>(pose), std::get<3>(pose), std::get<4>(pose), std::get<5>(pose));
     pose_eigen.rotate(q);
 
     return pose_eigen;
