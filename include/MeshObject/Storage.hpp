@@ -104,6 +104,7 @@ public: // to user
     BVHReturnType face_intersection_search(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Face>>& result);
 
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> get_boundary_vertices() const;
+    std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> get_boundary_edges() const;
     const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& get_vertices() const;
     const std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& get_edges() const;
     const std::shared_ptr<Edge>& get_edge(std::shared_ptr<Vertex> vertex1, std::shared_ptr<Vertex> vertex2) const;

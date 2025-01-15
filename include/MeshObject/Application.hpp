@@ -53,7 +53,6 @@ public:
     const std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& get_faces();
     const std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& get_edges();
     std::vector<std::shared_ptr<Vertex>> get_rrs_vertices();
-    std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> get_boundary_edges();
     
     // data
     void load_point_cloud();

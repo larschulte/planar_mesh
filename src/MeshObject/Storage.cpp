@@ -1026,7 +1026,28 @@ std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> Storage::get_boundar
     return boundary_vertices;
 }
 
-const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& Storage::get_vertices() const
+std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> Storage::get_boundary_edges() const
+{
+    // initialize
+    std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> boundary_edges;
+    {
+        // lock
+        std::shared_lock<std::shared_mutex> lock(rwlock_edges_);
+
+        // get edges
+        for (const std::shared_ptr<Edge>& edge : edges_)
+        {
+            // read lock
+            std::shared_lock<std::shared_mutex> lock(edge->rwlock_lifecycle_);
+
+            if (edge->is_boundary()) boundary_edges.insert(edge);
+        }    
+    }
+    
+    // return
+    return boundary_edges;
+}
+
 {
     return vertices_;
 }

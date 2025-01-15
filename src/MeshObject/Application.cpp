@@ -904,20 +904,6 @@ std::vector<std::shared_ptr<Vertex>> Application<PointT>::get_rrs_vertices()
 }
 
 template <typename PointT>
-std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> Application<PointT>::get_boundary_edges() 
-{
-    std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> boundary_edges;
-    for (const std::shared_ptr<Edge>& edge : storage_->get_edges())
-    {
-        if (edge->is_boundary()) 
-        {
-            boundary_edges.insert(edge);
-        }
-    }
-    return boundary_edges;
-}
-
-template <typename PointT>
 void Application<PointT>::refine_surfaces()
 {
     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> copy_of_surfaces = storage_->get_surfaces();
