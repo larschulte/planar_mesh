@@ -471,6 +471,7 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
     {
         // restart
         app_.restart();
+        storage_ = app_.get_storage();
         update_display();
 
         // log
