@@ -123,11 +123,6 @@ const double& EdgeBVH::BoundingBox::get_surface_area()
     return surface_area;
 }
 
-bool EdgeBVH::Node::isLeaf() const 
-{
-    return !left_ && !right_;
-}
-
 void EdgeBVH::Node::recursive_expand_parent_box()
 {
     if (parent_)
@@ -177,7 +172,7 @@ bool EdgeBVH::Node::node_intersect_edge(const std::shared_ptr<Vertex>& vertex0, 
     // skip if not intersected
     if (!box_.intersect(vertex0->get_position(), vertex1->get_position())) return false;
         
-    if (!isLeaf())
+    if (!isLeaf_)
     {
         if (left_->node_intersect_edge(vertex0, vertex1)) return true;
         if (right_->node_intersect_edge(vertex0, vertex1)) return true;   
@@ -254,7 +249,7 @@ std::shared_ptr<EdgeBVH::Node> EdgeBVH::find_best_node(const std::shared_ptr<Edg
         }
 
         // check if it is worth it to go to the children
-        if (!current_node->isLeaf())
+        if (!current_node->isLeaf_)
         {
             // compute change to inherited cost
             EdgeBVH::BoundingBox expanded_box = current_node->box_;
@@ -308,7 +303,7 @@ void EdgeBVH::Node::node_add_edge(const std::shared_ptr<Edge>& edge)
         duplicate_node->box_ = box_;
         
         // if node is leaf, copy boundary vertices
-        if (isLeaf())
+        if (isLeaf_)
         {
             duplicate_node->edge_ = edge_;
             if (duplicate_node->edge_) duplicate_node->edge_->node = duplicate_node;
@@ -321,6 +316,8 @@ void EdgeBVH::Node::node_add_edge(const std::shared_ptr<Edge>& edge)
 
             left_->parent_ = duplicate_node;
             right_->parent_ = duplicate_node;
+
+            duplicate_node->isLeaf_.store(isLeaf_.load());
         }
     }
     
@@ -336,6 +333,9 @@ void EdgeBVH::Node::node_add_edge(const std::shared_ptr<Edge>& edge)
 
         duplicate_node->parent_ = shared_from_this();
         new_leaf_node->parent_ = shared_from_this();
+
+        // change to branch
+        isLeaf_.store(false);
     }    
 }
 
@@ -361,7 +361,7 @@ void EdgeBVH::Node::node_delete_edge(const std::shared_ptr<Edge>& edge)
 
 void EdgeBVH::Node::node_print(int level) const
 {
-    if (!isLeaf())
+    if (!isLeaf_)
     {
         left_->node_print(level+1);
         right_->node_print(level+1);
@@ -376,7 +376,7 @@ void EdgeBVH::Node::node_print(int level) const
 
 void EdgeBVH::Node::node_flatten(std::vector<std::shared_ptr<Edge>>& edge_list) const
 {
-    if (!isLeaf())
+    if (!isLeaf_)
     {
         left_->node_flatten(edge_list);
         right_->node_flatten(edge_list);

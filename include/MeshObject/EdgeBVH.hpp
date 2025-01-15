@@ -48,7 +48,7 @@ public:
         std::shared_ptr<EdgeBVH::Node> parent_;
         std::shared_ptr<EdgeBVH::Node> left_;
         std::shared_ptr<EdgeBVH::Node> right_;
-        bool isLeaf() const;
+        std::atomic<bool> isLeaf_ = true;
         std::shared_ptr<Edge> edge_;
 
         void recursive_expand_parent_box();
