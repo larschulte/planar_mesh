@@ -375,23 +375,19 @@ const double& Edge::get_length() const
 
 bool Edge::intersects_edge(const std::shared_ptr<Vertex>& vertex0, const std::shared_ptr<Vertex>& vertex1)
 {
+    // edge can never be not expired without vertices
+
     // skip if deleting
     if (is_deleting()) return false;
-
+    
     // skip if vertices are connected
-    if (has_vertex(vertex0) || has_vertex(vertex1)) return false;
-
-    // get surface
-    std::shared_ptr<Surface> surface = get_surface();
-
-    // skip if surface is null
-    if (!surface) return false;
+    if (vertices_[0] == vertex0 || vertices_[0] == vertex1 || vertices_[1] == vertex0 || vertices_[1] == vertex1) return false;
 
     // get surface coordinates
-    const Eigen::Vector2d& p1 = vertex0->get_surface_coordinate(surface);
-    const Eigen::Vector2d& p2 = vertex1->get_surface_coordinate(surface);
-    const Eigen::Vector2d& q1 = get_vertex(0)->get_surface_coordinate(surface);
-    const Eigen::Vector2d& q2 = get_vertex(1)->get_surface_coordinate(surface);
+    const Eigen::Vector2d& p1 = vertex0->get_surface_coordinate(surface_);
+    const Eigen::Vector2d& p2 = vertex1->get_surface_coordinate(surface_);
+    const Eigen::Vector2d& q1 = vertices_[0]->get_surface_coordinate(surface_);
+    const Eigen::Vector2d& q2 = vertices_[1]->get_surface_coordinate(surface_);
     
     // check if edge intersects
     return segments_intersect(p1, p2, q1, q2);
