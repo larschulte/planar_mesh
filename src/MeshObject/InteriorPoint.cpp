@@ -64,9 +64,21 @@ void InteriorPoint::delete_()
     // log
     if (settings_.log.deletion) std::cout << "Destroying InteriorPoint " << id_ << std::endl;
 
-    // subscribers and publishers
+    // subscribers (disconnect)
     {
-        delete_subscribers();
+        // lock, copy and clear
+        std::vector<std::shared_ptr<Vertex>> interior_point_distance_subscribers_copy;
+        {
+            std::unique_lock<std::shared_mutex> lock(rwlock_interior_point_distance_subscribers_);
+            interior_point_distance_subscribers_copy = interior_point_distance_subscribers_;
+            interior_point_distance_subscribers_.clear();
+        }
+
+        // disconnect
+        for (const auto& interior_point_subscriber : interior_point_distance_subscribers_copy) interior_point_subscriber->delete_interior_point_distance_publisher(shared_from_this());
+
+        // add vertex to update radius
+        for (const auto& interior_point_subscriber : interior_point_distance_subscribers_copy) storage_->add_vertex_that_have_deleted_publishers(interior_point_subscriber);
     }
 
     // surface (disconnect)
@@ -169,25 +181,6 @@ std::size_t InteriorPoint::get_num_deletes() const
     return num_deletes_;
 }
 
-void InteriorPoint::delete_subscribers()
-{
-    // interior point subscribers
-    std::vector<std::shared_ptr<Vertex>> interior_point_distance_subscribers_copy;
-    {
-        // lock
-        std::shared_lock<std::shared_mutex> lock(rwlock_interior_point_distance_subscribers_);
-
-        // copy
-        interior_point_distance_subscribers_copy = interior_point_distance_subscribers_;
-    }
-    
-    for (const auto& interior_point_subscriber : interior_point_distance_subscribers_copy)
-    {
-        // delete
-        delete_interior_point_distance_subscriber(interior_point_subscriber);
-    }
-}
-
 void InteriorPoint::add_interior_point_distance_subscriber(const std::shared_ptr<Vertex> interior_point_subscriber)
 {
     // check input
@@ -223,10 +216,7 @@ void InteriorPoint::delete_interior_point_distance_subscriber(const std::shared_
 
         // delete subscriber
         interior_point_distance_subscribers_.erase(it);
-    }    
-    
-    // delete self from subscriber vertex as publisher
-    interior_point_subscriber->delete_interior_point_distance_publisher(shared_from_this());
+    }
 }
 
 

@@ -96,10 +96,49 @@ void Vertex::delete_()
     // log
     if (settings_.log.deletion) std::cout << "Destroying vertex " << id_ << std::endl;
     
-    // publishers
+    // publishers (disconnect)
     {
-        delete_publishers();
-        delete_subscribers();
+        // lock, copy and clear
+        std::vector<std::pair<std::shared_ptr<Vertex>, double>> vertex_point_distance_publishers_copy;
+        {
+            std::unique_lock<std::shared_mutex> lock(rwlock_vertex_point_distance_publishers_);
+            vertex_point_distance_publishers_copy = vertex_point_distance_publishers_;
+            vertex_point_distance_publishers_.clear();
+        }
+
+        // disconnect
+        for (const auto& [vertex_point_publisher, distance] : vertex_point_distance_publishers_copy) vertex_point_publisher->delete_vertex_point_distance_subscriber(shared_from_this());
+    }
+
+    // publishers (disconnect)
+    {
+        // lock, copy and clear
+        std::vector<std::pair<std::shared_ptr<InteriorPoint>, double>> interior_point_distance_publishers_copy;
+        {
+            std::unique_lock<std::shared_mutex> lock(rwlock_interior_point_distance_publishers_);
+            interior_point_distance_publishers_copy = interior_point_distance_publishers_;
+            interior_point_distance_publishers_.clear();
+        }
+
+        // disconnect
+        for (const auto& [interior_point_publisher, distance] : interior_point_distance_publishers_copy) interior_point_publisher->delete_interior_point_distance_subscriber(shared_from_this());
+    }
+
+    // subscribers (disconnect)
+    {
+        // lock, copy and clear
+        std::vector<std::shared_ptr<Vertex>> vertex_point_distance_subscribers_copy;
+        {
+            std::unique_lock<std::shared_mutex> lock(rwlock_vertex_point_distance_subscribers_);
+            vertex_point_distance_subscribers_copy = vertex_point_distance_subscribers_;
+            vertex_point_distance_subscribers_.clear();
+        }
+
+        // disconnect
+        for (const auto& vertex_point_subscriber : vertex_point_distance_subscribers_copy) vertex_point_subscriber->delete_vertex_point_distance_publisher(shared_from_this());
+
+        // add vertex to list to update
+        for (const auto& vertex_point_subscriber : vertex_point_distance_subscribers_copy) storage_->add_vertex_that_have_deleted_publishers(vertex_point_subscriber);
     }
 
     // surface (disconnect)
@@ -910,56 +949,6 @@ bool Vertex::is_non_manifold() const
     return get_connected_boundary_edges().size() > 2 || get_connected_boundary_edges().size() == 1;
 }
 
-void Vertex::delete_publishers()
-{
-    // vertex point publisher
-    std::vector<std::pair<std::shared_ptr<Vertex>, double>> vertex_point_distance_publishers_copy;
-    {
-        // lock
-        std::shared_lock<std::shared_mutex> lock(rwlock_vertex_point_distance_publishers_);
-
-        // copy
-        vertex_point_distance_publishers_copy = vertex_point_distance_publishers_;
-    }
-    for (const auto& [vertex_point_publisher, distance] : vertex_point_distance_publishers_copy)
-    {
-        delete_vertex_point_distance_publisher(vertex_point_publisher);
-    }
-
-    // interior point publisher
-    std::vector<std::pair<std::shared_ptr<InteriorPoint>, double>> interior_point_distance_publishers_copy;
-    {
-        // lock
-        std::shared_lock<std::shared_mutex> lock(rwlock_interior_point_distance_publishers_);
-
-        // copy
-        interior_point_distance_publishers_copy = interior_point_distance_publishers_;
-    }
-    for (const auto& [interior_point_publisher, distance] : interior_point_distance_publishers_copy)
-    {
-        delete_interior_point_distance_publisher(interior_point_publisher);
-    }
-}
-
-void Vertex::delete_subscribers()
-{
-    // make copy of vertex point subscribers
-    std::vector<std::shared_ptr<Vertex>> vertex_point_distance_subscribers_copy;
-    {
-        // lock
-        std::shared_lock<std::shared_mutex> lock(rwlock_vertex_point_distance_subscribers_);
-
-        // copy
-        vertex_point_distance_subscribers_copy = vertex_point_distance_subscribers_;
-    }
-
-    for (const auto& vertex_point_subscriber : vertex_point_distance_subscribers_copy)
-    {
-        // delete
-        delete_vertex_point_distance_subscriber(vertex_point_subscriber);
-    }
-}
-
 void Vertex::upon_adding_publisher()
 {
     // previous and current radius
@@ -1035,9 +1024,6 @@ void Vertex::delete_vertex_point_distance_publisher(const std::shared_ptr<Vertex
     
     // upon deleting publisher
     upon_deleting_publisher();
-
-    // delete self from publisher vertex as subscriber
-    vertex_point_publisher->delete_vertex_point_distance_subscriber(shared_from_this());
 }
 
 void Vertex::add_vertex_point_distance_subscriber(const std::shared_ptr<Vertex> vertex_point_subscriber)
@@ -1076,9 +1062,6 @@ void Vertex::delete_vertex_point_distance_subscriber(const std::shared_ptr<Verte
         // delete subscriber
         vertex_point_distance_subscribers_.erase(it);
     }
-    
-    // delete self from subscriber vertex as publisher
-    vertex_point_subscriber->delete_vertex_point_distance_publisher(shared_from_this());
 }
 
 void Vertex::add_interior_point_distance_publisher(const std::shared_ptr<InteriorPoint> interior_point_publisher)
@@ -1123,9 +1106,6 @@ void Vertex::delete_interior_point_distance_publisher(const std::shared_ptr<Inte
     
     // upon deleting publisher
     upon_deleting_publisher();
-
-    // delete self from publisher vertex as subscriber
-    interior_point_publisher->delete_interior_point_distance_subscriber(shared_from_this());
 }
 
 double Vertex::compute_radius()

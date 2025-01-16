@@ -101,9 +101,6 @@ public:
     // non manifold
     bool is_non_manifold() const;
 
-    void delete_publishers();
-    void delete_subscribers();
-
     void upon_adding_publisher();
     void upon_deleting_publisher();
 

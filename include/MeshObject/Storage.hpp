@@ -95,6 +95,8 @@ public: // to user
     void delete_to_be_deleted_repeatedly();
     void delete_to_be_deleted();
 
+    void add_vertex_that_have_deleted_publishers(const std::shared_ptr<Vertex>& vertex);
+    void update_vertices_that_have_deleted_publishers();
 
     void add_to_set_of_vertices_to_update_rrs_tree(const std::shared_ptr<Vertex>& vertex);
     void add_to_set_of_faces_to_update_bvh_tree(const std::shared_ptr<Face>& face);
@@ -171,6 +173,8 @@ private:
     std::vector<std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>> thread_edges_to_be_deleted_;
     std::vector<std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>> thread_faces_to_be_deleted_;
     std::vector<std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash>> thread_interior_points_to_be_deleted_;
+
+    std::vector<std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>> thread_vertices_that_have_deleted_publishers_;
 
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertices_;
     std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges_;

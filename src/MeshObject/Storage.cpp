@@ -32,6 +32,7 @@ Storage::Storage()
     thread_edges_to_be_deleted_.resize(settings_.num_threads);
     thread_faces_to_be_deleted_.resize(settings_.num_threads);
     thread_interior_points_to_be_deleted_.resize(settings_.num_threads);
+    thread_vertices_that_have_deleted_publishers_.resize(settings_.num_threads);
     
     // initialize with queue or stack
     for (size_t i = 0; i < settings_.num_threads; ++i)
@@ -910,6 +911,9 @@ void Storage::delete_to_be_deleted_repeatedly()
         // delete
         delete_to_be_deleted();
 
+        // update vertices that have deleted publishers
+        update_vertices_that_have_deleted_publishers();
+
         // check if there is any new vertex to be deleted
         repeat = thread_vertices_to_be_deleted_[omp_get_thread_num()].size() > 0
             || thread_edges_to_be_deleted_[omp_get_thread_num()].size() > 0
@@ -937,6 +941,30 @@ void Storage::delete_to_be_deleted()
     for (const std::shared_ptr<Edge>& edge : edges_to_be_deleted) delete_edge(edge);
     for (const std::shared_ptr<Face>& face : faces_to_be_deleted) delete_face(face);
     for (const std::shared_ptr<InteriorPoint>& interior_point : interior_points_to_be_deleted) delete_interior_point(interior_point);
+}
+
+void Storage::add_vertex_that_have_deleted_publishers(const std::shared_ptr<Vertex>& vertex)
+{
+    thread_vertices_that_have_deleted_publishers_[omp_get_thread_num()].insert(vertex);
+}
+
+void Storage::update_vertices_that_have_deleted_publishers()
+{
+    // make copy
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertices_that_have_deleted_publishers = thread_vertices_that_have_deleted_publishers_[omp_get_thread_num()];
+
+    // clear
+    thread_vertices_that_have_deleted_publishers_[omp_get_thread_num()].clear();
+
+    // update 
+    for (const std::shared_ptr<Vertex>& vertex : vertices_that_have_deleted_publishers)
+    {
+        // read lock
+        std::shared_lock<std::shared_mutex> lock(vertex->rwlock_lifecycle_);
+
+        // update
+        vertex->upon_deleting_publisher();
+    }
 }
 
 void Storage::remove_searchable_vertex(const std::shared_ptr<Vertex>& vertex)
