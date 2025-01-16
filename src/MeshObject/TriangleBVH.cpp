@@ -235,8 +235,11 @@ void Node::recursive_shrink_parent_box()
 
         // new parent box
         BoundingBox new_parent_box = BoundingBox();
-        new_parent_box.expand_box_no_return(parent_->left_->box_);
-        new_parent_box.expand_box_no_return(parent_->right_->box_);
+        // copy boxes of children of parent
+        BoundingBox parent_left_box = parent_->left_->box_;
+        BoundingBox parent_right_box = parent_->right_->box_;
+        new_parent_box.expand_box_no_return(parent_left_box);
+        new_parent_box.expand_box_no_return(parent_right_box);
                 
         // shrunk
         const bool shrunk = new_parent_box.min[0] > old_parent_box.min[0] &&

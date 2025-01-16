@@ -190,8 +190,11 @@ void RRSNode::recursive_shrink_parent_box()
 
         // new parent box
         RRSBoundingBox new_parent_box = RRSBoundingBox();
-        new_parent_box.expand_box_no_return(parent_->left_->box_);
-        new_parent_box.expand_box_no_return(parent_->right_->box_);
+        // copy boxes of children of parent
+        RRSBoundingBox parent_left_box = parent_->left_->box_;
+        RRSBoundingBox parent_right_box = parent_->right_->box_;
+        new_parent_box.expand_box_no_return(parent_left_box);
+        new_parent_box.expand_box_no_return(parent_right_box);
         
         // shrunk
         const bool shrunk = new_parent_box.min[0] > old_parent_box.min[0] &&
