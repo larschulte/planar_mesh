@@ -42,8 +42,16 @@ Settings::Settings()
         "/home/jiahao/datasets/spires_benchmark/bodleian01/undist-clouds/",
         "/home/jiahao/datasets/spires_benchmark/bodleian01/slam-poses.csv"
     );
+    dataset_map["blenheim04"] = std::make_pair(
+        "/home/jiahao/datasets/spires_benchmark/blenheim04/undist-clouds/",
+        "/home/jiahao/datasets/spires_benchmark/blenheim04/slam-poses.csv"
+    );
+    dataset_map["christchurch03"] = std::make_pair(
+        "/home/jiahao/datasets/spires_benchmark/christchurch03/undist-clouds/",
+        "/home/jiahao/datasets/spires_benchmark/christchurch03/slam-poses.csv"
+    );
 
-    std::string dataset = "bodleian";
+    std::string dataset = "christchurch03";
     data_loader_settings.pcd_file_folder = dataset_map[dataset].first;
     data_loader_settings.pose_file_path = dataset_map[dataset].second;
 
