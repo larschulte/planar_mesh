@@ -160,6 +160,11 @@ void Vertex::delete_()
     is_expired_ = true;
 }
 
+Vertex::~Vertex()
+{
+    // std::cout << "Vertex " << id_ << " deleted." << std::endl;
+}
+
 void Vertex::temp_initialize(const Eigen::Vector3d& position, unsigned int id)
 {
     // set expired

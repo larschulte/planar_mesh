@@ -30,6 +30,9 @@ protected:
     void delete_();
 
 public:
+
+    ~Vertex();
+
     // read write locks for shared resources
     mutable std::shared_mutex rwlock_vertex_point_distance_publishers_;
     mutable std::shared_mutex rwlock_interior_point_distance_publishers_;

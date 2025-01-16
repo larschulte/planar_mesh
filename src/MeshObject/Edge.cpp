@@ -117,6 +117,11 @@ void Edge::delete_()
     is_expired_ = true;
 }
 
+Edge::~Edge()
+{
+    // std::cout << "Edge " << id_ << " deleted." << std::endl;
+}
+
 void Edge::connect(const std::shared_ptr<Face>& face) 
 {
     // check input

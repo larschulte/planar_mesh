@@ -23,6 +23,8 @@ protected:
 
 public:
 
+    ~InteriorPoint();
+
     // read write locks
     mutable std::shared_mutex rwlock_interior_point_distance_subscribers_;
 

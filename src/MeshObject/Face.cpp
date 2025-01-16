@@ -238,6 +238,11 @@ void Face::delete_()
     is_expired_ = true;
 }
 
+Face::~Face()
+{
+    // std::cout << "Face " << id_ << " deleted." << std::endl;
+}
+
 void Face::temp_initialize(const Eigen::Vector3d& end_point)
 {
     // temp initialize a vertex

@@ -96,6 +96,11 @@ void InteriorPoint::delete_()
     is_expired_ = true;
 }
 
+InteriorPoint::~InteriorPoint()
+{
+    std::cout << "InteriorPoint " << id_ << " deleted." << std::endl;
+}
+
 const int& InteriorPoint::get_id() const
 {
     return id_;

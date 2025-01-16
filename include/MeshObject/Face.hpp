@@ -33,6 +33,9 @@ protected:
     void delete_();
 
 public:
+
+    ~Face();
+    
     // read write lock
     mutable std::shared_mutex rwlock_interior_points_;
 
