@@ -1086,6 +1086,90 @@ std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> Storage::get_
     return interior_points_;
 }
 
+unsigned int Storage::get_boundary_vertices_size() const
+{
+    // read lock
+    std::shared_lock<std::shared_mutex> lock(rwlock_vertices_);
+
+    // return
+    unsigned int size = 0;
+    for (const std::shared_ptr<Vertex>& vertex : vertices_)
+    {
+        if (vertex->is_boundary()) size++;
+    }
+
+    return size;
+}
+
+unsigned int Storage::get_boundary_edges_size() const
+{
+    // read lock
+    std::shared_lock<std::shared_mutex> lock(rwlock_edges_);
+
+    // return
+    unsigned int size = 0;
+    for (const std::shared_ptr<Edge>& edge : edges_)
+    {
+        if (edge->is_boundary()) size++;
+    }
+
+    return size;
+}
+
+unsigned int Storage::get_vertices_size() const
+{
+    // read lock
+    std::shared_lock<std::shared_mutex> lock(rwlock_vertices_);
+
+    // return
+    return vertices_.size();
+}
+
+unsigned int Storage::get_edges_size() const
+{
+    // read lock
+    std::shared_lock<std::shared_mutex> lock(rwlock_edges_);
+
+    // return
+    return edges_.size();
+}
+
+unsigned int Storage::get_faces_size() const
+{
+    // read lock
+    std::shared_lock<std::shared_mutex> lock(rwlock_faces_);
+
+    // return
+    return faces_.size();
+}
+
+unsigned int Storage::get_surfaces_size() const
+{
+    // read lock
+    std::shared_lock<std::shared_mutex> lock(rwlock_surfaces_);
+
+    // return
+    return surfaces_.size();
+}
+
+unsigned int Storage::get_generic_points_size() const
+{
+    // read lock
+    std::shared_lock<std::shared_mutex> lock(rwlock_genertic_points_);
+
+    // return
+    return genertic_points_.size();
+}
+
+unsigned int Storage::get_interior_points_size() const
+{
+    // read lock
+    std::shared_lock<std::shared_mutex> lock(rwlock_interior_points_);
+
+    // return
+    return interior_points_.size();
+}
+
 std::vector<std::shared_ptr<Vertex>> Storage::get_rrs_vertices()
 {
     return rrs_tree_.compute_vertices_list();

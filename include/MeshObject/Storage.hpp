@@ -111,6 +111,14 @@ public: // to user
     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> get_surfaces() const;
     std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash> get_generic_points() const;
     std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> get_interior_points() const;
+    unsigned int get_boundary_vertices_size() const;
+    unsigned int get_boundary_edges_size() const;
+    unsigned int get_vertices_size() const;
+    unsigned int get_edges_size() const;
+    unsigned int get_faces_size() const;
+    unsigned int get_surfaces_size() const;
+    unsigned int get_generic_points_size() const;
+    unsigned int get_interior_points_size() const;
 
     std::vector<std::shared_ptr<Vertex>> get_rrs_vertices();
     std::map<std::shared_ptr<Vertex>, int> get_vertex_to_cloud_indices_map() const;
