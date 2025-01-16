@@ -98,7 +98,7 @@ void InteriorPoint::delete_()
 
 InteriorPoint::~InteriorPoint()
 {
-    std::cout << "InteriorPoint " << id_ << " deleted." << std::endl;
+    // std::cout << "InteriorPoint " << id_ << " deleted." << std::endl;
 }
 
 const int& InteriorPoint::get_id() const
