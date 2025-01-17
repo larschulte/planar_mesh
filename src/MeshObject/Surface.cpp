@@ -663,13 +663,7 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
         if (tree_intersect_edge(vertex, nearby_vertex)) continue;
 
         // create edge
-        std::shared_ptr<Edge> new_edge = storage_->add_edge(shared_from_this(), vertex, nearby_vertex);
-
-        // read lock edge
-        std::shared_lock<std::shared_mutex> lock_edge(new_edge->rwlock_lifecycle_);
-
-        // skip if edge is expired
-        if (new_edge->is_expired()) continue;
+        storage_->add_edge(shared_from_this(), vertex, nearby_vertex);
     }
     // add edges to edgeBVH tree
     storage_->add_or_remove_edges_from_edgeBVH_tree();
