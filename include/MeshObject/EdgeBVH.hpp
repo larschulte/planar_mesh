@@ -41,6 +41,11 @@ public:
         const double& get_surface_area();
     };
 
+    enum class EdgeBVHReturnType
+    {
+        INTERSECTED,
+        SKIP
+    };
     class Node : public std::enable_shared_from_this<EdgeBVH::Node>
     {
         public:
@@ -59,7 +64,7 @@ public:
 
         void node_add_edge(const std::shared_ptr<Edge>& edge);
         void node_delete_edge(const std::shared_ptr<Edge>& edge);
-        bool node_intersect_edge(const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2);
+        EdgeBVHReturnType node_intersect_edge(const std::shared_ptr<Vertex>& vertex1, const std::shared_ptr<Vertex>& vertex2, std::vector<std::shared_ptr<Edge>>& edges_encountered);
         void node_print(int level) const;    
         void node_flatten(std::vector<std::shared_ptr<Edge>>& flat_vector) const;
     };
@@ -77,6 +82,6 @@ public:
 
     void tree_add_edge(const std::shared_ptr<Edge>& edge);
     void tree_delete_edge(const std::shared_ptr<Edge>& edge);
-    bool tree_intersect_edge(const std::shared_ptr<Vertex>& vertex0, const std::shared_ptr<Vertex>& vertex1);
+    EdgeBVHReturnType tree_intersect_edge(const std::shared_ptr<Vertex>& vertex0, const std::shared_ptr<Vertex>& vertex1, std::vector<std::shared_ptr<Edge>>& edges_encountered);
     void tree_print() const;
 };

@@ -626,7 +626,30 @@ void Surface::connect(const std::shared_ptr<Vertex>& vertex)
 
 bool Surface::tree_intersect_edge(const std::shared_ptr<Vertex>& vertex0, const std::shared_ptr<Vertex>& vertex1)
 {
-    return edge_bvh_.tree_intersect_edge(vertex0, vertex1);
+    // initialize
+    std::vector<std::shared_ptr<Edge>> edges_encountered;
+
+    // search for encountered edges
+    EdgeBVH::EdgeBVHReturnType result = edge_bvh_.tree_intersect_edge(vertex0, vertex1, edges_encountered);
+
+    // false if no encountered edges
+    if (result == EdgeBVH::EdgeBVHReturnType::SKIP) return false;
+    
+    // else check for each edge
+    for (const auto& edge : edges_encountered)
+    {
+        // read lock edge
+        std::shared_lock<std::shared_mutex> lock(edge->rwlock_lifecycle_);
+        
+        // skip if edge is expired
+        if (edge->is_expired()) continue;
+
+        // true if intersect
+        if (edge->intersects_edge(vertex0, vertex1)) return true;
+    }
+
+    // false if no intersection
+    return false;
 }
 
 bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& all_nearby_vertices)

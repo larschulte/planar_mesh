@@ -204,13 +204,15 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
 }
 
 template <typename PointT>
-void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& generic_point, std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> bvh_results, std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> rrs_results)
+void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& generic_point, std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> unfiltered_bvh_results, std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> unfiltered_rrs_results)
 {
 
     // from bvh results and rrs results, get surfaces
     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> bvh_surfaces;
     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> rrs_surfaces;
-    for (const std::shared_ptr<Face>& face : bvh_results)
+    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> bvh_results;
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> rrs_results;
+    for (const std::shared_ptr<Face>& face : unfiltered_bvh_results)
     {
         // read lock
         std::shared_lock<std::shared_mutex> lock(face->rwlock_lifecycle_);
@@ -218,17 +220,27 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
         // skip if expired
         if (face->is_expired()) continue;
 
+        // skip if does not intersect
+        if (!face->intersects_point(generic_point->get_origin(), generic_point->get_direction())) continue;
+        
+        // store
         bvh_surfaces.insert(face->get_surface());
+        bvh_results.insert(face);
     }
-    for (const std::shared_ptr<Vertex>& vertex : rrs_results)
+    for (const std::shared_ptr<Vertex>& vertex : unfiltered_rrs_results)
     {
         // read lock
         std::shared_lock<std::shared_mutex> lock(vertex->rwlock_lifecycle_); // this to prevent vertex from being deleted
 
         // skip if expired
         if (vertex->is_expired()) continue;
-        
+
+        // skip if does not contain
+        if (!vertex->contains(generic_point->get_position())) continue;
+
+        // store
         rrs_surfaces.insert(vertex->get_surface());
+        rrs_results.insert(vertex);
     }
 
     // split surfaces into bvh and rrs seed, within, behind, in front

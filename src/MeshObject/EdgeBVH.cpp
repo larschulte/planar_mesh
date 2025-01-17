@@ -170,18 +170,20 @@ void EdgeBVH::Node::recursive_shrink_parent_box()
     }
 }
 
-bool EdgeBVH::Node::node_intersect_edge(const std::shared_ptr<Vertex>& vertex0, const std::shared_ptr<Vertex>& vertex1)
+EdgeBVH::EdgeBVHReturnType EdgeBVH::Node::node_intersect_edge(const std::shared_ptr<Vertex>& vertex0, const std::shared_ptr<Vertex>& vertex1, std::vector<std::shared_ptr<Edge>>& edges_encountered)
 {
     // skip if not intersected
-    if (!box_.intersect(vertex0->get_position(), vertex1->get_position())) return false;
+    if (!box_.intersect(vertex0->get_position(), vertex1->get_position())) return EdgeBVHReturnType::SKIP;
         
     if (!isLeaf_)
     {
-        if (left_->node_intersect_edge(vertex0, vertex1)) return true;
-        if (right_->node_intersect_edge(vertex0, vertex1)) return true;   
-        
-        // else return false
-        return false;
+        // search left and right
+        EdgeBVHReturnType left_return = left_->node_intersect_edge(vertex0, vertex1, edges_encountered);
+        EdgeBVHReturnType right_return = right_->node_intersect_edge(vertex0, vertex1, edges_encountered);
+
+        // skip if both is skip
+        if (left_return == EdgeBVHReturnType::SKIP && right_return == EdgeBVHReturnType::SKIP) return EdgeBVHReturnType::SKIP;
+        return EdgeBVHReturnType::INTERSECTED;
     }
     else
     {
@@ -189,19 +191,13 @@ bool EdgeBVH::Node::node_intersect_edge(const std::shared_ptr<Vertex>& vertex0, 
         std::shared_lock<std::shared_mutex> lock2(rwlock_node_);
 
         // skip if edge_ is nullptr
-        if (!edge_) return false;
+        if (!edge_) return EdgeBVHReturnType::SKIP;
 
-        // read lock edge
-        std::shared_lock<std::shared_mutex> lock(edge_->rwlock_lifecycle_);
-        
-        // skip if edge is expired
-        if (edge_->is_expired()) return false;
+        // store
+        edges_encountered.push_back(edge_);
 
-        // check if edge intersects
-        if (edge_->intersects_edge(vertex0, vertex1)) return true;
-
-        // else return false
-        return false;   
+        // return
+        return EdgeBVHReturnType::INTERSECTED;
     }
 }
 
@@ -435,12 +431,12 @@ void EdgeBVH::tree_add_edge(const std::shared_ptr<Edge>& edge)
     edge_size_++;
 }
 
-bool EdgeBVH::tree_intersect_edge(const std::shared_ptr<Vertex>& vertex0, const std::shared_ptr<Vertex>& vertex1)
+EdgeBVH::EdgeBVHReturnType EdgeBVH::tree_intersect_edge(const std::shared_ptr<Vertex>& vertex0, const std::shared_ptr<Vertex>& vertex1, std::vector<std::shared_ptr<Edge>>& edges_encountered)
 {
     // check input
     if (vertex0->is_expired() || vertex1->is_expired()) throw std::runtime_error("Attempts to intersect with expired vertex.");
 
-    return root_->node_intersect_edge(vertex0, vertex1);
+    return root_->node_intersect_edge(vertex0, vertex1, edges_encountered);
 }
 
 void EdgeBVH::tree_print() const

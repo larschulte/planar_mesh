@@ -418,24 +418,13 @@ RRSReturnType RRSNode::node_reverse_radius_search(const std::shared_ptr<GenericP
         // read lock
         std::shared_lock<std::shared_mutex> lock2(rwlock_node_);
 
-        // skip if boundary vertex is nullptr
+        // skip if no boundary vertex
         if (!boundary_vertex_) return RRSReturnType::SKIP;
         
-        // read lock
-        std::shared_lock<std::shared_mutex> lock(boundary_vertex_->rwlock_lifecycle_);
-
-        // we lock the vertex during vertex->delete_() call, and then release it before locking it again when removing it from the rrs tree
-        // thus this thread may have lock this vertex during the gap
-        // and see an expired vertex in the search tree
-        // thus we need to check if the vertex is expired and skip if it is
-        if (boundary_vertex_->is_expired() || !boundary_vertex_->approx_contains(generic_point->get_position()))
-        {
-            return RRSReturnType::SKIP;
-        }
-
-        // return
+        // store
         search_results.push_back(boundary_vertex_);
 
+        // return
         return RRSReturnType::INTERSECTED;
     }
 }
