@@ -196,6 +196,7 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
     num_of_concurrent_processes--;
     
     // after unlocking all locks, add the point in queue to the search tree
+    storage_->update_vertices_that_have_added_publishers();
     storage_->delete_to_be_deleted_repeatedly();
     storage_->add_or_remove_vertices_from_rrs_tree();
     storage_->add_or_remove_faces_from_bvh_tree();
@@ -552,19 +553,9 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
         // reduce radius of nearby vertices
         if (new_interior_point) new_interior_point->add_interior_point_distance_subscriber(vertex);
         if (new_vertex) new_vertex->add_vertex_point_distance_subscriber(vertex);
-    }    
 
-    // rrs - upon adding publisher
-    for (const std::shared_ptr<Vertex>& vertex : rrs_results)
-    {
-        // read lock vertex
-        std::shared_lock<std::shared_mutex> lock(vertex->rwlock_lifecycle_); // this to prevent vertex from being deleted
-
-        // skip if expired
-        if (vertex->is_expired()) continue;
-
-        // upon adding publisher
-        vertex->upon_adding_publisher();
+        // add to list that have added publishers
+        storage_->add_vertex_that_have_added_publishers(vertex);
     }
 }
 
