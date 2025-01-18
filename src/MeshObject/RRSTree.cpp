@@ -441,13 +441,7 @@ RRSReturnType RRSNode::node_reverse_radius_search(const std::shared_ptr<GenericP
         return RRSReturnType::INTERSECTED;
     }
     else
-    {
-        // read lock
-        std::shared_lock<std::shared_mutex> lock2(rwlock_node_);
-
-        // skip if no boundary vertex
-        if (!boundary_vertex_) return RRSReturnType::SKIP;
-        
+    {        
         // store
         search_results.push_back(boundary_vertex_);
 

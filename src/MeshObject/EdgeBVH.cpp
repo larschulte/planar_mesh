@@ -187,12 +187,6 @@ EdgeBVH::EdgeBVHReturnType EdgeBVH::Node::node_intersect_edge(const std::shared_
     }
     else
     {
-        // read lock
-        std::shared_lock<std::shared_mutex> lock2(rwlock_node_);
-
-        // skip if edge_ is nullptr
-        if (!edge_) return EdgeBVHReturnType::SKIP;
-
         // store
         edges_encountered.push_back(edge_);
 

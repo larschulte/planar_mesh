@@ -279,13 +279,7 @@ BVHReturnType Node::node_intersection_search(const std::shared_ptr<GenericPoint>
         return BVHReturnType::INTERSECTED;
     }
     else
-    {
-        // read lock
-        std::shared_lock<std::shared_mutex> lock2(rwlock_node_);
-
-        // skip if no face
-        if (!face_) return BVHReturnType::SKIP;
-        
+    {        
         // store
         faces_intersected.push_back(face_);
 

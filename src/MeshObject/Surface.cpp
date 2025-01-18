@@ -638,6 +638,9 @@ bool Surface::tree_intersect_edge(const std::shared_ptr<Vertex>& vertex0, const 
     // else check for each edge
     for (const auto& edge : edges_encountered)
     {
+        // skip if nullptr
+        if (!edge) continue;
+
         // read lock edge
         std::shared_lock<std::shared_mutex> lock(edge->rwlock_lifecycle_);
         

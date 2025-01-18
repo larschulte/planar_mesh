@@ -188,10 +188,7 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
     // std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
     // process
-    // convert to set
-    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> bvh_results_set(bvh_results.begin(), bvh_results.end());
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> rrs_results_set(rrs_results.begin(), rrs_results.end());
-    add_point_to_map(generic_point, bvh_results_set, rrs_results_set);
+    add_point_to_map(generic_point, bvh_results, rrs_results);
 
     num_of_concurrent_processes--;
     
@@ -215,6 +212,9 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> rrs_results;
     for (const std::shared_ptr<Face>& face : unfiltered_bvh_results)
     {
+        // skip if nullptr
+        if (face == nullptr) continue;
+
         // read lock
         std::shared_lock<std::shared_mutex> lock(face->rwlock_lifecycle_);
 
@@ -230,6 +230,9 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
     }
     for (const std::shared_ptr<Vertex>& vertex : unfiltered_rrs_results)
     {
+        // skip if nullptr
+        if (vertex == nullptr) continue;
+
         // read lock
         std::shared_lock<std::shared_mutex> lock(vertex->rwlock_lifecycle_); // this to prevent vertex from being deleted
 
