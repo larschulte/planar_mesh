@@ -49,7 +49,6 @@ void Vertex::initialize_(const std::shared_ptr<Storage>& storage, const std::sha
 
     // set reverse search radius based on input parameter
     try_update_radius();
-    try_update_node_box();
 
     // log
     if (settings_.log.initialize) std::cout << "Vertex " << id_ << " created.\n";
@@ -217,7 +216,6 @@ void Vertex::temp_initialize(const Eigen::Vector3d& position, unsigned int id)
 
     // set radius
     try_update_radius();
-    try_update_node_box();
 }
 
 const int& Vertex::get_id() const 
@@ -960,7 +958,7 @@ void Vertex::upon_adding_publisher()
     if (current_radius < previous_radius) 
     {
         try_break_edges();
-        if (!is_expired()) try_update_node_box();
+        storage_->add_vertex_that_have_changed_box(shared_from_this());
     }    
 }
 
@@ -978,7 +976,7 @@ void Vertex::upon_deleting_publisher()
     if (current_radius > previous_radius) 
     {
         try_close_holes_repeatedly();
-        try_update_node_box();
+        storage_->add_vertex_that_have_changed_box(shared_from_this());
     }
 }
 
@@ -1136,7 +1134,14 @@ double Vertex::compute_radius()
 
 void Vertex::try_update_radius()
 {
+    // update radius
     reverse_search_radius_ = compute_radius();
+
+    // update max and min
+    const double current_rrs_half_size = settings_.compute_rrs_half_size(reverse_search_radius_);
+    const Eigen::Vector3d half_size_vecotr = Eigen::Vector3d(current_rrs_half_size, current_rrs_half_size, current_rrs_half_size);
+    min_ = get_position() - half_size_vecotr;
+    max_ = get_position() + half_size_vecotr;
 }
 
 void Vertex::try_break_edges()
@@ -1178,33 +1183,6 @@ void Vertex::try_break_edges()
         if (edge->is_expired()) continue; 
 
         storage_->add_edge_to_be_deleted(edge);
-    }
-}
-
-void Vertex::try_update_node_box()
-{
-    // previous radius
-    const double previous_rrs_half_size = (max_.x() - min_.x()) / 2.0;
-
-    // update min and max
-    const double current_rrs_half_size = settings_.compute_rrs_half_size(reverse_search_radius_);
-    const Eigen::Vector3d half_size_vecotr = Eigen::Vector3d(current_rrs_half_size, current_rrs_half_size, current_rrs_half_size);
-    min_ = get_position() - half_size_vecotr;
-    max_ = get_position() + half_size_vecotr;
-
-    if (node)
-    {
-        // update node
-        if (current_rrs_half_size > previous_rrs_half_size)
-        {
-            node->box_ = RRSBoundingBox(min_, max_);
-            node->recursive_expand_parent_box();
-        }
-        else if (current_rrs_half_size < previous_rrs_half_size)
-        {
-            node->box_ = RRSBoundingBox(min_, max_);
-            node->recursive_shrink_parent_box();
-        }
     }
 }
 

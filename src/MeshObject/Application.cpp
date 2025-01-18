@@ -198,6 +198,7 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
     // after unlocking all locks, add the point in queue to the search tree
     storage_->update_vertices_that_have_added_publishers();
     storage_->delete_to_be_deleted_repeatedly();
+    storage_->update_vertices_that_have_changed_box();
     storage_->add_or_remove_vertices_from_rrs_tree();
     storage_->add_or_remove_faces_from_bvh_tree();
     storage_->add_or_remove_edges_from_edgeBVH_tree();

@@ -118,7 +118,6 @@ public:
     double compute_radius();
     void try_update_radius();
     void try_break_edges();
-    void try_update_node_box();
 
     void update_singular_state();
     bool is_singular() const;

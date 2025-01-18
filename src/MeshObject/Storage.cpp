@@ -34,6 +34,7 @@ Storage::Storage()
     thread_interior_points_to_be_deleted_.resize(settings_.num_threads);
     thread_vertices_that_have_deleted_publishers_.resize(settings_.num_threads);
     thread_vertices_that_have_added_publishers_.resize(settings_.num_threads);
+    thread_vertices_that_have_changed_box_.resize(settings_.num_threads);
     
     // initialize with queue or stack
     for (size_t i = 0; i < settings_.num_threads; ++i)
@@ -954,6 +955,11 @@ void Storage::add_vertex_that_have_added_publishers(const std::shared_ptr<Vertex
     thread_vertices_that_have_added_publishers_[omp_get_thread_num()].insert(vertex);
 }
 
+void Storage::add_vertex_that_have_changed_box(const std::shared_ptr<Vertex>& vertex)
+{
+    thread_vertices_that_have_changed_box_[omp_get_thread_num()].insert(vertex);
+}
+
 void Storage::update_vertices_that_have_deleted_publishers()
 {
     // make copy
@@ -989,6 +995,25 @@ void Storage::update_vertices_that_have_added_publishers()
 
         // update
         vertex->upon_adding_publisher();
+    }
+}
+
+void Storage::update_vertices_that_have_changed_box()
+{
+    // make copy
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertices_that_have_changed_box = thread_vertices_that_have_changed_box_[omp_get_thread_num()];
+
+    // clear
+    thread_vertices_that_have_changed_box_[omp_get_thread_num()].clear();
+
+    // update 
+    for (const std::shared_ptr<Vertex>& vertex : vertices_that_have_changed_box)
+    {
+        // read lock
+        std::shared_lock<std::shared_mutex> lock(vertex->rwlock_lifecycle_);
+
+        // update
+        rrs_tree_.tree_update_vertex_box(vertex);
     }
 }
 
