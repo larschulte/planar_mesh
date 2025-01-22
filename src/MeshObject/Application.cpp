@@ -202,7 +202,7 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
 }
 
 template <typename PointT>
-void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& generic_point, std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> unfiltered_bvh_results, std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> unfiltered_rrs_results)
+void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Face>> unfiltered_bvh_results, std::vector<std::shared_ptr<Vertex>> unfiltered_rrs_results)
 {
 
     // from bvh results and rrs results, get surfaces
