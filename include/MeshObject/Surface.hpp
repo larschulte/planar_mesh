@@ -79,6 +79,7 @@ public:
     double get_average_projective_distance();
     bool is_expired() const;
     bool is_abnormal();
+    bool is_seed() const;
 
     bool can_merge(const std::shared_ptr<Surface>& surface) const;
 

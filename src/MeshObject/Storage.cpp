@@ -662,7 +662,7 @@ void Storage::cleanup_surfaces()
     for (const std::shared_ptr<Surface>& surface : surfaces_copy)
     {
         // delete if surface is seed
-        if (surface->get_total_point_size() < settings_.fit_plane_threshold) 
+        if (surface->is_seed()) 
         {
             delete_surface(surface);
             continue;

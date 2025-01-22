@@ -79,7 +79,7 @@ const int& Surface::get_id() const
 
 double Surface::compute_point_to_plane_distance(const Eigen::Vector3d& point) const
 {
-    if (get_total_point_size() < settings_.fit_plane_threshold) throw std::runtime_error("Surface is seed surface.");
+    if (is_seed()) throw std::runtime_error("Surface is seed surface.");
 
     return (point - mean_).dot(normal_);
 }
@@ -145,7 +145,7 @@ Eigen::Vector3d Surface::compute_point_projective_position(const Eigen::Vector3d
     std::shared_lock lock(rwlock_surface_fitting_);
 
     // if surface is seed surface, return original point as projected point
-    if (get_total_point_size() < settings_.fit_plane_threshold) return point;
+    if (is_seed()) return point;
 
     // compute
     Eigen::Vector3d rayDirection = (point - origin).normalized();
@@ -166,7 +166,7 @@ RelativePosition Surface::check_relative_position(double distance_travelled, con
     if (use_improved_covariance)
     {
         // return no_relative_position if not enough points
-        if (get_total_point_size() < settings_.fit_plane_threshold) return RelativePosition::NO_RELATIVE_POSITION;
+        if (is_seed()) return RelativePosition::NO_RELATIVE_POSITION;
 
         // compute d(range)/d(...)
         Eigen::Vector3d d_range_d_origin = - normal_ / normal_.dot(direction);
@@ -516,7 +516,7 @@ bool Surface::is_abnormal()
     if (!do_abnormal_check) return false;
     
     // not abnormal if low confidence surface
-    if (get_total_point_size() < settings_.fit_plane_threshold) return false;
+    if (is_seed()) return false;
 
     // not abnormal if within range
     std::vector <double> projective_distance_stats = get_projective_distance_stats();
@@ -532,6 +532,11 @@ bool Surface::is_abnormal()
     // check if abnormal
     bool abnormal = new_projective_std > settings_.abnormal_size * settings_.range_precision;
     return abnormal;
+}
+
+bool Surface::is_seed() const
+{
+    return get_total_point_size() < settings_.fit_plane_threshold;
 }
 
 bool Surface::can_merge(const std::shared_ptr<Surface>& surface) const
@@ -609,7 +614,7 @@ void Surface::connect(const std::shared_ptr<Vertex>& vertex)
     }
 
     // update uncertainty
-    if (get_total_point_size() <= settings_.fit_plane_threshold) 
+    if (is_seed()) 
     {
         vertex->weight_ = 1.0 / (settings_.range_precision * settings_.range_precision);
     }
@@ -817,7 +822,7 @@ void Surface::connect(const std::shared_ptr<InteriorPoint>& interior_point)
     }
     
     // update uncertainty
-    if (get_total_point_size() <= settings_.fit_plane_threshold) 
+    if (is_seed()) 
     {
         interior_point->weight_ = 1.0 / (settings_.range_precision * settings_.range_precision);
     }
