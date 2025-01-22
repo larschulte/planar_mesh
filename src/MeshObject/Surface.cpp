@@ -210,8 +210,7 @@ RelativePosition Surface::check_relative_position(double distance_travelled, con
         double projective_distance = compute_point_projective_distance(origin, point);
 
         // multiplier for confidence interval
-        // double multiplier = 2.576; // for 99% confidence interval
-        double multiplier = 1.96; // for 95% confidence interval
+        double multiplier = settings_.confidence_interval_multiplier;
 
         // confidence interval values
         double threshold_in_front = multiplier * combined_std;

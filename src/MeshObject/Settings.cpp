@@ -90,6 +90,10 @@ Settings::Settings()
     odometry_position_uncertainty_rate = 0.001; // kitti sota 0.005m/m (0.5%)
     odometry_angular_uncertainty_rate = 0.001; // kitti sota 0.001 deg/m
 
+    confidence_interval_multiplier = 1.96; // for 95% confidence interval
+    // confidence_interval_multiplier = 2.576; // for 99% confidence interval
+    // confidence_interval_multiplier = 1.0; // for testing
+
     abnormal_size = 1.5;
     envelope_size = 3.5;
 

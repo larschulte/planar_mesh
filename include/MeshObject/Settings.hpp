@@ -103,6 +103,8 @@ struct Settings
     double odometry_position_uncertainty_rate;
     double odometry_angular_uncertainty_rate;
 
+    double confidence_interval_multiplier;
+
     double abnormal_size; // number of std
     double envelope_size; // number of std
 
