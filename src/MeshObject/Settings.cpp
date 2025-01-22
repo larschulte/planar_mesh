@@ -66,7 +66,7 @@ Settings::Settings()
     }
     else if (lidar == "64")
     {
-        range_precision = 0.02;
+        range_precision = 0.01;
         range_accuracy = 0.03; 
         radius_ratio = tan(6 * M_PI / 180);
         data_loader_settings.remove_double_return_flag = true;
