@@ -536,7 +536,33 @@ bool Surface::is_abnormal()
 
 bool Surface::is_seed() const
 {
-    return get_total_point_size() < settings_.fit_plane_threshold;
+    // seed surface are the ones that we should not yet fit a plane
+
+    // is seed if no face
+    if (faces_.empty()) return true;
+
+    // is seed if eigen values ratio is small
+    {
+        // copy the eigenvalues
+        Eigen::Vector3d eigenvalues;
+        {
+            // read lock
+            std::shared_lock lock(rwlock_surface_fitting_); // read lock
+
+            // copy
+            eigenvalues = eigenvalues_;
+        }
+
+        // sort to get the smallest and largest
+        std::sort(eigenvalues.data(), eigenvalues.data() + eigenvalues.size());
+        double smallest_value = eigenvalues(0);
+        double second_largest_value = eigenvalues(1);
+
+        // is seed if ratio is small
+        if (second_largest_value / smallest_value < 1.5) return true;
+    }
+    
+    return false;
 }
 
 bool Surface::can_merge(const std::shared_ptr<Surface>& surface) const
