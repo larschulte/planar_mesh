@@ -3,6 +3,7 @@
 #include "MeshObject/Edge.hpp"
 #include "MeshObject/Face.hpp"
 #include "MeshObject/Storage.hpp"
+#include "MeshObject/Surface.hpp"
 #include <unordered_set>
 #include <pcl/io/ply_io.h>
 
@@ -95,6 +96,9 @@ void InteractiveViewer<PointT>::update_display(bool export_ply)
         pcl::toPCLPointCloud2(*vertex_pointcloud, triangle_mesh.cloud);
         for (const std::shared_ptr<Face>& face : faces)
         {
+            // skip if from seed surface
+            if (!settings_.show_seed_surface && face->get_surface()->is_seed()) continue;
+
             // skip if can't find all indices
             if (vertex_to_cloud_indices_map.find(face->get_vertex(0)) == vertex_to_cloud_indices_map.end()) continue;
             if (vertex_to_cloud_indices_map.find(face->get_vertex(1)) == vertex_to_cloud_indices_map.end()) continue;
@@ -129,8 +133,8 @@ void InteractiveViewer<PointT>::update_display(bool export_ply)
             // skip if expired // for some reason, storage would return expired edges ...
             if (edge->is_expired()) continue;
 
-            // skip if singular
-            if (!settings_.show_singular_edge && edge->is_singular()) continue;
+            // skip if seed
+            if (!settings_.show_seed_surface && edge->get_surface()->is_seed()) continue;
             
             pcl::Vertices boundary_edge;
             boundary_edge.vertices.push_back(vertex_to_cloud_indices_map.at(edge->get_vertex(0)));
@@ -299,14 +303,12 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
     // kp numebr 9
     if (event.getKeySym() == "KP_Prior" && event.keyDown())
     {
-        // singular edge
-        settings_.show_singular_edge = !settings_.show_singular_edge;
-        settings_.show_singular_vertex = !settings_.show_singular_vertex;
+        // show seed surface obejct
+        settings_.show_seed_surface = !settings_.show_seed_surface;
         update_display();
 
         // log
-        std::cout << "show_singular_edge: " << settings_.show_singular_edge << std::endl;
-        std::cout << "show_singular_vertex: " << settings_.show_singular_vertex << std::endl;
+        std::cout << "show_seed_surface: " << settings_.show_seed_surface << std::endl;
     }
     
     if (event.getKeySym() == "1" && event.keyDown())

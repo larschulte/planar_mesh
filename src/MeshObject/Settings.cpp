@@ -162,8 +162,7 @@ Settings::Settings()
     show_triangle = true;
     show_edge = true;
     show_keycode = false;
-    show_singular_edge = false;
-    show_singular_vertex = false;
+    show_seed_surface = true;
     color_mode = ColorMode::ID;
     point_mode = PointMode::USED;
     surface_denominator = 10.0;

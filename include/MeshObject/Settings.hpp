@@ -138,8 +138,7 @@ struct Settings
     bool show_triangle;
     bool show_edge;
     bool show_keycode;
-    bool show_singular_edge;
-    bool show_singular_vertex;
+    bool show_seed_surface;
     ColorMode color_mode;
     PointMode point_mode;
     double surface_denominator;

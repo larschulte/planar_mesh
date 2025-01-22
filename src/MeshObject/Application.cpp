@@ -761,6 +761,9 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_interior_poi
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
     for (const std::shared_ptr<InteriorPoint>& interior_point : storage_->get_interior_points())
     {        
+        // skip if from seed surface
+        if (!settings.show_seed_surface && interior_point->get_surface()->is_seed()) continue;
+
         pcl::PointXYZRGB point;
         if (settings.point_mode == PointMode::PROJECTED)
         {
@@ -911,8 +914,8 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_vertex_point
         // skip if internal
         if (!setting.show_internal_vertices && !vertex->is_boundary()) continue;
 
-        // skip if singular
-        if (!setting.show_singular_vertex && vertex->is_singular()) continue;
+        // skip if seed surface
+        if (!setting.show_seed_surface && vertex->get_surface()->is_seed()) continue;
 
         pcl::PointXYZRGB point;
         if (setting.point_mode == PointMode::PROJECTED)
