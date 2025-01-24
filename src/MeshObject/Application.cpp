@@ -507,7 +507,7 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
     if (surface_to_add_to == nullptr)
     {
         // add new surface
-        std::shared_ptr<Surface> surface_to_add_to = storage_->add_surface();
+        surface_to_add_to = storage_->add_surface();
 
         // add as vertex
         new_vertex = storage_->add_vertex(surface_to_add_to, generic_point);
