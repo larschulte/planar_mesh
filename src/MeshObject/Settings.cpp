@@ -88,8 +88,8 @@ Settings::Settings()
     extra_radius = 0.1;
     duplicated_point_distance_threshold = 0.0; // if two points are closer than this distance, they are considered the same point
 
-    odometry_position_uncertainty_rate = 0.001; // kitti sota 0.005m/m (0.5%)
-    odometry_angular_uncertainty_rate = 0.001; // kitti sota 0.001 deg/m
+    odometry_position_uncertainty_rate = 0.000; // kitti sota 0.005m/m (0.5%)
+    odometry_angular_uncertainty_rate = 0.000; // kitti sota 0.001 deg/m
 
     confidence_interval_multiplier = 1.96; // for 95% confidence interval
     // confidence_interval_multiplier = 2.576; // for 99% confidence interval
