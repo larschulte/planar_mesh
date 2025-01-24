@@ -90,6 +90,30 @@ Pose parse_csv_line(const std::string& line, const std::string& sec_str, const s
     return {0, 0, 0, 0, 0, 0, 0}; // Default pose
 }
 
+Pose parse_tum_line(const std::string& line, const std::string& sec_str, const std::string& nsec_str, bool& pose_found) 
+{
+    // get line
+    std::istringstream iss(line);
+
+    // get individual values
+    std::string timestamp, sec, nsec;
+    double x, y, z, qx, qy, qz, qw;
+    iss >> timestamp >> x >> y >> z >> qx >> qy >> qz >> qw;
+    sec = timestamp.substr(0, timestamp.find('.'));
+    nsec = timestamp.substr(timestamp.find('.') + 1);
+
+    // return
+    if (sec == sec_str && nsec == nsec_str) 
+    {
+        pose_found = true;
+        return {x, y, z, qx, qy, qz, qw};
+    }
+    else
+    {
+        return {0, 0, 0, 0, 0, 0, 0};
+    }
+}
+
 Eigen::Affine3d find_pose(const std::string& pcd_file, const std::string& pose_file) 
 {
     // Extract sec and nsec from the pcd_file name
@@ -110,6 +134,10 @@ Eigen::Affine3d find_pose(const std::string& pcd_file, const std::string& pose_f
     {
         parser = parse_csv_line;
     } 
+    else if (extension == "txt")
+    {
+        parser = parse_tum_line;
+    }
     else 
     {
         std::cerr << "Unsupported file format: " << extension << std::endl;
