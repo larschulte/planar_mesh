@@ -27,13 +27,6 @@ void Face::initialize_(const std::shared_ptr<Storage>& storage, const std::share
     // get id
     id_ = storage_->get_next_face_id();
 
-    // connect surface
-    {
-        // connect surface
-        surface_ = surface;
-        surface_->connect(shared_from_this());
-    }
-
     // add to vertices
     vertices_.push_back(vertex0);
     vertices_.push_back(vertex1);
@@ -48,6 +41,18 @@ void Face::initialize_(const std::shared_ptr<Storage>& storage, const std::share
     v0_ = vertex0->get_position();
     v1_ = vertex1->get_position();
     v2_ = vertex2->get_position();
+
+    // compute area
+    Eigen::Vector3d v0_v1 = v1_ - v0_;
+    Eigen::Vector3d v0_v2 = v2_ - v0_;
+    area_ = 0.5 * v0_v1.cross(v0_v2).norm();
+
+    // connect surface
+    {
+        // connect surface
+        surface_ = surface;
+        surface_->connect(shared_from_this());
+    }
 
     // compute min and max
     BoundingBox box;
@@ -114,13 +119,6 @@ void Face::initialize_(
     // get id
     id_ = storage_->get_next_face_id();
 
-    // connect surface
-    {
-        // connect surface
-        surface_ = surface;
-        surface_->connect(shared_from_this());
-    }
-
     // add to vertices
     vertices_.push_back(vertex0);
     vertices_.push_back(vertex1);
@@ -135,6 +133,18 @@ void Face::initialize_(
     v0_ = vertex0->get_position();
     v1_ = vertex1->get_position();
     v2_ = vertex2->get_position();
+
+    // compute area
+    Eigen::Vector3d v0_v1 = v1_ - v0_;
+    Eigen::Vector3d v0_v2 = v2_ - v0_;
+    area_ = 0.5 * v0_v1.cross(v0_v2).norm();
+
+    // connect surface
+    {
+        // connect surface
+        surface_ = surface;
+        surface_->connect(shared_from_this());
+    }
 
     // compute min and max
     BoundingBox box;
@@ -345,6 +355,11 @@ const Eigen::Vector3d& Face::get_min() const
 const Eigen::Vector3d& Face::get_max() const
 {
     return max_;
+}
+
+double Face::get_area() const
+{
+    return area_;
 }
 
 bool Face::is_expired() const

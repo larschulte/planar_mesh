@@ -164,6 +164,8 @@ private:
     double previous_normal_std_;
 
     std::tuple<int, int, int> color_;
+
+    double surface_area_;
 };
 
 bool operator<(const std::shared_ptr<Surface>& lhs, const std::shared_ptr<Surface>& rhs);

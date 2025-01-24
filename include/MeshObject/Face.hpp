@@ -57,6 +57,7 @@ public:
     const std::shared_ptr<Vertex>& get_first_vertex() const;
     const Eigen::Vector3d& get_min() const;
     const Eigen::Vector3d& get_max() const;
+    double get_area() const;
     bool is_expired() const;
     bool is_deleting() const;
     bool is_searchable() const;
@@ -89,6 +90,7 @@ private:
     Eigen::Vector3d v0_;
     Eigen::Vector3d v1_;
     Eigen::Vector3d v2_;
+    double area_;
 
     int id_;
     std::shared_ptr<Storage> storage_;

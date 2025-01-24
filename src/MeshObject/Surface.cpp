@@ -828,6 +828,9 @@ void Surface::connect(const std::shared_ptr<Face>& face)
 
         // insert
         faces_.insert(face);
+
+        // update surface area
+        surface_area_ += face->get_area();
     }
 }
 
@@ -917,6 +920,9 @@ void Surface::disconnect(const std::shared_ptr<Face>& face)
 
         // erase
         faces_.erase(it);
+
+        // update surface area
+        surface_area_ -= face->get_area();
     }
 }
 
