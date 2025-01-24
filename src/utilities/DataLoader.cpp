@@ -2,6 +2,7 @@
 #include "point_type/VilensPointT.hpp"
 #include "point_type/BagPointT.hpp"
 #include <pcl/filters/passthrough.h>
+#include <pcl/kdtree/kdtree_flann.h>
 
 std::vector<std::string> read_under_folder(std::string pcd_file_folder)
 {
@@ -287,6 +288,52 @@ typename pcl::PointCloud<PointT>::Ptr DataLoader<PointT>::remove_double_return(t
 }
 
 template <typename PointT>
+typename pcl::PointCloud<PointT>::Ptr DataLoader<PointT>::remove_double_return_2(typename pcl::PointCloud<PointT>::Ptr input_pointcloud)
+{
+    // parameter
+    const double radius = 0.001;
+
+    // kdtree
+    typename pcl::KdTreeFLANN<PointT> kdtree;
+    kdtree.setInputCloud(input_pointcloud);
+
+    // initialize output pointcloud
+    typename pcl::PointCloud<PointT>::Ptr filtered_cloud(new typename pcl::PointCloud<PointT>());
+
+    // Vector to mark points as processed
+    std::vector<bool> processed(input_pointcloud->size(), false);
+
+    for (size_t i = 0; i < input_pointcloud->points.size(); ++i) 
+    {
+        // skip if marked prosessed
+        if (processed[i]) continue; 
+        
+        // prepare search
+        PointT searchPoint = input_pointcloud->points[i];
+        std::vector<int> point_idx_radius_search;
+        std::vector<float> point_radius_squared_distance;
+        
+        // skip if no neighbors found
+        if (kdtree.radiusSearch(searchPoint, radius, point_idx_radius_search, point_radius_squared_distance) == 1) continue;
+
+        // keep the current point
+        filtered_cloud->points.push_back(searchPoint);
+
+        // makr the neighbors as processed
+        for (int idx : point_idx_radius_search) 
+        {
+            processed[idx] = true;
+        }
+    }
+
+    filtered_cloud->width = filtered_cloud->points.size();
+    filtered_cloud->height = 1;
+    filtered_cloud->is_dense = true;
+
+    return filtered_cloud;
+}
+
+template <typename PointT>
 typename pcl::PointCloud<PointT>::Ptr DataLoader<PointT>::filter_low_intensity(typename pcl::PointCloud<PointT>::Ptr input_pointcloud)
 {
     // get intensity field name
@@ -315,7 +362,7 @@ typename pcl::PointCloud<PointT>::Ptr DataLoader<PointT>::get_cloud(int i)
 {
     typename pcl::PointCloud<PointT>::Ptr loaded_pointcloud = load_pointcloud<PointT>(pcd_file_list_[i]);
 
-    if (remove_double_return_flag_) loaded_pointcloud = remove_double_return(loaded_pointcloud);
+    if (remove_double_return_flag_) loaded_pointcloud = remove_double_return_2(loaded_pointcloud);
     if (filter_low_intensity_flag_) loaded_pointcloud = filter_low_intensity(loaded_pointcloud);
 
     return loaded_pointcloud;

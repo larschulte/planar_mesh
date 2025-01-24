@@ -38,5 +38,6 @@ private:
     bool filter_low_intensity_flag_;
 
     typename pcl::PointCloud<PointT>::Ptr remove_double_return(typename pcl::PointCloud<PointT>::Ptr input_pointcloud);
+    typename pcl::PointCloud<PointT>::Ptr remove_double_return_2(typename pcl::PointCloud<PointT>::Ptr input_pointcloud);
     typename pcl::PointCloud<PointT>::Ptr filter_low_intensity(typename pcl::PointCloud<PointT>::Ptr input_pointcloud);
 };
