@@ -254,7 +254,20 @@ typename pcl::PointCloud<PointT>::Ptr DataLoader<PointT>::remove_double_return(t
         }
         else
         {
-            // compare range, keep the closer one
+            // compute difference in range
+            const double difference = std::abs(range - point_map[std::make_pair(azimuth, altitude)].first);
+
+            // skip this point if range difference is large enough
+            if (difference > 0.1) 
+            {
+                // remove the point from the map
+                point_map.erase(std::make_pair(azimuth, altitude));
+
+                // continue
+                continue;
+            }
+
+            // else, keep the closer one
             if (range < point_map[std::make_pair(azimuth, altitude)].first)
             {
                 point_map[std::make_pair(azimuth, altitude)] = std::make_pair(range, i);
