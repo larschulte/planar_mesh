@@ -98,6 +98,8 @@ Settings::Settings()
     abnormal_size = 1.5;
     envelope_size = 3.5;
 
+    seed_surface_area_threshold = 0.02;
+
     num_of_delete_before_put_to_repeated_queue = 2;
     
     num_threads = 28;

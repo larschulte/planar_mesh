@@ -538,29 +538,8 @@ bool Surface::is_seed() const
 {
     // seed surface are the ones that we should not yet fit a plane
 
-    // is seed if no face
-    if (faces_.empty()) return true;
-
-    // is seed if eigen values ratio is small
-    {
-        // copy the eigenvalues
-        Eigen::Vector3d eigenvalues;
-        {
-            // read lock
-            std::shared_lock lock(rwlock_surface_fitting_); // read lock
-
-            // copy
-            eigenvalues = eigenvalues_;
-        }
-
-        // sort to get the smallest and largest
-        std::sort(eigenvalues.data(), eigenvalues.data() + eigenvalues.size());
-        double smallest_value = eigenvalues(0);
-        double second_largest_value = eigenvalues(1);
-
-        // is seed if ratio is small
-        if (second_largest_value / smallest_value < 1.5) return true;
-    }
+    // don't feed plane if area is small
+    if (surface_area_ < settings_.seed_surface_area_threshold) return true;
     
     return false;
 }

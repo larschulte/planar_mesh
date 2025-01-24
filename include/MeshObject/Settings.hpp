@@ -108,6 +108,8 @@ struct Settings
     double abnormal_size; // number of std
     double envelope_size; // number of std
 
+    double seed_surface_area_threshold;
+
     unsigned int num_of_delete_before_put_to_repeated_queue;
 
     unsigned int num_threads;
