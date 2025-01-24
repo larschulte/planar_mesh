@@ -48,7 +48,8 @@ Settings::Settings()
     );
     dataset_map["christchurch03"] = std::make_pair(
         "/home/jiahao/datasets/spires_benchmark/christchurch03/undist-clouds/",
-        "/home/jiahao/datasets/spires_benchmark/christchurch03/slam-poses.csv"
+        // "/home/jiahao/datasets/spires_benchmark/christchurch03/slam-poses.csv"
+        "/home/jiahao/datasets/spires_benchmark/christchurch03/gt-tum.txt"
     );
 
     std::string dataset = "christchurch03";
