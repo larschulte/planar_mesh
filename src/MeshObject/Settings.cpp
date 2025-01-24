@@ -71,7 +71,7 @@ Settings::Settings()
         range_accuracy = 0.03; 
         radius_ratio = tan(6 * M_PI / 180);
         data_loader_settings.remove_double_return_flag = true;
-        data_loader_settings.filter_low_intensity_flag = true;
+        data_loader_settings.filter_low_intensity_flag = false;
         data_loader_settings.azimuth_resolution = 0.6;
         data_loader_settings.altitude_resolution = 1.5;
     }
@@ -98,7 +98,7 @@ Settings::Settings()
     abnormal_size = 1.5;
     envelope_size = 3.5;
 
-    seed_surface_area_threshold = 0.01; // below which is considered as a seed surface | 0.01 m^2 = 100 cm^2
+    seed_surface_area_threshold = 0.02; // below which is considered as a seed surface | 0.01 m^2 = 100 cm^2
 
     num_of_delete_before_put_to_repeated_queue = 2;
     
