@@ -435,8 +435,8 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
         // store current surface to add to
         surface_to_add_to = surface;
 
-        // if from bvh surface
-        if (bvh_surfaces.find(surface_to_add_to) != bvh_surfaces.end())
+        // 1. if added to bvh within
+        if (surfaces_bvh_within.find(surface_to_add_to) != surfaces_bvh_within.end())
         {
             // get the first face
             for (const std::shared_ptr<Face>& face : bvh_results)
@@ -460,8 +460,53 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
             break;
         }
         
-        // if from rrs surface
-        if (rrs_surfaces.find(surface_to_add_to) != rrs_surfaces.end())
+        // 2. if added to rrs within
+        if (surfaces_rrs_within.find(surface_to_add_to) != surfaces_rrs_within.end())
+        {
+            // added as vertex
+            new_vertex = storage_->add_vertex(surface_to_add_to, generic_point);
+
+            // reduce radius of the new vertex
+            for (std::shared_ptr<Vertex> vertex : rrs_results)
+            {
+                // read lock
+                std::shared_lock<std::shared_mutex> lock(vertex->rwlock_lifecycle_); // this to prevent vertex from being deleted
+
+                // skip if the vertex is expired
+                if (vertex->is_expired()) continue;
+
+                // skip if the vertex is the same as the new vertex
+                if (vertex->get_surface() == surface_to_add_to) continue;
+
+                // skip if the vertex is in seed surface
+                if (surfaces_rrs_seed.find(vertex->get_surface()) != surfaces_rrs_seed.end()) continue;
+
+                // add neighboring vertex
+                new_vertex->add_vertex_point_distance_publisher(vertex);
+            }
+            new_vertex->upon_adding_publisher();
+
+            // need to prevent vertex from being deleted from newly connected edges
+            new_vertex->set_connecting_to_edges_and_faces(true);
+            const bool connected = surface_to_add_to->connect_by_edges_and_faces(new_vertex, rrs_results);
+            new_vertex->set_connecting_to_edges_and_faces(false);
+
+            // if not connected, delete the vertex
+            if (!connected)
+            {
+                // delete this and retry
+                new_vertex->can_create_generic_point(false);
+                storage_->delete_vertex(new_vertex);
+                continue;
+            }
+            else
+            {
+                break;
+            }
+        }
+
+        // 3. if added to rrs seed
+        if (surfaces_rrs_seed.find(surface_to_add_to) != surfaces_rrs_seed.end())
         {
             // added as vertex
             new_vertex = storage_->add_vertex(surface_to_add_to, generic_point);
@@ -503,7 +548,7 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
         }
     }
 
-    // add to new surface if not added to list of bvh or rrs
+    // 4. add to new surface if not added to list of bvh or rrs
     if (surface_to_add_to == nullptr)
     {
         // add new surface
@@ -530,48 +575,77 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
         new_vertex->upon_adding_publisher();
     }
 
-    // bvh - delete penetrated 
-    for (const std::shared_ptr<Face>& face : bvh_results)
+    // 1. if added to bvh within / 2. if added to rrs within
+    if (surfaces_bvh_within.find(surface_to_add_to) != surfaces_bvh_within.end() || surfaces_rrs_within.find(surface_to_add_to) != surfaces_rrs_within.end())
     {
+        // bvh - delete penetrated 
+        for (const std::shared_ptr<Face>& face : bvh_results)
+        {
+            {
+                // read lock
+                std::shared_lock<std::shared_mutex> lock(face->rwlock_lifecycle_);
+
+                // skip if expired
+                if (face->is_expired()) continue;
+
+                // skip if same surface
+                if (face->get_surface() == surface_to_add_to) continue;
+
+                // skip if no relative position
+                if (surfaces_bvh_seed.find(face->get_surface()) != surfaces_bvh_seed.end()) continue;
+
+                // skip if in front 
+                if (surfaces_bvh_in_front.find(face->get_surface()) != surfaces_bvh_in_front.end()) continue;
+            }
+
+            // delete penetrated face
+            storage_->add_face_to_be_deleted(face);
+        }
+        
+        // rrs - reduce radius
+        for (const std::shared_ptr<Vertex>& vertex : rrs_results)
         {
             // read lock
-            std::shared_lock<std::shared_mutex> lock(face->rwlock_lifecycle_);
+            std::shared_lock<std::shared_mutex> lock(vertex->rwlock_lifecycle_); // this to prevent vertex from being deleted
 
             // skip if expired
-            if (face->is_expired()) continue;
+            if (vertex->is_expired()) continue;
 
             // skip if same surface
-            if (face->get_surface() == surface_to_add_to) continue;
+            if (vertex->get_surface() == surface_to_add_to) continue;
 
-            // skip if no relative position
-            if (surfaces_bvh_seed.find(face->get_surface()) != surfaces_bvh_seed.end()) continue;
+            // reduce radius of nearby vertices
+            if (new_interior_point) new_interior_point->add_interior_point_distance_subscriber(vertex);
+            if (new_vertex) new_vertex->add_vertex_point_distance_subscriber(vertex);
 
-            // skip if in front 
-            if (surfaces_bvh_in_front.find(face->get_surface()) != surfaces_bvh_in_front.end()) continue;
+            // add to list that have added publishers
+            storage_->add_vertex_that_have_added_publishers(vertex);
         }
-
-        // delete penetrated face
-        storage_->add_face_to_be_deleted(face);
     }
-    
-    // rrs - reduce radius
-    for (const std::shared_ptr<Vertex>& vertex : rrs_results)
-    {
-        // read lock
-        std::shared_lock<std::shared_mutex> lock(vertex->rwlock_lifecycle_); // this to prevent vertex from being deleted
+    // 3. if added to rrs seed / 4. if added to new surface
+    else
+    {        
+        // rrs - reduce radius of seed vertices only
+        for (const std::shared_ptr<Vertex>& vertex : rrs_results)
+        {
+            // read lock
+            std::shared_lock<std::shared_mutex> lock(vertex->rwlock_lifecycle_); // this to prevent vertex from being deleted
 
-        // skip if expired
-        if (vertex->is_expired()) continue;
+            // skip if expired
+            if (vertex->is_expired()) continue;
 
-        // skip if same surface
-        if (vertex->get_surface() == surface_to_add_to) continue;
+            // skip if same surface
+            if (vertex->get_surface() == surface_to_add_to) continue;
 
-        // reduce radius of nearby vertices
-        if (new_interior_point) new_interior_point->add_interior_point_distance_subscriber(vertex);
-        if (new_vertex) new_vertex->add_vertex_point_distance_subscriber(vertex);
+            // skip if vertex is not in seed surface
+            if (surfaces_rrs_seed.find(vertex->get_surface()) == surfaces_rrs_seed.end()) continue;
 
-        // add to list that have added publishers
-        storage_->add_vertex_that_have_added_publishers(vertex);
+            // reduce radius of nearby seed vertices
+            new_vertex->add_vertex_point_distance_subscriber(vertex);
+
+            // add to list that have added publishers
+            storage_->add_vertex_that_have_added_publishers(vertex);
+        }
     }
 }
 
