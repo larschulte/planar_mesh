@@ -147,9 +147,22 @@ void EdgeBVH::Node::recursive_shrink_parent_box()
 
         // new parent box
         EdgeBVH::BoundingBox new_parent_box = EdgeBVH::BoundingBox();
+
         // copy boxes of children of parent
-        EdgeBVH::BoundingBox parent_left_box = parent_->left_->box_;
-        EdgeBVH::BoundingBox parent_right_box = parent_->right_->box_;
+        EdgeBVH::BoundingBox parent_left_box;
+        EdgeBVH::BoundingBox parent_right_box;
+        {
+            // read lock
+            std::shared_lock<std::shared_mutex> lock_left(parent_->left_->rwlock_box_, std::defer_lock);
+            std::shared_lock<std::shared_mutex> lock_right(parent_->right_->rwlock_box_, std::defer_lock);
+            std::lock(lock_left, lock_right);
+
+            // copy boxes
+            parent_left_box = parent_->left_->box_;
+            parent_right_box = parent_->right_->box_;
+        }
+
+        // expand new parent box
         new_parent_box.expand_box_no_return(parent_left_box);
         new_parent_box.expand_box_no_return(parent_right_box);
         
@@ -346,7 +359,13 @@ void EdgeBVH::Node::node_delete_edge(const std::shared_ptr<Edge>& edge)
     // keep in parent's left or right
 
     // reset box
-    box_ = BoundingBox();
+    {
+        // write lock
+        std::unique_lock<std::shared_mutex> lock_box(rwlock_box_);
+
+        // reset box
+        box_ = BoundingBox();
+    }
     
     // shrink parent box
     recursive_shrink_parent_box();

@@ -235,9 +235,20 @@ void Node::recursive_shrink_parent_box()
 
         // new parent box
         BoundingBox new_parent_box = BoundingBox();
+
         // copy boxes of children of parent
-        BoundingBox parent_left_box = parent_->left_->box_;
-        BoundingBox parent_right_box = parent_->right_->box_;
+        BoundingBox parent_left_box;
+        BoundingBox parent_right_box;
+        {
+            std::shared_lock lock_left(parent_->left_->rwlock_box_, std::defer_lock);
+            std::shared_lock lock_right(parent_->right_->rwlock_box_, std::defer_lock);
+            std::lock(lock_left, lock_right);
+
+            parent_left_box = parent_->left_->box_;
+            parent_right_box = parent_->right_->box_;
+        }
+
+        // expand new parent box
         new_parent_box.expand_box_no_return(parent_left_box);
         new_parent_box.expand_box_no_return(parent_right_box);
                 
@@ -442,7 +453,13 @@ void Node::node_delete_face(const std::shared_ptr<Face>& face)
     // keep in parent's left or right
 
     // reset box
-    box_ = BoundingBox();
+    {
+        // write lock
+        std::unique_lock<std::shared_mutex> lock_box(rwlock_box_);
+
+        // reset box
+        box_ = BoundingBox();
+    }
 
     // shrink parent box
     recursive_shrink_parent_box();

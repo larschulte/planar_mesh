@@ -61,6 +61,7 @@ public:
 
         // read write lock
         mutable std::shared_mutex rwlock_node_;
+        mutable std::shared_mutex rwlock_box_;
 
         void node_add_edge(const std::shared_ptr<Edge>& edge);
         void node_delete_edge(const std::shared_ptr<Edge>& edge);
