@@ -587,49 +587,55 @@ bool Surface::tree_intersect_edge(const std::shared_ptr<Vertex>& vertex0, const 
 
 bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& all_nearby_vertices)
 {
-    // read lock
-    std::shared_lock<std::shared_mutex> lock(vertex->rwlock_lifecycle_);
-    
-    // need to check expired since connected to surface, surface may transition from seed to non-seed and thus causing the vertex to be expired
-    if (vertex->is_expired()) return false;
-
-    // try create edge with nearby vertices
-    for (const auto& nearby_vertex : all_nearby_vertices)
+    // create edges
+    bool edge_created = false;
     {
         // read lock
-        std::shared_lock<std::shared_mutex> lock(nearby_vertex->rwlock_lifecycle_);
-
-        // check input
-        if (nearby_vertex->is_expired()) continue;
-
-        // skip if does not belong to the same surface
-        if (nearby_vertex->get_surface() != shared_from_this()) continue;
-
-        // skip if not boundary
-        if (!nearby_vertex->is_boundary()) continue;
-
-        // skip if same vertex
-        if (nearby_vertex == vertex) continue;
+        std::shared_lock<std::shared_mutex> lock(vertex->rwlock_lifecycle_);
         
-        // skip if edge is longer than any of the radius of vertices
-        const double distance = (vertex->get_position() - nearby_vertex->get_position()).norm();
-        const double radius0 = vertex->get_radius(shared_from_this());
-        const double radius1 = nearby_vertex->get_radius();
-        if (!settings_.edge_is_short_enough(distance, radius0, radius1)) continue;
+        // need to check expired since connected to surface, surface may transition from seed to non-seed and thus causing the vertex to be expired
+        if (vertex->is_expired()) return false;
 
-        // skip if edge intersects
-        if (tree_intersect_edge(vertex, nearby_vertex)) continue;
+        // try create edge with nearby vertices
+        for (const auto& nearby_vertex : all_nearby_vertices)
+        {
+            // read lock
+            std::shared_lock<std::shared_mutex> lock(nearby_vertex->rwlock_lifecycle_);
 
-        // create edge
-        storage_->add_edge(shared_from_this(), vertex, nearby_vertex);
+            // check input
+            if (nearby_vertex->is_expired()) continue;
+
+            // skip if does not belong to the same surface
+            if (nearby_vertex->get_surface() != shared_from_this()) continue;
+
+            // skip if not boundary
+            if (!nearby_vertex->is_boundary()) continue;
+
+            // skip if same vertex
+            if (nearby_vertex == vertex) continue;
+            
+            // skip if edge is longer than any of the radius of vertices
+            const double distance = (vertex->get_position() - nearby_vertex->get_position()).norm();
+            const double radius0 = vertex->get_radius(shared_from_this());
+            const double radius1 = nearby_vertex->get_radius();
+            if (!settings_.edge_is_short_enough(distance, radius0, radius1)) continue;
+
+            // skip if edge intersects
+            if (tree_intersect_edge(vertex, nearby_vertex)) continue;
+
+            // create edge
+            storage_->add_edge(shared_from_this(), vertex, nearby_vertex);
+            edge_created = true;
+        }
     }
+    
     // add edges to edgeBVH tree
     storage_->add_or_remove_edges_from_edgeBVH_tree();
 
     // false if no edge is created
-    if (vertex->get_edges().empty()) return false;
+    if (!edge_created) return false;
 
-    // try close holes
+    // create faces
     vertex->try_close_holes_repeatedly();
 
     // else

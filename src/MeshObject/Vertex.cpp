@@ -651,6 +651,9 @@ bool Vertex::check_connected_by_face(const std::shared_ptr<Vertex>& vertex0, con
 
 bool Vertex::try_close_holes_repeatedly()
 {
+    // read lock
+    std::shared_lock<std::shared_mutex> lock(rwlock_lifecycle_);
+
     // initialize
     bool changed = false;
 
