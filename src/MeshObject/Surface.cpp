@@ -1064,32 +1064,42 @@ void Surface::update_seed_status()
     const bool current_is_seed = is_seed_;
 
     // upon transition from seed to non-seed, check all existing vertices
-    if (previous_is_seed && !current_is_seed)
+    // skip if no need to check
+    if (!(previous_is_seed && !current_is_seed)) return;
+
+    // make copy of vertices
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertices_copy;
     {
         // read lock
         std::shared_lock<std::shared_mutex> lock_vertices(rwlock_vertices_);
 
-        // check each vertex
-        for (const auto& vertex : vertices_)
+        // copy
+        vertices_copy = vertices_;
+    }
+
+    // check each vertex
+    for (const auto& vertex : vertices_copy)
+    {
+        // lock vertex
+        std::shared_lock<std::shared_mutex> lock_vertex(vertex->rwlock_lifecycle_);
+
+        // skip if vertex is expired
+        if (vertex->is_expired()) continue;
+
+        // old projected position
+        Eigen::Vector3d old_projected_position = vertex->get_position();
+
+        // new projected position
+        Eigen::Vector3d point = vertex->get_original_position();
+        Eigen::Vector3d origin = vertex->get_origin();
+        Eigen::Vector3d rayDirection = (point - origin).normalized();
+        double distance = (mean_ - point).dot(normal_) / rayDirection.dot(normal_);
+        Eigen::Vector3d new_projected_position = point + distance * rayDirection;
+
+        // if too different, delete to re-add the point
+        if ((new_projected_position - old_projected_position).norm() > 0.05)
         {
-            // skip if vertex is expired
-            if (vertex->is_expired()) continue;
-
-            // old projected position
-            Eigen::Vector3d old_projected_position = vertex->get_position();
-
-            // new projected position
-            Eigen::Vector3d point = vertex->get_original_position();
-            Eigen::Vector3d origin = vertex->get_origin();
-            Eigen::Vector3d rayDirection = (point - origin).normalized();
-            double distance = (mean_ - point).dot(normal_) / rayDirection.dot(normal_);
-            Eigen::Vector3d new_projected_position = point + distance * rayDirection;
-
-            // if too different, delete to re-add the point
-            if ((new_projected_position - old_projected_position).norm() > 0.05)
-            {
-                storage_->add_vertex_to_be_deleted(vertex);
-            }
+            storage_->add_vertex_to_be_deleted(vertex);
         }
     }
 }
