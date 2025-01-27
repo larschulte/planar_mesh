@@ -179,7 +179,7 @@ RelativePosition Surface::check_relative_position(double distance_travelled, con
     double odometry_position_uncertainty = std::abs(distance_travelled - get_average_distance_travelled()) * odometry_position_uncertainty_rate;
     double odometry_angular_uncertainty = std::abs(distance_travelled - get_average_distance_travelled()) * odometry_angular_uncertainty_rate / 180.0 * M_PI;
     double normal_angular_uncertainty = normal_uncertainty_;
-    double plane_position_uncertainty = get_surface_position_std_in_normal_direction();
+    double plane_position_uncertainty = previous_normal_std_;
     // - computation
     Eigen::Matrix3d cov_mean = Eigen::Matrix3d::Identity() * std::pow(plane_position_uncertainty, 2);
     Eigen::Matrix3d cov_origin = Eigen::Matrix3d::Identity() * std::pow(odometry_position_uncertainty, 2);
