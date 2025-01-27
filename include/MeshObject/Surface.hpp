@@ -156,6 +156,9 @@ private:
     Eigen::Matrix3d covariance_mean_;
     double variance_mean_in_normal_direction_;
 
+    bool is_seed_ = true;
+    void update_seed_status();
+
     std::vector<double> stored_projective_distance_stats_;
     std::vector<double> stored_point_to_plane_distance_stats_;
     std::size_t previous_total_point_size_for_projective_;

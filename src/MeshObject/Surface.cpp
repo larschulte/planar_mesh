@@ -462,12 +462,7 @@ bool Surface::is_abnormal()
 
 bool Surface::is_seed() const
 {
-    // seed surface are the ones that we should not yet fit a plane
-
-    // don't feed plane if area is small
-    if (surface_area_ < settings_.seed_surface_area_threshold) return true;
-    
-    return false;
+    return is_seed_;
 }
 
 bool Surface::can_merge(const std::shared_ptr<Surface>& surface) const
@@ -737,6 +732,8 @@ void Surface::connect(const std::shared_ptr<Face>& face)
         // update surface area
         surface_area_ += face->get_area();
     }
+
+    update_seed_status();
 }
 
 void Surface::connect(const std::shared_ptr<InteriorPoint>& interior_point)
@@ -829,6 +826,8 @@ void Surface::disconnect(const std::shared_ptr<Face>& face)
         // update surface area
         surface_area_ -= face->get_area();
     }
+
+    update_seed_status();
 }
 
 void Surface::disconnect(const std::shared_ptr<InteriorPoint>& interior_point)
@@ -1050,6 +1049,49 @@ void Surface::remove_point_from_surface_fitting(const Eigen::Vector3d& position,
 
     covariance_mean_ = covariance_ / total_point_size_;
     variance_mean_in_normal_direction_ = eigenvalues_(0) / total_point_size_;
+}
+
+void Surface::update_seed_status()
+{
+    // previous is_seed
+    const bool previous_is_seed = is_seed_;
+
+    // seed surface are the ones that we should not yet fit a plane 
+    // - don't fit plane if area is small
+    is_seed_ = surface_area_ < settings_.seed_surface_area_threshold;
+
+    // current is_seed
+    const bool current_is_seed = is_seed_;
+
+    // upon transition from seed to non-seed, check all existing vertices
+    if (previous_is_seed && !current_is_seed)
+    {
+        // read lock
+        std::shared_lock<std::shared_mutex> lock_vertices(rwlock_vertices_);
+
+        // check each vertex
+        for (const auto& vertex : vertices_)
+        {
+            // skip if vertex is expired
+            if (vertex->is_expired()) continue;
+
+            // old projected position
+            Eigen::Vector3d old_projected_position = vertex->get_position();
+
+            // new projected position
+            Eigen::Vector3d point = vertex->get_original_position();
+            Eigen::Vector3d origin = vertex->get_origin();
+            Eigen::Vector3d rayDirection = (point - origin).normalized();
+            double distance = (mean_ - point).dot(normal_) / rayDirection.dot(normal_);
+            Eigen::Vector3d new_projected_position = point + distance * rayDirection;
+
+            // if too different, delete to re-add the point
+            if ((new_projected_position - old_projected_position).norm() > 0.05)
+            {
+                storage_->add_vertex_to_be_deleted(vertex);
+            }
+        }
+    }
 }
 
 void Surface::set_random_color()
