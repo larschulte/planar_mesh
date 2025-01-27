@@ -589,7 +589,9 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
 {
     // read lock
     std::shared_lock<std::shared_mutex> lock(vertex->rwlock_lifecycle_);
-    // no need to check expired since it is not yet connected to anything
+    
+    // need to check expired since connected to surface, surface may transition from seed to non-seed and thus causing the vertex to be expired
+    if (vertex->is_expired()) return false;
 
     // try create edge with nearby vertices
     for (const auto& nearby_vertex : all_nearby_vertices)
