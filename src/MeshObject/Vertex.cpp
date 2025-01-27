@@ -1022,9 +1022,6 @@ void Vertex::delete_vertex_point_distance_publisher(const std::shared_ptr<Vertex
         // delete publisher
         vertex_point_distance_publishers_.erase(it);
     }
-    
-    // upon deleting publisher
-    upon_deleting_publisher();
 }
 
 void Vertex::add_vertex_point_distance_subscriber(const std::shared_ptr<Vertex> vertex_point_subscriber)
@@ -1104,9 +1101,6 @@ void Vertex::delete_interior_point_distance_publisher(const std::shared_ptr<Inte
         // delete publisher
         interior_point_distance_publishers_.erase(it);
     }
-    
-    // upon deleting publisher
-    upon_deleting_publisher();
 }
 
 double Vertex::compute_radius()
