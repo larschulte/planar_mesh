@@ -179,9 +179,8 @@ RelativePosition Surface::check_relative_position(double distance_travelled, con
     double odometry_position_uncertainty = std::abs(distance_travelled - get_average_distance_travelled()) * odometry_position_uncertainty_rate;
     double odometry_angular_uncertainty = std::abs(distance_travelled - get_average_distance_travelled()) * odometry_angular_uncertainty_rate / 180.0 * M_PI;
     double normal_angular_uncertainty = normal_uncertainty_;
-    double plane_position_uncertainty = previous_normal_std_;
     // - computation
-    Eigen::Matrix3d cov_mean = Eigen::Matrix3d::Identity() * std::pow(plane_position_uncertainty, 2);
+    Eigen::Matrix3d cov_mean = covariance_mean_;
     Eigen::Matrix3d cov_origin = Eigen::Matrix3d::Identity() * std::pow(odometry_position_uncertainty, 2);
     Eigen::Matrix3d cov_normal = generate_unit_vector_covariance(normal_, normal_angular_uncertainty, epsilon);
     Eigen::Matrix3d cov_direction = generate_unit_vector_covariance(direction, odometry_angular_uncertainty, epsilon);
@@ -698,7 +697,7 @@ void Surface::compute_surface_position_std_in_normal_direction()
 
 double Surface::get_surface_position_std_in_normal_direction()
 {
-    return previous_normal_std_;
+    return std::sqrt(variance_mean_in_normal_direction_);
 }
 
 void Surface::connect(const std::shared_ptr<Edge>& edge)
@@ -1002,31 +1001,12 @@ void Surface::add_point_to_surface_fitting(const Eigen::Vector3d& position, cons
     sum_of_average_distance_travelled_ += distance_travelled;
     total_point_size_ += 1;
 
+    covariance_mean_ = covariance_ / total_point_size_;
+    variance_mean_in_normal_direction_ = eigenvalues_(0) / total_point_size_;
+
     // store characteristic length
     characteristic_length_ = std::max(characteristic_length_, (position -  mean_).norm());
     normal_uncertainty_ = settings_.range_precision / characteristic_length_;
-
-    // update approximate uncertainty envelope
-    // if approximate normal is the same as last time, incrementally update the uncertianty envelope
-    // if approximate normal is not the same as last time, recompute the uncertainty envelope all together
-
-    if (!update_normal_position_std_) return;
-
-    // incrementally update
-    double old_distance = previous_normal_distance_;
-    double old_std = previous_normal_std_;
-    double old_information = 1.0 / (old_std * old_std);
-
-    double new_distance = compute_point_projective_distance(origin, position);
-    double new_std = settings_.range_precision;
-    double new_information = 1.0 / (new_std * new_std);
-
-    double combined_distance = merge_information_weighted_mean(old_distance, new_distance, old_information, new_information);
-    double combined_information = merge_information(old_information, new_information);
-    double combined_std = 1.0 / std::sqrt(combined_information);
-
-    previous_normal_distance_ = combined_distance;
-    previous_normal_std_ = combined_std;
 }
 
 void Surface::remove_point_from_surface_fitting(const Eigen::Vector3d& position, const Eigen::Vector3d& origin, double distance_travelled, double weight)
@@ -1068,27 +1048,8 @@ void Surface::remove_point_from_surface_fitting(const Eigen::Vector3d& position,
     sum_of_average_distance_travelled_ -= distance_travelled;
     total_point_size_ -= 1;
 
-    // update approximate uncertainty envelope
-    // if approximate normal is the same as last time, incrementally update the uncertianty envelope
-    // if approximate normal is not the same as last time, recompute the uncertainty envelope all together
-
-    if (!update_normal_position_std_) return;
-
-    // incrementally update
-    double combined_distance = previous_normal_distance_;
-    double combined_std = previous_normal_std_;
-    double combined_information = 1.0 / (combined_std * combined_std);
-
-    double new_distance = compute_point_projective_distance(origin, position);
-    double new_std = settings_.range_precision;
-    double new_information = 1.0 / (new_std * new_std);
-
-    double old_distance = remove_information_weighted_mean(combined_distance, new_distance, combined_information, new_information);
-    double old_information = remove_information(combined_information, new_information);
-    double old_std = 1.0 / std::sqrt(old_information);
-
-    previous_normal_distance_ = old_distance;
-    previous_normal_std_ = old_std;
+    covariance_mean_ = covariance_ / total_point_size_;
+    variance_mean_in_normal_direction_ = eigenvalues_(0) / total_point_size_;
 }
 
 void Surface::set_random_color()

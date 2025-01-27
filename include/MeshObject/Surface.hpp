@@ -153,6 +153,9 @@ private:
     double sum_of_average_distance_travelled_;
     unsigned int total_point_size_ = 0;
 
+    Eigen::Matrix3d covariance_mean_;
+    double variance_mean_in_normal_direction_;
+
     std::vector<double> stored_projective_distance_stats_;
     std::vector<double> stored_point_to_plane_distance_stats_;
     std::size_t previous_total_point_size_for_projective_;
