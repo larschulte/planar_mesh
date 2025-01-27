@@ -161,137 +161,64 @@ RelativePosition Surface::check_relative_position(double distance_travelled, con
     // lock surface fitting
     std::shared_lock lock(rwlock_surface_fitting_); // read lock
 
-    // compute point to plane projective distance std
-    const bool use_improved_covariance = true;
-    if (use_improved_covariance)
-    {
-        // return no_relative_position if not enough points
-        if (is_seed()) return RelativePosition::NO_RELATIVE_POSITION;
+    // return no_relative_position if not enough points
+    if (is_seed()) return RelativePosition::NO_RELATIVE_POSITION;
 
-        // compute d(range)/d(...)
-        Eigen::Vector3d d_range_d_origin = - normal_ / normal_.dot(direction);
-        Eigen::Vector3d d_range_d_mean = normal_ / normal_.dot(direction);
-        Eigen::Vector3d d_range_d_direction = (mean_ - origin).dot(normal_) / std::pow(normal_.dot(direction), 2) * normal_;
-        Eigen::Vector3d d_range_d_normal = ( (mean_ - origin) * normal_.dot(direction) - (mean_ - origin).dot(normal_) * direction ) / std::pow(normal_.dot(direction), 2);
+    // compute d(range)/d(...)
+    Eigen::Vector3d d_range_d_origin = - normal_ / normal_.dot(direction);
+    Eigen::Vector3d d_range_d_mean = normal_ / normal_.dot(direction);
+    Eigen::Vector3d d_range_d_direction = (mean_ - origin).dot(normal_) / std::pow(normal_.dot(direction), 2) * normal_;
+    Eigen::Vector3d d_range_d_normal = ( (mean_ - origin) * normal_.dot(direction) - (mean_ - origin).dot(normal_) * direction ) / std::pow(normal_.dot(direction), 2);
 
-        // compute covariance of ...
-        // - settings
-        double odometry_position_uncertainty_rate = settings_.odometry_position_uncertainty_rate;
-        double odometry_angular_uncertainty_rate = settings_.odometry_angular_uncertainty_rate;
-        double epsilon = 1e-6;
-        // - uncertainties
-        double odometry_position_uncertainty = std::abs(distance_travelled - get_average_distance_travelled()) * odometry_position_uncertainty_rate;
-        double odometry_angular_uncertainty = std::abs(distance_travelled - get_average_distance_travelled()) * odometry_angular_uncertainty_rate / 180.0 * M_PI;
-        double normal_angular_uncertainty = normal_uncertainty_;
-        double plane_position_uncertainty = get_surface_position_std_in_normal_direction();
-        // - computation
-        Eigen::Matrix3d cov_mean = Eigen::Matrix3d::Identity() * std::pow(plane_position_uncertainty, 2);
-        Eigen::Matrix3d cov_origin = Eigen::Matrix3d::Identity() * std::pow(odometry_position_uncertainty, 2);
-        Eigen::Matrix3d cov_normal = generate_unit_vector_covariance(normal_, normal_angular_uncertainty, epsilon);
-        Eigen::Matrix3d cov_direction = generate_unit_vector_covariance(direction, odometry_angular_uncertainty, epsilon);
+    // compute covariance of ...
+    // - settings
+    double odometry_position_uncertainty_rate = settings_.odometry_position_uncertainty_rate;
+    double odometry_angular_uncertainty_rate = settings_.odometry_angular_uncertainty_rate;
+    double epsilon = 1e-6;
+    // - uncertainties
+    double odometry_position_uncertainty = std::abs(distance_travelled - get_average_distance_travelled()) * odometry_position_uncertainty_rate;
+    double odometry_angular_uncertainty = std::abs(distance_travelled - get_average_distance_travelled()) * odometry_angular_uncertainty_rate / 180.0 * M_PI;
+    double normal_angular_uncertainty = normal_uncertainty_;
+    double plane_position_uncertainty = get_surface_position_std_in_normal_direction();
+    // - computation
+    Eigen::Matrix3d cov_mean = Eigen::Matrix3d::Identity() * std::pow(plane_position_uncertainty, 2);
+    Eigen::Matrix3d cov_origin = Eigen::Matrix3d::Identity() * std::pow(odometry_position_uncertainty, 2);
+    Eigen::Matrix3d cov_normal = generate_unit_vector_covariance(normal_, normal_angular_uncertainty, epsilon);
+    Eigen::Matrix3d cov_direction = generate_unit_vector_covariance(direction, odometry_angular_uncertainty, epsilon);
 
-        // compute variance of range due to ...
-        double variance_range_origin = d_range_d_origin.transpose() * cov_origin * d_range_d_origin;
-        double variance_range_mean = d_range_d_mean.transpose() * cov_mean * d_range_d_mean;
-        double variance_range_direction = d_range_d_direction.transpose() * cov_direction * d_range_d_direction;
-        double variance_range_normal = d_range_d_normal.transpose() * cov_normal * d_range_d_normal;
+    // compute variance of range due to ...
+    double variance_range_origin = d_range_d_origin.transpose() * cov_origin * d_range_d_origin;
+    double variance_range_mean = d_range_d_mean.transpose() * cov_mean * d_range_d_mean;
+    double variance_range_direction = d_range_d_direction.transpose() * cov_direction * d_range_d_direction;
+    double variance_range_normal = d_range_d_normal.transpose() * cov_normal * d_range_d_normal;
 
-        // // compute std of range due to ...
-        // double std_range_origin = std::sqrt(variance_range_origin);
-        // double std_range_mean = std::sqrt(variance_range_mean);
-        // double std_range_direction = std::sqrt(variance_range_direction);
-        // double std_range_normal = std::sqrt(variance_range_normal);
+    // compute combined std
+    double combined_std = std::sqrt(variance_range_origin + variance_range_mean + variance_range_direction + variance_range_normal + settings_.range_precision * settings_.range_precision);
+    double partial_combined_std = std::sqrt(variance_range_origin + variance_range_direction + settings_.range_precision * settings_.range_precision);
 
-        // compute combined std
-        double combined_std = std::sqrt(variance_range_origin + variance_range_mean + variance_range_direction + variance_range_normal + settings_.range_precision * settings_.range_precision);
-        double partial_combined_std = std::sqrt(variance_range_origin + variance_range_direction + settings_.range_precision * settings_.range_precision);
-
-        // compute point to plane projective distance
-        double projective_distance = compute_point_projective_distance(origin, point);
-
-        // multiplier for confidence interval
-        double multiplier = settings_.confidence_interval_multiplier;
-
-        // confidence interval values
-        double threshold_in_front = multiplier * combined_std;
-        double threshold_behind = - multiplier * combined_std;
-
-        // check
-        bool points_in_front_of_surface = projective_distance > threshold_in_front;
-        bool points_behind_surface = projective_distance < threshold_behind;
-        bool points_within_surface = !points_in_front_of_surface && !points_behind_surface;
-
-        // return
-        if (points_in_front_of_surface) return RelativePosition::IN_FRONT;
-        else if (points_behind_surface) return RelativePosition::BEHIND;
-        else if (points_within_surface)
-        {
-            projected_uncertainty = partial_combined_std;
-            return RelativePosition::WITHIN;
-        } 
-        else throw std::runtime_error("Invalid relative position.");
-
-        // // print all
-
-        // double range = (point - origin).norm();
-        // double angle = std::acos(direction.dot(normal_)) * 180.0 / M_PI - 90.0;
-
-        // std::cout << "d_range_d_origin: \n" << d_range_d_origin << std::endl;
-        // std::cout << "d_range_d_mean: \n" << d_range_d_mean << std::endl;
-        // std::cout << "d_range_d_direction: \n" << d_range_d_direction << std::endl;
-        // std::cout << "d_range_d_normal: \n" << d_range_d_normal << std::endl;
-
-        // std::cout << "cov_origin: \n" << cov_origin << std::endl;
-        // std::cout << "cov_mean: \n" << cov_mean << std::endl;
-        // std::cout << "cov_direction: \n" << cov_direction << std::endl;
-        // std::cout << "cov_normal: \n" << cov_normal << std::endl;
-
-        // std::cout << "variance_range_origin: \n" << variance_range_origin << std::endl;
-        // std::cout << "variance_range_mean: \n" << variance_range_mean << std::endl;
-        // std::cout << "variance_range_direction: \n" << variance_range_direction << std::endl;
-        // std::cout << "variance_range_normal: \n" << variance_range_normal << std::endl;
-
-        // std::cout << "std_range_origin: \n" << std_range_origin << std::endl;
-        // std::cout << "std_range_mean: \n" << std_range_mean << std::endl;
-        // std::cout << "std_range_direction: \n" << std_range_direction << std::endl;
-        // std::cout << "std_range_normal: \n" << std_range_normal << std::endl;
-
-        // std::cout << range << " | " << projective_distance << "|" << angle << " | " << std_range_origin << " | " << std_range_mean << " | " << std_range_direction << " | " << std_range_normal << " | " << combined_std << std::endl;
-    }
-
-    // projective distance
+    // compute point to plane projective distance
     double projective_distance = compute_point_projective_distance(origin, point);
 
-    // modified projective distance (taking into account accuracy in favor for points inside planes)
-    double projective_distance_modified = sign(projective_distance) * std::max(0.0, std::fabs(projective_distance) - settings_.range_accuracy);
-
-    // surface projective std
-    double surface_position_std = get_surface_position_std_in_normal_direction();
-    double surface_projective_std = surface_position_std / std::fabs(normal_.dot(direction));
-
-    // point projective std
-    double point_projective_std = settings_.range_precision;
-
-    // combined projective std
-    double combined_projective_std = std::sqrt(surface_projective_std * surface_projective_std + point_projective_std * point_projective_std);
-
     // multiplier for confidence interval
-    double multiplier = 1.96; // for 95% confidence interval
-    // double multiplier = settings_.envelope_size;
+    double multiplier = settings_.confidence_interval_multiplier;
 
     // confidence interval values
-    double threshold_in_front = multiplier * combined_projective_std;
-    double threshold_behind = - multiplier * combined_projective_std;
+    double threshold_in_front = multiplier * combined_std;
+    double threshold_behind = - multiplier * combined_std;
 
     // check
-    bool points_in_front_of_surface = projective_distance_modified > threshold_in_front;
-    bool points_behind_surface = projective_distance_modified < threshold_behind;
+    bool points_in_front_of_surface = projective_distance > threshold_in_front;
+    bool points_behind_surface = projective_distance < threshold_behind;
     bool points_within_surface = !points_in_front_of_surface && !points_behind_surface;
 
     // return
     if (points_in_front_of_surface) return RelativePosition::IN_FRONT;
     else if (points_behind_surface) return RelativePosition::BEHIND;
-    else if (points_within_surface) return RelativePosition::WITHIN;
+    else if (points_within_surface)
+    {
+        projected_uncertainty = partial_combined_std;
+        return RelativePosition::WITHIN;
+    } 
     else throw std::runtime_error("Invalid relative position.");
 }
 
