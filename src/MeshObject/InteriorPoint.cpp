@@ -34,12 +34,12 @@ void InteriorPoint::initialize_(const std::shared_ptr<Storage>& storage, const s
 
     // connect to surface
     {
+        // projected position
+        projected_position_ = surface->compute_point_projective_position(origin_, position_);
+
         // connect to surface
         surface_ = surface;
         surface_->connect(shared_from_this());
-
-        // projected position
-        projected_position_ = surface_->compute_point_projective_position(origin_, position_);
     }
 
     // connect to face
