@@ -539,6 +539,8 @@ void Surface::connect(const std::shared_ptr<Vertex>& vertex)
         vertices_.insert(vertex);
     }
 
+    update_seed_status();
+
     // update uncertainty
     if (is_seed()) 
     {
@@ -791,6 +793,8 @@ void Surface::disconnect(const std::shared_ptr<Vertex>& vertex)
         // erase
         vertices_.erase(it);
     }
+
+    update_seed_status();
 
     remove_point_from_surface_fitting(vertex->get_original_position(), vertex->get_origin(), vertex->get_distance_travelled(), vertex->weight_);
 }
@@ -1061,15 +1065,20 @@ void Surface::remove_point_from_surface_fitting(const Eigen::Vector3d& position,
 
 void Surface::update_seed_status()
 {
-    // previous is_seed
-    const bool previous_is_seed = is_seed_;
-
     // seed surface are the ones that we should not yet fit a plane 
     // - don't fit plane if area is small
-    is_seed_ = surface_area_ < settings_.seed_surface_area_threshold;
+    
+    // is_seed status
+    bool previous_is_seed;
+    bool current_is_seed;
+    {
+        // write lock
+        std::unique_lock<std::shared_mutex> lock(rwlock_surface_fitting_);
 
-    // current is_seed
-    const bool current_is_seed = is_seed_;
+        previous_is_seed = is_seed_;
+        is_seed_ = surface_area_ < settings_.seed_surface_area_threshold || total_point_size_ < settings_.fit_plane_threshold;
+        current_is_seed = is_seed_;
+    }    
 
     // upon transition from seed to non-seed, check all existing vertices
     // skip if no need to check
