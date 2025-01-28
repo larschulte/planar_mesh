@@ -30,8 +30,13 @@ std::vector<std::string> read_under_folder(std::string pcd_file_folder)
     return pcd_file_list;
 }
 
-bool parse_g2o_line(const std::string& line, const std::string& sec_str, const std::string& nsec_str, Eigen::Affine3d& pose_eigen) 
+bool parse_g2o_line(const std::string& line, const std::string& pcd_file, Eigen::Affine3d& pose_eigen) 
 {
+    // get timestamp from pcd file
+    std::string pcd_file_name = pcd_file.substr(pcd_file.find_last_of("/\\") + 1);
+    std::string sec_str = pcd_file_name.substr(6, 10);
+    std::string nsec_str = pcd_file_name.substr(17, 9);
+
     // skip if type is not VERTEX_SE3:QUAT_TIME
     std::istringstream iss(line);
     std::string type;
@@ -56,8 +61,13 @@ bool parse_g2o_line(const std::string& line, const std::string& sec_str, const s
     return true;
 }
 
-bool parse_csv_line(const std::string& line, const std::string& sec_str, const std::string& nsec_str, Eigen::Affine3d& pose_eigen) 
+bool parse_csv_line(const std::string& line, const std::string& pcd_file, Eigen::Affine3d& pose_eigen) 
 {
+    // get timestamp from pcd file
+    std::string pcd_file_name = pcd_file.substr(pcd_file.find_last_of("/\\") + 1);
+    std::string sec_str = pcd_file_name.substr(6, 10);
+    std::string nsec_str = pcd_file_name.substr(17, 9);
+
     // skip if line is a comment
     if (line[0] == '#') return false;
 
@@ -88,8 +98,13 @@ bool parse_csv_line(const std::string& line, const std::string& sec_str, const s
     return true;
 }
 
-bool parse_tum_line(const std::string& line, const std::string& sec_str, const std::string& nsec_str, Eigen::Affine3d& pose_eigen)
+bool parse_tum_line(const std::string& line, const std::string& pcd_file, Eigen::Affine3d& pose_eigen)
 {
+    // get timestamp from pcd file
+    std::string pcd_file_name = pcd_file.substr(pcd_file.find_last_of("/\\") + 1);
+    std::string sec_str = pcd_file_name.substr(6, 10);
+    std::string nsec_str = pcd_file_name.substr(17, 9);
+
     // get individual values
     std::istringstream iss(line);
     std::string timestamp, sec, nsec;
@@ -112,16 +127,11 @@ bool parse_tum_line(const std::string& line, const std::string& sec_str, const s
 
 Eigen::Affine3d find_pose(const std::string& pcd_file, const std::string& pose_file) 
 {
-    // Extract sec and nsec from the pcd_file name
-    std::string pcd_file_name = pcd_file.substr(pcd_file.find_last_of("/\\") + 1);
-    std::string sec_str = pcd_file_name.substr(6, 10);
-    std::string nsec_str = pcd_file_name.substr(17, 9);
-
     // Determine file type and set parser function
     std::ifstream pose_stream(pose_file);
     std::string extension = pose_file.substr(pose_file.find_last_of(".") + 1);
 
-    std::function<bool(const std::string&, const std::string&, const std::string&, Eigen::Affine3d&)> parser;
+    std::function<bool(const std::string&, const std::string&, Eigen::Affine3d&)> parser;
     if (extension == "g2o" || extension == "slam") 
     {
         parser = parse_g2o_line;
@@ -147,7 +157,7 @@ Eigen::Affine3d find_pose(const std::string& pcd_file, const std::string& pose_f
 
     while (std::getline(pose_stream, line)) 
     {
-        pose_found = parser(line, sec_str, nsec_str, pose_eigen);
+        pose_found = parser(line, pcd_file, pose_eigen);
         if (pose_found) 
         {
             break;
@@ -156,7 +166,6 @@ Eigen::Affine3d find_pose(const std::string& pcd_file, const std::string& pose_f
 
     if (!pose_found) 
     {
-        std::cout << "Pose not found for time " << sec_str << " " << nsec_str << std::endl;
         return Eigen::Isometry3d::Identity();
     }
 
