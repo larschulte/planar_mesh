@@ -125,8 +125,36 @@ bool parse_tum_line(const std::string& line, const std::string& pcd_file, Eigen:
     return true;
 }
 
+bool parse_kitti_line(const std::string& line, const std::string& pcd_file, Eigen::Affine3d& pose_vel)
+{
+    // get individual values
+    std::istringstream iss(line);
+    double A0, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11;
+    iss >> A0 >> A1 >> A2 >> A3 >> A4 >> A5 >> A6 >> A7 >> A8 >> A9 >> A10 >> A11;
+
+    // pose of camera
+    Eigen::Affine3d pose_cam;
+    pose_cam.matrix() << A0, A1, A2, A3,
+                            A4, A5, A6, A7,
+                            A8, A9, A10, A11;
+
+    // Tr: transform vel into cam frame
+    Eigen::Affine3d T_vel_into_cam_frame;
+    T_vel_into_cam_frame.matrix() <<  4.276802385584e-04, -9.999672484946e-01, -8.084491683471e-03, -1.198459927713e-02,
+                                -7.210626507497e-03, 8.081198471645e-03, -9.999413164504e-01, -5.403984729748e-02,
+                                9.999738645903e-01, 4.859485810390e-04, -7.206933692422e-03, -2.921968648686e-01;
+    
+    // pose of velodyne
+    pose_vel = pose_cam * T_vel_into_cam_frame;
+
+    // return
+    return true;
+}
+
 Eigen::Affine3d find_pose(const std::string& pcd_file, const std::string& pose_file) 
 {
+    bool kitti_line = false;
+    
     // determine parser from pose file
     std::string pose_file_name = pose_file.substr(pose_file.find_last_of("/\\") + 1);
     std::string extension = pose_file_name.substr(pose_file_name.find_last_of(".") + 1);
@@ -139,14 +167,45 @@ Eigen::Affine3d find_pose(const std::string& pcd_file, const std::string& pose_f
     {
         parser = parse_csv_line;
     } 
-    else if (extension == "txt")
+    else if (pose_file_name.find("tum") != std::string::npos)
     {
         parser = parse_tum_line;
+    }
+    else if (extension == "txt")
+    {
+        kitti_line = true;
+        parser = parse_kitti_line;
     }
     else 
     {
         std::cerr << "Unsupported file format: " << extension << std::endl;
         return Eigen::Isometry3d::Identity();
+    }
+
+    if (kitti_line)
+    {
+        // get timestamp from pcd file
+        std::string pcd_file_name = pcd_file.substr(pcd_file.find_last_of("/\\") + 1);
+        std::string pcd_file_name_no_extension = pcd_file_name.substr(0, pcd_file_name.find_last_of("."));
+        unsigned int line_number = std::stoi(pcd_file_name_no_extension);
+
+        // read the pose file
+        std::ifstream pose_file_stream(pose_file);
+        std::string pose_file_line;
+        Eigen::Affine3d pose_eigen = Eigen::Isometry3d::Identity();
+        unsigned int current_line = 0;
+        while (std::getline(pose_file_stream, pose_file_line)) 
+        {
+            if (current_line == line_number) 
+            {
+                parser(pose_file_line, pcd_file, pose_eigen);
+                break;
+            }
+            current_line++;
+        }
+
+        // return
+        return pose_eigen;
     }
 
     // use parser to get pose from pose file for pcd file

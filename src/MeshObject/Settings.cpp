@@ -51,8 +51,12 @@ Settings::Settings()
         // "/home/jiahao/datasets/spires_benchmark/christchurch03/slam-poses.csv"
         "/home/jiahao/datasets/spires_benchmark/christchurch03/gt-tum.txt"
     );
+    dataset_map["kitti01"] = std::make_pair(
+        "/home/jiahao/datasets/spires_benchmark/kitti_dataset/sequences/01/pcd/",
+        "/home/jiahao/datasets/spires_benchmark/kitti_dataset/poses/01.txt"
+    );
 
-    std::string dataset = "christchurch03";
+    std::string dataset = "kitti01";
     data_loader_settings.pcd_file_folder = dataset_map[dataset].first;
     data_loader_settings.pose_file_path = dataset_map[dataset].second;
 
