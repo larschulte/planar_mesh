@@ -57,30 +57,12 @@ bool ray_triangle_intersect(const Eigen::Vector3d& orig, const Eigen::Vector3d& 
 
 BoundingBox& BoundingBox::operator=(const BoundingBox& other)
 {
-    if (this != &other)
-    {
-        // Step 1: Lock the other box and read its data
-        Eigen::Vector3d other_min, other_max, other_min_used, other_max_used;
-        double other_surface_area;
-        {
-            // std::shared_lock lock_other(other.mutex_); // Lock the other box
-            other_min = other.min;
-            other_max = other.max;
-            other_min_used = other.min_used_for_surface_area;
-            other_max_used = other.max_used_for_surface_area;
-            other_surface_area = other.surface_area;
-        } // Unlock the other box here
-
-        // Step 2: Lock the current box and store the copied data
-        {
-            // std::unique_lock lock_this(mutex_); // Lock this box
-            min = other_min;
-            max = other_max;
-            min_used_for_surface_area = other_min_used;
-            max_used_for_surface_area = other_max_used;
-            surface_area = other_surface_area;
-        }
-    }
+    min = other.min;
+    max = other.max;
+    min_used_for_surface_area = other.min_used_for_surface_area;
+    max_used_for_surface_area = other.max_used_for_surface_area;
+    surface_area = other.surface_area;
+    
     return *this;
 }
 
