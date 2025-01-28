@@ -50,10 +50,11 @@ Settings::Settings()
     dataset_map["abingdon"].pcd_file_folder = "/home/jiahao/datasets/abingdon logs/2024-12-03_10-25-53_rec001_rad301_run2/slam_clouds/";
     dataset_map["abingdon"].pose_file_path = "/home/jiahao/datasets/abingdon logs/2024-12-03_10-25-53_rec001_rad301_run2/slam_pose_graph.slam";
 
-    dataset_map["bodleian"] = DatasetParameters();
-    dataset_map["bodleian"].pcd_file_folder = "/home/jiahao/datasets/spires_benchmark/bodleian01/undist-clouds/";
-    dataset_map["bodleian"].pose_file_path = "/home/jiahao/datasets/spires_benchmark/bodleian01/slam-poses.csv";
-    dataset_map["bodleian"].remove_double_return_flag = true;
+    dataset_map["bodleian01"] = DatasetParameters();
+    dataset_map["bodleian01"].pcd_file_folder = "/home/jiahao/datasets/spires_benchmark/bodleian01/undist-clouds/";
+    dataset_map["bodleian01"].pose_file_path = "/home/jiahao/datasets/spires_benchmark/bodleian01/slam-poses.csv";
+    dataset_map["bodleian01"].remove_double_return_flag = true;
+    dataset_map["bodleian01"].range_precision = 0.02;
 
     dataset_map["blenheim04"] = DatasetParameters();
     dataset_map["blenheim04"].pcd_file_folder = "/home/jiahao/datasets/spires_benchmark/blenheim04/undist-clouds/";
@@ -70,7 +71,16 @@ Settings::Settings()
     dataset_map["kitti01"].pose_file_path = "/home/jiahao/datasets/spires_benchmark/kitti_dataset/poses/01.txt";
     dataset_map["kitti01"].range_precision = 0.02; // Velodyne HDL-64E Laserscanner
 
-    std::string dataset = "kitti01";
+    dataset_map["bodleian02"] = DatasetParameters();
+    dataset_map["bodleian02"].pcd_file_folder = "/home/jiahao/datasets/spires_benchmark/bodleian02/undist-clouds/";
+    dataset_map["bodleian02"].pose_file_path = "/home/jiahao/datasets/spires_benchmark/bodleian02/slam-poses.csv";
+    // dataset_map["bodleian02"].pose_file_path = "/home/jiahao/datasets/spires_benchmark/bodleian02/gt-tum.txt";
+    dataset_map["bodleian02"].remove_double_return_flag = false;
+    dataset_map["bodleian02"].range_precision = 0.01;
+    dataset_map["bodleian02"].radius_value = 3;
+    dataset_map["bodleian02"].extra_radius = 0.1;
+
+    std::string dataset = "bodleian01";
     
     data_loader_settings.pcd_file_folder = dataset_map[dataset].pcd_file_folder;
     data_loader_settings.pose_file_path = dataset_map[dataset].pose_file_path;
