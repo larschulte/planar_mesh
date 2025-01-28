@@ -127,10 +127,9 @@ bool parse_tum_line(const std::string& line, const std::string& pcd_file, Eigen:
 
 Eigen::Affine3d find_pose(const std::string& pcd_file, const std::string& pose_file) 
 {
-    // Determine file type and set parser function
-    std::ifstream pose_stream(pose_file);
-    std::string extension = pose_file.substr(pose_file.find_last_of(".") + 1);
-
+    // determine parser from pose file
+    std::string pose_file_name = pose_file.substr(pose_file.find_last_of("/\\") + 1);
+    std::string extension = pose_file_name.substr(pose_file_name.find_last_of(".") + 1);
     std::function<bool(const std::string&, const std::string&, Eigen::Affine3d&)> parser;
     if (extension == "g2o" || extension == "slam") 
     {
@@ -150,25 +149,16 @@ Eigen::Affine3d find_pose(const std::string& pcd_file, const std::string& pose_f
         return Eigen::Isometry3d::Identity();
     }
 
-    // Parse the file and find the pose
-    std::string line;
-    bool pose_found = false;
+    // use parser to get pose from pose file for pcd file
+    std::ifstream pose_file_stream(pose_file);
+    std::string pose_file_line;
     Eigen::Affine3d pose_eigen = Eigen::Isometry3d::Identity();
-
-    while (std::getline(pose_stream, line)) 
+    while (std::getline(pose_file_stream, pose_file_line)) 
     {
-        pose_found = parser(line, pcd_file, pose_eigen);
-        if (pose_found) 
-        {
-            break;
-        }
+        if (parser(pose_file_line, pcd_file, pose_eigen)) break;
     }
 
-    if (!pose_found) 
-    {
-        return Eigen::Isometry3d::Identity();
-    }
-
+    // return
     return pose_eigen;
 }
 
