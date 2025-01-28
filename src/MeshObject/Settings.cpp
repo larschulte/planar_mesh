@@ -13,6 +13,10 @@ struct DatasetParameters
     double range_accuracy = 0.03;
     bool remove_double_return_flag = false;
     bool filter_low_intensity_flag = false;
+
+    // related parameters
+    double radius_value = 3;
+    double extra_radius = 0.1;
 };
 
 Settings::Settings() 
@@ -74,6 +78,8 @@ Settings::Settings()
     range_accuracy = dataset_map[dataset].range_accuracy;
     data_loader_settings.remove_double_return_flag = dataset_map[dataset].remove_double_return_flag;
     data_loader_settings.filter_low_intensity_flag = dataset_map[dataset].filter_low_intensity_flag;
+    radius_value = dataset_map[dataset].radius_value;
+    extra_radius = dataset_map[dataset].extra_radius;
 
     use_sim_data = false;
     sim_object = 0;
@@ -86,8 +92,6 @@ Settings::Settings()
     shuffle_pointcloud = true;
     use_radius_value = true;
     pointcloud_fraction = 1;
-    radius_value = 1;
-    extra_radius = 0.1;
     duplicated_point_distance_threshold = 0.0; // if two points are closer than this distance, they are considered the same point
 
     odometry_position_uncertainty_rate = 0.000; // kitti sota 0.005m/m (0.5%)
