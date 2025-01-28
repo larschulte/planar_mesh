@@ -30,16 +30,13 @@ std::vector<std::string> read_under_folder(std::string pcd_file_folder)
     return pcd_file_list;
 }
 
-Eigen::Affine3d parse_g2o_line(const std::string& line, const std::string& sec_str, const std::string& nsec_str, bool& pose_found) 
+bool parse_g2o_line(const std::string& line, const std::string& sec_str, const std::string& nsec_str, Eigen::Affine3d& pose_eigen) 
 {
-    // initialize
-    Eigen::Affine3d pose_eigen = Eigen::Isometry3d::Identity();
-
     // skip if type is not VERTEX_SE3:QUAT_TIME
     std::istringstream iss(line);
     std::string type;
     iss >> type;
-    if (type != "VERTEX_SE3:QUAT_TIME") return pose_eigen;
+    if (type != "VERTEX_SE3:QUAT_TIME") return false;
 
     // get individual values
     int vertex_id;
@@ -48,10 +45,7 @@ Eigen::Affine3d parse_g2o_line(const std::string& line, const std::string& sec_s
     iss >> vertex_id >> x >> y >> z >> qx >> qy >> qz >> qw >> timestamp_sec >> timestamp_nsec;
 
     // skip if timestamp does not match
-    if (timestamp_sec != std::stoi(sec_str) || timestamp_nsec != std::stoi(nsec_str)) return pose_eigen;
-    
-    // set pose found
-    pose_found = true;
+    if (timestamp_sec != std::stoi(sec_str) || timestamp_nsec != std::stoi(nsec_str)) return false;
     
     // construct pose
     pose_eigen.translation() << x, y, z;
@@ -59,16 +53,13 @@ Eigen::Affine3d parse_g2o_line(const std::string& line, const std::string& sec_s
     pose_eigen.rotate(q);
 
     // return
-    return pose_eigen;
+    return true;
 }
 
-Eigen::Affine3d parse_csv_line(const std::string& line, const std::string& sec_str, const std::string& nsec_str, bool& pose_found) 
+bool parse_csv_line(const std::string& line, const std::string& sec_str, const std::string& nsec_str, Eigen::Affine3d& pose_eigen) 
 {
-    // initialize
-    Eigen::Affine3d pose_eigen = Eigen::Isometry3d::Identity();
-
     // skip if line is a comment
-    if (line[0] == '#') return pose_eigen;
+    if (line[0] == '#') return false;
 
     // get individual values
     std::istringstream iss(line);
@@ -86,10 +77,7 @@ Eigen::Affine3d parse_csv_line(const std::string& line, const std::string& sec_s
     double qw = std::stod(tokens[9]);
 
     // skip if timestamp does not match
-    if (timestamp_sec != std::stoi(sec_str) || timestamp_nsec != std::stoi(nsec_str)) return pose_eigen;
-
-    // set pose found    
-    pose_found = true;
+    if (timestamp_sec != std::stoi(sec_str) || timestamp_nsec != std::stoi(nsec_str)) return false;
 
     // construct pose
     pose_eigen.translation() << x, y, z;
@@ -97,14 +85,11 @@ Eigen::Affine3d parse_csv_line(const std::string& line, const std::string& sec_s
     pose_eigen.rotate(q);
 
     // return
-    return pose_eigen;
+    return true;
 }
 
-Eigen::Affine3d parse_tum_line(const std::string& line, const std::string& sec_str, const std::string& nsec_str, bool& pose_found) 
+bool parse_tum_line(const std::string& line, const std::string& sec_str, const std::string& nsec_str, Eigen::Affine3d& pose_eigen)
 {
-    // initialize
-    Eigen::Affine3d pose_eigen = Eigen::Isometry3d::Identity();
-
     // get individual values
     std::istringstream iss(line);
     std::string timestamp, sec, nsec;
@@ -114,10 +99,7 @@ Eigen::Affine3d parse_tum_line(const std::string& line, const std::string& sec_s
     nsec = timestamp.substr(timestamp.find('.') + 1);
 
     // skip if timestamp does not match
-    if (sec != sec_str || nsec != nsec_str) return pose_eigen;
-
-    // set pose found
-    pose_found = true;
+    if (sec != sec_str || nsec != nsec_str) return false;
 
     // construct pose
     pose_eigen.translation() << x, y, z;
@@ -125,7 +107,7 @@ Eigen::Affine3d parse_tum_line(const std::string& line, const std::string& sec_s
     pose_eigen.rotate(q);
 
     // return
-    return pose_eigen;
+    return true;
 }
 
 Eigen::Affine3d find_pose(const std::string& pcd_file, const std::string& pose_file) 
@@ -139,7 +121,7 @@ Eigen::Affine3d find_pose(const std::string& pcd_file, const std::string& pose_f
     std::ifstream pose_stream(pose_file);
     std::string extension = pose_file.substr(pose_file.find_last_of(".") + 1);
 
-    std::function<Eigen::Affine3d(const std::string&, const std::string&, const std::string&, bool&)> parser;
+    std::function<bool(const std::string&, const std::string&, const std::string&, Eigen::Affine3d&)> parser;
     if (extension == "g2o" || extension == "slam") 
     {
         parser = parse_g2o_line;
@@ -161,11 +143,11 @@ Eigen::Affine3d find_pose(const std::string& pcd_file, const std::string& pose_f
     // Parse the file and find the pose
     std::string line;
     bool pose_found = false;
-    Eigen::Affine3d pose_eigen;
+    Eigen::Affine3d pose_eigen = Eigen::Isometry3d::Identity();
 
     while (std::getline(pose_stream, line)) 
     {
-        pose_eigen = parser(line, sec_str, nsec_str, pose_found);
+        pose_found = parser(line, sec_str, nsec_str, pose_eigen);
         if (pose_found) 
         {
             break;
