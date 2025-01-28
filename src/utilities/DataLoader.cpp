@@ -30,151 +30,193 @@ std::vector<std::string> read_under_folder(std::string pcd_file_folder)
     return pcd_file_list;
 }
 
-bool parse_g2o_line(const std::string& line, const std::string& pcd_file, Eigen::Affine3d& pose_eigen) 
+bool parse_g2o_file(const std::string& pose_file, const std::string& pcd_file, Eigen::Affine3d& pose_eigen) 
 {
     // get timestamp from pcd file
     std::string pcd_file_name = pcd_file.substr(pcd_file.find_last_of("/\\") + 1);
     std::string sec_str = pcd_file_name.substr(6, 10);
     std::string nsec_str = pcd_file_name.substr(17, 9);
 
-    // skip if type is not VERTEX_SE3:QUAT_TIME
-    std::istringstream iss(line);
-    std::string type;
-    iss >> type;
-    if (type != "VERTEX_SE3:QUAT_TIME") return false;
+    // read each line of pose file
+    std::ifstream pose_file_stream(pose_file);
+    std::string pose_file_line;
+    while (std::getline(pose_file_stream, pose_file_line))
+    {
+        // skip if type is not VERTEX_SE3:QUAT_TIME
+        std::istringstream iss(pose_file_line);
+        std::string type;
+        iss >> type;
+        if (type != "VERTEX_SE3:QUAT_TIME") continue;
 
-    // get individual values
-    int vertex_id;
-    double x, y, z, qx, qy, qz, qw;
-    int timestamp_sec, timestamp_nsec;
-    iss >> vertex_id >> x >> y >> z >> qx >> qy >> qz >> qw >> timestamp_sec >> timestamp_nsec;
+        // get individual values
+        int vertex_id;
+        double x, y, z, qx, qy, qz, qw;
+        int timestamp_sec, timestamp_nsec;
+        iss >> vertex_id >> x >> y >> z >> qx >> qy >> qz >> qw >> timestamp_sec >> timestamp_nsec;
 
-    // skip if timestamp does not match
-    if (timestamp_sec != std::stoi(sec_str) || timestamp_nsec != std::stoi(nsec_str)) return false;
-    
-    // construct pose
-    pose_eigen.translation() << x, y, z;
-    Eigen::Quaterniond q(qw, qx, qy, qz);
-    pose_eigen.rotate(q);
+        // skip if timestamp does not match
+        if (timestamp_sec != std::stoi(sec_str) || timestamp_nsec != std::stoi(nsec_str)) continue;
+        
+        // construct pose
+        pose_eigen.translation() << x, y, z;
+        Eigen::Quaterniond q(qw, qx, qy, qz);
+        pose_eigen.rotate(q);
 
-    // return
-    return true;
+        // return
+        return true;
+    }
+
+    return false;
 }
 
-bool parse_csv_line(const std::string& line, const std::string& pcd_file, Eigen::Affine3d& pose_eigen) 
+bool parse_csv_file(const std::string& pose_file, const std::string& pcd_file, Eigen::Affine3d& pose_eigen) 
 {
     // get timestamp from pcd file
     std::string pcd_file_name = pcd_file.substr(pcd_file.find_last_of("/\\") + 1);
     std::string sec_str = pcd_file_name.substr(6, 10);
     std::string nsec_str = pcd_file_name.substr(17, 9);
 
-    // skip if line is a comment
-    if (line[0] == '#') return false;
+    // read each line of pose file
+    std::ifstream pose_file_stream(pose_file);
+    std::string pose_file_line;
+    while (std::getline(pose_file_stream, pose_file_line)) 
+    {
+        // skip if line is a comment
+        if (pose_file_line[0] == '#') continue;
 
-    // get individual values
-    std::istringstream iss(line);
-    std::string token;
-    std::vector<std::string> tokens;
-    while (std::getline(iss, token, ',')) tokens.push_back(token);
-    int timestamp_sec = std::stoi(tokens[1]);
-    int timestamp_nsec = std::stoi(tokens[2]);
-    double x = std::stod(tokens[3]);
-    double y = std::stod(tokens[4]);
-    double z = std::stod(tokens[5]);
-    double qx = std::stod(tokens[6]);
-    double qy = std::stod(tokens[7]);
-    double qz = std::stod(tokens[8]);
-    double qw = std::stod(tokens[9]);
+        // get individual values
+        std::istringstream iss(pose_file_line);
+        std::string token;
+        std::vector<std::string> tokens;
+        while (std::getline(iss, token, ',')) tokens.push_back(token);
+        int timestamp_sec = std::stoi(tokens[1]);
+        int timestamp_nsec = std::stoi(tokens[2]);
+        double x = std::stod(tokens[3]);
+        double y = std::stod(tokens[4]);
+        double z = std::stod(tokens[5]);
+        double qx = std::stod(tokens[6]);
+        double qy = std::stod(tokens[7]);
+        double qz = std::stod(tokens[8]);
+        double qw = std::stod(tokens[9]);
 
-    // skip if timestamp does not match
-    if (timestamp_sec != std::stoi(sec_str) || timestamp_nsec != std::stoi(nsec_str)) return false;
+        // skip if timestamp does not match
+        if (timestamp_sec != std::stoi(sec_str) || timestamp_nsec != std::stoi(nsec_str)) continue;
 
-    // construct pose
-    pose_eigen.translation() << x, y, z;
-    Eigen::Quaterniond q(qw, qx, qy, qz);
-    pose_eigen.rotate(q);
+        // construct pose
+        pose_eigen.translation() << x, y, z;
+        Eigen::Quaterniond q(qw, qx, qy, qz);
+        pose_eigen.rotate(q);
 
-    // return
-    return true;
+        // return
+        return true;
+    }
+
+    return false;
 }
 
-bool parse_tum_line(const std::string& line, const std::string& pcd_file, Eigen::Affine3d& pose_eigen)
+bool parse_tum_file(const std::string& pose_file, const std::string& pcd_file, Eigen::Affine3d& pose_eigen)
 {
     // get timestamp from pcd file
     std::string pcd_file_name = pcd_file.substr(pcd_file.find_last_of("/\\") + 1);
     std::string sec_str = pcd_file_name.substr(6, 10);
     std::string nsec_str = pcd_file_name.substr(17, 9);
 
-    // get individual values
-    std::istringstream iss(line);
-    std::string timestamp, sec, nsec;
-    double x, y, z, qx, qy, qz, qw;
-    iss >> timestamp >> x >> y >> z >> qx >> qy >> qz >> qw;
-    sec = timestamp.substr(0, timestamp.find('.'));
-    nsec = timestamp.substr(timestamp.find('.') + 1);
+    // read each line of pose file
+    std::ifstream pose_file_stream(pose_file);
+    std::string pose_file_line;
+    while (std::getline(pose_file_stream, pose_file_line)) 
+    {
+        // get individual values
+        std::istringstream iss(pose_file_line);
+        std::string timestamp, sec, nsec;
+        double x, y, z, qx, qy, qz, qw;
+        iss >> timestamp >> x >> y >> z >> qx >> qy >> qz >> qw;
+        sec = timestamp.substr(0, timestamp.find('.'));
+        nsec = timestamp.substr(timestamp.find('.') + 1);
 
-    // skip if timestamp does not match
-    if (sec != sec_str || nsec != nsec_str) return false;
+        // skip if timestamp does not match
+        if (sec != sec_str || nsec != nsec_str) continue;
 
-    // construct pose
-    pose_eigen.translation() << x, y, z;
-    Eigen::Quaterniond q(qw, qx, qy, qz);
-    pose_eigen.rotate(q);
+        // construct pose
+        pose_eigen.translation() << x, y, z;
+        Eigen::Quaterniond q(qw, qx, qy, qz);
+        pose_eigen.rotate(q);
 
-    // return
-    return true;
+        // return
+        return true;
+    }
+
+    return false;
 }
 
-bool parse_kitti_line(const std::string& line, const std::string& pcd_file, Eigen::Affine3d& pose_vel)
+bool parse_kitti_file(const std::string& pose_file, const std::string& pcd_file, Eigen::Affine3d& pose_vel)
 {
-    // get individual values
-    std::istringstream iss(line);
-    double A0, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11;
-    iss >> A0 >> A1 >> A2 >> A3 >> A4 >> A5 >> A6 >> A7 >> A8 >> A9 >> A10 >> A11;
+    // get line number from pcd file
+    std::string pcd_file_name = pcd_file.substr(pcd_file.find_last_of("/\\") + 1);
+    std::string pcd_file_name_no_extension = pcd_file_name.substr(0, pcd_file_name.find_last_of("."));
+    unsigned int line_number = std::stoi(pcd_file_name_no_extension);
 
-    // pose of camera
-    Eigen::Affine3d pose_cam;
-    pose_cam.matrix() << A0, A1, A2, A3,
-                            A4, A5, A6, A7,
-                            A8, A9, A10, A11;
+    // read each line of pose file
+    std::ifstream pose_file_stream(pose_file);
+    std::string pose_file_line;
+    unsigned int current_line = 0;
+    while (std::getline(pose_file_stream, pose_file_line)) 
+    {
+        // skip if current line is not the line number
+        if (current_line != line_number) 
+        {
+            current_line++;
+            continue;
+        }
 
-    // Tr: transform vel into cam frame
-    Eigen::Affine3d T_vel_into_cam_frame;
-    T_vel_into_cam_frame.matrix() <<  4.276802385584e-04, -9.999672484946e-01, -8.084491683471e-03, -1.198459927713e-02,
-                                -7.210626507497e-03, 8.081198471645e-03, -9.999413164504e-01, -5.403984729748e-02,
-                                9.999738645903e-01, 4.859485810390e-04, -7.206933692422e-03, -2.921968648686e-01;
-    
-    // pose of velodyne
-    pose_vel = pose_cam * T_vel_into_cam_frame;
+        // get individual values
+        std::istringstream iss(pose_file_line);
+        double A0, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11;
+        iss >> A0 >> A1 >> A2 >> A3 >> A4 >> A5 >> A6 >> A7 >> A8 >> A9 >> A10 >> A11;
 
-    // return
-    return true;
+        // pose of camera
+        Eigen::Affine3d pose_cam;
+        pose_cam.matrix() << A0, A1, A2, A3,
+                                A4, A5, A6, A7,
+                                A8, A9, A10, A11;
+
+        // Tr: transform vel into cam frame
+        Eigen::Affine3d T_vel_into_cam_frame;
+        T_vel_into_cam_frame.matrix() <<  4.276802385584e-04, -9.999672484946e-01, -8.084491683471e-03, -1.198459927713e-02,
+                                    -7.210626507497e-03, 8.081198471645e-03, -9.999413164504e-01, -5.403984729748e-02,
+                                    9.999738645903e-01, 4.859485810390e-04, -7.206933692422e-03, -2.921968648686e-01;
+        
+        // pose of velodyne
+        pose_vel = pose_cam * T_vel_into_cam_frame;
+
+        // return
+        return true;        
+    }
+
+    return false;
 }
 
 Eigen::Affine3d find_pose(const std::string& pcd_file, const std::string& pose_file) 
-{
-    bool kitti_line = false;
-    
+{    
     // determine parser from pose file
     std::string pose_file_name = pose_file.substr(pose_file.find_last_of("/\\") + 1);
     std::string extension = pose_file_name.substr(pose_file_name.find_last_of(".") + 1);
     std::function<bool(const std::string&, const std::string&, Eigen::Affine3d&)> parser;
     if (extension == "g2o" || extension == "slam") 
     {
-        parser = parse_g2o_line;
+        parser = parse_g2o_file;
     } 
     else if (extension == "csv") 
     {
-        parser = parse_csv_line;
+        parser = parse_csv_file;
     } 
     else if (pose_file_name.find("tum") != std::string::npos)
     {
-        parser = parse_tum_line;
+        parser = parse_tum_file;
     }
     else if (extension == "txt")
     {
-        kitti_line = true;
-        parser = parse_kitti_line;
+        parser = parse_kitti_file;
     }
     else 
     {
@@ -182,42 +224,11 @@ Eigen::Affine3d find_pose(const std::string& pcd_file, const std::string& pose_f
         return Eigen::Isometry3d::Identity();
     }
 
-    if (kitti_line)
-    {
-        // get timestamp from pcd file
-        std::string pcd_file_name = pcd_file.substr(pcd_file.find_last_of("/\\") + 1);
-        std::string pcd_file_name_no_extension = pcd_file_name.substr(0, pcd_file_name.find_last_of("."));
-        unsigned int line_number = std::stoi(pcd_file_name_no_extension);
-
-        // read the pose file
-        std::ifstream pose_file_stream(pose_file);
-        std::string pose_file_line;
-        Eigen::Affine3d pose_eigen = Eigen::Isometry3d::Identity();
-        unsigned int current_line = 0;
-        while (std::getline(pose_file_stream, pose_file_line)) 
-        {
-            if (current_line == line_number) 
-            {
-                parser(pose_file_line, pcd_file, pose_eigen);
-                break;
-            }
-            current_line++;
-        }
-
-        // return
-        return pose_eigen;
-    }
-
-    // use parser to get pose from pose file for pcd file
-    std::ifstream pose_file_stream(pose_file);
-    std::string pose_file_line;
+    // from pose file parse desired pose
     Eigen::Affine3d pose_eigen = Eigen::Isometry3d::Identity();
-    while (std::getline(pose_file_stream, pose_file_line)) 
-    {
-        if (parser(pose_file_line, pcd_file, pose_eigen)) break;
-    }
+    parser(pose_file, pcd_file, pose_eigen);
 
-    // return
+    // return 
     return pose_eigen;
 }
 
