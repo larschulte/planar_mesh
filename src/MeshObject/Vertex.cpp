@@ -15,6 +15,9 @@ Settings Vertex::settings_;
 
 void Vertex::initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<Surface>& surface, const Eigen::Vector3d& position, const Eigen::Vector3d& origin, const double& radius, double distance_travelled)
 {
+    // read lock
+    std::shared_lock<std::shared_mutex> lock(rwlock_lifecycle_);
+
     // set expired
     is_expired_ = false;
     
