@@ -638,13 +638,7 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
     if (!edge_created) return false;
 
     // create faces
-    const bool created_faces = vertex->try_close_holes_repeatedly();
-
-    // if not seed and no face is created, return false
-    if (!is_seed() && !created_faces)
-    {
-        return false;
-    }
+    vertex->try_close_holes_repeatedly();
 
     // else
     return true;
