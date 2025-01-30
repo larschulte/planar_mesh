@@ -670,6 +670,130 @@ bool Vertex::try_close_holes_repeatedly()
     return changed;
 }
 
+
+bool Vertex::try_close_holes()
+{
+    // initialize
+    bool changed = false;
+
+    // initialize
+    bool repeat_loop = true;
+    while (repeat_loop)
+    {
+        repeat_loop = false;
+
+        // copy edges
+        std::vector<std::shared_ptr<Edge>> edges;
+        {
+            // read lock
+            std::shared_lock<std::shared_mutex> lock(rwlock_edges_);
+
+            // copy
+            edges = edges_;
+        }
+
+        // get boundary edges
+        std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> connected_boundary_edges;
+        for (const auto& edge : edges)
+        {
+            // read lock
+            std::shared_lock<std::shared_mutex> lock(edge->rwlock_lifecycle_);
+
+            // skip if expired
+            if (edge->is_expired()) continue;
+
+            // skip if not boundary
+            if (!edge->is_boundary()) continue;
+
+            // add to list
+            connected_boundary_edges.insert(edge);
+        }
+
+        // get boundary vertices
+        std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> connected_boundary_vertices;
+        // boundary vertices to edge map
+        std::unordered_map<std::shared_ptr<Vertex>, std::shared_ptr<Edge>, MeshObjectHash> boundary_vertices_to_edge_map;
+        for (const auto& edge : connected_boundary_edges)
+        {
+            // read lock
+            std::shared_lock<std::shared_mutex> lock(edge->rwlock_lifecycle_);
+
+            // skip if expired
+            if (edge->is_expired()) continue;
+
+            // vertex 
+            std::shared_ptr<Vertex> vertex0 = edge->get_vertex(0);
+            std::shared_ptr<Vertex> vertex1 = edge->get_vertex(1);
+
+            // skip if nullptr
+            if (!vertex0 || !vertex1) continue;
+
+            if (vertex0 != shared_from_this())
+            {
+                connected_boundary_vertices.insert(vertex0);
+                boundary_vertices_to_edge_map[vertex0] = edge;
+            }
+            
+            if (vertex1 != shared_from_this())
+            {
+                connected_boundary_vertices.insert(vertex1);
+                boundary_vertices_to_edge_map[vertex1] = edge;
+            }
+        }
+
+        // skip if less than two connected boundary vertex (this includes when the vertex itself is not boundary)
+        if (connected_boundary_vertices.size() < 2)
+        {
+            break;
+        }
+
+        // compute connected boundary vertices with angle
+        std::vector<std::pair<std::shared_ptr<Vertex>, double>> connected_boundary_vertices_with_angle;
+        for (const auto& vertex : connected_boundary_vertices)
+        {
+            // read lock
+            std::shared_lock<std::shared_mutex> lock(vertex->rwlock_lifecycle_);
+
+            // skip if expired
+            if (vertex->is_expired()) continue;
+
+            // use projected position
+            Eigen::Vector2d direction = vertex->get_surface_coordinate() - get_surface_coordinate();
+            double angle = std::atan2(direction.y(), direction.x());
+
+            // add to list
+            connected_boundary_vertices_with_angle.push_back(std::make_pair(vertex, angle));
+        }
+
+        // sort by angle
+        std::sort(connected_boundary_vertices_with_angle.begin(), connected_boundary_vertices_with_angle.end(), 
+            [](const std::pair<std::shared_ptr<Vertex>, double>& a, const std::pair<std::shared_ptr<Vertex>, double>& b) 
+            { 
+                return a.second < b.second; 
+            });
+
+        // create pairs of connected boundary vertices
+        std::vector<std::pair<std::shared_ptr<Vertex>, std::shared_ptr<Vertex>>> connected_boundary_vertex_pairs;
+        for (int i = 0; i < connected_boundary_vertices_with_angle.size(); i++)
+        {
+            connected_boundary_vertex_pairs.push_back(std::make_pair(connected_boundary_vertices_with_angle[i].first, connected_boundary_vertices_with_angle[(i + 1) % connected_boundary_vertices_with_angle.size()].first));
+        }
+
+        // try close holes between the two vertices
+        for (auto& [vertex0, vertex1] : connected_boundary_vertex_pairs)
+        {
+            if (try_close_holes_between_self_and(vertex0, vertex1, boundary_vertices_to_edge_map[vertex0], boundary_vertices_to_edge_map[vertex1]))
+            {
+                changed = true;
+                repeat_loop = true;
+                break;
+            }
+        }
+    }
+
+    return changed;
+}
+
 bool Vertex::try_close_holes_between_self_and(std::shared_ptr<Vertex>& vertex0, std::shared_ptr<Vertex>& vertex1, std::shared_ptr<Edge>& edge0, std::shared_ptr<Edge>& edge1)
 {
     // read lock
@@ -798,129 +922,6 @@ bool Vertex::try_close_holes_between_self_and(std::shared_ptr<Vertex>& vertex0, 
 
     // return changed
     return true;
-}
-
-bool Vertex::try_close_holes()
-{
-    // initialize
-    bool changed = false;
-
-    // initialize
-    bool repeat_loop = true;
-    while (repeat_loop)
-    {
-        repeat_loop = false;
-
-        // copy edges
-        std::vector<std::shared_ptr<Edge>> edges;
-        {
-            // read lock
-            std::shared_lock<std::shared_mutex> lock(rwlock_edges_);
-
-            // copy
-            edges = edges_;
-        }
-
-        // get boundary edges
-        std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> connected_boundary_edges;
-        for (const auto& edge : edges)
-        {
-            // read lock
-            std::shared_lock<std::shared_mutex> lock(edge->rwlock_lifecycle_);
-
-            // skip if expired
-            if (edge->is_expired()) continue;
-
-            // skip if not boundary
-            if (!edge->is_boundary()) continue;
-
-            // add to list
-            connected_boundary_edges.insert(edge);
-        }
-
-        // get boundary vertices
-        std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> connected_boundary_vertices;
-        // boundary vertices to edge map
-        std::unordered_map<std::shared_ptr<Vertex>, std::shared_ptr<Edge>, MeshObjectHash> boundary_vertices_to_edge_map;
-        for (const auto& edge : connected_boundary_edges)
-        {
-            // read lock
-            std::shared_lock<std::shared_mutex> lock(edge->rwlock_lifecycle_);
-
-            // skip if expired
-            if (edge->is_expired()) continue;
-
-            // vertex 
-            std::shared_ptr<Vertex> vertex0 = edge->get_vertex(0);
-            std::shared_ptr<Vertex> vertex1 = edge->get_vertex(1);
-
-            // skip if nullptr
-            if (!vertex0 || !vertex1) continue;
-
-            if (vertex0 != shared_from_this())
-            {
-                connected_boundary_vertices.insert(vertex0);
-                boundary_vertices_to_edge_map[vertex0] = edge;
-            }
-            
-            if (vertex1 != shared_from_this())
-            {
-                connected_boundary_vertices.insert(vertex1);
-                boundary_vertices_to_edge_map[vertex1] = edge;
-            }
-        }
-
-        // skip if less than two connected boundary vertex (this includes when the vertex itself is not boundary)
-        if (connected_boundary_vertices.size() < 2)
-        {
-            break;
-        }
-
-        // compute connected boundary vertices with angle
-        std::vector<std::pair<std::shared_ptr<Vertex>, double>> connected_boundary_vertices_with_angle;
-        for (const auto& vertex : connected_boundary_vertices)
-        {
-            // read lock
-            std::shared_lock<std::shared_mutex> lock(vertex->rwlock_lifecycle_);
-
-            // skip if expired
-            if (vertex->is_expired()) continue;
-
-            // use projected position
-            Eigen::Vector2d direction = vertex->get_surface_coordinate() - get_surface_coordinate();
-            double angle = std::atan2(direction.y(), direction.x());
-
-            // add to list
-            connected_boundary_vertices_with_angle.push_back(std::make_pair(vertex, angle));
-        }
-
-        // sort by angle
-        std::sort(connected_boundary_vertices_with_angle.begin(), connected_boundary_vertices_with_angle.end(), 
-            [](const std::pair<std::shared_ptr<Vertex>, double>& a, const std::pair<std::shared_ptr<Vertex>, double>& b) 
-            { 
-                return a.second < b.second; 
-            });
-
-        // create pairs of connected boundary vertices
-        std::vector<std::pair<std::shared_ptr<Vertex>, std::shared_ptr<Vertex>>> connected_boundary_vertex_pairs;
-        for (int i = 0; i < connected_boundary_vertices_with_angle.size(); i++)
-        {
-            connected_boundary_vertex_pairs.push_back(std::make_pair(connected_boundary_vertices_with_angle[i].first, connected_boundary_vertices_with_angle[(i + 1) % connected_boundary_vertices_with_angle.size()].first));
-        }
-
-        // try close holes between the two vertices
-        for (auto& [vertex0, vertex1] : connected_boundary_vertex_pairs)
-        {
-            if (try_close_holes_between_self_and(vertex0, vertex1, boundary_vertices_to_edge_map[vertex0], boundary_vertices_to_edge_map[vertex1]))
-            {
-                changed = true;
-                repeat_loop = true;
-                break;
-            }
-        }
-    }
-
-    return changed;
 }
 
 void Vertex::remove_all_edges()
