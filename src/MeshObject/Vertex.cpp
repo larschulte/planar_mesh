@@ -893,6 +893,9 @@ bool Vertex::try_close_holes_between_self_and(std::shared_ptr<Vertex>& vertex0, 
     inter_edge_lock = std::shared_lock<std::shared_mutex>(inter_edge->rwlock_lifecycle_);
     if (inter_edge->is_expired()) return false;
     
+    // skip if any edge is non boundary
+    if (!edge0->is_boundary() || !edge1->is_boundary() || !inter_edge->is_boundary()) return false;
+
     // create face
     std::shared_ptr<Face> new_face = storage_->add_face(get_surface(), shared_from_this(), vertex0, vertex1, edge0, edge1, inter_edge);
 
