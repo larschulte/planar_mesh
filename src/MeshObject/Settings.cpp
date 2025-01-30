@@ -86,10 +86,10 @@ Settings::Settings()
     dataset_map["observatory01"].pose_file_path = "/home/jiahao/datasets/spires_benchmark/observatory01/gt-tum.txt";
     dataset_map["observatory01"].remove_double_return_flag = true;
     dataset_map["observatory01"].range_precision = 0.01;
-    dataset_map["observatory01"].radius_value = 3;
+    dataset_map["observatory01"].radius_value = 1;
     dataset_map["observatory01"].extra_radius = 0.1;
 
-    std::string dataset = "christchurch03";
+    std::string dataset = "observatory01";
     
     data_loader_settings.pcd_file_folder = dataset_map[dataset].pcd_file_folder;
     data_loader_settings.pose_file_path = dataset_map[dataset].pose_file_path;
