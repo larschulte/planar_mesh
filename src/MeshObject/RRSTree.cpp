@@ -173,23 +173,29 @@ void RRSNode::recursive_shrink_parent_box()
         // new parent box
         RRSBoundingBox new_parent_box = RRSBoundingBox();
 
-        // copy boxes of children of parent
-        RRSBoundingBox parent_left_box;
-        RRSBoundingBox parent_right_box;
+        // expand new parent box
         {
             // read lock
             std::shared_lock<std::shared_mutex> lock(parent_->rwlock_node_);
-            std::shared_lock<std::shared_mutex> lock_left(parent_->left_->rwlock_box_, std::defer_lock);
-            std::shared_lock<std::shared_mutex> lock_right(parent_->right_->rwlock_box_, std::defer_lock);
-            std::lock(lock_left, lock_right);
 
-            parent_left_box = parent_->left_->box_;
-            parent_right_box = parent_->right_->box_;
+            // expand left box
+            if (parent_->left_)
+            {
+                // read lock
+                std::shared_lock<std::shared_mutex> lock_left(parent_->left_->rwlock_node_);
+
+                new_parent_box.expand_box_no_return(parent_->left_->box_);
+            }
+
+            // expand right box
+            if (parent_->right_)
+            {
+                // read lock
+                std::shared_lock<std::shared_mutex> lock_right(parent_->right_->rwlock_node_);
+
+                new_parent_box.expand_box_no_return(parent_->right_->box_);
+            }
         }
-
-        // expand new parent box
-        new_parent_box.expand_box_no_return(parent_left_box);
-        new_parent_box.expand_box_no_return(parent_right_box);
         
         // shrunk
         const bool shrunk = new_parent_box.min[0] > old_parent_box.min[0] &&
@@ -368,26 +374,28 @@ void RRSNode::node_add_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
 
 void RRSNode::node_delete_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
 {
-    // write lock
-    std::unique_lock<std::shared_mutex> lock(rwlock_node_);
-
-    // boundary vertex is only stored in leaf node
-
-    // remove node from vertices
-    boundary_vertex->node = nullptr;
-
-    // remove vertex from node
-    boundary_vertex_ = nullptr;
-
-    // keep in parent's left or right
-
-    // reset box
     {
         // write lock
-        std::unique_lock<std::shared_mutex> lock_box(rwlock_box_);
+        std::unique_lock<std::shared_mutex> lock(rwlock_node_);
+
+        // boundary vertex is only stored in leaf node
+
+        // remove node from vertices
+        boundary_vertex->node = nullptr;
+
+        // remove vertex from node
+        boundary_vertex_ = nullptr;
+
+        // keep in parent's left or right
 
         // reset box
-        box_ = RRSBoundingBox(); // here
+        {
+            // write lock
+            std::unique_lock<std::shared_mutex> lock_box(rwlock_box_);
+
+            // reset box
+            box_ = RRSBoundingBox(); // here
+        }
     }
 
     // shrink parent box
@@ -396,19 +404,24 @@ void RRSNode::node_delete_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
 
 void RRSNode::node_update_vertex_box(const std::shared_ptr<Vertex>& boundary_vertex)
 {
-    // write lock
-    std::unique_lock<std::shared_mutex> lock(rwlock_node_);
+    double old_box_size;
+    double new_box_size;
 
-    // current box size
-    const double old_box_size = box_.max[0] - box_.min[0];
-    const double new_box_size = boundary_vertex->get_max()[0] - boundary_vertex->get_min()[0];
+    {
+        // write lock
+        std::unique_lock<std::shared_mutex> lock(rwlock_node_);
 
-    // skip if no change
-    if (old_box_size == new_box_size) return;
+        // current box size
+        old_box_size = box_.max[0] - box_.min[0];
+        new_box_size = boundary_vertex->get_max()[0] - boundary_vertex->get_min()[0];
 
-    // store new box size
-    box_.min = boundary_vertex->get_min();
-    box_.max = boundary_vertex->get_max();
+        // skip if no change
+        if (old_box_size == new_box_size) return;
+
+        // store new box size
+        box_.min = boundary_vertex->get_min();
+        box_.max = boundary_vertex->get_max();
+    }
 
     // recursive update
     if (new_box_size > old_box_size)
