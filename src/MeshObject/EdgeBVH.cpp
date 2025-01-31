@@ -295,6 +295,16 @@ void EdgeBVH::Node::node_add_edge(const std::shared_ptr<Edge>& edge)
     // write lock
     std::unique_lock<std::shared_mutex> lock(rwlock_node_);
 
+    // if node is leaf, and do not have edge, simply add edge to node
+    if (isLeaf_ && edge_ == nullptr)
+    {
+        edge_ = edge;
+        edge_->node = shared_from_this();
+        box_.expand_box_no_return(edge->get_min(), edge->get_max());
+        recursive_expand_parent_box();
+        return;
+    }
+
     // create new node
     std::shared_ptr<EdgeBVH::Node> new_leaf_node = std::make_shared<EdgeBVH::Node>();
     {

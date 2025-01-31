@@ -318,6 +318,16 @@ void RRSNode::node_add_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
 {
     // write lock
     std::unique_lock<std::shared_mutex> lock(rwlock_node_);
+
+    // if node is leaf, and do not have boundary vertex, simply add boundary_vertex to node
+    if (isLeaf_ && boundary_vertex_ == nullptr)
+    {
+        boundary_vertex_ = boundary_vertex;
+        boundary_vertex_->node = shared_from_this();
+        box_.expand_box_no_return(boundary_vertex->get_min(), boundary_vertex->get_max());
+        recursive_expand_parent_box();
+        return;
+    }
     
     // create new node
     std::shared_ptr<RRSNode> new_leaf_node = std::make_shared<RRSNode>();

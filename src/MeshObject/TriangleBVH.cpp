@@ -365,6 +365,16 @@ void Node::node_add_face(const std::shared_ptr<Face>& face)
 {
     // write lock
     std::unique_lock<std::shared_mutex> lock(rwlock_node_);
+
+    // if node is leaf, and do not have face, simply add face to node
+    if (isLeaf_ && face_ == nullptr)
+    {
+        face_ = face;
+        face_->node = shared_from_this();
+        box_.expand_box_no_return(face->get_min(), face->get_max());
+        recursive_expand_parent_box();
+        return;
+    }
     
     // create new node
     std::shared_ptr<Node> new_leaf_node = std::make_shared<Node>();
