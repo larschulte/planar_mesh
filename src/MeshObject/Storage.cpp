@@ -672,11 +672,6 @@ void Storage::cleanup_surfaces()
     add_or_remove_vertices_from_rrs_tree();
     add_or_remove_faces_from_bvh_tree();
     add_or_remove_edges_from_edgeBVH_tree();
-
-    // print size of rrs, vertices, and boundary vertices
-    std::cout << "rrs size: " << get_rrs_size() << " | b-vertices size: " << get_boundary_vertices_size() << " | vertices size: " << get_vertices_size() << " | total point size: " << get_vertices_size() + get_interior_points_size() << std::endl;
-    // print size of bvh, faces
-    std::cout << "bvh size: " << get_bvh_size() << " | faces size: " << get_faces_size() << std::endl;
 }
 
 void Storage::remove_non_manifold_edges()
