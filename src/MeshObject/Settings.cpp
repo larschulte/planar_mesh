@@ -78,7 +78,7 @@ Settings::Settings()
     // dataset_map["bodleian02"].pose_file_path = "/home/jiahao/datasets/spires_benchmark/bodleian02/gt-tum.txt";
     dataset_map["bodleian02"].remove_double_return_flag = false;
     dataset_map["bodleian02"].range_precision = 0.01;
-    dataset_map["bodleian02"].radius_value = 3;
+    dataset_map["bodleian02"].radius_value = 1;
     dataset_map["bodleian02"].extra_radius = 0.1;
 
     dataset_map["observatory01"] = DatasetParameters();
@@ -89,7 +89,7 @@ Settings::Settings()
     dataset_map["observatory01"].radius_value = 1;
     dataset_map["observatory01"].extra_radius = 0.1;
 
-    std::string dataset = "observatory01";
+    std::string dataset = "christchurch03";
     
     data_loader_settings.pcd_file_folder = dataset_map[dataset].pcd_file_folder;
     data_loader_settings.pose_file_path = dataset_map[dataset].pose_file_path;
