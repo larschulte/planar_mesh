@@ -754,14 +754,8 @@ void Application<PointT>::loop()
     }
     num_iteration ++;
 
-    // print node count
-    std::cout << storage_->get_rrs_node_size() << std::endl;
-
     // postprocess surfaces
     storage_->cleanup_surfaces();
-
-    // print node count
-    std::cout << storage_->get_rrs_node_size() << std::endl;
 
     std::chrono::high_resolution_clock::time_point t_end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = t_end - t_init;
