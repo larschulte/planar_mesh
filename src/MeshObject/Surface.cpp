@@ -49,21 +49,59 @@ void Surface::delete_()
     // write lock
     std::unique_lock<std::shared_mutex> lock(rwlock_lifecycle_);
 
-    // log
-    if (settings_.log.deletion) std::cout << "Destroying surface " << id_ << std::endl;
-
     // set deletion flag
     deleting_ = true;
 
-    // make copies first since disconnect will modify the set
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertices = vertices_;
-    std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges = edges_;
-    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces = faces_;
-    std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> interior_points = interior_points_;
-    for (const auto& vertex : vertices) disconnect(vertex);
-    for (const auto& edge : edges) disconnect(edge);
-    for (const auto& face : faces) disconnect(face);
-    for (const auto& interior_point : interior_points) disconnect(interior_point);
+    // log
+    if (settings_.log.deletion) std::cout << "Destroying surface " << id_ << std::endl;
+
+    // vertices (delete)
+    {
+        // read lock
+        std::shared_lock<std::shared_mutex> lock_vertices(rwlock_vertices_);
+
+        // delete vertex
+        for (const auto& vertex : vertices_) storage_->add_vertex_to_be_deleted(vertex);
+
+        // clear
+        vertices_.clear();
+    }
+
+    // edges (delete)
+    {
+        // read lock
+        std::shared_lock<std::shared_mutex> lock_edges(rwlock_edges_);
+
+        // delete edge
+        for (const auto& edge : edges_) storage_->add_edge_to_be_deleted(edge);
+
+        // clear
+        edges_.clear();
+    }
+
+    // faces (delete)
+    {
+        // read lock
+        std::shared_lock<std::shared_mutex> lock_faces(rwlock_faces_);
+
+        // delete face
+        for (const auto& face : faces_) storage_->add_face_to_be_deleted(face);
+
+        // clear
+        faces_.clear();
+    }
+
+    // interior points (delete)
+    {
+        // read lock
+        std::shared_lock<std::shared_mutex> lock_interior_points(rwlock_interior_points_);
+
+        // delete interior point
+        for (const auto& interior_point : interior_points_) storage_->add_interior_point_to_be_deleted(interior_point);
+
+        // clear
+        interior_points_.clear();
+    }
 
     // log
     if (settings_.log.deletion) std::cout << "---------- surface " << id_ << " destroyed" << std::endl;
