@@ -178,6 +178,7 @@ void RRSNode::recursive_shrink_parent_box()
         RRSBoundingBox parent_right_box;
         {
             // read lock
+            std::shared_lock<std::shared_mutex> lock(parent_->rwlock_node_);
             std::shared_lock<std::shared_mutex> lock_left(parent_->left_->rwlock_box_, std::defer_lock);
             std::shared_lock<std::shared_mutex> lock_right(parent_->right_->rwlock_box_, std::defer_lock);
             std::lock(lock_left, lock_right);
