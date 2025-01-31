@@ -915,9 +915,9 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_interior_poi
             point.g = std::get<1>(color);
             point.b = std::get<2>(color);
         }
-        else if (settings.color_mode == ColorMode::CONTENTION)
+        else if (settings.color_mode == ColorMode::MAX_DISTANCE_TRAVELLED)
         {
-            double distance = surface_to_contention_count[interior_point->get_surface()] / settings.contention_denominator;
+            double distance = interior_point->get_surface()->get_max_distance_travelled() / 20.f;
             std::tuple<int, int, int> color = valueToJet(distance);
             point.r = std::get<0>(color);
             point.g = std::get<1>(color);
@@ -1065,9 +1065,9 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_vertex_point
             point.g = std::get<1>(color);
             point.b = std::get<2>(color);
         }
-        else if (setting.color_mode == ColorMode::CONTENTION)
+        else if (setting.color_mode == ColorMode::MAX_DISTANCE_TRAVELLED)
         {
-            double distance = surface_to_contention_count[vertex->get_surface()] / setting.contention_denominator;
+            double distance = vertex->get_surface()->get_max_distance_travelled() / 20.f;
             std::tuple<int, int, int> color = valueToJet(distance);
             point.r = std::get<0>(color);
             point.g = std::get<1>(color);

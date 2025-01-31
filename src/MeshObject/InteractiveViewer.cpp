@@ -267,11 +267,11 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
     // kp number 5
     if (event.getKeySym() == "KP_Begin" && event.keyDown())
     {
-        settings_.color_mode = ColorMode::CONTENTION;
+        settings_.color_mode = ColorMode::MAX_DISTANCE_TRAVELLED;
         update_display();
 
         // log
-        std::cout << "color_mode: contention" << std::endl;
+        std::cout << "color_mode: max distance travelled" << std::endl;
     }
     // kp number 6
     if (event.getKeySym() == "KP_Right" && event.keyDown())
