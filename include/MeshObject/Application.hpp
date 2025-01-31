@@ -63,6 +63,7 @@ private:
     std::shared_ptr<Storage> storage_;
         
     // state
+    bool first_cloud_;
     int ith_cloud;
     std::size_t ith_point;
     std::size_t ith_size;

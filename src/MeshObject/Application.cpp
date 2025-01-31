@@ -115,6 +115,13 @@ void Application<PointT>::load_point_cloud()
     // transform cloud to global
     pointcloud = transform_cloud_to_global<PointT>(pointcloud_local, pose);
 
+    // update starting point if first cloud
+    if (first_cloud_)
+    {
+        origin = pose.translation();
+        first_cloud_ = false;
+    }
+
     // update origin and distance traveled
     Eigen::Vector3d previous_origin = origin;
     origin = pose.translation();
@@ -792,6 +799,7 @@ void Application<PointT>::restart()
     data_loader.load_dataset(settings_.data_loader_settings);
 
     // reset state
+    first_cloud_ = true;
     ith_cloud = settings_.data_loader_settings.start_cloud;
     ith_point = 0;
     ith_size = 0;
