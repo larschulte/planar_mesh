@@ -183,9 +183,12 @@ void Vertex::delete_()
     {
         // update delete count
         num_deletes_++;
-
-        // only create penetrated point / generic point if sibling is empty
-        if (can_create_generic_point_)
+ 
+        if (do_not_add_back_due_to_not_connected_ || do_not_add_back_due_to_seed_surface_)
+        {
+            // do nothing
+        }
+        else
         {
             storage_->add_to_queue(shared_from_this());
         }
@@ -1230,9 +1233,14 @@ void Vertex::print_info()
     std::cout << "Expired: " << is_expired_ << std::endl;
 }
 
-void Vertex::can_create_generic_point(bool state)
+void Vertex::set_do_not_add_back_due_to_not_connected(bool do_not_add_back_due_to_not_connected)
 {
-    can_create_generic_point_ = state;
+    do_not_add_back_due_to_not_connected_ = do_not_add_back_due_to_not_connected;
+}
+
+void Vertex::set_do_not_add_back_due_to_seed_surface(bool do_not_add_back_due_to_seed_surface)
+{
+    do_not_add_back_due_to_seed_surface_ = do_not_add_back_due_to_seed_surface;
 }
 
 const Eigen::Vector3d& Vertex::get_min() const

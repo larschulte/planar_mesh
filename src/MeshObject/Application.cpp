@@ -495,7 +495,7 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
             if (!connected)
             {
                 // delete this and retry
-                new_vertex->can_create_generic_point(false);
+                new_vertex->set_do_not_add_back_due_to_not_connected(true);
                 storage_->delete_vertex(new_vertex);
                 continue;
             }
@@ -537,7 +537,7 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
             if (!connected)
             {
                 // delete this and retry
-                new_vertex->can_create_generic_point(false);
+                new_vertex->set_do_not_add_back_due_to_not_connected(true);
                 storage_->delete_vertex(new_vertex);
                 continue;
             }

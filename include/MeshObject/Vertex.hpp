@@ -126,7 +126,8 @@ public:
 
     void print_info();
 
-    void can_create_generic_point(bool can_create);
+    void set_do_not_add_back_due_to_not_connected(bool do_not_add_back_due_to_not_connected);
+    void set_do_not_add_back_due_to_seed_surface(bool do_not_add_back_due_to_seed_surface);
 
 public: // for reverse radius search
     const Eigen::Vector3d& get_min() const;
@@ -149,7 +150,8 @@ private:
     bool is_expired_ = true;
     bool is_singular_;
     bool can_self_destruct_ = true;
-    bool can_create_generic_point_ = true;
+    bool do_not_add_back_due_to_not_connected_ = false;
+    bool do_not_add_back_due_to_seed_surface_ = false;
     double current_surface_uncertainty_;
 
     std::size_t num_deletes_;

@@ -60,7 +60,7 @@ void InteriorPoint::delete_()
 
     // skip if already deleted
     if (is_expired_) return;
-    
+
     // set deletion flag
     deleting_ = true;
 
@@ -88,6 +88,9 @@ void InteriorPoint::delete_()
     {
         // disconnect from surface
         surface_->disconnect(shared_from_this());
+
+        // clear
+        surface_ = nullptr;
     }
 
     // faces (disconnect)
@@ -101,7 +104,16 @@ void InteriorPoint::delete_()
     
     // create generic point
     {
-        storage_->add_to_queue(shared_from_this());
+        num_deletes_++;
+
+        if (do_not_add_back_due_to_seed_surface_)
+        {
+            // do nothing
+        }
+        else
+        {
+            storage_->add_to_queue(shared_from_this());
+        }
     }
 
     // log
@@ -226,6 +238,11 @@ void InteriorPoint::delete_interior_point_distance_subscriber(const std::shared_
 void InteriorPoint::set_reverse_radius_search_radius(double radius)
 {
     radius_ = radius;
+}
+
+void InteriorPoint::set_do_not_add_back_due_to_seed_surface(bool do_not_add_back_due_to_seed_surface)
+{
+    do_not_add_back_due_to_seed_surface_ = do_not_add_back_due_to_seed_surface;
 }
 
 bool operator<(const std::shared_ptr<InteriorPoint>& lhs, const std::shared_ptr<InteriorPoint>& rhs)

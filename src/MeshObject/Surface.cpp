@@ -61,7 +61,11 @@ void Surface::delete_()
         std::shared_lock<std::shared_mutex> lock_vertices(rwlock_vertices_);
 
         // delete vertex
-        for (const auto& vertex : vertices_) storage_->add_vertex_to_be_deleted(vertex);
+        for (const auto& vertex : vertices_) 
+        {
+            vertex->set_do_not_add_back_due_to_seed_surface(true);
+            storage_->add_vertex_to_be_deleted(vertex);
+        }
 
         // clear
         vertices_.clear();
@@ -97,7 +101,11 @@ void Surface::delete_()
         std::shared_lock<std::shared_mutex> lock_interior_points(rwlock_interior_points_);
 
         // delete interior point
-        for (const auto& interior_point : interior_points_) storage_->add_interior_point_to_be_deleted(interior_point);
+        for (const auto& interior_point : interior_points_) 
+        {
+            interior_point->set_do_not_add_back_due_to_seed_surface(true);
+            storage_->add_interior_point_to_be_deleted(interior_point);
+        }
 
         // clear
         interior_points_.clear();

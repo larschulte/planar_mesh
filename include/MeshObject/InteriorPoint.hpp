@@ -52,6 +52,8 @@ public:
 
     void set_reverse_radius_search_radius(double radius);
 
+    void set_do_not_add_back_due_to_seed_surface(bool do_not_add_back_due_to_seed_surface);
+
 private:
     static Settings settings_;
 
@@ -61,6 +63,7 @@ private:
     std::size_t num_deletes_;
 
     bool can_self_destruct_ = true;
+    bool do_not_add_back_due_to_seed_surface_ = false;
 
     int id_;
     std::shared_ptr<Storage> storage_;
