@@ -402,6 +402,11 @@ double Surface::get_average_distance_travelled() const
     return sum_of_average_distance_travelled_ / get_total_point_size();
 }
 
+double Surface::get_max_distance_travelled() const
+{
+    return max_distance_travelled_;
+}
+
 const std::tuple<int, int, int>& Surface::get_color() const
 {
     return color_;
@@ -1056,6 +1061,7 @@ void Surface::add_point_to_surface_fitting(const Eigen::Vector3d& position, cons
     normal_ = new_normal;
 
     sum_of_average_distance_travelled_ += distance_travelled;
+    max_distance_travelled_ = std::max(max_distance_travelled_, distance_travelled);
     total_point_size_ += 1;
 
     covariance_mean_ = covariance_ / total_point_size_;
