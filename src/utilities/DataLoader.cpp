@@ -196,7 +196,7 @@ bool parse_kitti_file(const std::string& pose_file, const std::string& pcd_file,
     return false;
 }
 
-Eigen::Affine3d find_pose(const std::string& pcd_file, const std::string& pose_file) 
+bool find_pose(const std::string& pcd_file, const std::string& pose_file, Eigen::Affine3d& pose_eigen) 
 {    
     // determine parser from pose file
     std::string pose_file_name = pose_file.substr(pose_file.find_last_of("/\\") + 1);
@@ -221,15 +221,11 @@ Eigen::Affine3d find_pose(const std::string& pcd_file, const std::string& pose_f
     else 
     {
         std::cerr << "Unsupported file format: " << extension << std::endl;
-        return Eigen::Isometry3d::Identity();
+        return false;
     }
 
     // from pose file parse desired pose
-    Eigen::Affine3d pose_eigen = Eigen::Isometry3d::Identity();
-    parser(pose_file, pcd_file, pose_eigen);
-
-    // return 
-    return pose_eigen;
+    return parser(pose_file, pcd_file, pose_eigen);
 }
 
 std::map<std::string, Eigen::Affine3d> create_file_to_pose_map(std::vector<std::string> pcd_file_list, std::string pose_file_path)
@@ -240,8 +236,13 @@ std::map<std::string, Eigen::Affine3d> create_file_to_pose_map(std::vector<std::
     // create
     for (std::string pcd_file : pcd_file_list)
     {
-        Eigen::Affine3d pose = find_pose(pcd_file, pose_file_path);
-        file_to_pose_map[pcd_file] = pose;
+        Eigen::Affine3d pose_eigen = Eigen::Isometry3d::Identity();
+        const bool found = find_pose(pcd_file, pose_file_path, pose_eigen);
+
+        // skip if pose not found
+        if (!found) continue;
+
+        file_to_pose_map[pcd_file] = pose_eigen;
     }
 
     // return 
@@ -275,6 +276,19 @@ void DataLoader<PointT>::load_dataset(DataLoader_Settings settings)
     // load dataset
     pcd_file_list_ = read_under_folder(settings.pcd_file_folder);
     file_to_pose_map_ = create_file_to_pose_map(pcd_file_list_, settings.pose_file_path);
+
+    // remove pcd file from list if not found in file_to_pose_map
+    for (auto it = pcd_file_list_.begin(); it != pcd_file_list_.end();)
+    {
+        if (file_to_pose_map_.find(*it) == file_to_pose_map_.end())
+        {
+            it = pcd_file_list_.erase(it);
+        }
+        else
+        {
+            ++it;
+        }
+    }
 }
 
 template <typename PointT>
