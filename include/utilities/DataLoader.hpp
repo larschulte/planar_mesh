@@ -21,7 +21,6 @@ public:
     DataLoader();
 
     void load_dataset(DataLoader_Settings settings);
-    DataLoader(std::string pcd_file_folder, std::string pose_file_path);
 
     typename pcl::PointCloud<PointT>::Ptr get_cloud(int i);
     Eigen::Affine3d get_pose(int i);

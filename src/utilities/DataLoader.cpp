@@ -278,13 +278,6 @@ void DataLoader<PointT>::load_dataset(DataLoader_Settings settings)
 }
 
 template <typename PointT>
-DataLoader<PointT>::DataLoader(std::string pcd_file_folder, std::string pose_file_path)
-{
-    pcd_file_list_ = read_under_folder(pcd_file_folder);
-    file_to_pose_map_ = create_file_to_pose_map(pcd_file_list_, pose_file_path);
-}
-
-template <typename PointT>
 typename pcl::PointCloud<PointT>::Ptr DataLoader<PointT>::remove_double_return(typename pcl::PointCloud<PointT>::Ptr input_pointcloud)
 {
     // initialize mapping grid
