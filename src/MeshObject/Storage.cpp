@@ -664,45 +664,19 @@ void Storage::cleanup_surfaces()
             delete_surface(surface);
             continue;
         }
-
-        // delete if surface have no boudary point
-        std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertices = surface->get_vertices();
-        bool has_boundary = false;
-        for (const std::shared_ptr<Vertex>& vertex : vertices)
-        {
-            if (vertex->is_boundary())
-            {
-                has_boundary = true;
-                break;
-            }
-        }
-        if (!has_boundary) 
-        {
-            delete_surface(surface);
-            continue;
-        }
-
-        // delete if number of face is less than 3
-        if (surface->get_faces().size() < 3) 
-        {
-            delete_surface(surface);
-            continue;
-        }
-
-
-        // what makes a surface bad?
-        
     }
 
-    // after cleaning up, try closing the holes in each surface
-    for (const std::shared_ptr<Surface>& surface : surfaces_copy)
-    {
-        // skip if expired
-        if (surface->is_expired()) continue;
+    update_vertices_that_have_added_publishers();
+    delete_to_be_deleted_repeatedly();
+    update_vertices_that_have_changed_box();
+    add_or_remove_vertices_from_rrs_tree();
+    add_or_remove_faces_from_bvh_tree();
+    add_or_remove_edges_from_edgeBVH_tree();
 
-        // try closing holes
-        surface->try_close_holes_repeatedly();
-    }
+    // print size of rrs, vertices, and boundary vertices
+    std::cout << "rrs size: " << get_rrs_size() << " | b-vertices size: " << get_boundary_vertices_size() << " | vertices size: " << get_vertices_size() << " | total point size: " << get_vertices_size() + get_interior_points_size() << std::endl;
+    // print size of bvh, faces
+    std::cout << "bvh size: " << get_bvh_size() << " | faces size: " << get_faces_size() << std::endl;
 }
 
 void Storage::remove_non_manifold_edges()
