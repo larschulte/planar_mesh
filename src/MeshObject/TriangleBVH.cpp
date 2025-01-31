@@ -307,6 +307,23 @@ std::shared_ptr<Node> TriangleBVH::find_best_node(const std::shared_ptr<Node>& n
         double inherited_cost = current.second;
 
         // skip if inherited cost is already greater than best cost
+        if (inherited_cost > best_cost) continue;
+
+        // cost to add to the node directly if the node is leaf and does not have face
+        if (current_node->isLeaf_ && current_node->face_ == nullptr)
+        {
+            // total cost
+            double cost = inherited_cost;
+
+            // update best cost and best node
+            if (cost < best_cost)
+            {
+                best_cost = cost;
+                best_node = current_node;
+            }
+        }
+
+        // skip if inherited cost is already greater than best cost
         if (inherited_cost + lower_bound_cost > best_cost) continue;
 
         // cost to add a branch that contains current node and leaf node
