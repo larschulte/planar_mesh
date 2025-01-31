@@ -92,6 +92,9 @@ void Vertex::delete_()
     // write lock
     std::unique_lock<std::shared_mutex> lock(rwlock_lifecycle_);
 
+    // skip if already deleted
+    if (is_expired_) return;
+
     // set deletion flag
     deleting_ = true;
     
