@@ -764,7 +764,7 @@ void Application<PointT>::loop()
     std::cout << "==================================================================== Processed " << accumulated_points << " points in " << duration.count() << " s, " << "average duration: " << total_duration / total_loops << std::endl;
 
     // print size of rrs, vertices, and boundary vertices
-    std::cout << "rrs size: " << storage_->get_rrs_size() << " | b-vertices size: " << storage_->get_boundary_vertices_size() << " | vertices size: " << storage_->get_vertices_size() << " | total point size: " << storage_->get_vertices_size() + storage_->get_interior_points_size() << std::endl;
+    std::cout << "rrs size: " << storage_->get_rrs_size() << " | vertices size: " << storage_->get_vertices_size() << " | total point size: " << storage_->get_vertices_size() + storage_->get_interior_points_size() << std::endl;
     // print size of bvh, faces
     std::cout << "bvh size: " << storage_->get_bvh_size() << " | faces size: " << storage_->get_faces_size() << std::endl;
 
