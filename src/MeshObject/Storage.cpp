@@ -273,8 +273,8 @@ void Storage::delete_generic_point(const std::shared_ptr<GenericPoint> genertic_
 
 void Storage::delete_interior_point(const std::shared_ptr<InteriorPoint> interior_point) 
 {
-    // check input
-    if (interior_point->is_expired()) throw std::runtime_error("Attempts to delete expired interior point.");
+    // member delete
+    interior_point->delete_();
 
     {
         // write lock
@@ -282,10 +282,7 @@ void Storage::delete_interior_point(const std::shared_ptr<InteriorPoint> interio
 
         // storage delete
         interior_points_.erase(interior_point);
-    }
-    
-    // member delete
-    interior_point->delete_();
+    }    
 }
 
 void Storage::add_to_main_queue(const Eigen::Vector3d& position, const Eigen::Vector3d& origin, double distance_travelled)
