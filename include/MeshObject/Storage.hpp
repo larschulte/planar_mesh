@@ -131,6 +131,7 @@ public: // to user
     bool is_expired() const;
 
     unsigned int get_rrs_size() const;
+    unsigned int get_rrs_node_size() const;
     unsigned int get_bvh_size() const;
 
     void print_rrs() const;

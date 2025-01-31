@@ -1243,6 +1243,11 @@ unsigned int Storage::get_rrs_size() const
     return rrs_tree_.get_size();
 }
 
+unsigned int Storage::get_rrs_node_size() const
+{
+    return rrs_tree_.get_node_size();
+}
+
 unsigned int Storage::get_bvh_size() const
 {
     return triangle_bvh_.get_size();

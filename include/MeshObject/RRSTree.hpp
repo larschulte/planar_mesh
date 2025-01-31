@@ -79,6 +79,7 @@ class RRSNode : public std::enable_shared_from_this<RRSNode>
     RRSReturnType node_reverse_radius_search(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Vertex>>& search_results);
     void node_print(int level) const;
     void node_flattern(std::vector<std::shared_ptr<Vertex>>& flatten_list);
+    void node_count(unsigned int& count) const;
 };
 
 
@@ -100,6 +101,7 @@ public:
     std::vector<std::shared_ptr<Vertex>> compute_vertices_list();
     void print_size();
     unsigned int get_size() const;
+    unsigned int get_node_size() const;
     
     void tree_add_vertex(const std::shared_ptr<Vertex>& boundary_vertex);
     void tree_delete_vertex(const std::shared_ptr<Vertex>& boundary_vertex);

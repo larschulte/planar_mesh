@@ -477,6 +477,17 @@ void RRSNode::node_flattern(std::vector<std::shared_ptr<Vertex>>& flatten_list)
     }
 }
 
+void RRSNode::node_count(unsigned int& count) const
+{
+    count++;
+
+    if (!isLeaf_)
+    {
+        left_->node_count(count);
+        right_->node_count(count);
+    }
+}
+
 std::vector<std::shared_ptr<Vertex>> RRSTree::compute_vertices_list()
 {
     std::vector<std::shared_ptr<Vertex>> flatten_list;
@@ -566,4 +577,12 @@ void RRSTree::print_size()
 unsigned int RRSTree::get_size() const
 {
     return tree_size;
+}
+
+unsigned int RRSTree::get_node_size() const
+{
+    unsigned int count = 0;
+    root->node_count(count);
+
+    return count;
 }
