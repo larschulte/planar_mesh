@@ -653,11 +653,24 @@ void Storage::clear_queues()
 void Storage::cleanup_surfaces()
 {
     // make copy of surfaces
-    std::vector<std::shared_ptr<Surface>> surfaces_copy(surfaces_.begin(), surfaces_.end());
+    std::vector<std::shared_ptr<Surface>> surfaces_copy;
+    {
+        // read lock
+        std::shared_lock<std::shared_mutex> lock(rwlock_surfaces_);
+
+        // copy
+        surfaces_copy = std::vector<std::shared_ptr<Surface>>(surfaces_.begin(), surfaces_.end());
+    }
 
     // for each surface
     for (const std::shared_ptr<Surface>& surface : surfaces_copy)
     {
+        // skip if surface is expired
+        if (surface->is_expired()) continue;
+
+        // skip if modulus is not equal to thread number
+        if (surface->get_id() % settings_.num_threads != omp_get_thread_num()) continue;
+
         // delete if surface is seed
         if (surface->is_seed()) 
         {

@@ -751,11 +751,11 @@ void Application<PointT>::loop()
                 process_point(generic_point);
             }
         }
+
+        // clean up surfaces
+        storage_->cleanup_surfaces(); // split by surface id modulus num_threads
     }
     num_iteration ++;
-
-    // postprocess surfaces
-    storage_->cleanup_surfaces();
 
     std::chrono::high_resolution_clock::time_point t_end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = t_end - t_init;

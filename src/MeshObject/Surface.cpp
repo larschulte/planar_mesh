@@ -1310,6 +1310,5 @@ bool operator!= (const std::shared_ptr<Surface>& lhs, const std::shared_ptr<Surf
     // check pointer validity
     if (!lhs && !rhs) return false; // false if both are nullptr
     if (!lhs || !rhs) return true; // true if either is nullptr
-    if (lhs->is_expired() || rhs->is_expired()) throw std::runtime_error("Comparing expired surfaces");
     return lhs->get_id() != rhs->get_id();
 }
