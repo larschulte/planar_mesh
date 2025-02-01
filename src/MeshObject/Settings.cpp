@@ -62,10 +62,10 @@ Settings::Settings()
     dataset_map["blenheim04"].remove_double_return_flag = true;
 
     dataset_map["christchurch03"] = DatasetParameters();
-    dataset_map["christchurch03"].pcd_file_folder = "/home/jiahao/datasets/spires_benchmark/christchurch03/undist-clouds/";
+    dataset_map["christchurch03"].pcd_file_folder = "/home/jiahao/datasets/spires_benchmark/christchurch03/undist-clouds-filtered/";
     dataset_map["christchurch03"].pose_file_path = "/home/jiahao/datasets/spires_benchmark/christchurch03/gt-tum.txt";
-    dataset_map["christchurch03"].remove_double_return_flag = true;
-    dataset_map["christchurch03"].filter_low_intensity_flag = true;
+    dataset_map["christchurch03"].remove_double_return_flag = false;
+    dataset_map["christchurch03"].filter_low_intensity_flag = false;
 
     dataset_map["kitti01"] = DatasetParameters();
     dataset_map["kitti01"].pcd_file_folder = "/home/jiahao/datasets/spires_benchmark/kitti_dataset/sequences/01/pcd/";
