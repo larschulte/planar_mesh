@@ -877,7 +877,7 @@ void Application<PointT>::loop()
 template <typename PointT>
 void Application<PointT>::process_the_rest()
 {
-    for (int i = ith_cloud; i < data_loader.size(); i++)
+    for (int i = ith_cloud; i < data_loader.size() - 1; i++)
     {
         loop();
     }
