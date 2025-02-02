@@ -152,10 +152,53 @@ void Application<PointT>::write_mesh()
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr vertex_pointcloud = compute_vertex_point_pointcloud(settings_);
     std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces = storage_->get_faces();
 
+    // log
+    std::cout << "filtering faces by edge length radius" << std::endl;
+
+    // filter face by edge length radius
+    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> filtered_faces;
+    unsigned int count = 0;
+    unsigned int total = faces.size();
+    for (const std::shared_ptr<Face>& face : faces)
+    {
+        // log
+        count++;
+        if (count % 10000 == 0) std::cout << "filtering faces by edge length radius " << count << " of " << total << std::endl;
+
+        // skip if expired
+        if (face->is_expired()) continue;
+
+        // get vertices
+        std::shared_ptr<Vertex> vertex0 = face->get_vertex(0);
+        std::shared_ptr<Vertex> vertex1 = face->get_vertex(1);
+        std::shared_ptr<Vertex> vertex2 = face->get_vertex(2);
+
+        // get projected position
+        Eigen::Vector3d position0 = vertex0->compute_projected_position();
+        Eigen::Vector3d position1 = vertex1->compute_projected_position();
+        Eigen::Vector3d position2 = vertex2->compute_projected_position();
+
+        // get projected edge length
+        double edge_length0 = (position0 - position1).norm();
+        double edge_length1 = (position1 - position2).norm();
+        double edge_length2 = (position2 - position0).norm();
+
+        // skip if edge length radius is too long
+        if (edge_length0 > vertex0->get_radius() || edge_length0 > vertex1->get_radius()) continue;
+        if (edge_length1 > vertex1->get_radius() || edge_length1 > vertex2->get_radius()) continue;
+        if (edge_length2 > vertex2->get_radius() || edge_length2 > vertex0->get_radius()) continue;
+
+        // store
+        filtered_faces.insert(face);
+    }
+
+    // log
+    std::cout << "creating triangle mesh" << std::endl;
+
     // create triangle mesh
     pcl::PolygonMesh triangle_mesh;
     pcl::toPCLPointCloud2(*vertex_pointcloud, triangle_mesh.cloud);
-    for (const std::shared_ptr<Face>& face : faces)
+    for (const std::shared_ptr<Face>& face : filtered_faces)
     {
         // skip if can't find all indices
         if (vertex_to_cloud_indices_map.find(face->get_vertex(0)) == vertex_to_cloud_indices_map.end()) continue;
@@ -174,6 +217,9 @@ void Application<PointT>::write_mesh()
     {
         boost::filesystem::create_directories(settings_.save_folder);
     }
+
+    // log
+    std::cout << "writing mesh" << std::endl;
 
     // save
     std::string write_path = settings_.save_folder + "mesh.ply";
