@@ -86,6 +86,8 @@ struct Settings
     DataLoader_Settings data_loader_settings;
 
     // application settings
+    bool headless_mode;
+    std::string save_folder;
     bool use_sim_data;
     int sim_object;
     double range_precision;

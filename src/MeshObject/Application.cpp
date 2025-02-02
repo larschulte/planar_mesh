@@ -27,6 +27,9 @@
 #include "point_type/VilensPointT.hpp"
 #include "point_type/BagPointT.hpp"
 
+#include <pcl/io/ply_io.h>
+#include <boost/filesystem.hpp>
+
 template class Application<VilensPointT>;
 template class Application<BagPointT>;
 
@@ -136,6 +139,46 @@ void Application<PointT>::load_point_cloud()
 
     // log
     if (settings_.log.load_point_cloud) std::cout << "loaded pointcloud " << ith_cloud << " with " << pointcloud->size() << " points" << std::endl;
+}
+
+template <typename PointT>
+void Application<PointT>::write_mesh()
+{
+    // update settings
+    settings_.point_mode = PointMode::PROJECTED;
+    settings_.color_mode = ColorMode::ID;
+
+    // get vertex and faces
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr vertex_pointcloud = compute_vertex_point_pointcloud(settings_);
+    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces = storage_->get_faces();
+
+    // create triangle mesh
+    pcl::PolygonMesh triangle_mesh;
+    pcl::toPCLPointCloud2(*vertex_pointcloud, triangle_mesh.cloud);
+    for (const std::shared_ptr<Face>& face : faces)
+    {
+        // skip if can't find all indices
+        if (vertex_to_cloud_indices_map.find(face->get_vertex(0)) == vertex_to_cloud_indices_map.end()) continue;
+        if (vertex_to_cloud_indices_map.find(face->get_vertex(1)) == vertex_to_cloud_indices_map.end()) continue;
+        if (vertex_to_cloud_indices_map.find(face->get_vertex(2)) == vertex_to_cloud_indices_map.end()) continue;
+
+        pcl::Vertices triangle;
+        triangle.vertices.push_back(vertex_to_cloud_indices_map.at(face->get_vertex(0)));
+        triangle.vertices.push_back(vertex_to_cloud_indices_map.at(face->get_vertex(1)));
+        triangle.vertices.push_back(vertex_to_cloud_indices_map.at(face->get_vertex(2)));
+        triangle_mesh.polygons.push_back(triangle);
+    }
+
+    // create folder if not exists
+    if (!boost::filesystem::exists(settings_.save_folder))
+    {
+        boost::filesystem::create_directories(settings_.save_folder);
+    }
+
+    // save
+    std::string write_path = settings_.save_folder + "mesh.ply";
+    pcl::io::savePLYFile(write_path, triangle_mesh);
+    std::cout << "write mesh to " << write_path << std::endl;
 }
 
 template <typename PointT>

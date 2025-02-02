@@ -57,6 +57,8 @@ public:
     // data
     void load_point_cloud();
 
+    void write_mesh();
+
 private:
     // objects
     DataLoader<PointT> data_loader;
