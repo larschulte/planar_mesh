@@ -87,6 +87,7 @@ struct Settings
 
     // application settings
     bool headless_mode;
+    int num_scans;
     std::string save_folder;
     bool use_sim_data;
     int sim_object;

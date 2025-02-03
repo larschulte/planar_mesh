@@ -92,7 +92,8 @@ Settings::Settings()
     std::string dataset = "christchurch03";
     
     headless_mode = true;
-    save_folder = "/home/jiahao/datasets/spires_benchmark/christchurch03/Benchmark_3.0/eyepatch/";
+    num_scans = 100;
+    save_folder = "/home/jiahao/datasets/spires_benchmark/christchurch03/Benchmark_4.0/eyepatch/";
 
     data_loader_settings.pcd_file_folder = dataset_map[dataset].pcd_file_folder;
     data_loader_settings.pose_file_path = dataset_map[dataset].pose_file_path;

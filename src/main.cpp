@@ -9,10 +9,21 @@ void headless_mode()
 {
     // application
     Application<VilensPointT> app;
+    Settings settings;
 
     // process
     app.load_point_cloud();
-    app.process_the_rest();
+    if (settings.num_scans == -1)
+    {
+        app.process_the_rest();
+    }
+    else
+    {
+        for (int i = 0; i < settings.num_scans; i++)
+        {
+            app.loop();
+        }
+    }    
     app.write_mesh();
 }
 
