@@ -5,10 +5,13 @@
 #include "point_type/BagPointT.hpp"
 #include "MeshObject/Settings.hpp"
 
+// using InputPointT = VilensPointT;
+using InputPointT = BagPointT;
+
 void headless_mode()
 {
     // application
-    Application<VilensPointT> app;
+    Application<InputPointT> app;
     Settings settings;
 
     // process
@@ -30,15 +33,12 @@ void headless_mode()
 void display_mode()
 {
     // application
-    Application<VilensPointT> app;
+    Application<InputPointT> app;
 
     // interactive viewer
-    InteractiveViewer<VilensPointT> iviewer(app);
+    InteractiveViewer<InputPointT> iviewer(app);
 }
 
-
-// using InputPointT = VilensPointT;
-using InputPointT = BagPointT;
 int main()
 {
     // Fixed seed
