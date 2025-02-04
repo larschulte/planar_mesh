@@ -225,6 +225,14 @@ void Application<PointT>::write_mesh()
     std::string write_path = settings_.save_folder + "mesh.ply";
     pcl::io::savePLYFile(write_path, triangle_mesh);
     std::cout << "write mesh to " << write_path << std::endl;
+
+    // save duration to file
+    std::string duration_file_path = settings_.save_folder + "duration.txt";
+    std::ofstream duration_file(duration_file_path);
+    for (double duration : duration_list)
+    {
+        duration_file << duration << std::endl;
+    }
 }
 
 template <typename PointT>
@@ -851,6 +859,9 @@ void Application<PointT>::loop()
     total_duration += duration.count();
     total_loops += 1;
     std::cout << "==================================================================== Processed " << accumulated_points << " points in " << duration.count() << " s, " << "average duration: " << total_duration / total_loops << std::endl;
+
+    // store duration into list
+    duration_list.push_back(duration.count());
 
     // print size of rrs, vertices, and boundary vertices
     std::cout << "rrs size: " << storage_->get_rrs_size() << " | vertices size: " << storage_->get_vertices_size() << " | total point size: " << storage_->get_vertices_size() + storage_->get_interior_points_size() << std::endl;

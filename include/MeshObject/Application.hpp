@@ -90,4 +90,6 @@ private:
     unsigned int total_loops;
 
     std::unordered_map<std::shared_ptr<Surface>, unsigned int, MeshObjectHash> surface_to_contention_count;
+
+    std::vector<double> duration_list;
 };
