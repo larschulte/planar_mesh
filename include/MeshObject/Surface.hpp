@@ -83,6 +83,8 @@ public:
     bool is_abnormal();
     bool is_seed() const;
 
+    double get_surface_area() const;
+
     bool can_merge(const std::shared_ptr<Surface>& surface) const;
 
     void connect(const std::shared_ptr<Vertex>& vertex);

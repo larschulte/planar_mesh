@@ -518,6 +518,11 @@ bool Surface::is_seed() const
     return is_seed_;
 }
 
+double Surface::get_surface_area() const
+{
+    return surface_area_;
+}
+
 bool Surface::can_merge(const std::shared_ptr<Surface>& surface) const
 {
     // should use the abnormal surface test        
