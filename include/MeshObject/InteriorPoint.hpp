@@ -42,6 +42,10 @@ public:
 
     double& get_projected_uncertainty();
 
+    // get surface coordinate
+    const Eigen::Vector2d& get_surface_coordinate(const std::shared_ptr<Surface>& surface);
+    const Eigen::Vector2d& get_surface_coordinate();
+
     std::size_t get_num_deletes() const;
 
     Eigen::Vector3d compute_projected_position();
@@ -78,6 +82,9 @@ private:
     double radius_;
 
     double projected_uncertainty_;
+
+    Eigen::Matrix3d eigenvectors_used_;
+    Eigen::Vector2d surface_coordinate_;
 
     FIFOCache<std::size_t, Eigen::Vector3d> buffer_projected_position_{3};
     FIFOCache<std::size_t, double> buffer_projected_distance_{3};

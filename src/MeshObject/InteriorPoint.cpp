@@ -191,6 +191,31 @@ double& InteriorPoint::get_projected_uncertainty()
     return projected_uncertainty_;
 }
 
+const Eigen::Vector2d& InteriorPoint::get_surface_coordinate(const std::shared_ptr<Surface>& surface)
+{
+    const Eigen::Matrix3d& eigenvectors = surface->get_eigenvectors();
+    if (eigenvectors_used_ == eigenvectors)
+    {
+        // use stored coordinate if eigenvectors are the same
+        return surface_coordinate_;
+    }
+    else
+    {
+        // compute new coordinate
+        Eigen::Matrix<double, 3, 2> projection_matrix = eigenvectors.rightCols<2>();
+        Eigen::Vector3d projected_position = surface->compute_point_projective_position(get_origin(), get_original_position());
+        surface_coordinate_ = (projection_matrix.transpose() * projected_position).head<2>();
+        eigenvectors_used_ = eigenvectors;
+        return surface_coordinate_;
+    }
+}
+
+const Eigen::Vector2d& InteriorPoint::get_surface_coordinate()
+{
+    return get_surface_coordinate(get_surface());
+}
+
+
 std::size_t InteriorPoint::get_num_deletes() const
 {
     return num_deletes_;
