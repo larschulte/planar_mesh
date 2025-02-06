@@ -104,6 +104,8 @@ Settings::Settings()
     radius_value = dataset_map[dataset].radius_value;
     extra_radius = dataset_map[dataset].extra_radius;
 
+    high_incident_angle_threshold_std = 0.02;
+
     use_sim_data = false;
     sim_object = 0;
     data_loader_settings.start_cloud = 0;

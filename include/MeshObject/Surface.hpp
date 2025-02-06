@@ -26,7 +26,8 @@ enum class RelativePosition
     IN_FRONT,
     WITHIN,
     BEHIND,
-    NO_RELATIVE_POSITION
+    NO_RELATIVE_POSITION,
+    HIGH_INCIDENT_ANGLE
 };
 
 class Surface : public std::enable_shared_from_this<Surface> 

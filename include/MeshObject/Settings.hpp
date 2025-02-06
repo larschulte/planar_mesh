@@ -108,6 +108,8 @@ struct Settings
 
     double confidence_interval_multiplier;
 
+    double high_incident_angle_threshold_std;
+
     double abnormal_size; // number of std
     double envelope_size; // number of std
 

@@ -240,6 +240,7 @@ RelativePosition Surface::check_relative_position(double distance_travelled, con
     // compute combined std
     double combined_std = std::sqrt(variance_range_origin + variance_range_mean + variance_range_direction + variance_range_normal + settings_.range_precision * settings_.range_precision);
     double partial_combined_std = std::sqrt(variance_range_origin + variance_range_direction + settings_.range_precision * settings_.range_precision);
+    double plane_and_observer_std = std::sqrt(variance_range_origin + variance_range_mean + variance_range_direction + variance_range_normal);
 
     // compute point to plane projective distance
     double projective_distance = compute_point_projective_distance(origin, point);
@@ -258,6 +259,7 @@ RelativePosition Surface::check_relative_position(double distance_travelled, con
 
     // return
     if (points_in_front_of_surface) return RelativePosition::IN_FRONT;
+    else if (plane_and_observer_std > settings_.high_incident_angle_threshold_std) return RelativePosition::HIGH_INCIDENT_ANGLE;
     else if (points_behind_surface) return RelativePosition::BEHIND;
     else if (points_within_surface)
     {
