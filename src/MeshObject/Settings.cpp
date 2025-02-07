@@ -106,6 +106,8 @@ Settings::Settings()
 
     high_incident_angle_threshold_std = 0.02;
 
+    simplify_surfaces_radius_lower_ratio = 1.0;
+
     use_sim_data = false;
     sim_object = 0;
     data_loader_settings.start_cloud = 0;

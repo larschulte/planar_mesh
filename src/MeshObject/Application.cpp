@@ -10,6 +10,7 @@
 #include "MeshObject/Storage.hpp"
 #include "utilities/utilities.hpp"
 #include "utilities/covariance_math.hpp"
+#include "utilities/simplified_mesh.hpp"
 
 #include <iostream>
 #include <random>
@@ -212,6 +213,14 @@ void Application<PointT>::write_mesh()
         triangle_mesh.polygons.push_back(triangle);
     }
 
+    // create simplified mesh
+    pcl::PolygonMesh simplified_mesh;
+    for (const std::shared_ptr<Surface>& surface : storage_->get_surfaces())
+    {
+        pcl::PolygonMesh surface_mesh = create_simplified_mesh(surface);
+        merge_polygon_mesh(simplified_mesh, surface_mesh);
+    }
+
     // create folder if not exists
     if (!boost::filesystem::exists(settings_.save_folder))
     {
@@ -225,6 +234,11 @@ void Application<PointT>::write_mesh()
     std::string write_path = settings_.save_folder + "mesh.ply";
     pcl::io::savePLYFile(write_path, triangle_mesh);
     std::cout << "write mesh to " << write_path << std::endl;
+
+    // save simplified mesh
+    std::string simplified_mesh_path = settings_.save_folder + "simplified_mesh.ply";
+    pcl::io::savePLYFile(simplified_mesh_path, simplified_mesh);
+    std::cout << "write simplified mesh to " << simplified_mesh_path << std::endl;
 
     // save duration to file
     std::string duration_file_path = settings_.save_folder + "duration.txt";

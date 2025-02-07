@@ -13,6 +13,7 @@ public:
 private:
     // functions
     void update_display(bool export_ply = false);
+    void save_simplified_surfaces();
     void keyboard_callback(const pcl::visualization::KeyboardEvent &event, void*);
 
     // objects

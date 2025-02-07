@@ -26,6 +26,9 @@ include_directories(${PCL_INCLUDE_DIRS})
 link_directories(${PCL_LIBRARY_DIRS})
 add_definitions(${PCL_DEFINITIONS})
 
+# cgal
+find_package(CGAL REQUIRED COMPONENTS Core)
+
 # ceres solver
 find_package(Ceres REQUIRED)
 find_package(GTSAM REQUIRED)
@@ -55,11 +58,12 @@ set(MeshObject_SOURCE
   src/MeshObject/Simulation.cpp
   src/utilities/gtsam_plane.cpp
   src/utilities/omp_utilities.cpp
+  src/utilities/simplified_mesh.cpp
 )
 
 # add executable
 add_executable(main src/main.cpp ${MeshObject_SOURCE})
-target_link_libraries (main ${PCL_LIBRARIES} gtsam)
+target_link_libraries (main ${PCL_LIBRARIES} gtsam CGAL::CGAL CGAL::CGAL_Core)
 target_include_directories(main
   PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>

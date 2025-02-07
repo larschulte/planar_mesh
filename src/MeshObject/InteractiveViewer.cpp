@@ -10,6 +10,8 @@
 #include "point_type/VilensPointT.hpp"
 #include "point_type/BagPointT.hpp"
 
+#include "utilities/simplified_mesh.hpp"
+
 template class InteractiveViewer<VilensPointT>;
 template class InteractiveViewer<BagPointT>;
 
@@ -34,6 +36,42 @@ InteractiveViewer<PointT>::InteractiveViewer(Application<PointT>& app)
     viewer_->addCoordinateSystem(1);
     viewer_->registerKeyboardCallback(&InteractiveViewer::keyboard_callback, *this, nullptr);
     viewer_->spin();
+}
+
+template <typename PointT>
+void InteractiveViewer<PointT>::save_simplified_surfaces()
+{
+    // all surfaces
+    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces = storage_->get_surfaces();
+
+    // initialize all mesh
+    pcl::PolygonMesh simplified_mesh;
+
+    // add meshes
+    unsigned int index = 0;
+    for (const std::shared_ptr<Surface>& surface : surfaces)
+    {
+        // log
+        std::cout << "simplified surface " << index++ << " / " << surfaces.size() << std::endl;
+
+        // create mesh
+        pcl::PolygonMesh triangle_mesh = create_simplified_mesh(surface);
+
+        // merge
+        merge_polygon_mesh(simplified_mesh, triangle_mesh);
+    }
+
+    // clear display
+    viewer_->removeShape("point_cloud");
+    viewer_->removeShape("interior_points");
+    viewer_->removeShape("boundary_edges");
+    viewer_->removeShape("triangle_mesh");
+    viewer_->removeShape("simplified_mesh");
+    viewer_->addPolygonMesh(simplified_mesh, "simplified_mesh");
+
+    // save to ply
+    pcl::io::savePLYFile("simplified.ply", simplified_mesh);
+    std::cout << "exported simplified.ply" << std::endl;
 }
 
 template <typename PointT>
@@ -452,11 +490,10 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
     // }
     if (event.getKeySym() == "b" && event.keyDown())
     {
-        storage_->cleanup_surfaces();
-        update_display();
+        save_simplified_surfaces();
 
         // log
-        std::cout << "close holes" << std::endl;
+        std::cout << "simplified surface" << std::endl;
     }
     if (event.getKeySym() == "n" && event.keyDown())
     {
