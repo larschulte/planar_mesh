@@ -232,12 +232,14 @@ void Application<PointT>::write_mesh()
 
     // save
     std::string write_path = settings_.save_folder + "mesh.ply";
-    pcl::io::savePLYFile(write_path, triangle_mesh);
+    pcl::io::savePLYFileBinary(write_path, triangle_mesh);
     std::cout << "write mesh to " << write_path << std::endl;
 
     // save simplified mesh
-    std::string simplified_mesh_path = settings_.save_folder + "simplified_mesh.ply";
-    pcl::io::savePLYFile(simplified_mesh_path, simplified_mesh);
+    std::string simplified_folder = settings_.save_folder;
+    simplified_folder.insert(simplified_folder.size() - 1, "_simplified_mesh");
+    std::string simplified_mesh_path = simplified_folder + "simplified_mesh.ply";
+    pcl::io::savePLYFileBinary(simplified_mesh_path, simplified_mesh);
     std::cout << "write simplified mesh to " << simplified_mesh_path << std::endl;
 
     // save duration to file
@@ -246,6 +248,14 @@ void Application<PointT>::write_mesh()
     for (double duration : duration_list)
     {
         duration_file << duration << std::endl;
+    }
+
+    // save duration to file for simplified mesh
+    std::string simplified_duration_file_path = simplified_folder + "duration.txt";
+    std::ofstream simplified_duration_file(simplified_duration_file_path);
+    for (double duration : duration_list)
+    {
+        simplified_duration_file << duration << std::endl;
     }
 }
 
