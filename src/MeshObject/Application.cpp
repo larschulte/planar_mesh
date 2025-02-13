@@ -213,43 +213,18 @@ void Application<PointT>::write_mesh()
         triangle_mesh.polygons.push_back(triangle);
     }
 
-    // create simplified mesh
-    pcl::PolygonMesh simplified_mesh;
-    for (const std::shared_ptr<Surface>& surface : storage_->get_surfaces())
-    {
-        pcl::PolygonMesh surface_mesh = create_simplified_mesh(surface);
-        merge_polygon_mesh(simplified_mesh, surface_mesh);
-    }
-
-    // create folder if not exists
+    // create folder for triangle mesh if not exists
     if (!boost::filesystem::exists(settings_.save_folder))
     {
         boost::filesystem::create_directories(settings_.save_folder);
     }
 
-    // log
-    std::cout << "writing mesh" << std::endl;
-
-    // save
+    // save triangle mesh
     std::string write_path = settings_.save_folder + "mesh.ply";
     pcl::io::savePLYFileBinary(write_path, triangle_mesh);
     std::cout << "write mesh to " << write_path << std::endl;
 
-    // save simplified mesh
-    std::string simplified_folder = settings_.save_folder;
-    simplified_folder.insert(simplified_folder.size() - 1, "_simplified_mesh");
-
-    // create folder if not exists
-    if (!boost::filesystem::exists(simplified_folder))
-    {
-        boost::filesystem::create_directories(simplified_folder);
-    }
-
-    std::string simplified_mesh_path = simplified_folder + "simplified_mesh.ply";
-    pcl::io::savePLYFileBinary(simplified_mesh_path, simplified_mesh);
-    std::cout << "write simplified mesh to " << simplified_mesh_path << std::endl;
-
-    // save duration to file
+    // save duration to file for triangle mesh
     std::string duration_file_path = settings_.save_folder + "duration.txt";
     std::ofstream duration_file(duration_file_path);
     for (double duration : duration_list)
@@ -257,6 +232,27 @@ void Application<PointT>::write_mesh()
         duration_file << duration << std::endl;
     }
 
+    // create simplified mesh
+    pcl::PolygonMesh simplified_mesh;
+    for (const std::shared_ptr<Surface>& surface : storage_->get_surfaces())
+    {
+        pcl::PolygonMesh surface_mesh = create_simplified_mesh(surface);
+        merge_polygon_mesh(simplified_mesh, surface_mesh);
+    }
+    
+    // create folder for simplified mesh if not exists
+    std::string simplified_folder = settings_.save_folder;
+    simplified_folder.insert(simplified_folder.size() - 1, "_simplified_mesh");
+    if (!boost::filesystem::exists(simplified_folder))
+    {
+        boost::filesystem::create_directories(simplified_folder);
+    }
+
+    // save simplified mesh
+    std::string simplified_mesh_path = simplified_folder + "simplified_mesh.ply";
+    pcl::io::savePLYFileBinary(simplified_mesh_path, simplified_mesh);
+    std::cout << "write simplified mesh to " << simplified_mesh_path << std::endl;
+    
     // save duration to file for simplified mesh
     std::string simplified_duration_file_path = simplified_folder + "duration.txt";
     std::ofstream simplified_duration_file(simplified_duration_file_path);
