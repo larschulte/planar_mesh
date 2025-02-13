@@ -238,6 +238,13 @@ void Application<PointT>::write_mesh()
     // save simplified mesh
     std::string simplified_folder = settings_.save_folder;
     simplified_folder.insert(simplified_folder.size() - 1, "_simplified_mesh");
+
+    // create folder if not exists
+    if (!boost::filesystem::exists(simplified_folder))
+    {
+        boost::filesystem::create_directories(simplified_folder);
+    }
+
     std::string simplified_mesh_path = simplified_folder + "simplified_mesh.ply";
     pcl::io::savePLYFileBinary(simplified_mesh_path, simplified_mesh);
     std::cout << "write simplified mesh to " << simplified_mesh_path << std::endl;
