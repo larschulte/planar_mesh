@@ -61,39 +61,39 @@ Settings::Settings()
     dataset_map["blenheim04"].pose_file_path = "/home/jiahao/datasets/spires_benchmark/blenheim04/slam-poses.csv";
     dataset_map["blenheim04"].remove_double_return_flag = true;
 
-    dataset_map["christchurch03"] = DatasetParameters();
-    dataset_map["christchurch03"].pcd_file_folder = "/home/jiahao/datasets/spires_benchmark/christchurch03/undist-clouds-filtered/";
-    dataset_map["christchurch03"].pose_file_path = "/home/jiahao/datasets/spires_benchmark/christchurch03/gt-tum.txt";
-    dataset_map["christchurch03"].remove_double_return_flag = false;
-    dataset_map["christchurch03"].filter_low_intensity_flag = false;
-
     dataset_map["kitti01"] = DatasetParameters();
     dataset_map["kitti01"].pcd_file_folder = "/home/jiahao/datasets/spires_benchmark/kitti_dataset/sequences/01/pcd/";
     dataset_map["kitti01"].pose_file_path = "/home/jiahao/datasets/spires_benchmark/kitti_dataset/poses/01.txt";
     dataset_map["kitti01"].range_precision = 0.02; // Velodyne HDL-64E Laserscanner
 
-    dataset_map["bodleian02"] = DatasetParameters();
-    dataset_map["bodleian02"].pcd_file_folder = "/home/jiahao/datasets/spires_benchmark/bodleian02/undist-clouds/";
-    dataset_map["bodleian02"].pose_file_path = "/home/jiahao/datasets/spires_benchmark/bodleian02/slam-poses.csv";
-    // dataset_map["bodleian02"].pose_file_path = "/home/jiahao/datasets/spires_benchmark/bodleian02/gt-tum.txt";
-    dataset_map["bodleian02"].remove_double_return_flag = false;
-    dataset_map["bodleian02"].range_precision = 0.01;
-    dataset_map["bodleian02"].radius_value = 1;
-    dataset_map["bodleian02"].extra_radius = 0.1;
+    // ======= benchmark final =======
+
+    dataset_map["christchurch03"] = DatasetParameters();
+    dataset_map["christchurch03"].pcd_file_folder = "/home/jiahao/datasets/spires_benchmark/christchurch03/undist-clouds-filtered/";
+    dataset_map["christchurch03"].pose_file_path = "/home/jiahao/datasets/spires_benchmark/christchurch03/gt-tum.txt";
+    dataset_map["christchurch03"].remove_double_return_flag = false;
+    dataset_map["christchurch03"].filter_low_intensity_flag = false;
+    // 290 scans
+
+    dataset_map["keble03"] = DatasetParameters();
+    dataset_map["keble03"].pcd_file_folder = "/home/jiahao/datasets/spires_benchmark/keble03/undist-clouds-filtered/";
+    dataset_map["keble03"].pose_file_path = "/home/jiahao/datasets/spires_benchmark/keble03/gt-tum.txt";
+    dataset_map["keble03"].remove_double_return_flag = false;
+    dataset_map["keble03"].filter_low_intensity_flag = false;
+    // 300 scans
 
     dataset_map["observatory01"] = DatasetParameters();
-    dataset_map["observatory01"].pcd_file_folder = "/home/jiahao/datasets/spires_benchmark/observatory01/undist-clouds/";
+    dataset_map["observatory01"].pcd_file_folder = "/home/jiahao/datasets/spires_benchmark/observatory01/undist-clouds-filtered/";
     dataset_map["observatory01"].pose_file_path = "/home/jiahao/datasets/spires_benchmark/observatory01/gt-tum.txt";
-    dataset_map["observatory01"].remove_double_return_flag = true;
-    dataset_map["observatory01"].range_precision = 0.01;
-    dataset_map["observatory01"].radius_value = 1;
-    dataset_map["observatory01"].extra_radius = 0.1;
+    dataset_map["observatory01"].remove_double_return_flag = false;
+    dataset_map["observatory01"].filter_low_intensity_flag = false;
+    // 300 scans
 
     std::string dataset = "christchurch03";
     
     headless_mode = true;
-    num_scans = 100;
-    save_folder = "/home/jiahao/datasets/spires_benchmark/christchurch03/Benchmark_4.0/eyepatch/";
+    num_scans = 290;
+    save_folder = "/home/jiahao/datasets/spires_benchmark/" + dataset + "/Benchmark_final/eyepatch/";
 
     data_loader_settings.pcd_file_folder = dataset_map[dataset].pcd_file_folder;
     data_loader_settings.pose_file_path = dataset_map[dataset].pose_file_path;
