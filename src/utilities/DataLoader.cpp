@@ -240,7 +240,11 @@ std::map<std::string, Eigen::Affine3d> create_file_to_pose_map(std::vector<std::
         const bool found = find_pose(pcd_file, pose_file_path, pose_eigen);
 
         // skip if pose not found
-        if (!found) continue;
+        if (!found) 
+        {
+            std::cout << "Pose not found for " << pcd_file << std::endl;
+            continue;
+        }
 
         file_to_pose_map[pcd_file] = pose_eigen;
     }

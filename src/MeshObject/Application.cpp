@@ -97,6 +97,8 @@ double Application<PointT>::compute_eigenvalue_of_merged_surfaces(std::shared_pt
 template <typename PointT>
 void Application<PointT>::load_point_cloud()
 {
+    std::cout << data_loader.size() << std::endl;
+
     // fix ith_cloud
     if (ith_cloud < 0)
     {
