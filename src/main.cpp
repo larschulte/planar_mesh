@@ -22,7 +22,7 @@ void headless_mode()
     }
     else
     {
-        for (int i = 0; i < settings.num_scans; i++)
+        for (int i = 0; i < settings.num_scans - 1; i++)
         {
             app.loop();
         }
