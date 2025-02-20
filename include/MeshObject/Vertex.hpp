@@ -60,8 +60,8 @@ public:
 
     double& get_projected_uncertainty();
 
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> get_vertex_ray_publishers() const;
-    std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> get_interior_ray_publishers() const;
+    std::vector<std::pair<std::shared_ptr<Vertex>, double>>& get_vertex_point_distance_publishers();
+    std::vector<std::pair<std::shared_ptr<InteriorPoint>, double>>& get_interior_point_distance_publishers();
 
     std::shared_ptr<Edge> get_edge(const std::shared_ptr<Vertex>& vertex) const;
 

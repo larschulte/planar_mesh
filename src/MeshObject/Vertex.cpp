@@ -305,6 +305,16 @@ double& Vertex::get_projected_uncertainty()
     return projected_uncertainty_;
 }
 
+std::vector<std::pair<std::shared_ptr<Vertex>, double>>& Vertex::get_vertex_point_distance_publishers()
+{
+    return vertex_point_distance_publishers_;
+}
+
+std::vector<std::pair<std::shared_ptr<InteriorPoint>, double>>& Vertex::get_interior_point_distance_publishers()
+{
+    return interior_point_distance_publishers_;
+}
+
 std::shared_ptr<Edge> Vertex::get_edge(const std::shared_ptr<Vertex>& vertex) const
 {
     // copy edge list
