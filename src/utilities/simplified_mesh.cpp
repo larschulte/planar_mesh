@@ -89,8 +89,8 @@ pcl::PolygonMesh create_simplified_mesh_impl(const std::shared_ptr<Surface>& sur
         // filter the vertices
         for (const std::shared_ptr<Vertex>& vertex : vertices_sorted)
         {
-            // skip if vertex is not boundary
-            if (!vertex->is_boundary()) continue;
+            // // skip if vertex is not boundary
+            // if (!vertex->is_boundary()) continue;
 
             // skip if new vertex is too close to existing vertices
             bool too_close = false;
