@@ -254,6 +254,19 @@ void Application<PointT>::write_mesh()
     std::string simplified_mesh_path = simplified_folder + "simplified_mesh.ply";
     pcl::io::savePLYFileBinary(simplified_mesh_path, simplified_mesh);
     std::cout << "write simplified mesh to " << simplified_mesh_path << std::endl;
+
+    // create simplified mesh with color
+    pcl::PolygonMesh simplified_mesh_with_color;
+    for (const std::shared_ptr<Surface>& surface : storage_->get_surfaces())
+    {
+        pcl::PolygonMesh surface_mesh_with_color = create_simplified_mesh(surface, true);
+        merge_polygon_mesh(simplified_mesh_with_color, surface_mesh_with_color);
+    }
+    
+    // save simplified mesh with color
+    std::string simplified_mesh_with_color_path = simplified_folder + "simplified_mesh_with_color.ply";
+    pcl::io::savePLYFileBinary(simplified_mesh_with_color_path, simplified_mesh_with_color);
+    std::cout << "write simplified mesh with color to " << simplified_mesh_with_color_path << std::endl;
     
     // save duration to file for simplified mesh
     std::string simplified_duration_file_path = simplified_folder + "duration.txt";

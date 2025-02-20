@@ -17,6 +17,8 @@
 #include <CGAL/Search_traits_2.h>
 #include <CGAL/Fuzzy_iso_box.h>
 
+#include "utilities/simplified_mesh.hpp"
+
 using namespace std;
 
 typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
@@ -52,7 +54,20 @@ bool is_point_inside_triangle(const Triangle_2& triangle, const KdTree& kd_tree)
     return false;
 }
 
-pcl::PolygonMesh create_simplified_mesh(const std::shared_ptr<Surface>& surface)
+pcl::PolygonMesh create_simplified_mesh(const std::shared_ptr<Surface>& surface, bool with_color)
+{
+    if (with_color)
+    {
+        return create_simplified_mesh_impl<pcl::PointXYZRGB>(surface);
+    }
+    else
+    {
+        return create_simplified_mesh_impl<pcl::PointXYZ>(surface);
+    }
+}
+
+template <typename PointT>
+pcl::PolygonMesh create_simplified_mesh_impl(const std::shared_ptr<Surface>& surface)
 {
     // get list of vertices
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertices = surface->get_vertices();
@@ -97,7 +112,7 @@ pcl::PolygonMesh create_simplified_mesh(const std::shared_ptr<Surface>& surface)
     }
 
     // cloud 3d 
-    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_3d(new pcl::PointCloud<pcl::PointXYZ>);
+    typename pcl::PointCloud<PointT>::Ptr cloud_3d(new pcl::PointCloud<PointT>);
     std::map<std::shared_ptr<Vertex>, int> vertex_to_cloud_3d_indices_map;
     {
         unsigned int index = 0;
@@ -106,12 +121,21 @@ pcl::PolygonMesh create_simplified_mesh(const std::shared_ptr<Surface>& surface)
         for (const std::shared_ptr<Vertex>& vertex : vertices_filtered)
         {
             // get 3d point
-            pcl::PointXYZ point;
+            PointT point;
             Eigen::Vector3d projected_position = vertex->compute_projected_position();
             point.x = projected_position[0];
             point.y = projected_position[1];
             point.z = projected_position[2];
 
+            // If the point type supports color, assign it
+            if constexpr (std::is_same<PointT, pcl::PointXYZRGB>::value)
+            {
+                const std::tuple<int, int, int>& color = vertex->get_surface()->get_color();
+                point.r = std::get<0>(color);
+                point.g = std::get<1>(color);
+                point.b = std::get<2>(color);
+            }
+            
             // store point
             cloud_3d->push_back(point);
 
