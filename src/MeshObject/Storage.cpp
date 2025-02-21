@@ -672,7 +672,8 @@ void Storage::cleanup_surfaces()
         if (surface->get_id() % settings_.num_threads != omp_get_thread_num()) continue;
 
         // skip if surface recently get updated
-        if (distance_travelled_ - surface->get_max_distance_travelled() < settings_.cleanup_seed_surface_after_distance_travelled) continue;
+        // if (distance_travelled_ - surface->get_max_distance_travelled() < settings_.cleanup_seed_surface_after_distance_travelled) continue;
+        if (ith_cloud_ - surface->get_ith_cloud() < settings_.cleanup_seed_surface_after_ith_cloud) continue;
 
         // delete if surface is seed
         if (surface->is_seed()) 
@@ -1282,4 +1283,9 @@ void Storage::print_bvh() const
 void Storage::set_distance_travelled(double distance_travelled)
 { 
     distance_travelled_ = distance_travelled; 
+}
+
+void Storage::set_ith_cloud(unsigned int ith_cloud)
+{ 
+    ith_cloud_ = ith_cloud;
 }

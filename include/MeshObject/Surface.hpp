@@ -124,6 +124,9 @@ public:
     
     void print_info();
 
+    void set_ith_cloud(unsigned int ith_cloud);
+    unsigned int get_ith_cloud() const;
+
 private:
     static Settings settings_;
 
@@ -157,6 +160,8 @@ private:
     double sum_of_average_distance_travelled_;
     double max_distance_travelled_ = 0;
     unsigned int total_point_size_ = 0;
+
+    unsigned int ith_cloud_ = 0;
 
     Eigen::Matrix3d covariance_mean_;
     double variance_mean_in_normal_direction_;

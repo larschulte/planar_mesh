@@ -138,6 +138,7 @@ public: // to user
     void print_bvh() const;
 
     void set_distance_travelled(double distance_travelled);
+    void set_ith_cloud(unsigned int ith_cloud);
 
 private: // to Vertex and Face class
     friend class Vertex;
@@ -208,4 +209,5 @@ private:
     std::atomic<int> next_interior_point_id_{0};
 
     double distance_travelled_ = 0.0;
+    unsigned int ith_cloud_ = 0;
 };

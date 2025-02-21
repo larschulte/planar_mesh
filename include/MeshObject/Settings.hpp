@@ -103,6 +103,7 @@ struct Settings
     std::size_t process_every_n_points;
     double duplicated_point_distance_threshold;
 
+    double cleanup_seed_surface_after_ith_cloud;
     double cleanup_seed_surface_after_distance_travelled;
     
     double odometry_position_uncertainty_rate;

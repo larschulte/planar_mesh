@@ -1031,6 +1031,16 @@ void Surface::print_info()
     std::cout << "======================================================================================" << std::endl;
 }
 
+void Surface::set_ith_cloud(unsigned int ith_cloud)
+{
+    ith_cloud_ = ith_cloud;
+}
+
+unsigned int Surface::get_ith_cloud() const
+{
+    return ith_cloud_;
+}
+
 void Surface::add_point_to_surface_fitting(const Eigen::Vector3d& position, const Eigen::Vector3d& origin, double distance_travelled, double weight)
 {
     // write lock

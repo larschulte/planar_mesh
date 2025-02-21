@@ -133,6 +133,7 @@ void Application<PointT>::load_point_cloud()
     origin = pose.translation();
     distance_travelled_ += (origin - previous_origin).norm();
     storage_->set_distance_travelled(distance_travelled_);
+    storage_->set_ith_cloud(ith_cloud);
     std::cout << "distance traveled: " << distance_travelled_ << std::endl;
 
     // shuffle pointcloud
@@ -721,6 +722,8 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
         }
         new_vertex->upon_adding_publisher();
     }
+
+    surface_to_add_to->set_ith_cloud(ith_cloud);
 
     // 1. if added to bvh within / 2. if added to rrs within
     if (surfaces_bvh_within.find(surface_to_add_to) != surfaces_bvh_within.end() || surfaces_rrs_within.find(surface_to_add_to) != surfaces_rrs_within.end())
