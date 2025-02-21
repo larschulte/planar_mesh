@@ -109,6 +109,7 @@ Settings::Settings()
     cleanup_seed_surface_after_ith_cloud = 0;
     cleanup_seed_surface_after_distance_travelled = 3.0;
 
+    simplify_surfaces_density_threshold = 100;
     simplify_surfaces_radius_lower_bound = 0.05;
     simplify_surfaces_radius_lower_ratio = 1.0;
 

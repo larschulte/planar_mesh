@@ -44,14 +44,32 @@ bool is_point_inside_triangle(const Triangle_2& triangle, const KdTree& kd_tree)
     kd_tree.search(back_inserter(nearby_points), bbox_query);
 
     // Check only the nearby points
+    unsigned int num_points_inside = 0;
     for (const auto& point : nearby_points) 
     {
         if (triangle.has_on_bounded_side(point)) 
         {
-            return true;
+            num_points_inside++;
         }
     }
-    return false;
+
+    // compute point density inside
+    double triangle_area = CGAL::to_double(triangle.area());
+    double point_density_inside = num_points_inside / triangle_area;
+    
+    // threashold density 
+    Settings settings_;
+    double threshold_density = settings_.simplify_surfaces_density_threshold;
+
+    // return true if point density inside is greater than threshold
+    if (point_density_inside > threshold_density) 
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
 }
 
 pcl::PolygonMesh create_simplified_mesh(const std::shared_ptr<Surface>& surface, bool with_color)

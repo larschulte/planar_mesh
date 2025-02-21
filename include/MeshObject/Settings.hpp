@@ -108,7 +108,8 @@ struct Settings
     
     double odometry_position_uncertainty_rate;
     double odometry_angular_uncertainty_rate;
-
+    
+    double simplify_surfaces_density_threshold;
     double simplify_surfaces_radius_lower_bound;
     double simplify_surfaces_radius_lower_ratio;
 
