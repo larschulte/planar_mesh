@@ -132,6 +132,7 @@ void Application<PointT>::load_point_cloud()
     Eigen::Vector3d previous_origin = origin;
     origin = pose.translation();
     distance_travelled_ += (origin - previous_origin).norm();
+    storage_->set_distance_travelled(distance_travelled_);
     std::cout << "distance traveled: " << distance_travelled_ << std::endl;
 
     // shuffle pointcloud

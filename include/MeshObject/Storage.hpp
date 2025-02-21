@@ -137,6 +137,8 @@ public: // to user
     void print_rrs() const;
     void print_bvh() const;
 
+    void set_distance_travelled(double distance_travelled);
+
 private: // to Vertex and Face class
     friend class Vertex;
     friend class Face;
@@ -204,4 +206,6 @@ private:
     std::atomic<int> next_surface_id_{0};
     std::atomic<int> next_genertic_point_id_{0};
     std::atomic<int> next_interior_point_id_{0};
+
+    double distance_travelled_ = 0.0;
 };

@@ -671,6 +671,9 @@ void Storage::cleanup_surfaces()
         // skip if modulus is not equal to thread number
         if (surface->get_id() % settings_.num_threads != omp_get_thread_num()) continue;
 
+        // skip if surface recently get updated
+        if (distance_travelled_ - surface->get_max_distance_travelled() < settings_.cleanup_seed_surface_after_distance_travelled) continue;
+
         // delete if surface is seed
         if (surface->is_seed()) 
         {
@@ -1274,4 +1277,9 @@ void Storage::print_rrs() const
 void Storage::print_bvh() const
 {
     triangle_bvh_.tree_print();
+}
+
+void Storage::set_distance_travelled(double distance_travelled)
+{ 
+    distance_travelled_ = distance_travelled; 
 }

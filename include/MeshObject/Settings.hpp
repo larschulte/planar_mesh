@@ -102,6 +102,8 @@ struct Settings
     double radius_ratio; // distance to radius ratio
     std::size_t process_every_n_points;
     double duplicated_point_distance_threshold;
+
+    double cleanup_seed_surface_after_distance_travelled;
     
     double odometry_position_uncertainty_rate;
     double odometry_angular_uncertainty_rate;
