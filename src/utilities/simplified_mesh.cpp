@@ -76,7 +76,6 @@ pcl::PolygonMesh create_simplified_mesh_impl(const std::shared_ptr<Surface>& sur
 
     // filter the vertices
     std::vector<std::shared_ptr<Vertex>> vertices_filtered;
-    const double filter_ratio = settings_.simplify_surfaces_radius_lower_ratio;
     {
         // sort the vertices by radius
         std::vector<std::shared_ptr<Vertex>> vertices_sorted(vertices.begin(), vertices.end());
@@ -96,7 +95,17 @@ pcl::PolygonMesh create_simplified_mesh_impl(const std::shared_ptr<Surface>& sur
             bool too_close = false;
             for (const std::shared_ptr<Vertex>& vertex_filtered : vertices_filtered)
             {
-                if ((vertex->get_position() - vertex_filtered->get_position()).norm() < (vertex_filtered->get_radius() - settings_.extra_radius) * filter_ratio) 
+                // radius original
+                const double radius_original = vertex->get_radius() - settings_.extra_radius;
+
+                // radius modified
+                const double radius_modified = std::max(radius_original, settings_.simplify_surfaces_radius_lower_bound) * settings_.simplify_surfaces_radius_lower_ratio;
+                
+                // edge length
+                const double edge_length = (vertex->get_position() - vertex_filtered->get_position()).norm();
+
+                // skip if too close
+                if (edge_length < radius_modified) 
                 {
                     too_close = true;
                     break;

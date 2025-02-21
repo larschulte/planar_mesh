@@ -106,6 +106,7 @@ Settings::Settings()
 
     high_incident_angle_threshold_std = 0.02;
 
+    simplify_surfaces_radius_lower_bound = 0.0;
     simplify_surfaces_radius_lower_ratio = 1.0;
 
     use_sim_data = false;
