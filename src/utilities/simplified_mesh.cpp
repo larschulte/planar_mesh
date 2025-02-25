@@ -31,6 +31,15 @@ typedef K::Triangle_2 Triangle_2;
 typedef CGAL::Search_traits_2<K> Traits;
 typedef CGAL::Kd_tree<Traits> KdTree;
 
+// AABB Tree definitions
+#include <CGAL/AABB_tree.h>
+#include <CGAL/AABB_traits_2.h>
+#include <CGAL/AABB_triangle_primitive_2.h>
+typedef std::vector<Triangle_2>::iterator TriangleIterator;
+typedef CGAL::AABB_triangle_primitive_2<K, TriangleIterator> Primitive;
+typedef CGAL::AABB_traits_2<K, Primitive> AABB_Traits;
+typedef CGAL::AABB_tree<AABB_Traits> AABB_Tree;
+
 bool is_point_inside_triangle(const Triangle_2& triangle, const KdTree& kd_tree) 
 {
     // Get triangle bounding box
@@ -208,39 +217,26 @@ pcl::PolygonMesh create_simplified_mesh_impl(const std::shared_ptr<Surface>& sur
         vertex_to_vertex_handle_map[vertex] = vertex_handle;
     }
 
-    // get list of 2d points used to filter delaunay faces
-    std::vector<Point_2> points_2d;
+    // store original triangualtion in aabb tree
+    // original triangles
+    std::vector<Triangle_2> original_triangles; // from surface
+    for (const std::shared_ptr<Face>& face : surface->get_faces())
     {
-        // for (const std::shared_ptr<InteriorPoint>& interior_point : surface->get_interior_points())
-        // {
-        //     // get 2d point
-        //     Eigen::Vector2d surface_coordinate = interior_point->get_surface_coordinate();
-        //     Point_2 p2d(surface_coordinate[0], surface_coordinate[1]);
-        //     points_2d.push_back(p2d);
-        // }
+        // get vertices
+        std::vector<std::shared_ptr<Vertex>> face_vertices = face->get_vertices();
 
-        // use face center as 2d points
-        for (const std::shared_ptr<Face>& face : surface->get_faces())
-        {
-            // get vertices
-            std::vector<std::shared_ptr<Vertex>> face_vertices = face->get_vertices();
+        // get 2d points
+        Eigen::Vector2d p0 = face_vertices[0]->get_surface_coordinate();
+        Eigen::Vector2d p1 = face_vertices[1]->get_surface_coordinate();
+        Eigen::Vector2d p2 = face_vertices[2]->get_surface_coordinate();
 
-            // get center 2d point
-            Eigen::Vector2d average_surface_coordinate = Eigen::Vector2d::Zero();
-            for (const std::shared_ptr<Vertex>& vertex : face_vertices)
-            {
-                Eigen::Vector2d surface_coordinate = vertex->get_surface_coordinate();
-                average_surface_coordinate += surface_coordinate;
-            }
-            average_surface_coordinate /= face_vertices.size();
-            
-            // store 2d point
-            Point_2 p2d(average_surface_coordinate[0], average_surface_coordinate[1]);
-            points_2d.push_back(p2d);
-        }
-    }
-
-    KdTree kd_tree(points_2d.begin(), points_2d.end());
+        // store triangle
+        Triangle_2 triangle(Point_2(p0[0], p0[1]), Point_2(p1[0], p1[1]), Point_2(p2[0], p2[1]));
+        original_triangles.push_back(triangle);
+    }    
+    // aabb tree
+    AABB_Tree aabb_tree(original_triangles.begin(), original_triangles.end());
+    aabb_tree.accelerate_distance_queries();  // Optimizes nearest point queries
 
     // extract faces from triangulation
     std::vector<pcl::Vertices> mesh_faces;
@@ -252,8 +248,10 @@ pcl::PolygonMesh create_simplified_mesh_impl(const std::shared_ptr<Surface>& sur
             delaunay_face_iterator->vertex(1)->point(),
             delaunay_face_iterator->vertex(2)->point()
         );
-
-        if (!is_point_inside_triangle(triangle, kd_tree)) continue;
+        
+        // skip if center of delaunay face triangle is not inside original triangulation
+        Point_2 center = CGAL::centroid(triangle.vertex(0), triangle.vertex(1), triangle.vertex(2));
+        if (!aabb_tree.do_intersect(center)) continue;
 
         // vertex handle
         Delaunay::Vertex_handle vertex_handle_0 = delaunay_face_iterator->vertex(0);
