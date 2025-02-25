@@ -166,6 +166,9 @@ void Application<PointT>::write_mesh()
     unsigned int total = faces.size();
     for (const std::shared_ptr<Face>& face : faces)
     {
+        // skip if seed surface
+        if (face->get_surface()->is_seed()) continue;
+
         // log
         count++;
         if (count % 10000 == 0) std::cout << "filtering faces by edge length radius " << count << " of " << total << std::endl;
@@ -240,6 +243,9 @@ void Application<PointT>::write_mesh()
     pcl::PolygonMesh simplified_mesh;
     for (const std::shared_ptr<Surface>& surface : storage_->get_surfaces())
     {
+        // skip if seed surface
+        if (surface->is_seed()) continue;
+
         pcl::PolygonMesh surface_mesh = create_simplified_mesh(surface);
         merge_polygon_mesh(simplified_mesh, surface_mesh);
     }
@@ -261,6 +267,9 @@ void Application<PointT>::write_mesh()
     pcl::PolygonMesh simplified_mesh_with_color;
     for (const std::shared_ptr<Surface>& surface : storage_->get_surfaces())
     {
+        // skip if seed surface
+        if (surface->is_seed()) continue;
+
         pcl::PolygonMesh surface_mesh_with_color = create_simplified_mesh(surface, true);
         merge_polygon_mesh(simplified_mesh_with_color, surface_mesh_with_color);
     }
