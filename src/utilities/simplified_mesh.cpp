@@ -97,6 +97,9 @@ pcl::PolygonMesh create_simplified_mesh(const std::shared_ptr<Surface>& surface,
 template <typename PointT>
 pcl::PolygonMesh create_simplified_mesh_impl(const std::shared_ptr<Surface>& surface)
 {
+    // skip if surface is seed
+    if (surface->is_seed()) return pcl::PolygonMesh();
+
     // get list of vertices
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertices = surface->get_vertices();
 
