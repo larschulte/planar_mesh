@@ -16,7 +16,7 @@ struct DatasetParameters
 
     // related parameters
     double radius_value = 1;
-    double extra_radius = 0.05;
+    double extra_radius = 0.1;
 
     // radius ratio
     double radius_ratio = 0.02;
