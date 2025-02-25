@@ -16,7 +16,8 @@ struct DatasetParameters
 
     // related parameters
     double radius_value = 1;
-    double extra_radius = 0.1;
+    // radius ratio
+    double radius_ratio = 0.02;
 };
 
 Settings::Settings() 
@@ -103,6 +104,7 @@ Settings::Settings()
     data_loader_settings.filter_low_intensity_flag = dataset_map[dataset].filter_low_intensity_flag;
     radius_value = dataset_map[dataset].radius_value;
     extra_radius = dataset_map[dataset].extra_radius;
+    radius_ratio = dataset_map[dataset].radius_ratio;
 
     high_incident_angle_threshold_std = 0.02;
 
