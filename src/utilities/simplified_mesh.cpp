@@ -166,6 +166,10 @@ pcl::PolygonMesh create_simplified_mesh_impl(const std::shared_ptr<Surface>& sur
             point.x = projected_position[0];
             point.y = projected_position[1];
             point.z = projected_position[2];
+            // Eigen::Vector2d surface_coordinate = vertex->get_surface_coordinate();
+            // point.x = surface_coordinate[0];
+            // point.y = surface_coordinate[1];
+            // point.z = 0;
 
             // If the point type supports color, assign it
             if constexpr (std::is_same<PointT, pcl::PointXYZRGB>::value)
