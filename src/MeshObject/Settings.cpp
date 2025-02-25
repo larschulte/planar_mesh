@@ -108,7 +108,7 @@ Settings::Settings()
     extra_radius = dataset_map[dataset].extra_radius;
     radius_ratio = dataset_map[dataset].radius_ratio;
 
-    high_incident_angle_threshold_std = 0.02;
+    high_incident_angle_threshold_std = 0.1;
 
     cleanup_seed_surface_after_ith_cloud = -1;
     cleanup_seed_surface_after_distance_travelled = 3.0;
