@@ -210,9 +210,9 @@ Settings::Settings()
     show_triangle = true;
     show_edge = true;
     show_keycode = false;
-    show_seed_surface = true;
+    show_seed_surface = false;
     color_mode = ColorMode::ID;
-    point_mode = PointMode::USED;
+    point_mode = PointMode::ORIGINAL;
     surface_denominator = 10.0;
     siblings_denominator = 3.0;
     radius_denominator = 0.3;
