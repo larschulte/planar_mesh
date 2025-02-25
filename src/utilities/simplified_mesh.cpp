@@ -95,26 +95,38 @@ pcl::PolygonMesh create_simplified_mesh_impl(const std::shared_ptr<Surface>& sur
     // filter the vertices
     std::vector<std::shared_ptr<Vertex>> vertices_filtered;
     {
+        // cap radius of boundary vertices
+        std::unordered_map<std::shared_ptr<Vertex>, double, MeshObjectHash> vertex_radii;
+        for (const std::shared_ptr<Vertex>& vertex : vertices)
+        {
+            const double radius_original = vertex->get_radius() - settings_.extra_radius;
+
+            if (vertex->is_boundary())
+            {
+                vertex_radii[vertex] = std::min(radius_original, settings_.simplify_surfaces_boundary_radius_upper_bound);
+            }
+            else
+            {
+                vertex_radii[vertex] = radius_original;
+            };
+        }
+
         // sort the vertices by radius
         std::vector<std::shared_ptr<Vertex>> vertices_sorted(vertices.begin(), vertices.end());
-        std::sort(vertices_sorted.begin(), vertices_sorted.end(), 
-            [](const std::shared_ptr<Vertex>& a, const std::shared_ptr<Vertex>& b)
-            { 
-                return a->get_radius() < b->get_radius();
-            });
+        std::sort(vertices_sorted.begin(), vertices_sorted.end(), [&vertex_radii](const std::shared_ptr<Vertex>& a, const std::shared_ptr<Vertex>& b) 
+        {
+            return vertex_radii[a] < vertex_radii[b];
+        });
         
         // filter the vertices
         for (const std::shared_ptr<Vertex>& vertex : vertices_sorted)
         {
-            // // skip if vertex is not boundary
-            // if (!vertex->is_boundary()) continue;
-
             // skip if new vertex is too close to existing vertices
             bool too_close = false;
             for (const std::shared_ptr<Vertex>& vertex_filtered : vertices_filtered)
             {
                 // radius original
-                const double radius_original = vertex->get_radius() - settings_.extra_radius;
+                const double radius_original = vertex_radii[vertex]; // this checks if existing vertex is within current vertex's radius
 
                 // radius modified
                 const double radius_modified = std::max(radius_original, settings_.simplify_surfaces_radius_lower_bound) * settings_.simplify_surfaces_radius_lower_ratio;

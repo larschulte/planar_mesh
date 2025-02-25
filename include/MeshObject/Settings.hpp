@@ -112,6 +112,8 @@ struct Settings
     double simplify_surfaces_density_threshold;
     double simplify_surfaces_radius_lower_bound;
     double simplify_surfaces_radius_lower_ratio;
+    
+    double simplify_surfaces_boundary_radius_upper_bound;
 
     double confidence_interval_multiplier;
 
