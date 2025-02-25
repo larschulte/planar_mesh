@@ -6,6 +6,7 @@
 #include "MeshObject/Vertex.hpp"
 #include "MeshObject/InteriorPoint.hpp"
 #include "MeshObject/Edge.hpp"
+#include "MeshObject/Face.hpp"
 #include "MeshObject/Settings.hpp"
 
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
@@ -206,11 +207,31 @@ pcl::PolygonMesh create_simplified_mesh_impl(const std::shared_ptr<Surface>& sur
     // get list of 2d points used to filter delaunay faces
     std::vector<Point_2> points_2d;
     {
-        for (const std::shared_ptr<InteriorPoint>& interior_point : surface->get_interior_points())
+        // for (const std::shared_ptr<InteriorPoint>& interior_point : surface->get_interior_points())
+        // {
+        //     // get 2d point
+        //     Eigen::Vector2d surface_coordinate = interior_point->get_surface_coordinate();
+        //     Point_2 p2d(surface_coordinate[0], surface_coordinate[1]);
+        //     points_2d.push_back(p2d);
+        // }
+
+        // use face center as 2d points
+        for (const std::shared_ptr<Face>& face : surface->get_faces())
         {
-            // get 2d point
-            Eigen::Vector2d surface_coordinate = interior_point->get_surface_coordinate();
-            Point_2 p2d(surface_coordinate[0], surface_coordinate[1]);
+            // get vertices
+            std::vector<std::shared_ptr<Vertex>> face_vertices = face->get_vertices();
+
+            // get center 2d point
+            Eigen::Vector2d average_surface_coordinate = Eigen::Vector2d::Zero();
+            for (const std::shared_ptr<Vertex>& vertex : face_vertices)
+            {
+                Eigen::Vector2d surface_coordinate = vertex->get_surface_coordinate();
+                average_surface_coordinate += surface_coordinate;
+            }
+            average_surface_coordinate /= face_vertices.size();
+            
+            // store 2d point
+            Point_2 p2d(average_surface_coordinate[0], average_surface_coordinate[1]);
             points_2d.push_back(p2d);
         }
     }
