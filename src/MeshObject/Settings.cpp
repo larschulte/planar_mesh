@@ -16,6 +16,8 @@ struct DatasetParameters
 
     // related parameters
     double radius_value = 1;
+    double extra_radius = 0.05;
+
     // radius ratio
     double radius_ratio = 0.02;
 };
@@ -108,7 +110,7 @@ Settings::Settings()
 
     high_incident_angle_threshold_std = 0.02;
 
-    cleanup_seed_surface_after_ith_cloud = 0;
+    cleanup_seed_surface_after_ith_cloud = -1;
     cleanup_seed_surface_after_distance_travelled = 3.0;
 
     simplify_surfaces_density_threshold = 100;

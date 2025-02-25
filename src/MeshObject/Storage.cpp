@@ -652,6 +652,9 @@ void Storage::clear_queues()
 
 void Storage::cleanup_surfaces()
 {
+    // skip if settings is -1
+    if (settings_.cleanup_seed_surface_after_ith_cloud == -1) return;
+
     // make copy of surfaces
     std::vector<std::shared_ptr<Surface>> surfaces_copy;
     {
