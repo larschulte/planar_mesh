@@ -552,37 +552,37 @@ void Storage::add_to_queue(const std::shared_ptr<InteriorPoint>& interior_point)
     std::shared_ptr<GenericPoint> queue_point = std::make_shared<GenericPoint>();
     queue_point->initialize_(shared_from_this(), interior_point);
 
-    if (queue_point->get_num_deletes() <= settings_.num_of_delete_before_put_to_repeated_queue)
-    {
-        smaller_queues_[omp_get_thread_num()].push(queue_point);
-    }
-    else
-    {
-        // if queue_point number of delete exceeds 5, 
-        // reset number of delete and add to repeated_queue_
-        queue_point->reset_num_deletes();
+    // if (queue_point->get_num_deletes() <= settings_.num_of_delete_before_put_to_repeated_queue)
+    // {
+    //     smaller_queues_[omp_get_thread_num()].push(queue_point);
+    // }
+    // else
+    // {
+    //     // if queue_point number of delete exceeds 5, 
+    //     // reset number of delete and add to repeated_queue_
+    //     queue_point->reset_num_deletes();
 
         smaller_repeated_queues_[omp_get_thread_num()].push(queue_point);
-    }
+    // }
 }
 
 void Storage::add_to_queue(const std::shared_ptr<Vertex>& vertex) 
 {
-    std::shared_ptr<GenericPoint> queue_point = std::make_shared<GenericPoint>();
-    queue_point->initialize_(shared_from_this(), vertex);
+    // std::shared_ptr<GenericPoint> queue_point = std::make_shared<GenericPoint>();
+    // queue_point->initialize_(shared_from_this(), vertex);
 
-    if (queue_point->get_num_deletes() <= settings_.num_of_delete_before_put_to_repeated_queue)
-    {
-        smaller_queues_[omp_get_thread_num()].push(queue_point);
-    }
-    else
-    {
-        // if queue_point number of delete exceeds 5, 
-        // reset number of delete and add to repeated_queue_
-        queue_point->reset_num_deletes();
+    // if (queue_point->get_num_deletes() <= settings_.num_of_delete_before_put_to_repeated_queue)
+    // {
+    //     smaller_queues_[omp_get_thread_num()].push(queue_point);
+    // }
+    // else
+    // {
+    //     // if queue_point number of delete exceeds 5, 
+    //     // reset number of delete and add to repeated_queue_
+    //     queue_point->reset_num_deletes();
 
-        smaller_repeated_queues_[omp_get_thread_num()].push(queue_point);
-    }
+    //     smaller_repeated_queues_[omp_get_thread_num()].push(queue_point);
+    // }
 }
 
 void Storage::add_to_abort_queue(const std::shared_ptr<GenericPoint>& generic_point) 

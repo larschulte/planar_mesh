@@ -898,6 +898,8 @@ void Application<PointT>::loop()
         // clean up surfaces
         storage_->cleanup_surfaces(); // split by surface id modulus num_threads
     }
+    storage_->add_points_in_smaller_repeated_queues_to_main_queue();
+
     num_iteration ++;
 
     std::chrono::high_resolution_clock::time_point t_end = std::chrono::high_resolution_clock::now();
