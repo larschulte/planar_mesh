@@ -47,18 +47,42 @@ void InteractiveViewer<PointT>::save_simplified_surfaces()
     // initialize all mesh
     pcl::PolygonMesh simplified_mesh;
 
-    // add meshes
-    unsigned int index = 0;
-    for (const std::shared_ptr<Surface>& surface : surfaces)
+    // if largest surface only
+    const bool only_largest_surface = false;
+    if (only_largest_surface)
     {
-        // log
-        std::cout << "simplified surface " << index++ << " / " << surfaces.size() << std::endl;
-
+        // find the largest mesh by area
+        double max_area = 0;
+        std::shared_ptr<Surface> largest_surface = nullptr;
+        for (const std::shared_ptr<Surface>& surface : surfaces)
+        {
+            // get area
+            if (surface->get_surface_area() > max_area) 
+            {
+                max_area = surface->get_surface_area();
+                largest_surface = surface;
+            }
+        }
         // create mesh
-        pcl::PolygonMesh triangle_mesh = create_simplified_mesh(surface);
-
+        pcl::PolygonMesh triangle_mesh = create_simplified_mesh(largest_surface);
         // merge
         merge_polygon_mesh(simplified_mesh, triangle_mesh);
+    }
+    else
+    {
+        // add meshes
+        unsigned int index = 0;
+        for (const std::shared_ptr<Surface>& surface : surfaces)
+        {
+            // log
+            std::cout << "simplified surface " << index++ << " / " << surfaces.size() << std::endl;
+
+            // create mesh
+            pcl::PolygonMesh triangle_mesh = create_simplified_mesh(surface);
+
+            // merge
+            merge_polygon_mesh(simplified_mesh, triangle_mesh);
+        }
     }
 
     // clear display
