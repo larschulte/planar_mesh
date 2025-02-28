@@ -286,16 +286,55 @@ void Application<PointT>::write_mesh()
     {
         simplified_duration_file << duration << std::endl;
     }
+
+    // save stack duration to file for simplified mesh
+    std::string stack_duration_file_path = simplified_folder + "stack_duration.txt";
+    std::ofstream stack_duration_file(stack_duration_file_path);
+    for (unsigned int index = 0; index < duration_list.size(); index++)
+    {
+        double total_duration = duration_list[index];
+        double rrs_search_duration = rrs_search_duration_list[index];
+        double rrs_update_duration = rrs_update_duration_list[index];
+        double bvh_search_duration = bvh_search_duration_list[index];
+        double bvh_update_duration = bvh_update_duration_list[index];
+        double add_to_map_duration = add_to_map_duration_list[index];
+        double delete_from_map_duration = delete_from_map_duration_list[index];
+        double relative_position_duration = relative_position_duration_list[index];
+        
+        const std::string separator = ",";
+        stack_duration_file << total_duration << separator
+                            << rrs_search_duration << separator
+                            << rrs_update_duration << separator
+                            << bvh_search_duration << separator
+                            << bvh_update_duration << separator
+                            << add_to_map_duration << separator
+                            << delete_from_map_duration << separator
+                            << relative_position_duration << std::endl;
+    }
 }
 
 template <typename PointT>
 void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& generic_point)
 {
+    // bvh search duration
+    std::chrono::time_point<std::chrono::high_resolution_clock> bvh_search_duration_start = std::chrono::high_resolution_clock::now();
+
     std::vector<std::shared_ptr<Face>> bvh_results;
     BVHReturnType BVH_return = storage_->face_intersection_search(generic_point, bvh_results);
 
+    std::chrono::time_point<std::chrono::high_resolution_clock> bvh_search_duration_end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> bvh_search_duration = bvh_search_duration_end - bvh_search_duration_start;
+    bvh_search_duration_per_thread[omp_get_thread_num()] += bvh_search_duration.count();
+
+    // rrs search duration
+    std::chrono::time_point<std::chrono::high_resolution_clock> rrs_search_duration_start = std::chrono::high_resolution_clock::now();
+
     std::vector<std::shared_ptr<Vertex>> rrs_results;
     RRSReturnType RRS_return = storage_->reverse_radius_search(generic_point, rrs_results);    
+
+    std::chrono::time_point<std::chrono::high_resolution_clock> rrs_search_duration_end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> rrs_search_duration = rrs_search_duration_end - rrs_search_duration_start;
+    rrs_search_duration_per_thread[omp_get_thread_num()] += rrs_search_duration.count();
 
     // update stats
     num_of_concurrent_processes++;
@@ -344,6 +383,9 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
     
     // std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
+    // add to map duration
+    std::chrono::time_point<std::chrono::high_resolution_clock> add_to_map_duration_start = std::chrono::high_resolution_clock::now();
+
     // process
     add_point_to_map(generic_point, bvh_results, rrs_results);
 
@@ -351,11 +393,47 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
     
     // after unlocking all locks, add the point in queue to the search tree
     storage_->update_vertices_that_have_added_publishers();
+
+    std::chrono::time_point<std::chrono::high_resolution_clock> add_to_map_duration_end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> add_to_map_duration = add_to_map_duration_end - add_to_map_duration_start;
+    add_to_map_duration_per_thread[omp_get_thread_num()] += add_to_map_duration.count();
+
+    // delete from map duration
+    std::chrono::time_point<std::chrono::high_resolution_clock> delete_from_map_duration_start = std::chrono::high_resolution_clock::now();
+    
     storage_->delete_to_be_deleted_repeatedly();
+
+    std::chrono::time_point<std::chrono::high_resolution_clock> delete_from_map_duration_end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> delete_from_map_duration = delete_from_map_duration_end - delete_from_map_duration_start;
+    delete_from_map_duration_per_thread[omp_get_thread_num()] += delete_from_map_duration.count();
+
+
+    // update rrs tree duration
+    std::chrono::time_point<std::chrono::high_resolution_clock> rrs_update_duration_start = std::chrono::high_resolution_clock::now();
+
     storage_->update_vertices_that_have_changed_box();
     storage_->add_or_remove_vertices_from_rrs_tree();
+
+    std::chrono::time_point<std::chrono::high_resolution_clock> rrs_update_duration_end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> rrs_update_duration = rrs_update_duration_end - rrs_update_duration_start;
+    rrs_update_duration_per_thread[omp_get_thread_num()] += rrs_update_duration.count();
+
+    // update bvh tree duration
+    std::chrono::time_point<std::chrono::high_resolution_clock> bvh_update_duration_start = std::chrono::high_resolution_clock::now();
     storage_->add_or_remove_faces_from_bvh_tree();
+
+    std::chrono::time_point<std::chrono::high_resolution_clock> bvh_update_duration_end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> bvh_update_duration = bvh_update_duration_end - bvh_update_duration_start;
+    bvh_update_duration_per_thread[omp_get_thread_num()] += bvh_update_duration.count();
+
+    // update edge bvh tree duration
+    std::chrono::time_point<std::chrono::high_resolution_clock> add_to_map_duration_start2 = std::chrono::high_resolution_clock::now();
+
     storage_->add_or_remove_edges_from_edgeBVH_tree();
+
+    std::chrono::time_point<std::chrono::high_resolution_clock> add_to_map_duration_end2 = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> add_to_map_duration2 = add_to_map_duration_end2 - add_to_map_duration_start2;
+    add_to_map_duration_per_thread[omp_get_thread_num()] += add_to_map_duration2.count();
 }
 
 template <typename PointT>
@@ -422,7 +500,12 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
         if (surface->is_expired()) continue;
 
         // check relative position
+        // time this
+        std::chrono::time_point<std::chrono::high_resolution_clock> relative_position_start = std::chrono::high_resolution_clock::now();
         RelativePosition relative_position = surface->check_relative_position(generic_point);
+        std::chrono::time_point<std::chrono::high_resolution_clock> relative_position_end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> relative_position_duration = relative_position_end - relative_position_start;
+        relative_position_duration_per_thread[omp_get_thread_num()] += relative_position_duration.count();
 
         // skip if no relative position
         if (relative_position == RelativePosition::NO_RELATIVE_POSITION) surfaces_bvh_seed.insert(surface);
@@ -445,7 +528,11 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
         if (surface->is_expired()) continue;
 
         // check relative position
+        std::chrono::time_point<std::chrono::high_resolution_clock> relative_position_start = std::chrono::high_resolution_clock::now();
         RelativePosition relative_position = surface->check_relative_position(generic_point);
+        std::chrono::time_point<std::chrono::high_resolution_clock> relative_position_end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> relative_position_duration = relative_position_end - relative_position_start;
+        relative_position_duration_per_thread[omp_get_thread_num()] += relative_position_duration.count();
 
         // skip if no relative position
         if (relative_position == RelativePosition::NO_RELATIVE_POSITION) surfaces_rrs_seed.insert(surface);
@@ -869,6 +956,15 @@ void Application<PointT>::loop()
     // split the queue into smaller queues
     storage_->split_main_queue_into_smaller_queues();
 
+    // initialize vector to store duration
+    rrs_search_duration_per_thread.resize(settings_.num_threads);
+    rrs_update_duration_per_thread.resize(settings_.num_threads);
+    bvh_search_duration_per_thread.resize(settings_.num_threads);
+    bvh_update_duration_per_thread.resize(settings_.num_threads);
+    add_to_map_duration_per_thread.resize(settings_.num_threads);
+    delete_from_map_duration_per_thread.resize(settings_.num_threads);
+    relative_position_duration_per_thread.resize(settings_.num_threads);
+
     // reset stats
     t_init = std::chrono::high_resolution_clock::now();
     accumulated_points = 0;
@@ -919,6 +1015,34 @@ void Application<PointT>::loop()
 
     // store duration into list
     duration_list.push_back(duration.count());
+
+    // average duration per thread
+    double rrs_search_duration = std::accumulate(rrs_search_duration_per_thread.begin(), rrs_search_duration_per_thread.end(), 0.0) / settings_.num_threads;
+    double rrs_update_duration = std::accumulate(rrs_update_duration_per_thread.begin(), rrs_update_duration_per_thread.end(), 0.0) / settings_.num_threads;
+    double bvh_search_duration = std::accumulate(bvh_search_duration_per_thread.begin(), bvh_search_duration_per_thread.end(), 0.0) / settings_.num_threads;
+    double bvh_update_duration = std::accumulate(bvh_update_duration_per_thread.begin(), bvh_update_duration_per_thread.end(), 0.0) / settings_.num_threads;
+    double add_to_map_duration = std::accumulate(add_to_map_duration_per_thread.begin(), add_to_map_duration_per_thread.end(), 0.0) / settings_.num_threads;
+    double delete_from_map_duration = std::accumulate(delete_from_map_duration_per_thread.begin(), delete_from_map_duration_per_thread.end(), 0.0) / settings_.num_threads;
+    double relative_position_duration = std::accumulate(relative_position_duration_per_thread.begin(), relative_position_duration_per_thread.end(), 0.0) / settings_.num_threads;
+
+    rrs_search_duration_per_thread.clear();
+    rrs_update_duration_per_thread.clear();
+    bvh_search_duration_per_thread.clear();
+    bvh_update_duration_per_thread.clear();
+    add_to_map_duration_per_thread.clear();
+    delete_from_map_duration_per_thread.clear();
+    relative_position_duration_per_thread.clear();
+
+    rrs_search_duration_list.push_back(rrs_search_duration);
+    rrs_update_duration_list.push_back(rrs_update_duration);
+    bvh_search_duration_list.push_back(bvh_search_duration);
+    bvh_update_duration_list.push_back(bvh_update_duration);
+    add_to_map_duration_list.push_back(add_to_map_duration);
+    delete_from_map_duration_list.push_back(delete_from_map_duration);
+    relative_position_duration_list.push_back(relative_position_duration);
+
+    // print
+    std::cout << "total duration: " << duration.count() << " = " << rrs_search_duration << " + " << rrs_update_duration << " + " << bvh_search_duration << " + " << bvh_update_duration << " + " << add_to_map_duration << " + " << delete_from_map_duration << " + " << relative_position_duration << std::endl;
 
     // print size of rrs, vertices, and boundary vertices
     std::cout << "rrs size: " << storage_->get_rrs_size() << " | vertices size: " << storage_->get_vertices_size() << " | total point size: " << storage_->get_vertices_size() + storage_->get_interior_points_size() << std::endl;

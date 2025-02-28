@@ -86,10 +86,27 @@ private:
     std::chrono::time_point<std::chrono::high_resolution_clock> t_init;
     std::chrono::time_point<std::chrono::high_resolution_clock> t_last;
     std::mutex t_last_mutex;
+
     double total_duration;
+    std::vector<double> duration_list;
+    std::vector<double> rrs_search_duration_list;
+    std::vector<double> rrs_update_duration_list;
+    std::vector<double> bvh_search_duration_list;
+    std::vector<double> bvh_update_duration_list;
+    std::vector<double> add_to_map_duration_list;
+    std::vector<double> delete_from_map_duration_list;
+    std::vector<double> relative_position_duration_list;
+
+    std::vector<double> rrs_search_duration_per_thread;
+    std::vector<double> rrs_update_duration_per_thread;
+    std::vector<double> bvh_search_duration_per_thread;
+    std::vector<double> bvh_update_duration_per_thread;
+    std::vector<double> add_to_map_duration_per_thread;
+    std::vector<double> delete_from_map_duration_per_thread;
+    std::vector<double> relative_position_duration_per_thread;
+
     unsigned int total_loops;
 
     std::unordered_map<std::shared_ptr<Surface>, unsigned int, MeshObjectHash> surface_to_contention_count;
 
-    std::vector<double> duration_list;
 };
