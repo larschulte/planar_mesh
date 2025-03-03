@@ -159,9 +159,12 @@ void InteractiveViewer<PointT>::update_display(bool export_ply)
             if (!settings_.show_seed_surface && face->get_surface()->is_seed()) continue;
 
             pcl::Vertices triangle;
-            triangle.vertices.push_back(face->get_vertex(0)->index_in_cloud_);
-            triangle.vertices.push_back(face->get_vertex(1)->index_in_cloud_);
-            triangle.vertices.push_back(face->get_vertex(2)->index_in_cloud_);
+            triangle.vertices.reserve(3); // Pre-allocate space to avoid reallocations
+            const int i0 = face->get_vertex(0)->index_in_cloud_;
+            const int i1 = face->get_vertex(1)->index_in_cloud_;
+            const int i2 = face->get_vertex(2)->index_in_cloud_;
+            triangle.vertices.assign({i0, i1, i2});
+
             triangle_mesh.polygons.push_back(triangle);
         }
         viewer_->addPolygonMesh(triangle_mesh, "triangle_mesh");
