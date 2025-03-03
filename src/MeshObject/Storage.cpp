@@ -1102,6 +1102,12 @@ std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> Storage::get_vertice
     return vertices_;
 }
 
+std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& Storage::get_vertices_ref()
+{
+    // return
+    return vertices_;
+}
+
 std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> Storage::get_edges() const
 {
     // read lock
