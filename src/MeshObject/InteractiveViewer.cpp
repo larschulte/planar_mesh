@@ -78,7 +78,7 @@ void InteractiveViewer<PointT>::save_simplified_surfaces()
             std::cout << "simplified surface " << index++ << " / " << surfaces.size() << std::endl;
 
             // create mesh
-            pcl::PolygonMesh triangle_mesh = create_simplified_mesh(surface);
+            pcl::PolygonMesh triangle_mesh = create_simplified_mesh(surface, true);
 
             // merge
             merge_polygon_mesh(simplified_mesh, triangle_mesh);
