@@ -49,7 +49,7 @@ public:
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr compute_vertex_point_pointcloud(const Settings& settings);
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr compute_interior_point_pointcloud(const Settings& settings);
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr compute_generic_point_pointcloud();
-    std::map<std::shared_ptr<Vertex>, int> get_vertex_to_cloud_indices_map();
+    std::unordered_map<std::shared_ptr<Vertex>, int, MeshObjectHash> get_vertex_to_cloud_indices_map();
     const std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& get_faces();
     const std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& get_edges();
     std::vector<std::shared_ptr<Vertex>> get_rrs_vertices();
@@ -77,7 +77,7 @@ private:
     Settings settings_;
 
     // viewer related
-    std::map<std::shared_ptr<Vertex>, int> vertex_to_cloud_indices_map;
+    std::unordered_map<std::shared_ptr<Vertex>, int, MeshObjectHash> vertex_to_cloud_indices_map;
 
     std::atomic<unsigned int> num_of_concurrent_processes = 0;
     std::atomic<unsigned int> accumulated_points = 0;

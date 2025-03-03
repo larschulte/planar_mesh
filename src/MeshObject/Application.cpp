@@ -1234,7 +1234,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_interior_poi
 }
 
 template <typename PointT>
-std::map<std::shared_ptr<Vertex>, int> Application<PointT>::get_vertex_to_cloud_indices_map()
+std::unordered_map<std::shared_ptr<Vertex>, int, MeshObjectHash> Application<PointT>::get_vertex_to_cloud_indices_map()
 {
     return vertex_to_cloud_indices_map;
 } 
