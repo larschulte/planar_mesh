@@ -49,7 +49,6 @@ public:
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr compute_vertex_point_pointcloud(const Settings& settings);
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr compute_interior_point_pointcloud(const Settings& settings);
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr compute_generic_point_pointcloud();
-    std::unordered_map<std::shared_ptr<Vertex>, int, MeshObjectHash> get_vertex_to_cloud_indices_map();
     const std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& get_faces();
     const std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& get_edges();
     std::vector<std::shared_ptr<Vertex>> get_rrs_vertices();

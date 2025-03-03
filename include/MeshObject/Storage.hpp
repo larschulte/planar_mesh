@@ -128,7 +128,6 @@ public: // to user
     unsigned int get_interior_points_size() const;
 
     std::vector<std::shared_ptr<Vertex>> get_rrs_vertices();
-    std::map<std::shared_ptr<Vertex>, int> get_vertex_to_cloud_indices_map() const;
     bool is_expired() const;
 
     unsigned int get_rrs_size() const;

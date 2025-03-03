@@ -1234,12 +1234,6 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_interior_poi
 }
 
 template <typename PointT>
-std::unordered_map<std::shared_ptr<Vertex>, int, MeshObjectHash> Application<PointT>::get_vertex_to_cloud_indices_map()
-{
-    return vertex_to_cloud_indices_map;
-} 
-
-template <typename PointT>
 const std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& Application<PointT>::get_faces() 
 {
     return storage_->get_faces();
@@ -1375,7 +1369,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_vertex_point
             point.b = std::get<2>(color);
         }
         cloud->push_back(point);
-        vertex_to_cloud_indices_map[vertex] = cloud->size() - 1;
+        vertex->index_in_cloud_ = cloud->size() - 1;
     }
     return cloud;
 }

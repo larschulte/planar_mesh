@@ -103,7 +103,6 @@ void InteractiveViewer<PointT>::update_display(bool export_ply)
 {
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr vertex_pointcloud = app_.compute_vertex_point_pointcloud(settings_);
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr interior_point_cloud = app_.compute_interior_point_pointcloud(settings_);
-    std::unordered_map<std::shared_ptr<Vertex>, int, MeshObjectHash> vertex_to_cloud_indices_map = app_.get_vertex_to_cloud_indices_map();
 
     // vertex points
     viewer_->removeShape("point_cloud");
@@ -160,9 +159,9 @@ void InteractiveViewer<PointT>::update_display(bool export_ply)
             if (!settings_.show_seed_surface && face->get_surface()->is_seed()) continue;
 
             pcl::Vertices triangle;
-            triangle.vertices.push_back(vertex_to_cloud_indices_map.at(face->get_vertex(0)));
-            triangle.vertices.push_back(vertex_to_cloud_indices_map.at(face->get_vertex(1)));
-            triangle.vertices.push_back(vertex_to_cloud_indices_map.at(face->get_vertex(2)));
+            triangle.vertices.push_back(face->get_vertex(0)->index_in_cloud_);
+            triangle.vertices.push_back(face->get_vertex(1)->index_in_cloud_);
+            triangle.vertices.push_back(face->get_vertex(2)->index_in_cloud_);
             triangle_mesh.polygons.push_back(triangle);
         }
         viewer_->addPolygonMesh(triangle_mesh, "triangle_mesh");
@@ -191,8 +190,8 @@ void InteractiveViewer<PointT>::update_display(bool export_ply)
             if (!settings_.show_seed_surface && edge->get_surface()->is_seed()) continue;
             
             pcl::Vertices boundary_edge;
-            boundary_edge.vertices.push_back(vertex_to_cloud_indices_map.at(edge->get_vertex(0)));
-            boundary_edge.vertices.push_back(vertex_to_cloud_indices_map.at(edge->get_vertex(1)));
+            boundary_edge.vertices.push_back(edge->get_vertex(0)->index_in_cloud_);
+            boundary_edge.vertices.push_back(edge->get_vertex(1)->index_in_cloud_);
             boundary_mesh.polygons.push_back(boundary_edge);
         }
         viewer_->addPolylineFromPolygonMesh(boundary_mesh, "boundary_edges");
