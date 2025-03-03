@@ -32,7 +32,7 @@ public:
     
     // algorithm
     void process_point(const std::shared_ptr<GenericPoint>& generic_point);
-    void add_point_to_map(const std::shared_ptr<GenericPoint>& generic_point, std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> bvh_results, std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> rrs_results);
+    void add_point_to_map(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Face>> bvh_results, std::vector<std::shared_ptr<Vertex>> rrs_results);
     
     // interaction
     void refine_surfaces();
@@ -57,12 +57,15 @@ public:
     // data
     void load_point_cloud();
 
+    void write_mesh();
+
 private:
     // objects
     DataLoader<PointT> data_loader;
     std::shared_ptr<Storage> storage_;
         
     // state
+    bool first_cloud_;
     int ith_cloud;
     std::size_t ith_point;
     std::size_t ith_size;
@@ -83,8 +86,27 @@ private:
     std::chrono::time_point<std::chrono::high_resolution_clock> t_init;
     std::chrono::time_point<std::chrono::high_resolution_clock> t_last;
     std::mutex t_last_mutex;
+
     double total_duration;
+    std::vector<double> duration_list;
+    std::vector<double> rrs_search_duration_list;
+    std::vector<double> rrs_update_duration_list;
+    std::vector<double> bvh_search_duration_list;
+    std::vector<double> bvh_update_duration_list;
+    std::vector<double> add_to_map_duration_list;
+    std::vector<double> delete_from_map_duration_list;
+    std::vector<double> relative_position_duration_list;
+
+    std::vector<double> rrs_search_duration_per_thread;
+    std::vector<double> rrs_update_duration_per_thread;
+    std::vector<double> bvh_search_duration_per_thread;
+    std::vector<double> bvh_update_duration_per_thread;
+    std::vector<double> add_to_map_duration_per_thread;
+    std::vector<double> delete_from_map_duration_per_thread;
+    std::vector<double> relative_position_duration_per_thread;
+
     unsigned int total_loops;
 
     std::unordered_map<std::shared_ptr<Surface>, unsigned int, MeshObjectHash> surface_to_contention_count;
+
 };

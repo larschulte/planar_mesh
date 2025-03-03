@@ -95,6 +95,12 @@ public: // to user
     void delete_to_be_deleted_repeatedly();
     void delete_to_be_deleted();
 
+    void add_vertex_that_have_deleted_publishers(const std::shared_ptr<Vertex>& vertex);
+    void add_vertex_that_have_added_publishers(const std::shared_ptr<Vertex>& vertex);
+    void add_vertex_that_have_changed_box(const std::shared_ptr<Vertex>& vertex);
+    void update_vertices_that_have_deleted_publishers();
+    void update_vertices_that_have_added_publishers();
+    void update_vertices_that_have_changed_box();
 
     void add_to_set_of_vertices_to_update_rrs_tree(const std::shared_ptr<Vertex>& vertex);
     void add_to_set_of_faces_to_update_bvh_tree(const std::shared_ptr<Face>& face);
@@ -111,16 +117,28 @@ public: // to user
     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> get_surfaces() const;
     std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash> get_generic_points() const;
     std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> get_interior_points() const;
+    unsigned int get_boundary_vertices_size() const;
+    unsigned int get_boundary_edges_size() const;
+    unsigned int get_vertices_size() const;
+    unsigned int get_edges_size() const;
+    unsigned int get_faces_size() const;
+    unsigned int get_surfaces_size() const;
+    unsigned int get_generic_points_size() const;
+    unsigned int get_interior_points_size() const;
 
     std::vector<std::shared_ptr<Vertex>> get_rrs_vertices();
     std::map<std::shared_ptr<Vertex>, int> get_vertex_to_cloud_indices_map() const;
     bool is_expired() const;
 
     unsigned int get_rrs_size() const;
+    unsigned int get_rrs_node_size() const;
     unsigned int get_bvh_size() const;
 
     void print_rrs() const;
     void print_bvh() const;
+
+    void set_distance_travelled(double distance_travelled);
+    void set_ith_cloud(unsigned int ith_cloud);
 
 private: // to Vertex and Face class
     friend class Vertex;
@@ -164,6 +182,10 @@ private:
     std::vector<std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>> thread_faces_to_be_deleted_;
     std::vector<std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash>> thread_interior_points_to_be_deleted_;
 
+    std::vector<std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>> thread_vertices_that_have_deleted_publishers_;
+    std::vector<std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>> thread_vertices_that_have_added_publishers_;
+    std::vector<std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>> thread_vertices_that_have_changed_box_;
+
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertices_;
     std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges_;
     std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces_;
@@ -185,4 +207,7 @@ private:
     std::atomic<int> next_surface_id_{0};
     std::atomic<int> next_genertic_point_id_{0};
     std::atomic<int> next_interior_point_id_{0};
+
+    double distance_travelled_ = 0.0;
+    unsigned int ith_cloud_ = 0;
 };

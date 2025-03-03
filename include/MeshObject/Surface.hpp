@@ -26,7 +26,8 @@ enum class RelativePosition
     IN_FRONT,
     WITHIN,
     BEHIND,
-    NO_RELATIVE_POSITION
+    NO_RELATIVE_POSITION,
+    HIGH_INCIDENT_ANGLE
 };
 
 class Surface : public std::enable_shared_from_this<Surface> 
@@ -73,12 +74,16 @@ public:
     const Eigen::Vector3d& get_normal() const;
     std::size_t get_total_point_size() const;
     double get_average_distance_travelled() const;
+    double get_max_distance_travelled() const;
     const std::tuple<int, int, int>& get_color() const;
     const std::vector<double>& get_point_to_plane_distance_stats();
     const std::vector<double>& get_projective_distance_stats();
     double get_average_projective_distance();
     bool is_expired() const;
     bool is_abnormal();
+    bool is_seed() const;
+
+    double get_surface_area() const;
 
     bool can_merge(const std::shared_ptr<Surface>& surface) const;
 
@@ -119,6 +124,9 @@ public:
     
     void print_info();
 
+    void set_ith_cloud(unsigned int ith_cloud);
+    unsigned int get_ith_cloud() const;
+
 private:
     static Settings settings_;
 
@@ -150,7 +158,16 @@ private:
     double characteristic_length_;
     double normal_uncertainty_ = 0;
     double sum_of_average_distance_travelled_;
+    double max_distance_travelled_ = 0;
     unsigned int total_point_size_ = 0;
+
+    unsigned int ith_cloud_ = 0;
+
+    Eigen::Matrix3d covariance_mean_;
+    double variance_mean_in_normal_direction_;
+
+    bool is_seed_ = true;
+    void update_seed_status();
 
     std::vector<double> stored_projective_distance_stats_;
     std::vector<double> stored_point_to_plane_distance_stats_;
@@ -163,6 +180,8 @@ private:
     double previous_normal_std_;
 
     std::tuple<int, int, int> color_;
+
+    double surface_area_;
 };
 
 bool operator<(const std::shared_ptr<Surface>& lhs, const std::shared_ptr<Surface>& rhs);

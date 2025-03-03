@@ -74,6 +74,9 @@ void Edge::delete_()
     // write lock
     std::unique_lock<std::shared_mutex> lock(rwlock_lifecycle_);
 
+    // skip if already deleted
+    if (is_expired_) return;
+    
     // set deletion flag
     deleting_ = true;
 
@@ -115,6 +118,11 @@ void Edge::delete_()
 
     // set expired
     is_expired_ = true;
+}
+
+Edge::~Edge()
+{
+    // std::cout << "Edge " << id_ << " deleted." << std::endl;
 }
 
 void Edge::connect(const std::shared_ptr<Face>& face) 

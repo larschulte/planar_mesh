@@ -25,30 +25,12 @@ std::ostream& operator<<(std::ostream& os, const RRSReturnType& type)
 
 RRSBoundingBox& RRSBoundingBox::operator=(const RRSBoundingBox& other)
 {
-    if (this != &other)
-    {
-        // Step 1: Lock the other box and read its data
-        Eigen::Vector3d other_min, other_max, other_min_used, other_max_used;
-        double other_surface_area;
-        {
-            // std::shared_lock lock_other(other.mutex_); // Lock the other box
-            other_min = other.min;
-            other_max = other.max;
-            other_min_used = other.min_used_for_surface_area;
-            other_max_used = other.max_used_for_surface_area;
-            other_surface_area = other.surface_area;
-        } // Unlock the other box here
-
-        // Step 2: Lock the current box and store the copied data
-        {
-            // std::unique_lock lock_this(mutex_); // Lock this box
-            min = other_min;
-            max = other_max;
-            min_used_for_surface_area = other_min_used;
-            max_used_for_surface_area = other_max_used;
-            surface_area = other_surface_area;
-        }
-    }
+    min = other.min;
+    max = other.max;
+    min_used_for_surface_area = other.min_used_for_surface_area;
+    max_used_for_surface_area = other.max_used_for_surface_area;
+    surface_area = other.surface_area;
+    
     return *this;
 }
 
@@ -190,8 +172,30 @@ void RRSNode::recursive_shrink_parent_box()
 
         // new parent box
         RRSBoundingBox new_parent_box = RRSBoundingBox();
-        new_parent_box.expand_box_no_return(parent_->left_->box_);
-        new_parent_box.expand_box_no_return(parent_->right_->box_);
+
+        // expand new parent box
+        {
+            // read lock
+            std::shared_lock<std::shared_mutex> lock(parent_->rwlock_node_);
+
+            // expand left box
+            if (parent_->left_)
+            {
+                // read lock
+                std::shared_lock<std::shared_mutex> lock_left(parent_->left_->rwlock_node_);
+
+                new_parent_box.expand_box_no_return(parent_->left_->box_);
+            }
+
+            // expand right box
+            if (parent_->right_)
+            {
+                // read lock
+                std::shared_lock<std::shared_mutex> lock_right(parent_->right_->rwlock_node_);
+
+                new_parent_box.expand_box_no_return(parent_->right_->box_);
+            }
+        }
         
         // shrunk
         const bool shrunk = new_parent_box.min[0] > old_parent_box.min[0] &&
@@ -234,6 +238,23 @@ std::shared_ptr<RRSNode> RRSTree::find_best_node(const std::shared_ptr<RRSNode>&
         // get the node and inherited cost
         RRSNode* current_node = current.first;
         double inherited_cost = current.second;
+
+        // skip if inherited cost is already greater than best cost
+        if (inherited_cost > best_cost) continue;
+
+        // cost to add to the node directly if the node is leaf and does not have boundary vertex
+        if (current_node->isLeaf_ && current_node->boundary_vertex_ == nullptr)
+        {
+            // total cost
+            double cost = inherited_cost;
+
+            // update best cost and best node
+            if (cost < best_cost)
+            {
+                best_cost = cost;
+                best_node = current_node;
+            }
+        }
 
         // skip if inherited cost is already greater than best cost
         if (inherited_cost + lower_bound_cost > best_cost) continue;
@@ -314,6 +335,16 @@ void RRSNode::node_add_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
 {
     // write lock
     std::unique_lock<std::shared_mutex> lock(rwlock_node_);
+
+    // if node is leaf, and do not have boundary vertex, simply add boundary_vertex to node
+    if (isLeaf_ && boundary_vertex_ == nullptr)
+    {
+        boundary_vertex_ = boundary_vertex;
+        boundary_vertex_->node = shared_from_this();
+        box_.expand_box_no_return(boundary_vertex->get_min(), boundary_vertex->get_max());
+        recursive_expand_parent_box();
+        return;
+    }
     
     // create new node
     std::shared_ptr<RRSNode> new_leaf_node = std::make_shared<RRSNode>();
@@ -370,24 +401,64 @@ void RRSNode::node_add_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
 
 void RRSNode::node_delete_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
 {
-    // write lock
-    std::unique_lock<std::shared_mutex> lock(rwlock_node_);
+    {
+        // write lock
+        std::unique_lock<std::shared_mutex> lock(rwlock_node_);
 
-    // boundary vertex is only stored in leaf node
+        // boundary vertex is only stored in leaf node
 
-    // remove node from vertices
-    boundary_vertex->node = nullptr;
+        // remove node from vertices
+        boundary_vertex->node = nullptr;
 
-    // remove vertex from node
-    boundary_vertex_ = nullptr;
+        // remove vertex from node
+        boundary_vertex_ = nullptr;
 
-    // keep in parent's left or right
+        // keep in parent's left or right
 
-    // reset box
-    box_ = RRSBoundingBox(); // here
+        // reset box
+        {
+            // write lock
+            std::unique_lock<std::shared_mutex> lock_box(rwlock_box_);
+
+            // reset box
+            box_ = RRSBoundingBox(); // here
+        }
+    }
 
     // shrink parent box
     recursive_shrink_parent_box();
+}
+
+void RRSNode::node_update_vertex_box(const std::shared_ptr<Vertex>& boundary_vertex)
+{
+    double old_box_size;
+    double new_box_size;
+
+    {
+        // write lock
+        std::unique_lock<std::shared_mutex> lock(rwlock_node_);
+
+        // current box size
+        old_box_size = box_.max[0] - box_.min[0];
+        new_box_size = boundary_vertex->get_max()[0] - boundary_vertex->get_min()[0];
+
+        // skip if no change
+        if (old_box_size == new_box_size) return;
+
+        // store new box size
+        box_.min = boundary_vertex->get_min();
+        box_.max = boundary_vertex->get_max();
+    }
+
+    // recursive update
+    if (new_box_size > old_box_size)
+    {
+        recursive_expand_parent_box();
+    }
+    else
+    {
+        recursive_shrink_parent_box();
+    }
 }
 
 RRSReturnType RRSNode::node_reverse_radius_search(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Vertex>>& search_results)
@@ -411,28 +482,11 @@ RRSReturnType RRSNode::node_reverse_radius_search(const std::shared_ptr<GenericP
         return RRSReturnType::INTERSECTED;
     }
     else
-    {
-        // read lock
-        std::shared_lock<std::shared_mutex> lock2(rwlock_node_);
-
-        // skip if boundary vertex is nullptr
-        if (!boundary_vertex_) return RRSReturnType::SKIP;
-        
-        // read lock
-        std::shared_lock<std::shared_mutex> lock(boundary_vertex_->rwlock_lifecycle_);
-
-        // we lock the vertex during vertex->delete_() call, and then release it before locking it again when removing it from the rrs tree
-        // thus this thread may have lock this vertex during the gap
-        // and see an expired vertex in the search tree
-        // thus we need to check if the vertex is expired and skip if it is
-        if (boundary_vertex_->is_expired() || !boundary_vertex_->approx_contains(generic_point->get_position()))
-        {
-            return RRSReturnType::SKIP;
-        }
-
-        // return
+    {        
+        // store
         search_results.push_back(boundary_vertex_);
 
+        // return
         return RRSReturnType::INTERSECTED;
     }
 }
@@ -447,6 +501,17 @@ void RRSNode::node_flattern(std::vector<std::shared_ptr<Vertex>>& flatten_list)
     else
     {
         flatten_list.push_back(boundary_vertex_);
+    }
+}
+
+void RRSNode::node_count(unsigned int& count) const
+{
+    count++;
+
+    if (!isLeaf_)
+    {
+        left_->node_count(count);
+        right_->node_count(count);
     }
 }
 
@@ -509,6 +574,18 @@ void RRSTree::tree_delete_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
     tree_size--;
 }
 
+void RRSTree::tree_update_vertex_box(const std::shared_ptr<Vertex>& boundary_vertex)
+{
+    // get vertex's node
+    std::shared_ptr<RRSNode> node = boundary_vertex->node;
+
+    // skip if vertex not in tree
+    if (node == nullptr) return;
+
+    // update node box
+    node->node_update_vertex_box(boundary_vertex);
+}
+
 RRSReturnType RRSTree::tree_reverse_radius_search(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Vertex>>& search_results)
 {
     return root->node_reverse_radius_search(generic_point, search_results);
@@ -527,4 +604,12 @@ void RRSTree::print_size()
 unsigned int RRSTree::get_size() const
 {
     return tree_size;
+}
+
+unsigned int RRSTree::get_node_size() const
+{
+    unsigned int count = 0;
+    root->node_count(count);
+
+    return count;
 }

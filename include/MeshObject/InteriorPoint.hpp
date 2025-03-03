@@ -23,6 +23,8 @@ protected:
 
 public:
 
+    ~InteriorPoint();
+
     // read write locks
     mutable std::shared_mutex rwlock_interior_point_distance_subscribers_;
 
@@ -40,17 +42,21 @@ public:
 
     double& get_projected_uncertainty();
 
+    // get surface coordinate
+    const Eigen::Vector2d& get_surface_coordinate(const std::shared_ptr<Surface>& surface);
+    const Eigen::Vector2d& get_surface_coordinate();
+
     std::size_t get_num_deletes() const;
 
     Eigen::Vector3d compute_projected_position();
     double compute_projected_distance();
-
-    void delete_subscribers();
     
     void add_interior_point_distance_subscriber(const std::shared_ptr<Vertex> interior_point_subscriber);
     void delete_interior_point_distance_subscriber(const std::shared_ptr<Vertex> interior_point_subscriber);
 
     void set_reverse_radius_search_radius(double radius);
+
+    void set_do_not_add_back_due_to_seed_surface(bool do_not_add_back_due_to_seed_surface);
 
 private:
     static Settings settings_;
@@ -61,6 +67,7 @@ private:
     std::size_t num_deletes_;
 
     bool can_self_destruct_ = true;
+    bool do_not_add_back_due_to_seed_surface_ = false;
 
     int id_;
     std::shared_ptr<Storage> storage_;
@@ -75,6 +82,9 @@ private:
     double radius_;
 
     double projected_uncertainty_;
+
+    Eigen::Matrix3d eigenvectors_used_;
+    Eigen::Vector2d surface_coordinate_;
 
     FIFOCache<std::size_t, Eigen::Vector3d> buffer_projected_position_{3};
     FIFOCache<std::size_t, double> buffer_projected_distance_{3};

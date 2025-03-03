@@ -147,8 +147,24 @@ void EdgeBVH::Node::recursive_shrink_parent_box()
 
         // new parent box
         EdgeBVH::BoundingBox new_parent_box = EdgeBVH::BoundingBox();
-        new_parent_box.expand_box_no_return(parent_->left_->box_);
-        new_parent_box.expand_box_no_return(parent_->right_->box_);
+
+        // copy boxes of children of parent
+        EdgeBVH::BoundingBox parent_left_box;
+        EdgeBVH::BoundingBox parent_right_box;
+        {
+            // read lock
+            std::shared_lock<std::shared_mutex> lock_left(parent_->left_->rwlock_box_, std::defer_lock);
+            std::shared_lock<std::shared_mutex> lock_right(parent_->right_->rwlock_box_, std::defer_lock);
+            std::lock(lock_left, lock_right);
+
+            // copy boxes
+            parent_left_box = parent_->left_->box_;
+            parent_right_box = parent_->right_->box_;
+        }
+
+        // expand new parent box
+        new_parent_box.expand_box_no_return(parent_left_box);
+        new_parent_box.expand_box_no_return(parent_right_box);
         
         // shrunk
         const bool shrunk = new_parent_box.min[0] > old_parent_box.min[0] &&
@@ -167,38 +183,28 @@ void EdgeBVH::Node::recursive_shrink_parent_box()
     }
 }
 
-bool EdgeBVH::Node::node_intersect_edge(const std::shared_ptr<Vertex>& vertex0, const std::shared_ptr<Vertex>& vertex1)
+EdgeBVH::EdgeBVHReturnType EdgeBVH::Node::node_intersect_edge(const std::shared_ptr<Vertex>& vertex0, const std::shared_ptr<Vertex>& vertex1, std::vector<std::shared_ptr<Edge>>& edges_encountered)
 {
     // skip if not intersected
-    if (!box_.intersect(vertex0->get_position(), vertex1->get_position())) return false;
+    if (!box_.intersect(vertex0->get_position(), vertex1->get_position())) return EdgeBVHReturnType::SKIP;
         
     if (!isLeaf_)
     {
-        if (left_->node_intersect_edge(vertex0, vertex1)) return true;
-        if (right_->node_intersect_edge(vertex0, vertex1)) return true;   
-        
-        // else return false
-        return false;
+        // search left and right
+        EdgeBVHReturnType left_return = left_->node_intersect_edge(vertex0, vertex1, edges_encountered);
+        EdgeBVHReturnType right_return = right_->node_intersect_edge(vertex0, vertex1, edges_encountered);
+
+        // skip if both is skip
+        if (left_return == EdgeBVHReturnType::SKIP && right_return == EdgeBVHReturnType::SKIP) return EdgeBVHReturnType::SKIP;
+        return EdgeBVHReturnType::INTERSECTED;
     }
     else
     {
-        // read lock
-        std::shared_lock<std::shared_mutex> lock2(rwlock_node_);
+        // store
+        edges_encountered.push_back(edge_);
 
-        // skip if edge_ is nullptr
-        if (!edge_) return false;
-
-        // read lock edge
-        std::shared_lock<std::shared_mutex> lock(edge_->rwlock_lifecycle_);
-        
-        // skip if edge is expired
-        if (edge_->is_expired()) return false;
-
-        // check if edge intersects
-        if (edge_->intersects_edge(vertex0, vertex1)) return true;
-
-        // else return false
-        return false;   
+        // return
+        return EdgeBVHReturnType::INTERSECTED;
     }
 }
 
@@ -229,6 +235,23 @@ std::shared_ptr<EdgeBVH::Node> EdgeBVH::find_best_node(const std::shared_ptr<Edg
 
         // skip if inherited cost is already greater than best cost
         if (inherited_cost > best_cost) continue;
+
+        // cost to add to the node directly if the node is leaf and does not have edge
+        if (current_node->isLeaf_ && current_node->edge_ == nullptr)
+        {
+            // total cost
+            double cost = inherited_cost;
+
+            // update best cost and best node
+            if (cost < best_cost)
+            {
+                best_cost = cost;
+                best_node = current_node;
+            }
+        }
+
+        // skip if inherited cost is already greater than best cost
+        if (inherited_cost + lower_bound_cost > best_cost) continue;
 
         // cost to add a branch that contains current node and leaf node
         {
@@ -288,6 +311,16 @@ void EdgeBVH::Node::node_add_edge(const std::shared_ptr<Edge>& edge)
 {    
     // write lock
     std::unique_lock<std::shared_mutex> lock(rwlock_node_);
+
+    // if node is leaf, and do not have edge, simply add edge to node
+    if (isLeaf_ && edge_ == nullptr)
+    {
+        edge_ = edge;
+        edge_->node = shared_from_this();
+        box_.expand_box_no_return(edge->get_min(), edge->get_max());
+        recursive_expand_parent_box();
+        return;
+    }
 
     // create new node
     std::shared_ptr<EdgeBVH::Node> new_leaf_node = std::make_shared<EdgeBVH::Node>();
@@ -353,7 +386,13 @@ void EdgeBVH::Node::node_delete_edge(const std::shared_ptr<Edge>& edge)
     // keep in parent's left or right
 
     // reset box
-    box_ = BoundingBox();
+    {
+        // write lock
+        std::unique_lock<std::shared_mutex> lock_box(rwlock_box_);
+
+        // reset box
+        box_ = BoundingBox();
+    }
     
     // shrink parent box
     recursive_shrink_parent_box();
@@ -432,12 +471,12 @@ void EdgeBVH::tree_add_edge(const std::shared_ptr<Edge>& edge)
     edge_size_++;
 }
 
-bool EdgeBVH::tree_intersect_edge(const std::shared_ptr<Vertex>& vertex0, const std::shared_ptr<Vertex>& vertex1)
+EdgeBVH::EdgeBVHReturnType EdgeBVH::tree_intersect_edge(const std::shared_ptr<Vertex>& vertex0, const std::shared_ptr<Vertex>& vertex1, std::vector<std::shared_ptr<Edge>>& edges_encountered)
 {
     // check input
     if (vertex0->is_expired() || vertex1->is_expired()) throw std::runtime_error("Attempts to intersect with expired vertex.");
 
-    return root_->node_intersect_edge(vertex0, vertex1);
+    return root_->node_intersect_edge(vertex0, vertex1, edges_encountered);
 }
 
 void EdgeBVH::tree_print() const

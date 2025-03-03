@@ -3,11 +3,14 @@
 #include "MeshObject/Edge.hpp"
 #include "MeshObject/Face.hpp"
 #include "MeshObject/Storage.hpp"
+#include "MeshObject/Surface.hpp"
 #include <unordered_set>
 #include <pcl/io/ply_io.h>
 
 #include "point_type/VilensPointT.hpp"
 #include "point_type/BagPointT.hpp"
+
+#include "utilities/simplified_mesh.hpp"
 
 template class InteractiveViewer<VilensPointT>;
 template class InteractiveViewer<BagPointT>;
@@ -33,6 +36,66 @@ InteractiveViewer<PointT>::InteractiveViewer(Application<PointT>& app)
     viewer_->addCoordinateSystem(1);
     viewer_->registerKeyboardCallback(&InteractiveViewer::keyboard_callback, *this, nullptr);
     viewer_->spin();
+}
+
+template <typename PointT>
+void InteractiveViewer<PointT>::save_simplified_surfaces()
+{
+    // all surfaces
+    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces = storage_->get_surfaces();
+
+    // initialize all mesh
+    pcl::PolygonMesh simplified_mesh;
+
+    // if largest surface only
+    const bool only_largest_surface = false;
+    if (only_largest_surface)
+    {
+        // find the largest mesh by area
+        double max_area = 0;
+        std::shared_ptr<Surface> largest_surface = nullptr;
+        for (const std::shared_ptr<Surface>& surface : surfaces)
+        {
+            // get area
+            if (surface->get_surface_area() > max_area) 
+            {
+                max_area = surface->get_surface_area();
+                largest_surface = surface;
+            }
+        }
+        // create mesh
+        pcl::PolygonMesh triangle_mesh = create_simplified_mesh(largest_surface);
+        // merge
+        merge_polygon_mesh(simplified_mesh, triangle_mesh);
+    }
+    else
+    {
+        // add meshes
+        unsigned int index = 0;
+        for (const std::shared_ptr<Surface>& surface : surfaces)
+        {
+            // log
+            std::cout << "simplified surface " << index++ << " / " << surfaces.size() << std::endl;
+
+            // create mesh
+            pcl::PolygonMesh triangle_mesh = create_simplified_mesh(surface);
+
+            // merge
+            merge_polygon_mesh(simplified_mesh, triangle_mesh);
+        }
+    }
+
+    // clear display
+    viewer_->removeShape("point_cloud");
+    viewer_->removeShape("interior_points");
+    viewer_->removeShape("boundary_edges");
+    viewer_->removeShape("triangle_mesh");
+    viewer_->removeShape("simplified_mesh");
+    viewer_->addPolygonMesh(simplified_mesh, "simplified_mesh");
+
+    // save to ply
+    pcl::io::savePLYFile("simplified.ply", simplified_mesh);
+    std::cout << "exported simplified.ply" << std::endl;
 }
 
 template <typename PointT>
@@ -95,6 +158,9 @@ void InteractiveViewer<PointT>::update_display(bool export_ply)
         pcl::toPCLPointCloud2(*vertex_pointcloud, triangle_mesh.cloud);
         for (const std::shared_ptr<Face>& face : faces)
         {
+            // skip if from seed surface
+            if (!settings_.show_seed_surface && face->get_surface()->is_seed()) continue;
+
             // skip if can't find all indices
             if (vertex_to_cloud_indices_map.find(face->get_vertex(0)) == vertex_to_cloud_indices_map.end()) continue;
             if (vertex_to_cloud_indices_map.find(face->get_vertex(1)) == vertex_to_cloud_indices_map.end()) continue;
@@ -129,8 +195,8 @@ void InteractiveViewer<PointT>::update_display(bool export_ply)
             // skip if expired // for some reason, storage would return expired edges ...
             if (edge->is_expired()) continue;
 
-            // skip if singular
-            if (!settings_.show_singular_edge && edge->is_singular()) continue;
+            // skip if seed
+            if (!settings_.show_seed_surface && edge->get_surface()->is_seed()) continue;
             
             pcl::Vertices boundary_edge;
             boundary_edge.vertices.push_back(vertex_to_cloud_indices_map.at(edge->get_vertex(0)));
@@ -263,11 +329,11 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
     // kp number 5
     if (event.getKeySym() == "KP_Begin" && event.keyDown())
     {
-        settings_.color_mode = ColorMode::CONTENTION;
+        settings_.color_mode = ColorMode::MAX_DISTANCE_TRAVELLED;
         update_display();
 
         // log
-        std::cout << "color_mode: contention" << std::endl;
+        std::cout << "color_mode: max distance travelled" << std::endl;
     }
     // kp number 6
     if (event.getKeySym() == "KP_Right" && event.keyDown())
@@ -299,14 +365,12 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
     // kp numebr 9
     if (event.getKeySym() == "KP_Prior" && event.keyDown())
     {
-        // singular edge
-        settings_.show_singular_edge = !settings_.show_singular_edge;
-        settings_.show_singular_vertex = !settings_.show_singular_vertex;
+        // show seed surface obejct
+        settings_.show_seed_surface = !settings_.show_seed_surface;
         update_display();
 
         // log
-        std::cout << "show_singular_edge: " << settings_.show_singular_edge << std::endl;
-        std::cout << "show_singular_vertex: " << settings_.show_singular_vertex << std::endl;
+        std::cout << "show_seed_surface: " << settings_.show_seed_surface << std::endl;
     }
     
     if (event.getKeySym() == "1" && event.keyDown())
@@ -340,6 +404,30 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
 
         // log
         std::cout << "step 1000" << std::endl;
+    }
+    if (event.getKeySym() == "6" && event.keyDown())
+    {
+        for (int i = 0; i < 10; i++) app_.loop();
+        update_display();
+
+        // log
+        std::cout << "loop 10" << std::endl;
+    }
+    if (event.getKeySym() == "7" && event.keyDown())
+    {
+        for (int i = 0; i < 50; i++) app_.loop();
+        update_display();
+
+        // log
+        std::cout << "loop 50" << std::endl;
+    }
+    if (event.getKeySym() == "8" && event.keyDown())
+    {
+        for (int i = 0; i < 100; i++) app_.loop();
+        update_display();
+
+        // log
+        std::cout << "loop 100" << std::endl;
     }
     if (event.getKeySym() == "9" && event.keyDown())
     {
@@ -426,11 +514,10 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
     // }
     if (event.getKeySym() == "b" && event.keyDown())
     {
-        storage_->cleanup_surfaces();
-        update_display();
+        save_simplified_surfaces();
 
         // log
-        std::cout << "close holes" << std::endl;
+        std::cout << "simplified surface" << std::endl;
     }
     if (event.getKeySym() == "n" && event.keyDown())
     {

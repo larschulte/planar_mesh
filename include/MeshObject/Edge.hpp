@@ -22,6 +22,9 @@ protected:
     void delete_();
 
 public:
+
+    ~Edge();
+
     std::shared_ptr<EdgeBVH::Node> node;
 
     // read and write lock

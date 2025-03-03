@@ -57,30 +57,12 @@ bool ray_triangle_intersect(const Eigen::Vector3d& orig, const Eigen::Vector3d& 
 
 BoundingBox& BoundingBox::operator=(const BoundingBox& other)
 {
-    if (this != &other)
-    {
-        // Step 1: Lock the other box and read its data
-        Eigen::Vector3d other_min, other_max, other_min_used, other_max_used;
-        double other_surface_area;
-        {
-            // std::shared_lock lock_other(other.mutex_); // Lock the other box
-            other_min = other.min;
-            other_max = other.max;
-            other_min_used = other.min_used_for_surface_area;
-            other_max_used = other.max_used_for_surface_area;
-            other_surface_area = other.surface_area;
-        } // Unlock the other box here
-
-        // Step 2: Lock the current box and store the copied data
-        {
-            // std::unique_lock lock_this(mutex_); // Lock this box
-            min = other_min;
-            max = other_max;
-            min_used_for_surface_area = other_min_used;
-            max_used_for_surface_area = other_max_used;
-            surface_area = other_surface_area;
-        }
-    }
+    min = other.min;
+    max = other.max;
+    min_used_for_surface_area = other.min_used_for_surface_area;
+    max_used_for_surface_area = other.max_used_for_surface_area;
+    surface_area = other.surface_area;
+    
     return *this;
 }
 
@@ -235,8 +217,22 @@ void Node::recursive_shrink_parent_box()
 
         // new parent box
         BoundingBox new_parent_box = BoundingBox();
-        new_parent_box.expand_box_no_return(parent_->left_->box_);
-        new_parent_box.expand_box_no_return(parent_->right_->box_);
+
+        // copy boxes of children of parent
+        BoundingBox parent_left_box;
+        BoundingBox parent_right_box;
+        {
+            std::shared_lock lock_left(parent_->left_->rwlock_box_, std::defer_lock);
+            std::shared_lock lock_right(parent_->right_->rwlock_box_, std::defer_lock);
+            std::lock(lock_left, lock_right);
+
+            parent_left_box = parent_->left_->box_;
+            parent_right_box = parent_->right_->box_;
+        }
+
+        // expand new parent box
+        new_parent_box.expand_box_no_return(parent_left_box);
+        new_parent_box.expand_box_no_return(parent_right_box);
                 
         // shrunk
         const bool shrunk = new_parent_box.min[0] > old_parent_box.min[0] &&
@@ -276,28 +272,11 @@ BVHReturnType Node::node_intersection_search(const std::shared_ptr<GenericPoint>
         return BVHReturnType::INTERSECTED;
     }
     else
-    {
-        // read lock
-        std::shared_lock<std::shared_mutex> lock2(rwlock_node_);
-
-        // skip if face is nullptr
-        if (!face_) return BVHReturnType::SKIP;
-        
-        // read lock
-        std::shared_lock<std::shared_mutex> lock(face_->rwlock_lifecycle_);
-
-        // we lock the face during face->delete_() call, and then release it before locking it again when removing it from the bvh tree
-        // thus this thread may have lock this face during the gap
-        // and see an expired face in the search tree
-        // thus we need to check if the face is expired and skip if it is
-        if (face_->is_expired() || !face_->intersects_point(generic_point->get_origin(), generic_point->get_direction()))
-        {
-            return BVHReturnType::SKIP;
-        }
-
-        // return
+    {        
+        // store
         faces_intersected.push_back(face_);
 
+        // return
         return BVHReturnType::INTERSECTED;
     }
 }
@@ -326,6 +305,23 @@ std::shared_ptr<Node> TriangleBVH::find_best_node(const std::shared_ptr<Node>& n
         // get the node and inherited cost
         Node* current_node = current.first;
         double inherited_cost = current.second;
+
+        // skip if inherited cost is already greater than best cost
+        if (inherited_cost > best_cost) continue;
+
+        // cost to add to the node directly if the node is leaf and does not have face
+        if (current_node->isLeaf_ && current_node->face_ == nullptr)
+        {
+            // total cost
+            double cost = inherited_cost;
+
+            // update best cost and best node
+            if (cost < best_cost)
+            {
+                best_cost = cost;
+                best_node = current_node;
+            }
+        }
 
         // skip if inherited cost is already greater than best cost
         if (inherited_cost + lower_bound_cost > best_cost) continue;
@@ -386,6 +382,16 @@ void Node::node_add_face(const std::shared_ptr<Face>& face)
 {
     // write lock
     std::unique_lock<std::shared_mutex> lock(rwlock_node_);
+
+    // if node is leaf, and do not have face, simply add face to node
+    if (isLeaf_ && face_ == nullptr)
+    {
+        face_ = face;
+        face_->node = shared_from_this();
+        box_.expand_box_no_return(face->get_min(), face->get_max());
+        recursive_expand_parent_box();
+        return;
+    }
     
     // create new node
     std::shared_ptr<Node> new_leaf_node = std::make_shared<Node>();
@@ -456,7 +462,13 @@ void Node::node_delete_face(const std::shared_ptr<Face>& face)
     // keep in parent's left or right
 
     // reset box
-    box_ = BoundingBox();
+    {
+        // write lock
+        std::unique_lock<std::shared_mutex> lock_box(rwlock_box_);
+
+        // reset box
+        box_ = BoundingBox();
+    }
 
     // shrink parent box
     recursive_shrink_parent_box();

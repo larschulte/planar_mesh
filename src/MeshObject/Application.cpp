@@ -10,6 +10,7 @@
 #include "MeshObject/Storage.hpp"
 #include "utilities/utilities.hpp"
 #include "utilities/covariance_math.hpp"
+#include "utilities/simplified_mesh.hpp"
 
 #include <iostream>
 #include <random>
@@ -26,6 +27,9 @@
 
 #include "point_type/VilensPointT.hpp"
 #include "point_type/BagPointT.hpp"
+
+#include <pcl/io/ply_io.h>
+#include <boost/filesystem.hpp>
 
 template class Application<VilensPointT>;
 template class Application<BagPointT>;
@@ -93,6 +97,8 @@ double Application<PointT>::compute_eigenvalue_of_merged_surfaces(std::shared_pt
 template <typename PointT>
 void Application<PointT>::load_point_cloud()
 {
+    std::cout << data_loader.size() << std::endl;
+
     // fix ith_cloud
     if (ith_cloud < 0)
     {
@@ -115,10 +121,19 @@ void Application<PointT>::load_point_cloud()
     // transform cloud to global
     pointcloud = transform_cloud_to_global<PointT>(pointcloud_local, pose);
 
+    // update starting point if first cloud
+    if (first_cloud_)
+    {
+        origin = pose.translation();
+        first_cloud_ = false;
+    }
+
     // update origin and distance traveled
     Eigen::Vector3d previous_origin = origin;
     origin = pose.translation();
     distance_travelled_ += (origin - previous_origin).norm();
+    storage_->set_distance_travelled(distance_travelled_);
+    storage_->set_ith_cloud(ith_cloud);
     std::cout << "distance traveled: " << distance_travelled_ << std::endl;
 
     // shuffle pointcloud
@@ -132,13 +147,194 @@ void Application<PointT>::load_point_cloud()
 }
 
 template <typename PointT>
+void Application<PointT>::write_mesh()
+{
+    // update settings
+    settings_.point_mode = PointMode::PROJECTED;
+    settings_.color_mode = ColorMode::ID;
+
+    // get vertex and faces
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr vertex_pointcloud = compute_vertex_point_pointcloud(settings_);
+    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces = storage_->get_faces();
+
+    // log
+    std::cout << "filtering faces by edge length radius" << std::endl;
+
+    // filter face by edge length radius
+    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> filtered_faces;
+    unsigned int count = 0;
+    unsigned int total = faces.size();
+    for (const std::shared_ptr<Face>& face : faces)
+    {
+        // skip if seed surface
+        if (face->get_surface()->is_seed()) continue;
+
+        // log
+        count++;
+        if (count % 10000 == 0) std::cout << "filtering faces by edge length radius " << count << " of " << total << std::endl;
+
+        // skip if expired
+        if (face->is_expired()) continue;
+
+        // get vertices
+        std::shared_ptr<Vertex> vertex0 = face->get_vertex(0);
+        std::shared_ptr<Vertex> vertex1 = face->get_vertex(1);
+        std::shared_ptr<Vertex> vertex2 = face->get_vertex(2);
+
+        // get projected position
+        Eigen::Vector3d position0 = vertex0->compute_projected_position();
+        Eigen::Vector3d position1 = vertex1->compute_projected_position();
+        Eigen::Vector3d position2 = vertex2->compute_projected_position();
+
+        // get projected edge length
+        double edge_length0 = (position0 - position1).norm();
+        double edge_length1 = (position1 - position2).norm();
+        double edge_length2 = (position2 - position0).norm();
+
+        // skip if edge length radius is too long
+        if (edge_length0 > vertex0->get_radius() || edge_length0 > vertex1->get_radius()) continue;
+        if (edge_length1 > vertex1->get_radius() || edge_length1 > vertex2->get_radius()) continue;
+        if (edge_length2 > vertex2->get_radius() || edge_length2 > vertex0->get_radius()) continue;
+
+        // store
+        filtered_faces.insert(face);
+    }
+
+    // log
+    std::cout << "creating triangle mesh" << std::endl;
+
+    // create triangle mesh
+    pcl::PolygonMesh triangle_mesh;
+    pcl::toPCLPointCloud2(*vertex_pointcloud, triangle_mesh.cloud);
+    for (const std::shared_ptr<Face>& face : filtered_faces)
+    {
+        // skip if can't find all indices
+        if (vertex_to_cloud_indices_map.find(face->get_vertex(0)) == vertex_to_cloud_indices_map.end()) continue;
+        if (vertex_to_cloud_indices_map.find(face->get_vertex(1)) == vertex_to_cloud_indices_map.end()) continue;
+        if (vertex_to_cloud_indices_map.find(face->get_vertex(2)) == vertex_to_cloud_indices_map.end()) continue;
+
+        pcl::Vertices triangle;
+        triangle.vertices.push_back(vertex_to_cloud_indices_map.at(face->get_vertex(0)));
+        triangle.vertices.push_back(vertex_to_cloud_indices_map.at(face->get_vertex(1)));
+        triangle.vertices.push_back(vertex_to_cloud_indices_map.at(face->get_vertex(2)));
+        triangle_mesh.polygons.push_back(triangle);
+    }
+
+    // create folder for triangle mesh if not exists
+    if (!boost::filesystem::exists(settings_.save_folder))
+    {
+        boost::filesystem::create_directories(settings_.save_folder);
+    }
+
+    // save triangle mesh
+    std::string write_path = settings_.save_folder + "mesh.ply";
+    pcl::io::savePLYFileBinary(write_path, triangle_mesh);
+    std::cout << "write mesh to " << write_path << std::endl;
+
+    // save duration to file for triangle mesh
+    std::string duration_file_path = settings_.save_folder + "duration.txt";
+    std::ofstream duration_file(duration_file_path);
+    for (double duration : duration_list)
+    {
+        duration_file << duration << std::endl;
+    }
+
+    // create simplified mesh
+    pcl::PolygonMesh simplified_mesh;
+    for (const std::shared_ptr<Surface>& surface : storage_->get_surfaces())
+    {
+        // skip if seed surface
+        if (surface->is_seed()) continue;
+
+        pcl::PolygonMesh surface_mesh = create_simplified_mesh(surface);
+        merge_polygon_mesh(simplified_mesh, surface_mesh);
+    }
+    
+    // create folder for simplified mesh if not exists
+    std::string simplified_folder = settings_.save_folder;
+    simplified_folder.insert(simplified_folder.size() - 1, "_simplified_mesh");
+    if (!boost::filesystem::exists(simplified_folder))
+    {
+        boost::filesystem::create_directories(simplified_folder);
+    }
+
+    // save simplified mesh
+    std::string simplified_mesh_path = simplified_folder + "simplified_mesh.ply";
+    pcl::io::savePLYFileBinary(simplified_mesh_path, simplified_mesh);
+    std::cout << "write simplified mesh to " << simplified_mesh_path << std::endl;
+
+    // create simplified mesh with color
+    pcl::PolygonMesh simplified_mesh_with_color;
+    for (const std::shared_ptr<Surface>& surface : storage_->get_surfaces())
+    {
+        // skip if seed surface
+        if (surface->is_seed()) continue;
+
+        pcl::PolygonMesh surface_mesh_with_color = create_simplified_mesh(surface, true);
+        merge_polygon_mesh(simplified_mesh_with_color, surface_mesh_with_color);
+    }
+    
+    // save simplified mesh with color
+    std::string simplified_mesh_with_color_path = simplified_folder + "simplified_mesh_with_color.ply";
+    pcl::io::savePLYFileBinary(simplified_mesh_with_color_path, simplified_mesh_with_color);
+    std::cout << "write simplified mesh with color to " << simplified_mesh_with_color_path << std::endl;
+    
+    // save duration to file for simplified mesh
+    std::string simplified_duration_file_path = simplified_folder + "duration.txt";
+    std::ofstream simplified_duration_file(simplified_duration_file_path);
+    for (double duration : duration_list)
+    {
+        simplified_duration_file << duration << std::endl;
+    }
+
+    // save stack duration to file for simplified mesh
+    std::string stack_duration_file_path = simplified_folder + "stack_duration.txt";
+    std::ofstream stack_duration_file(stack_duration_file_path);
+    for (unsigned int index = 0; index < duration_list.size(); index++)
+    {
+        double total_duration = duration_list[index];
+        double rrs_search_duration = rrs_search_duration_list[index];
+        double rrs_update_duration = rrs_update_duration_list[index];
+        double bvh_search_duration = bvh_search_duration_list[index];
+        double bvh_update_duration = bvh_update_duration_list[index];
+        double add_to_map_duration = add_to_map_duration_list[index];
+        double delete_from_map_duration = delete_from_map_duration_list[index];
+        double relative_position_duration = relative_position_duration_list[index];
+        
+        const std::string separator = ",";
+        stack_duration_file << total_duration << separator
+                            << rrs_search_duration << separator
+                            << rrs_update_duration << separator
+                            << bvh_search_duration << separator
+                            << bvh_update_duration << separator
+                            << add_to_map_duration << separator
+                            << delete_from_map_duration << separator
+                            << relative_position_duration << std::endl;
+    }
+}
+
+template <typename PointT>
 void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& generic_point)
 {
+    // bvh search duration
+    std::chrono::time_point<std::chrono::high_resolution_clock> bvh_search_duration_start = std::chrono::high_resolution_clock::now();
+
     std::vector<std::shared_ptr<Face>> bvh_results;
     BVHReturnType BVH_return = storage_->face_intersection_search(generic_point, bvh_results);
 
+    std::chrono::time_point<std::chrono::high_resolution_clock> bvh_search_duration_end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> bvh_search_duration = bvh_search_duration_end - bvh_search_duration_start;
+    bvh_search_duration_per_thread[omp_get_thread_num()] += bvh_search_duration.count();
+
+    // rrs search duration
+    std::chrono::time_point<std::chrono::high_resolution_clock> rrs_search_duration_start = std::chrono::high_resolution_clock::now();
+
     std::vector<std::shared_ptr<Vertex>> rrs_results;
     RRSReturnType RRS_return = storage_->reverse_radius_search(generic_point, rrs_results);    
+
+    std::chrono::time_point<std::chrono::high_resolution_clock> rrs_search_duration_end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> rrs_search_duration = rrs_search_duration_end - rrs_search_duration_start;
+    rrs_search_duration_per_thread[omp_get_thread_num()] += rrs_search_duration.count();
 
     // update stats
     num_of_concurrent_processes++;
@@ -187,47 +383,103 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
     
     // std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
+    // add to map duration
+    std::chrono::time_point<std::chrono::high_resolution_clock> add_to_map_duration_start = std::chrono::high_resolution_clock::now();
+
     // process
-    // convert to set
-    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> bvh_results_set(bvh_results.begin(), bvh_results.end());
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> rrs_results_set(rrs_results.begin(), rrs_results.end());
-    add_point_to_map(generic_point, bvh_results_set, rrs_results_set);
+    add_point_to_map(generic_point, bvh_results, rrs_results);
 
     num_of_concurrent_processes--;
     
     // after unlocking all locks, add the point in queue to the search tree
+    storage_->update_vertices_that_have_added_publishers();
+
+    std::chrono::time_point<std::chrono::high_resolution_clock> add_to_map_duration_end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> add_to_map_duration = add_to_map_duration_end - add_to_map_duration_start;
+    add_to_map_duration_per_thread[omp_get_thread_num()] += add_to_map_duration.count();
+
+    // delete from map duration
+    std::chrono::time_point<std::chrono::high_resolution_clock> delete_from_map_duration_start = std::chrono::high_resolution_clock::now();
+    
     storage_->delete_to_be_deleted_repeatedly();
+
+    std::chrono::time_point<std::chrono::high_resolution_clock> delete_from_map_duration_end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> delete_from_map_duration = delete_from_map_duration_end - delete_from_map_duration_start;
+    delete_from_map_duration_per_thread[omp_get_thread_num()] += delete_from_map_duration.count();
+
+
+    // update rrs tree duration
+    std::chrono::time_point<std::chrono::high_resolution_clock> rrs_update_duration_start = std::chrono::high_resolution_clock::now();
+
+    storage_->update_vertices_that_have_changed_box();
     storage_->add_or_remove_vertices_from_rrs_tree();
+
+    std::chrono::time_point<std::chrono::high_resolution_clock> rrs_update_duration_end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> rrs_update_duration = rrs_update_duration_end - rrs_update_duration_start;
+    rrs_update_duration_per_thread[omp_get_thread_num()] += rrs_update_duration.count();
+
+    // update bvh tree duration
+    std::chrono::time_point<std::chrono::high_resolution_clock> bvh_update_duration_start = std::chrono::high_resolution_clock::now();
     storage_->add_or_remove_faces_from_bvh_tree();
+
+    std::chrono::time_point<std::chrono::high_resolution_clock> bvh_update_duration_end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> bvh_update_duration = bvh_update_duration_end - bvh_update_duration_start;
+    bvh_update_duration_per_thread[omp_get_thread_num()] += bvh_update_duration.count();
+
+    // update edge bvh tree duration
+    std::chrono::time_point<std::chrono::high_resolution_clock> add_to_map_duration_start2 = std::chrono::high_resolution_clock::now();
+
     storage_->add_or_remove_edges_from_edgeBVH_tree();
+
+    std::chrono::time_point<std::chrono::high_resolution_clock> add_to_map_duration_end2 = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> add_to_map_duration2 = add_to_map_duration_end2 - add_to_map_duration_start2;
+    add_to_map_duration_per_thread[omp_get_thread_num()] += add_to_map_duration2.count();
 }
 
 template <typename PointT>
-void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& generic_point, std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> bvh_results, std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> rrs_results)
+void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Face>> unfiltered_bvh_results, std::vector<std::shared_ptr<Vertex>> unfiltered_rrs_results)
 {
 
     // from bvh results and rrs results, get surfaces
     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> bvh_surfaces;
     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> rrs_surfaces;
-    for (const std::shared_ptr<Face>& face : bvh_results)
+    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> bvh_results;
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> rrs_results;
+    for (const std::shared_ptr<Face>& face : unfiltered_bvh_results)
     {
+        // skip if nullptr
+        if (face == nullptr) continue;
+
         // read lock
         std::shared_lock<std::shared_mutex> lock(face->rwlock_lifecycle_);
 
         // skip if expired
         if (face->is_expired()) continue;
 
+        // skip if does not intersect
+        if (!face->intersects_point(generic_point->get_origin(), generic_point->get_direction())) continue;
+        
+        // store
         bvh_surfaces.insert(face->get_surface());
+        bvh_results.insert(face);
     }
-    for (const std::shared_ptr<Vertex>& vertex : rrs_results)
+    for (const std::shared_ptr<Vertex>& vertex : unfiltered_rrs_results)
     {
+        // skip if nullptr
+        if (vertex == nullptr) continue;
+
         // read lock
         std::shared_lock<std::shared_mutex> lock(vertex->rwlock_lifecycle_); // this to prevent vertex from being deleted
 
         // skip if expired
         if (vertex->is_expired()) continue;
-        
+
+        // skip if does not contain
+        if (!vertex->contains(generic_point->get_position())) continue;
+
+        // store
         rrs_surfaces.insert(vertex->get_surface());
+        rrs_results.insert(vertex);
     }
 
     // split surfaces into bvh and rrs seed, within, behind, in front
@@ -248,7 +500,12 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
         if (surface->is_expired()) continue;
 
         // check relative position
+        // time this
+        std::chrono::time_point<std::chrono::high_resolution_clock> relative_position_start = std::chrono::high_resolution_clock::now();
         RelativePosition relative_position = surface->check_relative_position(generic_point);
+        std::chrono::time_point<std::chrono::high_resolution_clock> relative_position_end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> relative_position_duration = relative_position_end - relative_position_start;
+        relative_position_duration_per_thread[omp_get_thread_num()] += relative_position_duration.count();
 
         // skip if no relative position
         if (relative_position == RelativePosition::NO_RELATIVE_POSITION) surfaces_bvh_seed.insert(surface);
@@ -271,7 +528,11 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
         if (surface->is_expired()) continue;
 
         // check relative position
+        std::chrono::time_point<std::chrono::high_resolution_clock> relative_position_start = std::chrono::high_resolution_clock::now();
         RelativePosition relative_position = surface->check_relative_position(generic_point);
+        std::chrono::time_point<std::chrono::high_resolution_clock> relative_position_end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> relative_position_duration = relative_position_end - relative_position_start;
+        relative_position_duration_per_thread[omp_get_thread_num()] += relative_position_duration.count();
 
         // skip if no relative position
         if (relative_position == RelativePosition::NO_RELATIVE_POSITION) surfaces_rrs_seed.insert(surface);
@@ -418,8 +679,8 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
         // store current surface to add to
         surface_to_add_to = surface;
 
-        // if from bvh surface
-        if (bvh_surfaces.find(surface_to_add_to) != bvh_surfaces.end())
+        // 1. if added to bvh within
+        if (surfaces_bvh_within.find(surface_to_add_to) != surfaces_bvh_within.end())
         {
             // get the first face
             for (const std::shared_ptr<Face>& face : bvh_results)
@@ -443,8 +704,53 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
             break;
         }
         
-        // if from rrs surface
-        if (rrs_surfaces.find(surface_to_add_to) != rrs_surfaces.end())
+        // 2. if added to rrs within
+        if (surfaces_rrs_within.find(surface_to_add_to) != surfaces_rrs_within.end())
+        {
+            // added as vertex
+            new_vertex = storage_->add_vertex(surface_to_add_to, generic_point);
+
+            // reduce radius of the new vertex
+            for (std::shared_ptr<Vertex> vertex : rrs_results)
+            {
+                // read lock
+                std::shared_lock<std::shared_mutex> lock(vertex->rwlock_lifecycle_); // this to prevent vertex from being deleted
+
+                // skip if the vertex is expired
+                if (vertex->is_expired()) continue;
+
+                // skip if the vertex is the same as the new vertex
+                if (vertex->get_surface() == surface_to_add_to) continue;
+
+                // skip if the vertex is in seed surface
+                if (surfaces_rrs_seed.find(vertex->get_surface()) != surfaces_rrs_seed.end()) continue;
+
+                // add neighboring vertex
+                new_vertex->add_vertex_point_distance_publisher(vertex);
+            }
+            new_vertex->upon_adding_publisher();
+
+            // need to prevent vertex from being deleted from newly connected edges
+            new_vertex->set_connecting_to_edges_and_faces(true);
+            const bool connected = surface_to_add_to->connect_by_edges_and_faces(new_vertex, rrs_results);
+            new_vertex->set_connecting_to_edges_and_faces(false);
+
+            // if not connected, delete the vertex
+            if (!connected)
+            {
+                // delete this and retry
+                new_vertex->set_do_not_add_back_due_to_not_connected(true);
+                storage_->delete_vertex(new_vertex);
+                continue;
+            }
+            else
+            {
+                break;
+            }
+        }
+
+        // 3. if added to rrs seed
+        if (surfaces_rrs_seed.find(surface_to_add_to) != surfaces_rrs_seed.end())
         {
             // added as vertex
             new_vertex = storage_->add_vertex(surface_to_add_to, generic_point);
@@ -475,7 +781,7 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
             if (!connected)
             {
                 // delete this and retry
-                new_vertex->can_create_generic_point(false);
+                new_vertex->set_do_not_add_back_due_to_not_connected(true);
                 storage_->delete_vertex(new_vertex);
                 continue;
             }
@@ -486,11 +792,11 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
         }
     }
 
-    // add to new surface if not added to list of bvh or rrs
+    // 4. add to new surface if not added to list of bvh or rrs
     if (surface_to_add_to == nullptr)
     {
         // add new surface
-        std::shared_ptr<Surface> surface_to_add_to = storage_->add_surface();
+        surface_to_add_to = storage_->add_surface();
 
         // add as vertex
         new_vertex = storage_->add_vertex(surface_to_add_to, generic_point);
@@ -513,54 +819,79 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
         new_vertex->upon_adding_publisher();
     }
 
-    // bvh - delete penetrated 
-    for (const std::shared_ptr<Face>& face : bvh_results)
+    surface_to_add_to->set_ith_cloud(ith_cloud);
+
+    // 1. if added to bvh within / 2. if added to rrs within
+    if (surfaces_bvh_within.find(surface_to_add_to) != surfaces_bvh_within.end() || surfaces_rrs_within.find(surface_to_add_to) != surfaces_rrs_within.end())
     {
+        // bvh - delete penetrated 
+        for (const std::shared_ptr<Face>& face : bvh_results)
+        {
+            {
+                // read lock
+                std::shared_lock<std::shared_mutex> lock(face->rwlock_lifecycle_);
+
+                // skip if expired
+                if (face->is_expired()) continue;
+
+                // skip if same surface
+                if (face->get_surface() == surface_to_add_to) continue;
+
+                // skip if no relative position
+                if (surfaces_bvh_seed.find(face->get_surface()) != surfaces_bvh_seed.end()) continue;
+
+                // skip if in front 
+                if (surfaces_bvh_in_front.find(face->get_surface()) != surfaces_bvh_in_front.end()) continue;
+            }
+
+            // delete penetrated face
+            storage_->add_face_to_be_deleted(face);
+        }
+        
+        // rrs - reduce radius
+        for (const std::shared_ptr<Vertex>& vertex : rrs_results)
         {
             // read lock
-            std::shared_lock<std::shared_mutex> lock(face->rwlock_lifecycle_);
+            std::shared_lock<std::shared_mutex> lock(vertex->rwlock_lifecycle_); // this to prevent vertex from being deleted
 
             // skip if expired
-            if (face->is_expired()) continue;
+            if (vertex->is_expired()) continue;
 
             // skip if same surface
-            if (face->get_surface() == surface_to_add_to) continue;
+            if (vertex->get_surface() == surface_to_add_to) continue;
 
-            // skip if no relative position
-            if (surfaces_bvh_seed.find(face->get_surface()) != surfaces_bvh_seed.end()) continue;
+            // reduce radius of nearby vertices
+            if (new_interior_point) new_interior_point->add_interior_point_distance_subscriber(vertex);
+            if (new_vertex) new_vertex->add_vertex_point_distance_subscriber(vertex);
 
-            // skip if in front 
-            if (surfaces_bvh_in_front.find(face->get_surface()) != surfaces_bvh_in_front.end()) continue;
+            // add to list that have added publishers
+            storage_->add_vertex_that_have_added_publishers(vertex);
         }
-
-        // delete penetrated face
-        storage_->add_face_to_be_deleted(face);
     }
-    
-    // rrs - reduce radius
-    for (const std::shared_ptr<Vertex>& vertex : rrs_results)
-    {
-        // read lock
-        std::shared_lock<std::shared_mutex> lock(vertex->rwlock_lifecycle_); // this to prevent vertex from being deleted
+    // 3. if added to rrs seed / 4. if added to new surface
+    else
+    {        
+        // rrs - reduce radius of seed vertices only
+        for (const std::shared_ptr<Vertex>& vertex : rrs_results)
+        {
+            // read lock
+            std::shared_lock<std::shared_mutex> lock(vertex->rwlock_lifecycle_); // this to prevent vertex from being deleted
 
-        // skip if expired
-        if (vertex->is_expired()) continue;
+            // skip if expired
+            if (vertex->is_expired()) continue;
 
-        // skip if same surface
-        if (vertex->get_surface() == surface_to_add_to) continue;
+            // skip if same surface
+            if (vertex->get_surface() == surface_to_add_to) continue;
 
-        // reduce radius of nearby vertices
-        if (new_interior_point) new_interior_point->add_interior_point_distance_subscriber(vertex);
-        if (new_vertex) new_vertex->add_vertex_point_distance_subscriber(vertex);
-    }    
+            // skip if vertex is not in seed surface
+            if (surfaces_rrs_seed.find(vertex->get_surface()) == surfaces_rrs_seed.end()) continue;
 
-    // rrs - upon adding publisher
-    for (const std::shared_ptr<Vertex>& vertex : rrs_results)
-    {
-        // skip if expired
-        if (vertex->is_expired()) continue;
+            // reduce radius of nearby seed vertices
+            new_vertex->add_vertex_point_distance_subscriber(vertex);
 
-        vertex->upon_adding_publisher();
+            // add to list that have added publishers
+            storage_->add_vertex_that_have_added_publishers(vertex);
+        }
     }
 }
 
@@ -622,11 +953,17 @@ void Application<PointT>::loop()
         storage_->add_to_main_queue(thisPointVEC, thisPointOriginVEC, distance_travelled_);
     }
 
-    // add points from repeated queue to queue
-    storage_->add_points_in_smaller_repeated_queues_to_main_queue();
-
     // split the queue into smaller queues
     storage_->split_main_queue_into_smaller_queues();
+
+    // initialize vector to store duration
+    rrs_search_duration_per_thread.resize(settings_.num_threads);
+    rrs_update_duration_per_thread.resize(settings_.num_threads);
+    bvh_search_duration_per_thread.resize(settings_.num_threads);
+    bvh_update_duration_per_thread.resize(settings_.num_threads);
+    add_to_map_duration_per_thread.resize(settings_.num_threads);
+    delete_from_map_duration_per_thread.resize(settings_.num_threads);
+    relative_position_duration_per_thread.resize(settings_.num_threads);
 
     // reset stats
     t_init = std::chrono::high_resolution_clock::now();
@@ -634,59 +971,41 @@ void Application<PointT>::loop()
 
     // process all points in the queue
     unsigned int num_iteration = 0;
-    while (true)
+    #pragma omp parallel num_threads(settings_.num_threads)
     {
-        #pragma omp parallel num_threads(settings_.num_threads)
+        while (true)
         {
-            while (true)
+            std::shared_ptr<GenericPoint> generic_point = nullptr;
+            unsigned int total_points_in_queue = 0;
+
+            total_points_in_queue = storage_->get_queue_size();
+            if (total_points_in_queue > 0)
             {
-                std::shared_ptr<GenericPoint> generic_point = nullptr;
-                unsigned int total_points_in_queue = 0;
-
-                total_points_in_queue = storage_->get_queue_size();
-                if (total_points_in_queue > 0)
+                generic_point = storage_->pop_from_queue();
+                if (settings_.log.step) 
                 {
-                    generic_point = storage_->pop_from_queue();
-                    if (settings_.log.step) 
-                    {
-                        std::stringstream ss;
-                        ss << " | remaining point " << total_points_in_queue << " | Processing point " << generic_point->get_id() << " | by thread " << omp_get_thread_num() << std::endl;
-                        std::cout << ss.str();
-                    }
-                }
-
-                // If the queue is empty, break the loop
-                if (!generic_point) break;
-
-                // Process the point (outside the critical section)
-                if (generic_point)
-                {
-                    process_point(generic_point);
+                    std::stringstream ss;
+                    ss << " | remaining point " << total_points_in_queue << " | Processing point " << generic_point->get_id() << " | by thread " << omp_get_thread_num() << std::endl;
+                    std::cout << ss.str();
                 }
             }
-        }
-        num_iteration ++;
 
-        // std::chrono::high_resolution_clock::time_point t_end = std::chrono::high_resolution_clock::now();
-        // std::chrono::duration<double> duration = t_end - t_init;
-        // std::cout << "==================================================================== Processed " << accumulated_points << " points in " << duration.count() << " s" << std::endl;
+            // If the queue is empty, break the loop
+            if (!generic_point) break;
 
-        // add all points from the abort queue to the main queue
-        storage_->add_points_in_smaller_abort_queues_to_main_queue();
-
-        storage_->print_main_queue_stats();
-
-        // break loop if no more points
-        if (storage_->get_main_queue_size() == 0)
-        {
-            // clear queue before loading next point cloud
-            storage_->clear_queues();
-            break;
+            // Process the point (outside the critical section)
+            if (generic_point)
+            {
+                process_point(generic_point);
+            }
         }
 
-        // print aborted point stats
-        storage_->split_main_queue_into_smaller_queues_by_contention();
+        // clean up surfaces
+        storage_->cleanup_surfaces(); // split by surface id modulus num_threads
     }
+    storage_->add_points_in_smaller_repeated_queues_to_main_queue();
+
+    num_iteration ++;
 
     std::chrono::high_resolution_clock::time_point t_end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = t_end - t_init;
@@ -694,10 +1013,41 @@ void Application<PointT>::loop()
     total_loops += 1;
     std::cout << "==================================================================== Processed " << accumulated_points << " points in " << duration.count() << " s, " << "average duration: " << total_duration / total_loops << std::endl;
 
+    // store duration into list
+    duration_list.push_back(duration.count());
+
+    // average duration per thread
+    double rrs_search_duration = std::accumulate(rrs_search_duration_per_thread.begin(), rrs_search_duration_per_thread.end(), 0.0) / settings_.num_threads;
+    double rrs_update_duration = std::accumulate(rrs_update_duration_per_thread.begin(), rrs_update_duration_per_thread.end(), 0.0) / settings_.num_threads;
+    double bvh_search_duration = std::accumulate(bvh_search_duration_per_thread.begin(), bvh_search_duration_per_thread.end(), 0.0) / settings_.num_threads;
+    double bvh_update_duration = std::accumulate(bvh_update_duration_per_thread.begin(), bvh_update_duration_per_thread.end(), 0.0) / settings_.num_threads;
+    double add_to_map_duration = std::accumulate(add_to_map_duration_per_thread.begin(), add_to_map_duration_per_thread.end(), 0.0) / settings_.num_threads;
+    double delete_from_map_duration = std::accumulate(delete_from_map_duration_per_thread.begin(), delete_from_map_duration_per_thread.end(), 0.0) / settings_.num_threads;
+    double relative_position_duration = std::accumulate(relative_position_duration_per_thread.begin(), relative_position_duration_per_thread.end(), 0.0) / settings_.num_threads;
+
+    rrs_search_duration_per_thread.clear();
+    rrs_update_duration_per_thread.clear();
+    bvh_search_duration_per_thread.clear();
+    bvh_update_duration_per_thread.clear();
+    add_to_map_duration_per_thread.clear();
+    delete_from_map_duration_per_thread.clear();
+    relative_position_duration_per_thread.clear();
+
+    rrs_search_duration_list.push_back(rrs_search_duration);
+    rrs_update_duration_list.push_back(rrs_update_duration);
+    bvh_search_duration_list.push_back(bvh_search_duration);
+    bvh_update_duration_list.push_back(bvh_update_duration);
+    add_to_map_duration_list.push_back(add_to_map_duration);
+    delete_from_map_duration_list.push_back(delete_from_map_duration);
+    relative_position_duration_list.push_back(relative_position_duration);
+
+    // print
+    std::cout << "total duration: " << duration.count() << " = " << rrs_search_duration << " + " << rrs_update_duration << " + " << bvh_search_duration << " + " << bvh_update_duration << " + " << add_to_map_duration << " + " << delete_from_map_duration << " + " << relative_position_duration << std::endl;
+
     // print size of rrs, vertices, and boundary vertices
-    std::cout << "rrs size: " << storage_->get_rrs_size() << " | b-vertices size: " << storage_->get_boundary_vertices().size() << " | vertices size: " << storage_->get_vertices().size() << " | total point size: " << storage_->get_vertices().size() + storage_->get_interior_points().size() << std::endl;
+    std::cout << "rrs size: " << storage_->get_rrs_size() << " | vertices size: " << storage_->get_vertices_size() << " | total point size: " << storage_->get_vertices_size() + storage_->get_interior_points_size() << std::endl;
     // print size of bvh, faces
-    std::cout << "bvh size: " << storage_->get_bvh_size() << " | faces size: " << storage_->get_faces().size() << std::endl;
+    std::cout << "bvh size: " << storage_->get_bvh_size() << " | faces size: " << storage_->get_faces_size() << std::endl;
 
     // store time and ith_cloud into file
     if (settings_.output_time)
@@ -719,7 +1069,7 @@ void Application<PointT>::loop()
 template <typename PointT>
 void Application<PointT>::process_the_rest()
 {
-    for (int i = ith_cloud; i < data_loader.size(); i++)
+    for (int i = ith_cloud; i < data_loader.size() - 1; i++)
     {
         loop();
     }
@@ -733,6 +1083,7 @@ void Application<PointT>::restart()
     data_loader.load_dataset(settings_.data_loader_settings);
 
     // reset state
+    first_cloud_ = true;
     ith_cloud = settings_.data_loader_settings.start_cloud;
     ith_point = 0;
     ith_size = 0;
@@ -776,6 +1127,9 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_interior_poi
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
     for (const std::shared_ptr<InteriorPoint>& interior_point : storage_->get_interior_points())
     {        
+        // skip if from seed surface
+        if (!settings.show_seed_surface && interior_point->get_surface()->is_seed()) continue;
+
         pcl::PointXYZRGB point;
         if (settings.point_mode == PointMode::PROJECTED)
         {
@@ -845,9 +1199,9 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_interior_poi
             point.g = std::get<1>(color);
             point.b = std::get<2>(color);
         }
-        else if (settings.color_mode == ColorMode::CONTENTION)
+        else if (settings.color_mode == ColorMode::MAX_DISTANCE_TRAVELLED)
         {
-            double distance = surface_to_contention_count[interior_point->get_surface()] / settings.contention_denominator;
+            double distance = interior_point->get_surface()->get_max_distance_travelled() / 20.f;
             std::tuple<int, int, int> color = valueToJet(distance);
             point.r = std::get<0>(color);
             point.g = std::get<1>(color);
@@ -926,8 +1280,8 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_vertex_point
         // skip if internal
         if (!setting.show_internal_vertices && !vertex->is_boundary()) continue;
 
-        // skip if singular
-        if (!setting.show_singular_vertex && vertex->is_singular()) continue;
+        // skip if seed surface
+        if (!setting.show_seed_surface && vertex->get_surface()->is_seed()) continue;
 
         pcl::PointXYZRGB point;
         if (setting.point_mode == PointMode::PROJECTED)
@@ -995,9 +1349,9 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_vertex_point
             point.g = std::get<1>(color);
             point.b = std::get<2>(color);
         }
-        else if (setting.color_mode == ColorMode::CONTENTION)
+        else if (setting.color_mode == ColorMode::MAX_DISTANCE_TRAVELLED)
         {
-            double distance = surface_to_contention_count[vertex->get_surface()] / setting.contention_denominator;
+            double distance = vertex->get_surface()->get_max_distance_travelled() / 20.f;
             std::tuple<int, int, int> color = valueToJet(distance);
             point.r = std::get<0>(color);
             point.g = std::get<1>(color);

@@ -34,12 +34,12 @@ void InteriorPoint::initialize_(const std::shared_ptr<Storage>& storage, const s
 
     // connect to surface
     {
+        // projected position
+        projected_position_ = surface->compute_point_projective_position(origin_, position_);
+
         // connect to surface
         surface_ = surface;
         surface_->connect(shared_from_this());
-
-        // projected position
-        projected_position_ = surface_->compute_point_projective_position(origin_, position_);
     }
 
     // connect to face
@@ -58,21 +58,39 @@ void InteriorPoint::delete_()
     // write lock
     std::unique_lock<std::shared_mutex> lock(rwlock_lifecycle_);
 
+    // skip if already deleted
+    if (is_expired_) return;
+
     // set deletion flag
     deleting_ = true;
 
     // log
     if (settings_.log.deletion) std::cout << "Destroying InteriorPoint " << id_ << std::endl;
 
-    // subscribers and publishers
+    // subscribers (disconnect)
     {
-        delete_subscribers();
+        // lock, copy and clear
+        std::vector<std::shared_ptr<Vertex>> interior_point_distance_subscribers_copy;
+        {
+            std::unique_lock<std::shared_mutex> lock(rwlock_interior_point_distance_subscribers_);
+            interior_point_distance_subscribers_copy = interior_point_distance_subscribers_;
+            interior_point_distance_subscribers_.clear();
+        }
+
+        // disconnect
+        for (const auto& interior_point_subscriber : interior_point_distance_subscribers_copy) interior_point_subscriber->delete_interior_point_distance_publisher(shared_from_this());
+
+        // add vertex to update radius
+        for (const auto& interior_point_subscriber : interior_point_distance_subscribers_copy) storage_->add_vertex_that_have_deleted_publishers(interior_point_subscriber);
     }
 
     // surface (disconnect)
     {
         // disconnect from surface
         surface_->disconnect(shared_from_this());
+
+        // clear
+        surface_ = nullptr;
     }
 
     // faces (disconnect)
@@ -86,7 +104,16 @@ void InteriorPoint::delete_()
     
     // create generic point
     {
-        storage_->add_to_queue(shared_from_this());
+        num_deletes_++;
+
+        if (do_not_add_back_due_to_seed_surface_)
+        {
+            // do nothing
+        }
+        else
+        {
+            storage_->add_to_queue(shared_from_this());
+        }
     }
 
     // log
@@ -94,6 +121,11 @@ void InteriorPoint::delete_()
 
     // set expired
     is_expired_ = true;
+}
+
+InteriorPoint::~InteriorPoint()
+{
+    // std::cout << "InteriorPoint " << id_ << " deleted." << std::endl;
 }
 
 const int& InteriorPoint::get_id() const
@@ -159,28 +191,34 @@ double& InteriorPoint::get_projected_uncertainty()
     return projected_uncertainty_;
 }
 
+const Eigen::Vector2d& InteriorPoint::get_surface_coordinate(const std::shared_ptr<Surface>& surface)
+{
+    const Eigen::Matrix3d& eigenvectors = surface->get_eigenvectors();
+    if (eigenvectors_used_ == eigenvectors)
+    {
+        // use stored coordinate if eigenvectors are the same
+        return surface_coordinate_;
+    }
+    else
+    {
+        // compute new coordinate
+        Eigen::Matrix<double, 3, 2> projection_matrix = eigenvectors.rightCols<2>();
+        Eigen::Vector3d projected_position = surface->compute_point_projective_position(get_origin(), get_original_position());
+        surface_coordinate_ = (projection_matrix.transpose() * projected_position).head<2>();
+        eigenvectors_used_ = eigenvectors;
+        return surface_coordinate_;
+    }
+}
+
+const Eigen::Vector2d& InteriorPoint::get_surface_coordinate()
+{
+    return get_surface_coordinate(get_surface());
+}
+
+
 std::size_t InteriorPoint::get_num_deletes() const
 {
     return num_deletes_;
-}
-
-void InteriorPoint::delete_subscribers()
-{
-    // interior point subscribers
-    std::vector<std::shared_ptr<Vertex>> interior_point_distance_subscribers_copy;
-    {
-        // lock
-        std::shared_lock<std::shared_mutex> lock(rwlock_interior_point_distance_subscribers_);
-
-        // copy
-        interior_point_distance_subscribers_copy = interior_point_distance_subscribers_;
-    }
-    
-    for (const auto& interior_point_subscriber : interior_point_distance_subscribers_copy)
-    {
-        // delete
-        delete_interior_point_distance_subscriber(interior_point_subscriber);
-    }
 }
 
 void InteriorPoint::add_interior_point_distance_subscriber(const std::shared_ptr<Vertex> interior_point_subscriber)
@@ -218,16 +256,18 @@ void InteriorPoint::delete_interior_point_distance_subscriber(const std::shared_
 
         // delete subscriber
         interior_point_distance_subscribers_.erase(it);
-    }    
-    
-    // delete self from subscriber vertex as publisher
-    interior_point_subscriber->delete_interior_point_distance_publisher(shared_from_this());
+    }
 }
 
 
 void InteriorPoint::set_reverse_radius_search_radius(double radius)
 {
     radius_ = radius;
+}
+
+void InteriorPoint::set_do_not_add_back_due_to_seed_surface(bool do_not_add_back_due_to_seed_surface)
+{
+    do_not_add_back_due_to_seed_surface_ = do_not_add_back_due_to_seed_surface;
 }
 
 bool operator<(const std::shared_ptr<InteriorPoint>& lhs, const std::shared_ptr<InteriorPoint>& rhs)

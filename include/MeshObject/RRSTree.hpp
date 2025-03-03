@@ -68,15 +68,18 @@ class RRSNode : public std::enable_shared_from_this<RRSNode>
 
     // read write lock
     mutable std::shared_mutex rwlock_node_;
+    mutable std::shared_mutex rwlock_box_;
 
     void recursive_expand_parent_box();
     void recursive_shrink_parent_box();
 
     void node_add_vertex(const std::shared_ptr<Vertex>& boundary_vertex);
     void node_delete_vertex(const std::shared_ptr<Vertex>& boundary_vertex);
+    void node_update_vertex_box(const std::shared_ptr<Vertex>& boundary_vertex);
     RRSReturnType node_reverse_radius_search(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Vertex>>& search_results);
     void node_print(int level) const;
     void node_flattern(std::vector<std::shared_ptr<Vertex>>& flatten_list);
+    void node_count(unsigned int& count) const;
 };
 
 
@@ -98,9 +101,11 @@ public:
     std::vector<std::shared_ptr<Vertex>> compute_vertices_list();
     void print_size();
     unsigned int get_size() const;
+    unsigned int get_node_size() const;
     
     void tree_add_vertex(const std::shared_ptr<Vertex>& boundary_vertex);
     void tree_delete_vertex(const std::shared_ptr<Vertex>& boundary_vertex);
+    void tree_update_vertex_box(const std::shared_ptr<Vertex>& boundary_vertex);
     RRSReturnType tree_reverse_radius_search(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Vertex>> &search_results);
     void tree_print() const;
 };

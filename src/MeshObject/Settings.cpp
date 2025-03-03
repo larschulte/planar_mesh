@@ -2,66 +2,126 @@
 #include <map>
 #include <math.h>
 
+struct DatasetParameters
+{
+    // path
+    std::string pcd_file_folder;
+    std::string pose_file_path;
+
+    // lidar parameters
+    double range_precision = 0.01;
+    double range_accuracy = 0.03;
+    bool remove_double_return_flag = false;
+    bool filter_low_intensity_flag = false;
+
+    // related parameters
+    double radius_value = 1;
+    double extra_radius = 0.1;
+
+    // radius ratio
+    double radius_ratio = 0.02;
+};
+
 Settings::Settings() 
 {
     // application settings
-    std::map<std::string, std::pair<std::string, std::string>> dataset_map;
-    dataset_map["room"] = std::make_pair(
-        "/home/jiahao/datasets/bag2pcd_output/mission2_reverse/slam_clouds/",
-        "/home/jiahao/datasets/bag2pcd_output/mission2_reverse/slam_poses/slam_poss_graph.slam"
-    );
-    dataset_map["osney"] = std::make_pair(
-        "/home/jiahao/datasets/osney power station/2024-03-26_13-47-27_rec004_osney_power_station/slam_clouds/",
-        "/home/jiahao/datasets/osney power station/2024-03-26_13-47-27_rec004_osney_power_station/slam_pose_graph.slam"
-    );
-    dataset_map["blenheim"] = std::make_pair(
-        "/home/jiahao/datasets/2024-03-14-09-09-02-lenord-walk-for-lintong/individual_clouds/",
-        "/home/jiahao/datasets/2024-03-14-09-09-02-lenord-walk-for-lintong/slam_pose_graph.g2o"
-    );
-    dataset_map["christchurch"] = std::make_pair(
-        "/home/jiahao/datasets/christ church spires/2024-03-18-09-43-37/individual_clouds/",
-        "/home/jiahao/datasets/christ church spires/2024-03-18-09-43-37/slam_pose_graph.g2o"
-    );
-    dataset_map["math"] = std::make_pair(
-        "/home/jiahao/datasets/math/individual_clouds/",
-        "/home/jiahao/datasets/math/slam_pose_graph.g2o"
-    );
-    dataset_map["nottinghill"] = std::make_pair(
-        "/home/jiahao/datasets/2024-10-23_14-40-02_rec004_nottinghill-rad101/slam_clouds/",
-        "/home/jiahao/datasets/2024-10-23_14-40-02_rec004_nottinghill-rad101/slam_pose_graph.slam"
-    );
-    dataset_map["office"] = std::make_pair(
-        "/home/jiahao/datasets/2024-11-19_14-05-08_rec013/slam_clouds/",
-        "/home/jiahao/datasets/2024-11-19_14-05-08_rec013/slam_pose_graph.slam"
-    );
-    dataset_map["abingdon"] = std::make_pair(
-        "/home/jiahao/datasets/abingdon logs/2024-12-03_10-25-53_rec001_rad301_run2/slam_clouds/",
-        "/home/jiahao/datasets/abingdon logs/2024-12-03_10-25-53_rec001_rad301_run2/slam_pose_graph.slam"
-    );
+    std::map<std::string, DatasetParameters> dataset_map;
 
-    std::string dataset = "christchurch";
-    data_loader_settings.pcd_file_folder = dataset_map[dataset].first;
-    data_loader_settings.pose_file_path = dataset_map[dataset].second;
+    dataset_map["osney"] = DatasetParameters();
+    dataset_map["osney"].pcd_file_folder = "/home/jiahao/datasets/osney power station/2024-03-26_13-47-27_rec004_osney_power_station/slam_clouds/";
+    dataset_map["osney"].pose_file_path = "/home/jiahao/datasets/osney power station/2024-03-26_13-47-27_rec004_osney_power_station/slam_pose_graph.slam";
+
+    dataset_map["blenheim"] = DatasetParameters();
+    dataset_map["blenheim"].pcd_file_folder = "/home/jiahao/datasets/2024-03-14-09-09-02-lenord-walk-for-lintong/individual_clouds/";
+    dataset_map["blenheim"].pose_file_path = "/home/jiahao/datasets/2024-03-14-09-09-02-lenord-walk-for-lintong/slam_pose_graph.g2o";
+    dataset_map["blenheim"].remove_double_return_flag = true;
+
+    dataset_map["math"] = DatasetParameters();
+    dataset_map["math"].pcd_file_folder = "/home/jiahao/datasets/math/individual_clouds/";
+    dataset_map["math"].pose_file_path = "/home/jiahao/datasets/math/slam_pose_graph.g2o";
+    dataset_map["math"].remove_double_return_flag = true;
+
+    dataset_map["nottinghill"] = DatasetParameters();
+    dataset_map["nottinghill"].pcd_file_folder = "/home/jiahao/datasets/2024-10-23_14-40-02_rec004_nottinghill-rad101/slam_clouds/";
+    dataset_map["nottinghill"].pose_file_path = "/home/jiahao/datasets/2024-10-23_14-40-02_rec004_nottinghill-rad101/slam_pose_graph.slam";
+
+    dataset_map["office"] = DatasetParameters();
+    dataset_map["office"].pcd_file_folder = "/home/jiahao/datasets/2024-11-19_14-05-08_rec013/slam_clouds/";
+    dataset_map["office"].pose_file_path = "/home/jiahao/datasets/2024-11-19_14-05-08_rec013/slam_pose_graph.slam";
+
+    dataset_map["abingdon"] = DatasetParameters();
+    dataset_map["abingdon"].pcd_file_folder = "/home/jiahao/datasets/abingdon logs/2024-12-03_10-25-53_rec001_rad301_run2/slam_clouds/";
+    dataset_map["abingdon"].pose_file_path = "/home/jiahao/datasets/abingdon logs/2024-12-03_10-25-53_rec001_rad301_run2/slam_pose_graph.slam";
+
+    dataset_map["bodleian01"] = DatasetParameters();
+    dataset_map["bodleian01"].pcd_file_folder = "/home/jiahao/datasets/spires_benchmark/bodleian01/undist-clouds/";
+    dataset_map["bodleian01"].pose_file_path = "/home/jiahao/datasets/spires_benchmark/bodleian01/slam-poses.csv";
+    dataset_map["bodleian01"].remove_double_return_flag = true;
+    dataset_map["bodleian01"].range_precision = 0.02;
+
+    dataset_map["blenheim04"] = DatasetParameters();
+    dataset_map["blenheim04"].pcd_file_folder = "/home/jiahao/datasets/spires_benchmark/blenheim04/undist-clouds/";
+    dataset_map["blenheim04"].pose_file_path = "/home/jiahao/datasets/spires_benchmark/blenheim04/slam-poses.csv";
+    dataset_map["blenheim04"].remove_double_return_flag = true;
+
+    dataset_map["kitti01"] = DatasetParameters();
+    dataset_map["kitti01"].pcd_file_folder = "/home/jiahao/datasets/spires_benchmark/kitti_dataset/sequences/01/pcd/";
+    dataset_map["kitti01"].pose_file_path = "/home/jiahao/datasets/spires_benchmark/kitti_dataset/poses/01.txt";
+    dataset_map["kitti01"].range_precision = 0.02; // Velodyne HDL-64E Laserscanner
+
+    // ======= benchmark final =======
+
+    dataset_map["christchurch03"] = DatasetParameters();
+    dataset_map["christchurch03"].pcd_file_folder = "/home/jiahao/datasets/spires_benchmark/christchurch03/undist-clouds-filtered/";
+    dataset_map["christchurch03"].pose_file_path = "/home/jiahao/datasets/spires_benchmark/christchurch03/gt-tum.txt";
+    dataset_map["christchurch03"].remove_double_return_flag = false;
+    dataset_map["christchurch03"].filter_low_intensity_flag = false;
+    // 290 scans
+
+    dataset_map["keble03"] = DatasetParameters();
+    dataset_map["keble03"].pcd_file_folder = "/home/jiahao/datasets/spires_benchmark/keble03/undist-clouds-filtered/";
+    dataset_map["keble03"].pose_file_path = "/home/jiahao/datasets/spires_benchmark/keble03/gt-tum.txt";
+    dataset_map["keble03"].remove_double_return_flag = false;
+    dataset_map["keble03"].filter_low_intensity_flag = false;
+    // 300 scans
+
+    dataset_map["observatory01"] = DatasetParameters();
+    dataset_map["observatory01"].pcd_file_folder = "/home/jiahao/datasets/spires_benchmark/observatory01/undist-clouds-filtered/";
+    dataset_map["observatory01"].pose_file_path = "/home/jiahao/datasets/spires_benchmark/observatory01/gt-tum.txt";
+    dataset_map["observatory01"].remove_double_return_flag = false;
+    dataset_map["observatory01"].filter_low_intensity_flag = false;
+    // 300 scans
+
+    std::string dataset = "keble03";
+    
+    headless_mode = true;
+    num_scans = 300;
+    save_folder = "/home/jiahao/datasets/spires_benchmark/" + dataset + "/Benchmark_final/PlanarMesh/";
+
+    data_loader_settings.pcd_file_folder = dataset_map[dataset].pcd_file_folder;
+    data_loader_settings.pose_file_path = dataset_map[dataset].pose_file_path;
+    range_precision = dataset_map[dataset].range_precision;
+    range_accuracy = dataset_map[dataset].range_accuracy;
+    data_loader_settings.remove_double_return_flag = dataset_map[dataset].remove_double_return_flag;
+    data_loader_settings.filter_low_intensity_flag = dataset_map[dataset].filter_low_intensity_flag;
+    radius_value = dataset_map[dataset].radius_value;
+    extra_radius = dataset_map[dataset].extra_radius;
+    radius_ratio = dataset_map[dataset].radius_ratio;
+
+    high_incident_angle_threshold_std = 0.1;
+
+    cleanup_seed_surface_after_ith_cloud = -1;
+    cleanup_seed_surface_after_distance_travelled = 3.0;
+
+    simplify_surfaces_density_threshold = 0;
+    simplify_surfaces_radius_lower_bound = 0.05;
+    simplify_surfaces_radius_lower_ratio = 1.0;
+
+    // cap radius of boundary vertices when simplify mesh
+    simplify_surfaces_boundary_radius_upper_bound = 0.05;
 
     use_sim_data = false;
     sim_object = 0;
-    std::string lidar = "64";
-    if (lidar == "32")
-    {
-        range_precision = 0.005;
-        range_accuracy = 0.01; 
-        radius_ratio = tan(4 * M_PI / 180);
-    }
-    else if (lidar == "64")
-    {
-        range_precision = 0.02;
-        range_accuracy = 0.03; 
-        radius_ratio = tan(6 * M_PI / 180);
-        data_loader_settings.remove_double_return_flag = true;
-        data_loader_settings.filter_low_intensity_flag = true;
-        data_loader_settings.azimuth_resolution = 0.6;
-        data_loader_settings.altitude_resolution = 1.5;
-    }
     data_loader_settings.start_cloud = 0;
     data_loader_settings.start_point = 0;
 
@@ -71,17 +131,21 @@ Settings::Settings()
     shuffle_pointcloud = true;
     use_radius_value = true;
     pointcloud_fraction = 1;
-    radius_value = 1;
-    extra_radius = 0.1;
     duplicated_point_distance_threshold = 0.0; // if two points are closer than this distance, they are considered the same point
 
-    odometry_position_uncertainty_rate = 0.001; // kitti sota 0.005m/m (0.5%)
-    odometry_angular_uncertainty_rate = 0.001; // kitti sota 0.001 deg/m
+    odometry_position_uncertainty_rate = 0.000; // kitti sota 0.005m/m (0.5%)
+    odometry_angular_uncertainty_rate = 0.000; // kitti sota 0.001 deg/m
+
+    confidence_interval_multiplier = 1.96; // for 95% confidence interval
+    // confidence_interval_multiplier = 2.576; // for 99% confidence interval
+    // confidence_interval_multiplier = 1.0; // for testing
 
     abnormal_size = 1.5;
     envelope_size = 3.5;
 
-    num_of_delete_before_put_to_repeated_queue = 2;
+    seed_surface_area_threshold = 0.02; // below which is considered as a seed surface | 0.01 m^2 = 100 cm^2
+
+    // num_of_delete_before_put_to_repeated_queue = 2;
     
     num_threads = 28;
     record_countent_surface_count = false;
@@ -146,10 +210,9 @@ Settings::Settings()
     show_triangle = true;
     show_edge = true;
     show_keycode = false;
-    show_singular_edge = false;
-    show_singular_vertex = false;
+    show_seed_surface = false;
     color_mode = ColorMode::ID;
-    point_mode = PointMode::USED;
+    point_mode = PointMode::ORIGINAL;
     surface_denominator = 10.0;
     siblings_denominator = 3.0;
     radius_denominator = 0.3;

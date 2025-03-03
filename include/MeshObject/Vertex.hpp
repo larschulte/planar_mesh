@@ -30,6 +30,9 @@ protected:
     void delete_();
 
 public:
+
+    ~Vertex();
+
     // read write locks for shared resources
     mutable std::shared_mutex rwlock_vertex_point_distance_publishers_;
     mutable std::shared_mutex rwlock_interior_point_distance_publishers_;
@@ -57,8 +60,8 @@ public:
 
     double& get_projected_uncertainty();
 
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> get_vertex_ray_publishers() const;
-    std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> get_interior_ray_publishers() const;
+    std::vector<std::pair<std::shared_ptr<Vertex>, double>>& get_vertex_point_distance_publishers();
+    std::vector<std::pair<std::shared_ptr<InteriorPoint>, double>>& get_interior_point_distance_publishers();
 
     std::shared_ptr<Edge> get_edge(const std::shared_ptr<Vertex>& vertex) const;
 
@@ -98,9 +101,6 @@ public:
     // non manifold
     bool is_non_manifold() const;
 
-    void delete_publishers();
-    void delete_subscribers();
-
     void upon_adding_publisher();
     void upon_deleting_publisher();
 
@@ -118,7 +118,6 @@ public:
     double compute_radius();
     void try_update_radius();
     void try_break_edges();
-    void try_update_node_box();
 
     void update_singular_state();
     bool is_singular() const;
@@ -127,7 +126,8 @@ public:
 
     void print_info();
 
-    void can_create_generic_point(bool can_create);
+    void set_do_not_add_back_due_to_not_connected(bool do_not_add_back_due_to_not_connected);
+    void set_do_not_add_back_due_to_seed_surface(bool do_not_add_back_due_to_seed_surface);
 
 public: // for reverse radius search
     const Eigen::Vector3d& get_min() const;
@@ -150,7 +150,8 @@ private:
     bool is_expired_ = true;
     bool is_singular_;
     bool can_self_destruct_ = true;
-    bool can_create_generic_point_ = true;
+    bool do_not_add_back_due_to_not_connected_ = false;
+    bool do_not_add_back_due_to_seed_surface_ = false;
     double current_surface_uncertainty_;
 
     std::size_t num_deletes_;

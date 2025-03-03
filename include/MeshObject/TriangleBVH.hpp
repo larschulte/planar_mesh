@@ -70,6 +70,7 @@ class Node : public std::enable_shared_from_this<Node>
 
     // read write lock
     mutable std::shared_mutex rwlock_node_;
+    mutable std::shared_mutex rwlock_box_;
 
     void recursive_expand_parent_box();
     void recursive_shrink_parent_box();

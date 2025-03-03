@@ -49,21 +49,67 @@ void Surface::delete_()
     // write lock
     std::unique_lock<std::shared_mutex> lock(rwlock_lifecycle_);
 
-    // log
-    if (settings_.log.deletion) std::cout << "Destroying surface " << id_ << std::endl;
-
     // set deletion flag
     deleting_ = true;
 
-    // make copies first since disconnect will modify the set
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertices = vertices_;
-    std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges = edges_;
-    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces = faces_;
-    std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> interior_points = interior_points_;
-    for (const auto& vertex : vertices) disconnect(vertex);
-    for (const auto& edge : edges) disconnect(edge);
-    for (const auto& face : faces) disconnect(face);
-    for (const auto& interior_point : interior_points) disconnect(interior_point);
+    // log
+    if (settings_.log.deletion) std::cout << "Destroying surface " << id_ << std::endl;
+
+    // vertices (delete)
+    {
+        // read lock
+        std::shared_lock<std::shared_mutex> lock_vertices(rwlock_vertices_);
+
+        // delete vertex
+        for (const auto& vertex : vertices_) 
+        {
+            vertex->set_do_not_add_back_due_to_seed_surface(true);
+            storage_->add_vertex_to_be_deleted(vertex);
+        }
+
+        // clear
+        vertices_.clear();
+    }
+
+    // edges (delete)
+    {
+        // read lock
+        std::shared_lock<std::shared_mutex> lock_edges(rwlock_edges_);
+
+        // delete edge
+        for (const auto& edge : edges_) storage_->add_edge_to_be_deleted(edge);
+
+        // clear
+        edges_.clear();
+    }
+
+    // faces (delete)
+    {
+        // read lock
+        std::shared_lock<std::shared_mutex> lock_faces(rwlock_faces_);
+
+        // delete face
+        for (const auto& face : faces_) storage_->add_face_to_be_deleted(face);
+
+        // clear
+        faces_.clear();
+    }
+
+    // interior points (delete)
+    {
+        // read lock
+        std::shared_lock<std::shared_mutex> lock_interior_points(rwlock_interior_points_);
+
+        // delete interior point
+        for (const auto& interior_point : interior_points_) 
+        {
+            interior_point->set_do_not_add_back_due_to_seed_surface(true);
+            storage_->add_interior_point_to_be_deleted(interior_point);
+        }
+
+        // clear
+        interior_points_.clear();
+    }
 
     // log
     if (settings_.log.deletion) std::cout << "---------- surface " << id_ << " destroyed" << std::endl;
@@ -79,7 +125,7 @@ const int& Surface::get_id() const
 
 double Surface::compute_point_to_plane_distance(const Eigen::Vector3d& point) const
 {
-    if (get_total_point_size() < settings_.fit_plane_threshold) throw std::runtime_error("Surface is seed surface.");
+    if (is_seed()) throw std::runtime_error("Surface is seed surface.");
 
     return (point - mean_).dot(normal_);
 }
@@ -145,7 +191,7 @@ Eigen::Vector3d Surface::compute_point_projective_position(const Eigen::Vector3d
     std::shared_lock lock(rwlock_surface_fitting_);
 
     // if surface is seed surface, return original point as projected point
-    if (get_total_point_size() < settings_.fit_plane_threshold) return point;
+    if (is_seed()) return point;
 
     // compute
     Eigen::Vector3d rayDirection = (point - origin).normalized();
@@ -161,138 +207,65 @@ RelativePosition Surface::check_relative_position(double distance_travelled, con
     // lock surface fitting
     std::shared_lock lock(rwlock_surface_fitting_); // read lock
 
-    // compute point to plane projective distance std
-    const bool use_improved_covariance = true;
-    if (use_improved_covariance)
-    {
-        // return no_relative_position if not enough points
-        if (get_total_point_size() < settings_.fit_plane_threshold) return RelativePosition::NO_RELATIVE_POSITION;
+    // return no_relative_position if not enough points
+    if (is_seed()) return RelativePosition::NO_RELATIVE_POSITION;
 
-        // compute d(range)/d(...)
-        Eigen::Vector3d d_range_d_origin = - normal_ / normal_.dot(direction);
-        Eigen::Vector3d d_range_d_mean = normal_ / normal_.dot(direction);
-        Eigen::Vector3d d_range_d_direction = (mean_ - origin).dot(normal_) / std::pow(normal_.dot(direction), 2) * normal_;
-        Eigen::Vector3d d_range_d_normal = ( (mean_ - origin) * normal_.dot(direction) - (mean_ - origin).dot(normal_) * direction ) / std::pow(normal_.dot(direction), 2);
+    // compute d(range)/d(...)
+    Eigen::Vector3d d_range_d_origin = - normal_ / normal_.dot(direction);
+    Eigen::Vector3d d_range_d_mean = normal_ / normal_.dot(direction);
+    Eigen::Vector3d d_range_d_direction = (mean_ - origin).dot(normal_) / std::pow(normal_.dot(direction), 2) * normal_;
+    Eigen::Vector3d d_range_d_normal = ( (mean_ - origin) * normal_.dot(direction) - (mean_ - origin).dot(normal_) * direction ) / std::pow(normal_.dot(direction), 2);
 
-        // compute covariance of ...
-        // - settings
-        double odometry_position_uncertainty_rate = settings_.odometry_position_uncertainty_rate;
-        double odometry_angular_uncertainty_rate = settings_.odometry_angular_uncertainty_rate;
-        double epsilon = 1e-6;
-        // - uncertainties
-        double odometry_position_uncertainty = std::abs(distance_travelled - get_average_distance_travelled()) * odometry_position_uncertainty_rate;
-        double odometry_angular_uncertainty = std::abs(distance_travelled - get_average_distance_travelled()) * odometry_angular_uncertainty_rate / 180.0 * M_PI;
-        double normal_angular_uncertainty = normal_uncertainty_;
-        double plane_position_uncertainty = get_surface_position_std_in_normal_direction();
-        // - computation
-        Eigen::Matrix3d cov_mean = Eigen::Matrix3d::Identity() * std::pow(plane_position_uncertainty, 2);
-        Eigen::Matrix3d cov_origin = Eigen::Matrix3d::Identity() * std::pow(odometry_position_uncertainty, 2);
-        Eigen::Matrix3d cov_normal = generate_unit_vector_covariance(normal_, normal_angular_uncertainty, epsilon);
-        Eigen::Matrix3d cov_direction = generate_unit_vector_covariance(direction, odometry_angular_uncertainty, epsilon);
+    // compute covariance of ...
+    // - settings
+    double odometry_position_uncertainty_rate = settings_.odometry_position_uncertainty_rate;
+    double odometry_angular_uncertainty_rate = settings_.odometry_angular_uncertainty_rate;
+    double epsilon = 1e-6;
+    // - uncertainties
+    double odometry_position_uncertainty = std::abs(distance_travelled - get_average_distance_travelled()) * odometry_position_uncertainty_rate;
+    double odometry_angular_uncertainty = std::abs(distance_travelled - get_average_distance_travelled()) * odometry_angular_uncertainty_rate / 180.0 * M_PI;
+    double normal_angular_uncertainty = normal_uncertainty_;
+    // - computation
+    Eigen::Matrix3d cov_mean = covariance_mean_;
+    Eigen::Matrix3d cov_origin = Eigen::Matrix3d::Identity() * std::pow(odometry_position_uncertainty, 2);
+    Eigen::Matrix3d cov_normal = generate_unit_vector_covariance(normal_, normal_angular_uncertainty, epsilon);
+    Eigen::Matrix3d cov_direction = generate_unit_vector_covariance(direction, odometry_angular_uncertainty, epsilon);
 
-        // compute variance of range due to ...
-        double variance_range_origin = d_range_d_origin.transpose() * cov_origin * d_range_d_origin;
-        double variance_range_mean = d_range_d_mean.transpose() * cov_mean * d_range_d_mean;
-        double variance_range_direction = d_range_d_direction.transpose() * cov_direction * d_range_d_direction;
-        double variance_range_normal = d_range_d_normal.transpose() * cov_normal * d_range_d_normal;
+    // compute variance of range due to ...
+    double variance_range_origin = d_range_d_origin.transpose() * cov_origin * d_range_d_origin;
+    double variance_range_mean = d_range_d_mean.transpose() * cov_mean * d_range_d_mean;
+    double variance_range_direction = d_range_d_direction.transpose() * cov_direction * d_range_d_direction;
+    double variance_range_normal = d_range_d_normal.transpose() * cov_normal * d_range_d_normal;
 
-        // // compute std of range due to ...
-        // double std_range_origin = std::sqrt(variance_range_origin);
-        // double std_range_mean = std::sqrt(variance_range_mean);
-        // double std_range_direction = std::sqrt(variance_range_direction);
-        // double std_range_normal = std::sqrt(variance_range_normal);
+    // compute combined std
+    double combined_std = std::sqrt(variance_range_origin + variance_range_mean + variance_range_direction + variance_range_normal + settings_.range_precision * settings_.range_precision);
+    double partial_combined_std = std::sqrt(variance_range_origin + variance_range_direction + settings_.range_precision * settings_.range_precision);
+    double plane_and_observer_std = std::sqrt(variance_range_origin + variance_range_mean + variance_range_direction + variance_range_normal);
 
-        // compute combined std
-        double combined_std = std::sqrt(variance_range_origin + variance_range_mean + variance_range_direction + variance_range_normal + settings_.range_precision * settings_.range_precision);
-        double partial_combined_std = std::sqrt(variance_range_origin + variance_range_direction + settings_.range_precision * settings_.range_precision);
-
-        // compute point to plane projective distance
-        double projective_distance = compute_point_projective_distance(origin, point);
-
-        // multiplier for confidence interval
-        // double multiplier = 2.576; // for 99% confidence interval
-        double multiplier = 1.96; // for 95% confidence interval
-
-        // confidence interval values
-        double threshold_in_front = multiplier * combined_std;
-        double threshold_behind = - multiplier * combined_std;
-
-        // check
-        bool points_in_front_of_surface = projective_distance > threshold_in_front;
-        bool points_behind_surface = projective_distance < threshold_behind;
-        bool points_within_surface = !points_in_front_of_surface && !points_behind_surface;
-
-        // return
-        if (points_in_front_of_surface) return RelativePosition::IN_FRONT;
-        else if (points_behind_surface) return RelativePosition::BEHIND;
-        else if (points_within_surface)
-        {
-            projected_uncertainty = partial_combined_std;
-            return RelativePosition::WITHIN;
-        } 
-        else throw std::runtime_error("Invalid relative position.");
-
-        // // print all
-
-        // double range = (point - origin).norm();
-        // double angle = std::acos(direction.dot(normal_)) * 180.0 / M_PI - 90.0;
-
-        // std::cout << "d_range_d_origin: \n" << d_range_d_origin << std::endl;
-        // std::cout << "d_range_d_mean: \n" << d_range_d_mean << std::endl;
-        // std::cout << "d_range_d_direction: \n" << d_range_d_direction << std::endl;
-        // std::cout << "d_range_d_normal: \n" << d_range_d_normal << std::endl;
-
-        // std::cout << "cov_origin: \n" << cov_origin << std::endl;
-        // std::cout << "cov_mean: \n" << cov_mean << std::endl;
-        // std::cout << "cov_direction: \n" << cov_direction << std::endl;
-        // std::cout << "cov_normal: \n" << cov_normal << std::endl;
-
-        // std::cout << "variance_range_origin: \n" << variance_range_origin << std::endl;
-        // std::cout << "variance_range_mean: \n" << variance_range_mean << std::endl;
-        // std::cout << "variance_range_direction: \n" << variance_range_direction << std::endl;
-        // std::cout << "variance_range_normal: \n" << variance_range_normal << std::endl;
-
-        // std::cout << "std_range_origin: \n" << std_range_origin << std::endl;
-        // std::cout << "std_range_mean: \n" << std_range_mean << std::endl;
-        // std::cout << "std_range_direction: \n" << std_range_direction << std::endl;
-        // std::cout << "std_range_normal: \n" << std_range_normal << std::endl;
-
-        // std::cout << range << " | " << projective_distance << "|" << angle << " | " << std_range_origin << " | " << std_range_mean << " | " << std_range_direction << " | " << std_range_normal << " | " << combined_std << std::endl;
-    }
-
-    // projective distance
+    // compute point to plane projective distance
     double projective_distance = compute_point_projective_distance(origin, point);
 
-    // modified projective distance (taking into account accuracy in favor for points inside planes)
-    double projective_distance_modified = sign(projective_distance) * std::max(0.0, std::fabs(projective_distance) - settings_.range_accuracy);
-
-    // surface projective std
-    double surface_position_std = get_surface_position_std_in_normal_direction();
-    double surface_projective_std = surface_position_std / std::fabs(normal_.dot(direction));
-
-    // point projective std
-    double point_projective_std = settings_.range_precision;
-
-    // combined projective std
-    double combined_projective_std = std::sqrt(surface_projective_std * surface_projective_std + point_projective_std * point_projective_std);
-
     // multiplier for confidence interval
-    double multiplier = 1.96; // for 95% confidence interval
-    // double multiplier = settings_.envelope_size;
+    double multiplier = settings_.confidence_interval_multiplier;
 
     // confidence interval values
-    double threshold_in_front = multiplier * combined_projective_std;
-    double threshold_behind = - multiplier * combined_projective_std;
+    double threshold_in_front = multiplier * combined_std;
+    double threshold_behind = - multiplier * combined_std;
 
     // check
-    bool points_in_front_of_surface = projective_distance_modified > threshold_in_front;
-    bool points_behind_surface = projective_distance_modified < threshold_behind;
+    bool points_in_front_of_surface = projective_distance > threshold_in_front;
+    bool points_behind_surface = projective_distance < threshold_behind;
     bool points_within_surface = !points_in_front_of_surface && !points_behind_surface;
 
     // return
     if (points_in_front_of_surface) return RelativePosition::IN_FRONT;
+    else if (plane_and_observer_std > settings_.high_incident_angle_threshold_std) return RelativePosition::HIGH_INCIDENT_ANGLE;
     else if (points_behind_surface) return RelativePosition::BEHIND;
-    else if (points_within_surface) return RelativePosition::WITHIN;
+    else if (points_within_surface)
+    {
+        projected_uncertainty = partial_combined_std;
+        return RelativePosition::WITHIN;
+    } 
     else throw std::runtime_error("Invalid relative position.");
 }
 
@@ -431,6 +404,11 @@ double Surface::get_average_distance_travelled() const
     return sum_of_average_distance_travelled_ / get_total_point_size();
 }
 
+double Surface::get_max_distance_travelled() const
+{
+    return max_distance_travelled_;
+}
+
 const std::tuple<int, int, int>& Surface::get_color() const
 {
     return color_;
@@ -517,7 +495,7 @@ bool Surface::is_abnormal()
     if (!do_abnormal_check) return false;
     
     // not abnormal if low confidence surface
-    if (get_total_point_size() < settings_.fit_plane_threshold) return false;
+    if (is_seed()) return false;
 
     // not abnormal if within range
     std::vector <double> projective_distance_stats = get_projective_distance_stats();
@@ -533,6 +511,16 @@ bool Surface::is_abnormal()
     // check if abnormal
     bool abnormal = new_projective_std > settings_.abnormal_size * settings_.range_precision;
     return abnormal;
+}
+
+bool Surface::is_seed() const
+{
+    return is_seed_;
+}
+
+double Surface::get_surface_area() const
+{
+    return surface_area_;
 }
 
 bool Surface::can_merge(const std::shared_ptr<Surface>& surface) const
@@ -609,8 +597,10 @@ void Surface::connect(const std::shared_ptr<Vertex>& vertex)
         vertices_.insert(vertex);
     }
 
+    update_seed_status();
+
     // update uncertainty
-    if (get_total_point_size() <= settings_.fit_plane_threshold) 
+    if (is_seed()) 
     {
         vertex->weight_ = 1.0 / (settings_.range_precision * settings_.range_precision);
     }
@@ -626,58 +616,86 @@ void Surface::connect(const std::shared_ptr<Vertex>& vertex)
 
 bool Surface::tree_intersect_edge(const std::shared_ptr<Vertex>& vertex0, const std::shared_ptr<Vertex>& vertex1)
 {
-    return edge_bvh_.tree_intersect_edge(vertex0, vertex1);
+    // initialize
+    std::vector<std::shared_ptr<Edge>> edges_encountered;
+
+    // search for encountered edges
+    EdgeBVH::EdgeBVHReturnType result = edge_bvh_.tree_intersect_edge(vertex0, vertex1, edges_encountered);
+
+    // false if no encountered edges
+    if (result == EdgeBVH::EdgeBVHReturnType::SKIP) return false;
+    
+    // else check for each edge
+    for (const auto& edge : edges_encountered)
+    {
+        // skip if nullptr
+        if (!edge) continue;
+
+        // read lock edge
+        std::shared_lock<std::shared_mutex> lock(edge->rwlock_lifecycle_);
+        
+        // skip if edge is expired
+        if (edge->is_expired()) continue;
+
+        // true if intersect
+        if (edge->intersects_edge(vertex0, vertex1)) return true;
+    }
+
+    // false if no intersection
+    return false;
 }
 
 bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& all_nearby_vertices)
 {
-    // read lock
-    std::shared_lock<std::shared_mutex> lock(vertex->rwlock_lifecycle_);
-    // no need to check expired since it is not yet connected to anything
-
-    // try create edge with nearby vertices
-    for (const auto& nearby_vertex : all_nearby_vertices)
+    // create edges
+    bool edge_created = false;
     {
         // read lock
-        std::shared_lock<std::shared_mutex> lock(nearby_vertex->rwlock_lifecycle_);
-
-        // check input
-        if (nearby_vertex->is_expired()) continue;
-
-        // skip if does not belong to the same surface
-        if (nearby_vertex->get_surface() != shared_from_this()) continue;
-
-        // skip if not boundary
-        if (!nearby_vertex->is_boundary()) continue;
-
-        // skip if same vertex
-        if (nearby_vertex == vertex) continue;
+        std::shared_lock<std::shared_mutex> lock(vertex->rwlock_lifecycle_);
         
-        // skip if edge is longer than any of the radius of vertices
-        const double distance = (vertex->get_position() - nearby_vertex->get_position()).norm();
-        const double radius0 = vertex->get_radius(shared_from_this());
-        const double radius1 = nearby_vertex->get_radius();
-        if (!settings_.edge_is_short_enough(distance, radius0, radius1)) continue;
+        // need to check expired since connected to surface, surface may transition from seed to non-seed and thus causing the vertex to be expired
+        if (vertex->is_expired()) return false;
 
-        // skip if edge intersects
-        if (tree_intersect_edge(vertex, nearby_vertex)) continue;
+        // try create edge with nearby vertices
+        for (const auto& nearby_vertex : all_nearby_vertices)
+        {
+            // read lock
+            std::shared_lock<std::shared_mutex> lock(nearby_vertex->rwlock_lifecycle_);
 
-        // create edge
-        std::shared_ptr<Edge> new_edge = storage_->add_edge(shared_from_this(), vertex, nearby_vertex);
+            // check input
+            if (nearby_vertex->is_expired()) continue;
 
-        // read lock edge
-        std::shared_lock<std::shared_mutex> lock_edge(new_edge->rwlock_lifecycle_);
+            // skip if does not belong to the same surface
+            if (nearby_vertex->get_surface() != shared_from_this()) continue;
 
-        // skip if edge is expired
-        if (new_edge->is_expired()) continue;
+            // skip if not boundary
+            if (!nearby_vertex->is_boundary()) continue;
+
+            // skip if same vertex
+            if (nearby_vertex == vertex) continue;
+            
+            // skip if edge is longer than any of the radius of vertices
+            const double distance = (vertex->get_position() - nearby_vertex->get_position()).norm();
+            const double radius0 = vertex->get_radius(shared_from_this());
+            const double radius1 = nearby_vertex->get_radius();
+            if (!settings_.edge_is_short_enough(distance, radius0, radius1)) continue;
+
+            // skip if edge intersects
+            if (tree_intersect_edge(vertex, nearby_vertex)) continue;
+
+            // create edge
+            storage_->add_edge(shared_from_this(), vertex, nearby_vertex);
+            edge_created = true;
+        }
     }
+    
     // add edges to edgeBVH tree
     storage_->add_or_remove_edges_from_edgeBVH_tree();
 
     // false if no edge is created
-    if (vertex->get_edges().empty()) return false;
+    if (!edge_created) return false;
 
-    // try close holes
+    // create faces
     vertex->try_close_holes_repeatedly();
 
     // else
@@ -742,7 +760,7 @@ void Surface::compute_surface_position_std_in_normal_direction()
 
 double Surface::get_surface_position_std_in_normal_direction()
 {
-    return previous_normal_std_;
+    return std::sqrt(variance_mean_in_normal_direction_);
 }
 
 void Surface::connect(const std::shared_ptr<Edge>& edge)
@@ -778,7 +796,12 @@ void Surface::connect(const std::shared_ptr<Face>& face)
 
         // insert
         faces_.insert(face);
+
+        // update surface area
+        surface_area_ += face->get_area();
     }
+
+    update_seed_status();
 }
 
 void Surface::connect(const std::shared_ptr<InteriorPoint>& interior_point)
@@ -798,7 +821,7 @@ void Surface::connect(const std::shared_ptr<InteriorPoint>& interior_point)
     }
     
     // update uncertainty
-    if (get_total_point_size() <= settings_.fit_plane_threshold) 
+    if (is_seed()) 
     {
         interior_point->weight_ = 1.0 / (settings_.range_precision * settings_.range_precision);
     }
@@ -828,6 +851,8 @@ void Surface::disconnect(const std::shared_ptr<Vertex>& vertex)
         // erase
         vertices_.erase(it);
     }
+
+    update_seed_status();
 
     remove_point_from_surface_fitting(vertex->get_original_position(), vertex->get_origin(), vertex->get_distance_travelled(), vertex->weight_);
 }
@@ -867,7 +892,12 @@ void Surface::disconnect(const std::shared_ptr<Face>& face)
 
         // erase
         faces_.erase(it);
+
+        // update surface area
+        surface_area_ -= face->get_area();
     }
+
+    update_seed_status();
 }
 
 void Surface::disconnect(const std::shared_ptr<InteriorPoint>& interior_point)
@@ -1001,6 +1031,16 @@ void Surface::print_info()
     std::cout << "======================================================================================" << std::endl;
 }
 
+void Surface::set_ith_cloud(unsigned int ith_cloud)
+{
+    ith_cloud_ = ith_cloud;
+}
+
+unsigned int Surface::get_ith_cloud() const
+{
+    return ith_cloud_;
+}
+
 void Surface::add_point_to_surface_fitting(const Eigen::Vector3d& position, const Eigen::Vector3d& origin, double distance_travelled, double weight)
 {
     // write lock
@@ -1038,33 +1078,15 @@ void Surface::add_point_to_surface_fitting(const Eigen::Vector3d& position, cons
     normal_ = new_normal;
 
     sum_of_average_distance_travelled_ += distance_travelled;
+    max_distance_travelled_ = std::max(max_distance_travelled_, distance_travelled);
     total_point_size_ += 1;
+
+    covariance_mean_ = covariance_ / total_point_size_;
+    variance_mean_in_normal_direction_ = eigenvalues_(0) / total_point_size_;
 
     // store characteristic length
     characteristic_length_ = std::max(characteristic_length_, (position -  mean_).norm());
     normal_uncertainty_ = settings_.range_precision / characteristic_length_;
-
-    // update approximate uncertainty envelope
-    // if approximate normal is the same as last time, incrementally update the uncertianty envelope
-    // if approximate normal is not the same as last time, recompute the uncertainty envelope all together
-
-    if (!update_normal_position_std_) return;
-
-    // incrementally update
-    double old_distance = previous_normal_distance_;
-    double old_std = previous_normal_std_;
-    double old_information = 1.0 / (old_std * old_std);
-
-    double new_distance = compute_point_projective_distance(origin, position);
-    double new_std = settings_.range_precision;
-    double new_information = 1.0 / (new_std * new_std);
-
-    double combined_distance = merge_information_weighted_mean(old_distance, new_distance, old_information, new_information);
-    double combined_information = merge_information(old_information, new_information);
-    double combined_std = 1.0 / std::sqrt(combined_information);
-
-    previous_normal_distance_ = combined_distance;
-    previous_normal_std_ = combined_std;
 }
 
 void Surface::remove_point_from_surface_fitting(const Eigen::Vector3d& position, const Eigen::Vector3d& origin, double distance_travelled, double weight)
@@ -1106,27 +1128,66 @@ void Surface::remove_point_from_surface_fitting(const Eigen::Vector3d& position,
     sum_of_average_distance_travelled_ -= distance_travelled;
     total_point_size_ -= 1;
 
-    // update approximate uncertainty envelope
-    // if approximate normal is the same as last time, incrementally update the uncertianty envelope
-    // if approximate normal is not the same as last time, recompute the uncertainty envelope all together
+    covariance_mean_ = covariance_ / total_point_size_;
+    variance_mean_in_normal_direction_ = eigenvalues_(0) / total_point_size_;
+}
 
-    if (!update_normal_position_std_) return;
+void Surface::update_seed_status()
+{
+    // seed surface are the ones that we should not yet fit a plane 
+    // - don't fit plane if area is small
+    
+    // is_seed status
+    bool previous_is_seed;
+    bool current_is_seed;
+    {
+        // write lock
+        std::unique_lock<std::shared_mutex> lock(rwlock_surface_fitting_);
 
-    // incrementally update
-    double combined_distance = previous_normal_distance_;
-    double combined_std = previous_normal_std_;
-    double combined_information = 1.0 / (combined_std * combined_std);
+        previous_is_seed = is_seed_;
+        is_seed_ = surface_area_ < settings_.seed_surface_area_threshold || total_point_size_ < settings_.fit_plane_threshold;
+        current_is_seed = is_seed_;
+    }    
 
-    double new_distance = compute_point_projective_distance(origin, position);
-    double new_std = settings_.range_precision;
-    double new_information = 1.0 / (new_std * new_std);
+    // upon transition from seed to non-seed, check all existing vertices
+    // skip if no need to check
+    if (!(previous_is_seed && !current_is_seed)) return;
 
-    double old_distance = remove_information_weighted_mean(combined_distance, new_distance, combined_information, new_information);
-    double old_information = remove_information(combined_information, new_information);
-    double old_std = 1.0 / std::sqrt(old_information);
+    // make copy of vertices
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertices_copy;
+    {
+        // read lock
+        std::shared_lock<std::shared_mutex> lock_vertices(rwlock_vertices_);
 
-    previous_normal_distance_ = old_distance;
-    previous_normal_std_ = old_std;
+        // copy
+        vertices_copy = vertices_;
+    }
+
+    // check each vertex
+    for (const auto& vertex : vertices_copy)
+    {
+        // lock vertex
+        std::shared_lock<std::shared_mutex> lock_vertex(vertex->rwlock_lifecycle_);
+
+        // skip if vertex is expired
+        if (vertex->is_expired()) continue;
+
+        // old projected position
+        Eigen::Vector3d old_projected_position = vertex->get_position();
+
+        // new projected position
+        Eigen::Vector3d point = vertex->get_original_position();
+        Eigen::Vector3d origin = vertex->get_origin();
+        Eigen::Vector3d rayDirection = (point - origin).normalized();
+        double distance = (mean_ - point).dot(normal_) / rayDirection.dot(normal_);
+        Eigen::Vector3d new_projected_position = point + distance * rayDirection;
+
+        // if too different, delete to re-add the point
+        if ((new_projected_position - old_projected_position).norm() > 0.05)
+        {
+            storage_->add_vertex_to_be_deleted(vertex);
+        }
+    }
 }
 
 void Surface::set_random_color()
@@ -1251,8 +1312,6 @@ bool operator==(const std::shared_ptr<Surface>& lhs, const std::shared_ptr<Surfa
 {
     if (!lhs && !rhs) return true; // true if both are nullptr
     if (!lhs || !rhs) return false; // false if either is nullptr
-    // check pointer validity
-    if (lhs->is_expired() || rhs->is_expired()) throw std::runtime_error("Comparing expired surfaces");
     return lhs->get_id() == rhs->get_id();
 }
 
@@ -1268,6 +1327,5 @@ bool operator!= (const std::shared_ptr<Surface>& lhs, const std::shared_ptr<Surf
     // check pointer validity
     if (!lhs && !rhs) return false; // false if both are nullptr
     if (!lhs || !rhs) return true; // true if either is nullptr
-    if (lhs->is_expired() || rhs->is_expired()) throw std::runtime_error("Comparing expired surfaces");
     return lhs->get_id() != rhs->get_id();
 }
