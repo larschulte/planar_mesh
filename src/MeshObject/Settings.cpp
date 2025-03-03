@@ -92,11 +92,11 @@ Settings::Settings()
     dataset_map["observatory01"].filter_low_intensity_flag = false;
     // 300 scans
 
-    std::string dataset = "christchurch03";
+    std::string dataset = "keble03";
     
     headless_mode = true;
-    num_scans = 290;
-    save_folder = "/home/jiahao/datasets/spires_benchmark/" + dataset + "/Benchmark_final/eyepatch/";
+    num_scans = 300;
+    save_folder = "/home/jiahao/datasets/spires_benchmark/" + dataset + "/Benchmark_final/PlanarMesh/";
 
     data_loader_settings.pcd_file_folder = dataset_map[dataset].pcd_file_folder;
     data_loader_settings.pose_file_path = dataset_map[dataset].pose_file_path;
