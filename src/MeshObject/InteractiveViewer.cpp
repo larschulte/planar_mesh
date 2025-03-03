@@ -102,7 +102,6 @@ template <typename PointT>
 void InteractiveViewer<PointT>::update_display(bool export_ply)
 {
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr vertex_pointcloud = app_.compute_vertex_point_pointcloud(settings_);
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr interior_point_cloud = app_.compute_interior_point_pointcloud(settings_);
 
     // vertex points
     viewer_->removeShape("point_cloud");
@@ -122,6 +121,8 @@ void InteractiveViewer<PointT>::update_display(bool export_ply)
     viewer_->removeShape("interior_points");
     if (settings_.show_interior_points)
     {
+        pcl::PointCloud<pcl::PointXYZRGB>::Ptr interior_point_cloud = app_.compute_interior_point_pointcloud(settings_);
+        
         viewer_->addPointCloud<pcl::PointXYZRGB>(interior_point_cloud, "interior_points");
         viewer_->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 6, "interior_points");
 
