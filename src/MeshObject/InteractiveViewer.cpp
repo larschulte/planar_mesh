@@ -104,7 +104,6 @@ void InteractiveViewer<PointT>::update_display(bool export_ply)
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr vertex_pointcloud = app_.compute_vertex_point_pointcloud(settings_);
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr interior_point_cloud = app_.compute_interior_point_pointcloud(settings_);
     std::unordered_map<std::shared_ptr<Vertex>, int, MeshObjectHash> vertex_to_cloud_indices_map = app_.get_vertex_to_cloud_indices_map();
-    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces = storage_->get_faces();
 
     // vertex points
     viewer_->removeShape("point_cloud");
@@ -155,7 +154,7 @@ void InteractiveViewer<PointT>::update_display(bool export_ply)
     {
         pcl::PolygonMesh triangle_mesh;
         pcl::toPCLPointCloud2(*vertex_pointcloud, triangle_mesh.cloud);
-        for (const std::shared_ptr<Face>& face : faces)
+        for (const std::shared_ptr<Face>& face : storage_->get_faces_ref())
         {
             // skip if from seed surface
             if (!settings_.show_seed_surface && face->get_surface()->is_seed()) continue;
