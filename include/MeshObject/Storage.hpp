@@ -114,6 +114,7 @@ public: // to user
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> get_vertices() const;
     std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> get_edges() const;
     std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> get_faces() const;
+    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& get_faces_ref();
     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> get_surfaces() const;
     std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash> get_generic_points() const;
     std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> get_interior_points() const;

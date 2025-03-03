@@ -1120,6 +1120,12 @@ std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> Storage::get_faces() c
     return faces_;
 }
 
+std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& Storage::get_faces_ref()
+{
+    // return
+    return faces_;
+}
+
 std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> Storage::get_surfaces() const
 {
     // read lock
