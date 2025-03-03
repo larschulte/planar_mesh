@@ -160,11 +160,6 @@ void InteractiveViewer<PointT>::update_display(bool export_ply)
             // skip if from seed surface
             if (!settings_.show_seed_surface && face->get_surface()->is_seed()) continue;
 
-            // skip if can't find all indices
-            if (vertex_to_cloud_indices_map.find(face->get_vertex(0)) == vertex_to_cloud_indices_map.end()) continue;
-            if (vertex_to_cloud_indices_map.find(face->get_vertex(1)) == vertex_to_cloud_indices_map.end()) continue;
-            if (vertex_to_cloud_indices_map.find(face->get_vertex(2)) == vertex_to_cloud_indices_map.end()) continue;
-
             pcl::Vertices triangle;
             triangle.vertices.push_back(vertex_to_cloud_indices_map.at(face->get_vertex(0)));
             triangle.vertices.push_back(vertex_to_cloud_indices_map.at(face->get_vertex(1)));
