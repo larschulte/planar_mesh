@@ -105,7 +105,6 @@ void InteractiveViewer<PointT>::update_display(bool export_ply)
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr interior_point_cloud = app_.compute_interior_point_pointcloud(settings_);
     std::unordered_map<std::shared_ptr<Vertex>, int, MeshObjectHash> vertex_to_cloud_indices_map = app_.get_vertex_to_cloud_indices_map();
     std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces = storage_->get_faces();
-    std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> boundary_edges = storage_->get_boundary_edges();
 
     // vertex points
     viewer_->removeShape("point_cloud");
@@ -185,6 +184,8 @@ void InteractiveViewer<PointT>::update_display(bool export_ply)
     viewer_->removeShape("boundary_edges");        
     if (settings_.show_edge)
     {
+        std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> boundary_edges = storage_->get_boundary_edges();
+
         pcl::PolygonMesh boundary_mesh;
         pcl::toPCLPointCloud2(*vertex_pointcloud, boundary_mesh.cloud);
         for (const std::shared_ptr<Edge>& edge : boundary_edges)
