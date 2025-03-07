@@ -205,10 +205,10 @@ Settings::Settings()
     flip_color = false;
     show_internal_vertices = true;
     show_generic_points = false;
-    show_interior_points = true;
-    show_pointcloud = true;
+    show_interior_points = false;
+    show_pointcloud = false;
     show_triangle = true;
-    show_edge = true;
+    show_edge = false;
     show_keycode = false;
     show_seed_surface = false;
     color_mode = ColorMode::ID;

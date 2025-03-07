@@ -1102,6 +1102,12 @@ std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> Storage::get_vertice
     return vertices_;
 }
 
+std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& Storage::get_vertices_ref()
+{
+    // return
+    return vertices_;
+}
+
 std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> Storage::get_edges() const
 {
     // read lock
@@ -1116,6 +1122,12 @@ std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> Storage::get_faces() c
     // read lock
     std::shared_lock<std::shared_mutex> lock(rwlock_faces_);
 
+    // return
+    return faces_;
+}
+
+std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& Storage::get_faces_ref()
+{
     // return
     return faces_;
 }
@@ -1235,23 +1247,6 @@ std::vector<std::shared_ptr<Vertex>> Storage::get_rrs_vertices()
 {
     return rrs_tree_.compute_vertices_list();
 }
-
-std::map<std::shared_ptr<Vertex>, int> Storage::get_vertex_to_cloud_indices_map() const
-{
-    // initialize
-    std::map<std::shared_ptr<Vertex>, int> vertex_to_cloud_indices_map;
-
-    // fill
-    int id = 0;
-    for (const auto& vertex : vertices_)
-    {
-        vertex_to_cloud_indices_map[vertex] = id;
-        id++;
-    }
-
-    // return
-    return vertex_to_cloud_indices_map;
-} 
 
 bool Storage::is_expired() const
 {

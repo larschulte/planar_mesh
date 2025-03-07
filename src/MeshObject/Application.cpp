@@ -936,6 +936,16 @@ void Application<PointT>::step()
     // log
     if (settings_.log.step) std::cout << "==================================================================== Processing point " << ith_point << " of cloud " << ith_cloud << std::endl;
 
+
+    // initialize vector to store duration
+    rrs_search_duration_per_thread.resize(settings_.num_threads);
+    rrs_update_duration_per_thread.resize(settings_.num_threads);
+    bvh_search_duration_per_thread.resize(settings_.num_threads);
+    bvh_update_duration_per_thread.resize(settings_.num_threads);
+    add_to_map_duration_per_thread.resize(settings_.num_threads);
+    delete_from_map_duration_per_thread.resize(settings_.num_threads);
+    relative_position_duration_per_thread.resize(settings_.num_threads);
+
     std::shared_ptr<GenericPoint> generic_point = std::make_shared<GenericPoint>();
     generic_point->initialize_(storage_, thisPointVEC, thisPointOriginVEC, distance_travelled_);
     process_point(generic_point);
@@ -1234,12 +1244,6 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_interior_poi
 }
 
 template <typename PointT>
-std::map<std::shared_ptr<Vertex>, int> Application<PointT>::get_vertex_to_cloud_indices_map()
-{
-    return vertex_to_cloud_indices_map;
-} 
-
-template <typename PointT>
 const std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& Application<PointT>::get_faces() 
 {
     return storage_->get_faces();
@@ -1275,7 +1279,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_vertex_point
 {
     vertex_to_cloud_indices_map.clear();
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
-    for (const std::shared_ptr<Vertex>& vertex : storage_->get_vertices())
+    for (const std::shared_ptr<Vertex>& vertex : storage_->get_vertices_ref())
     {
         // skip if internal
         if (!setting.show_internal_vertices && !vertex->is_boundary()) continue;
@@ -1375,7 +1379,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Application<PointT>::compute_vertex_point
             point.b = std::get<2>(color);
         }
         cloud->push_back(point);
-        vertex_to_cloud_indices_map[vertex] = cloud->size() - 1;
+        vertex->index_in_cloud_ = cloud->size() - 1;
     }
     return cloud;
 }

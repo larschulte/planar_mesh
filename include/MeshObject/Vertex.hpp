@@ -138,6 +138,9 @@ public: // for reverse radius search
     bool approx_contains(const Eigen::Vector3d& point) const;
     bool approx_contains(const std::shared_ptr<GenericPoint>& generic_point) const;
 
+public: // for interactive viewer
+    unsigned int index_in_cloud_;
+
 private: // for reverse radius search
     double reverse_search_radius_;
     Eigen::Vector3d min_;

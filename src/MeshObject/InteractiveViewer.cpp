@@ -78,7 +78,7 @@ void InteractiveViewer<PointT>::save_simplified_surfaces()
             std::cout << "simplified surface " << index++ << " / " << surfaces.size() << std::endl;
 
             // create mesh
-            pcl::PolygonMesh triangle_mesh = create_simplified_mesh(surface);
+            pcl::PolygonMesh triangle_mesh = create_simplified_mesh(surface, true);
 
             // merge
             merge_polygon_mesh(simplified_mesh, triangle_mesh);
@@ -102,10 +102,6 @@ template <typename PointT>
 void InteractiveViewer<PointT>::update_display(bool export_ply)
 {
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr vertex_pointcloud = app_.compute_vertex_point_pointcloud(settings_);
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr interior_point_cloud = app_.compute_interior_point_pointcloud(settings_);
-    std::map<std::shared_ptr<Vertex>, int> vertex_to_cloud_indices_map = app_.get_vertex_to_cloud_indices_map();
-    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces = storage_->get_faces();
-    std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> boundary_edges = storage_->get_boundary_edges();
 
     // vertex points
     viewer_->removeShape("point_cloud");
@@ -125,6 +121,8 @@ void InteractiveViewer<PointT>::update_display(bool export_ply)
     viewer_->removeShape("interior_points");
     if (settings_.show_interior_points)
     {
+        pcl::PointCloud<pcl::PointXYZRGB>::Ptr interior_point_cloud = app_.compute_interior_point_pointcloud(settings_);
+        
         viewer_->addPointCloud<pcl::PointXYZRGB>(interior_point_cloud, "interior_points");
         viewer_->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 6, "interior_points");
 
@@ -156,20 +154,18 @@ void InteractiveViewer<PointT>::update_display(bool export_ply)
     {
         pcl::PolygonMesh triangle_mesh;
         pcl::toPCLPointCloud2(*vertex_pointcloud, triangle_mesh.cloud);
-        for (const std::shared_ptr<Face>& face : faces)
+        for (const std::shared_ptr<Face>& face : storage_->get_faces_ref())
         {
             // skip if from seed surface
             if (!settings_.show_seed_surface && face->get_surface()->is_seed()) continue;
 
-            // skip if can't find all indices
-            if (vertex_to_cloud_indices_map.find(face->get_vertex(0)) == vertex_to_cloud_indices_map.end()) continue;
-            if (vertex_to_cloud_indices_map.find(face->get_vertex(1)) == vertex_to_cloud_indices_map.end()) continue;
-            if (vertex_to_cloud_indices_map.find(face->get_vertex(2)) == vertex_to_cloud_indices_map.end()) continue;
-
             pcl::Vertices triangle;
-            triangle.vertices.push_back(vertex_to_cloud_indices_map.at(face->get_vertex(0)));
-            triangle.vertices.push_back(vertex_to_cloud_indices_map.at(face->get_vertex(1)));
-            triangle.vertices.push_back(vertex_to_cloud_indices_map.at(face->get_vertex(2)));
+            triangle.vertices.reserve(3); // Pre-allocate space to avoid reallocations
+            const int i0 = face->get_vertex(0)->index_in_cloud_;
+            const int i1 = face->get_vertex(1)->index_in_cloud_;
+            const int i2 = face->get_vertex(2)->index_in_cloud_;
+            triangle.vertices.assign({i0, i1, i2});
+
             triangle_mesh.polygons.push_back(triangle);
         }
         viewer_->addPolygonMesh(triangle_mesh, "triangle_mesh");
@@ -185,13 +181,12 @@ void InteractiveViewer<PointT>::update_display(bool export_ply)
     viewer_->removeShape("boundary_edges");        
     if (settings_.show_edge)
     {
+        std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> boundary_edges = storage_->get_boundary_edges();
+
         pcl::PolygonMesh boundary_mesh;
         pcl::toPCLPointCloud2(*vertex_pointcloud, boundary_mesh.cloud);
         for (const std::shared_ptr<Edge>& edge : boundary_edges)
-        {
-            // read lock edge
-            std::shared_lock<std::shared_mutex> lock(edge->rwlock_lifecycle_);
-            
+        {   
             // skip if expired // for some reason, storage would return expired edges ...
             if (edge->is_expired()) continue;
 
@@ -199,8 +194,8 @@ void InteractiveViewer<PointT>::update_display(bool export_ply)
             if (!settings_.show_seed_surface && edge->get_surface()->is_seed()) continue;
             
             pcl::Vertices boundary_edge;
-            boundary_edge.vertices.push_back(vertex_to_cloud_indices_map.at(edge->get_vertex(0)));
-            boundary_edge.vertices.push_back(vertex_to_cloud_indices_map.at(edge->get_vertex(1)));
+            boundary_edge.vertices.push_back(edge->get_vertex(0)->index_in_cloud_);
+            boundary_edge.vertices.push_back(edge->get_vertex(1)->index_in_cloud_);
             boundary_mesh.polygons.push_back(boundary_edge);
         }
         viewer_->addPolylineFromPolygonMesh(boundary_mesh, "boundary_edges");
