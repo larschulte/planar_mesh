@@ -936,6 +936,16 @@ void Application<PointT>::step()
     // log
     if (settings_.log.step) std::cout << "==================================================================== Processing point " << ith_point << " of cloud " << ith_cloud << std::endl;
 
+
+    // initialize vector to store duration
+    rrs_search_duration_per_thread.resize(settings_.num_threads);
+    rrs_update_duration_per_thread.resize(settings_.num_threads);
+    bvh_search_duration_per_thread.resize(settings_.num_threads);
+    bvh_update_duration_per_thread.resize(settings_.num_threads);
+    add_to_map_duration_per_thread.resize(settings_.num_threads);
+    delete_from_map_duration_per_thread.resize(settings_.num_threads);
+    relative_position_duration_per_thread.resize(settings_.num_threads);
+
     std::shared_ptr<GenericPoint> generic_point = std::make_shared<GenericPoint>();
     generic_point->initialize_(storage_, thisPointVEC, thisPointOriginVEC, distance_travelled_);
     process_point(generic_point);
