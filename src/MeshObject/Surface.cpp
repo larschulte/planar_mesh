@@ -668,9 +668,6 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
             // skip if does not belong to the same surface
             if (nearby_vertex->get_surface() != shared_from_this()) continue;
 
-            // skip if not boundary
-            if (!nearby_vertex->is_boundary()) continue;
-
             // skip if same vertex
             if (nearby_vertex == vertex) continue;
             
@@ -680,23 +677,14 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
             const double radius1 = nearby_vertex->get_radius();
             if (!settings_.edge_is_short_enough(distance, radius0, radius1)) continue;
 
-            // skip if edge intersects
-            if (tree_intersect_edge(vertex, nearby_vertex)) continue;
-
             // create edge
             storage_->add_edge(shared_from_this(), vertex, nearby_vertex);
             edge_created = true;
         }
     }
     
-    // add edges to edgeBVH tree
-    storage_->add_or_remove_edges_from_edgeBVH_tree();
-
     // false if no edge is created
     if (!edge_created) return false;
-
-    // create faces
-    vertex->try_close_holes_repeatedly();
 
     // else
     return true;
@@ -779,7 +767,7 @@ void Surface::connect(const std::shared_ptr<Edge>& edge)
         edges_.insert(edge);
     }
 
-    storage_->add_to_set_of_edge_to_update_edgeBVH_tree(edge, shared_from_this());
+    // storage_->add_to_set_of_edge_to_update_edgeBVH_tree(edge, shared_from_this());
 }
 
 void Surface::connect(const std::shared_ptr<Face>& face)
@@ -874,7 +862,7 @@ void Surface::disconnect(const std::shared_ptr<Edge>& edge)
         edges_.erase(it);
     }
 
-    storage_->add_to_set_of_edge_to_update_edgeBVH_tree(edge, shared_from_this());
+    // storage_->add_to_set_of_edge_to_update_edgeBVH_tree(edge, shared_from_this());
 }
 
 void Surface::disconnect(const std::shared_ptr<Face>& face)
@@ -1145,7 +1133,8 @@ void Surface::update_seed_status()
         std::unique_lock<std::shared_mutex> lock(rwlock_surface_fitting_);
 
         previous_is_seed = is_seed_;
-        is_seed_ = surface_area_ < settings_.seed_surface_area_threshold || total_point_size_ < settings_.fit_plane_threshold;
+        // is_seed_ = surface_area_ < settings_.seed_surface_area_threshold || total_point_size_ < settings_.fit_plane_threshold;
+        is_seed_ = total_point_size_ < settings_.fit_plane_threshold;
         current_is_seed = is_seed_;
     }    
 

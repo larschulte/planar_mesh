@@ -1001,7 +1001,6 @@ void Vertex::upon_deleting_publisher()
     // only try close holes and update node box if radius is increased
     if (current_radius > previous_radius) 
     {
-        try_close_holes_repeatedly();
         storage_->add_vertex_that_have_changed_box(shared_from_this());
     }
 }
