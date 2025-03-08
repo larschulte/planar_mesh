@@ -320,7 +320,6 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
     std::chrono::time_point<std::chrono::high_resolution_clock> bvh_search_duration_start = std::chrono::high_resolution_clock::now();
 
     std::vector<std::shared_ptr<Face>> bvh_results;
-    BVHReturnType BVH_return = storage_->face_intersection_search(generic_point, bvh_results);
 
     std::chrono::time_point<std::chrono::high_resolution_clock> bvh_search_duration_end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> bvh_search_duration = bvh_search_duration_end - bvh_search_duration_start;
@@ -441,28 +440,8 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
 {
 
     // from bvh results and rrs results, get surfaces
-    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> bvh_surfaces;
     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> rrs_surfaces;
-    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> bvh_results;
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> rrs_results;
-    for (const std::shared_ptr<Face>& face : unfiltered_bvh_results)
-    {
-        // skip if nullptr
-        if (face == nullptr) continue;
-
-        // read lock
-        std::shared_lock<std::shared_mutex> lock(face->rwlock_lifecycle_);
-
-        // skip if expired
-        if (face->is_expired()) continue;
-
-        // skip if does not intersect
-        if (!face->intersects_point(generic_point->get_origin(), generic_point->get_direction())) continue;
-        
-        // store
-        bvh_surfaces.insert(face->get_surface());
-        bvh_results.insert(face);
-    }
     for (const std::shared_ptr<Vertex>& vertex : unfiltered_rrs_results)
     {
         // skip if nullptr
@@ -483,42 +462,10 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
     }
 
     // split surfaces into bvh and rrs seed, within, behind, in front
-    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_bvh_seed;
-    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_bvh_within;
-    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_bvh_behind;
-    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_bvh_in_front;
     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_rrs_seed;
     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_rrs_within;
     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_rrs_behind;
     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_rrs_in_front;
-    for (const std::shared_ptr<Surface>& surface : bvh_surfaces)
-    {
-        // read lock
-        std::shared_lock<std::shared_mutex> lock(surface->rwlock_lifecycle_);
-
-        // skip if the surface is expired
-        if (surface->is_expired()) continue;
-
-        // check relative position
-        // time this
-        std::chrono::time_point<std::chrono::high_resolution_clock> relative_position_start = std::chrono::high_resolution_clock::now();
-        RelativePosition relative_position = surface->check_relative_position(generic_point);
-        std::chrono::time_point<std::chrono::high_resolution_clock> relative_position_end = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double> relative_position_duration = relative_position_end - relative_position_start;
-        relative_position_duration_per_thread[omp_get_thread_num()] += relative_position_duration.count();
-
-        // skip if no relative position
-        if (relative_position == RelativePosition::NO_RELATIVE_POSITION) surfaces_bvh_seed.insert(surface);
-
-        // add to within
-        if (relative_position == RelativePosition::WITHIN) surfaces_bvh_within.insert(surface);
-
-        // add to behind
-        if (relative_position == RelativePosition::BEHIND) surfaces_bvh_behind.insert(surface);
-
-        // add to in front
-        if (relative_position == RelativePosition::IN_FRONT) surfaces_bvh_in_front.insert(surface);
-    }
     for (const std::shared_ptr<Surface>& surface : rrs_surfaces)
     {
         // read lock
@@ -549,41 +496,6 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
 
     // construct a list of surfaces to add to
     std::vector<std::shared_ptr<Surface>> list_of_surfaces_to_add_to;
-
-    // 1. surfaces_bvh_within
-    if (surfaces_bvh_within.size() > 0)
-    {
-        // create vector of surface paired with size
-        std::vector<std::pair<std::shared_ptr<Surface>, double>> surfaces_bvh_within_sorted;
-        for (const std::shared_ptr<Surface>& surface : surfaces_bvh_within)
-        {
-            // read lock
-            std::shared_lock<std::shared_mutex> lock(surface->rwlock_lifecycle_);
-
-            // skip if nullptr
-            if (surface == nullptr) continue;
-
-            // skip if the surface is expired
-            if (surface->is_expired()) continue;
-
-            // add to list
-            surfaces_bvh_within_sorted.emplace_back(surface, surface->get_total_point_size());
-        }
-
-        // sort by surface size
-        std::sort(surfaces_bvh_within_sorted.begin(), surfaces_bvh_within_sorted.end(), 
-            [](const std::pair<std::shared_ptr<Surface>, double>& a, const std::pair<std::shared_ptr<Surface>, double>& b) 
-            {
-                // sort by surface size
-                return a.second > b.second; 
-            });
-
-        // add to list
-        for (const std::pair<std::shared_ptr<Surface>, double>& surface : surfaces_bvh_within_sorted)
-        {
-            list_of_surfaces_to_add_to.push_back(surface.first);
-        }
-    }
 
     // 2. surfaces_rrs_within
     if (surfaces_rrs_within.size() > 0)
@@ -666,7 +578,6 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
 
     // add to surface according to the list of bvh and rrs surfaces
     std::shared_ptr<Surface> surface_to_add_to = nullptr;
-    std::shared_ptr<InteriorPoint> new_interior_point = nullptr;
     std::shared_ptr<Vertex> new_vertex = nullptr;
     for (std::shared_ptr<Surface> surface : list_of_surfaces_to_add_to)
     {
@@ -679,31 +590,6 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
         // store current surface to add to
         surface_to_add_to = surface;
 
-        // 1. if added to bvh within
-        if (surfaces_bvh_within.find(surface_to_add_to) != surfaces_bvh_within.end())
-        {
-            // get the first face
-            for (const std::shared_ptr<Face>& face : bvh_results)
-            {
-                // read lock
-                std::shared_lock<std::shared_mutex> lock(face->rwlock_lifecycle_);
-
-                // skip if the face is expired
-                if (face->is_expired()) continue;
-
-                // skip if the face is not from the surface
-                if (face->get_surface() != surface_to_add_to) continue;
-
-                // create interior point
-                new_interior_point = storage_->add_interior_point(surface_to_add_to, face, generic_point);
-
-                break;
-            }
-
-            // return
-            break;
-        }
-        
         // 2. if added to rrs within
         if (surfaces_rrs_within.find(surface_to_add_to) != surfaces_rrs_within.end())
         {
@@ -821,33 +707,9 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
 
     surface_to_add_to->set_ith_cloud(ith_cloud);
 
-    // 1. if added to bvh within / 2. if added to rrs within
-    if (surfaces_bvh_within.find(surface_to_add_to) != surfaces_bvh_within.end() || surfaces_rrs_within.find(surface_to_add_to) != surfaces_rrs_within.end())
-    {
-        // bvh - delete penetrated 
-        for (const std::shared_ptr<Face>& face : bvh_results)
-        {
-            {
-                // read lock
-                std::shared_lock<std::shared_mutex> lock(face->rwlock_lifecycle_);
-
-                // skip if expired
-                if (face->is_expired()) continue;
-
-                // skip if same surface
-                if (face->get_surface() == surface_to_add_to) continue;
-
-                // skip if no relative position
-                if (surfaces_bvh_seed.find(face->get_surface()) != surfaces_bvh_seed.end()) continue;
-
-                // skip if in front 
-                if (surfaces_bvh_in_front.find(face->get_surface()) != surfaces_bvh_in_front.end()) continue;
-            }
-
-            // delete penetrated face
-            storage_->add_face_to_be_deleted(face);
-        }
-        
+    // if added to rrs within
+    if (surfaces_rrs_within.find(surface_to_add_to) != surfaces_rrs_within.end())
+    {   
         // rrs - reduce radius
         for (const std::shared_ptr<Vertex>& vertex : rrs_results)
         {
@@ -861,7 +723,6 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
             if (vertex->get_surface() == surface_to_add_to) continue;
 
             // reduce radius of nearby vertices
-            if (new_interior_point) new_interior_point->add_interior_point_distance_subscriber(vertex);
             if (new_vertex) new_vertex->add_vertex_point_distance_subscriber(vertex);
 
             // add to list that have added publishers
