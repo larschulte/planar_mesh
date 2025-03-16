@@ -611,6 +611,11 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
                 // skip if the vertex is in seed surface
                 if (surfaces_rrs_seed.find(vertex->get_surface()) != surfaces_rrs_seed.end()) continue;
 
+                // skip if the vertex if following conditions are met
+                const bool is_within = surface_to_add_to->check_relative_position(vertex) == RelativePosition::WITHIN;
+                const bool is_in_smaller_surface = vertex->get_surface()->get_total_point_size() < surface_to_add_to->get_total_point_size();
+                if (is_within && is_in_smaller_surface) continue;
+
                 // add neighboring vertex
                 new_vertex->add_vertex_point_distance_publisher(vertex);
             }
@@ -721,6 +726,17 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
 
             // skip if same surface
             if (vertex->get_surface() == surface_to_add_to) continue;
+
+            // remove the point if following conditions are met
+            const bool is_within = surface_to_add_to->check_relative_position(vertex) == RelativePosition::WITHIN;
+            const bool is_in_smaller_surface = vertex->get_surface()->get_total_point_size() < surface_to_add_to->get_total_point_size();
+            const bool is_within_radius = (vertex->get_position() - new_vertex->get_position()).norm() < vertex->get_radius();
+            if (is_within && is_in_smaller_surface && is_within_radius)
+            {
+                // remove the point
+                storage_->add_vertex_to_be_deleted(vertex);
+                continue;
+            }
 
             // reduce radius of nearby vertices
             if (new_vertex) new_vertex->add_vertex_point_distance_subscriber(vertex);
