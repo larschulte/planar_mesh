@@ -103,6 +103,8 @@ struct Settings
     std::size_t process_every_n_points;
     double duplicated_point_distance_threshold;
 
+    unsigned int num_of_new_edges_per_vertex;
+
     double cleanup_seed_surface_after_ith_cloud;
     double cleanup_seed_surface_after_distance_travelled;
     

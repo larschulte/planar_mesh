@@ -647,8 +647,8 @@ bool Surface::tree_intersect_edge(const std::shared_ptr<Vertex>& vertex0, const 
 
 bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& all_nearby_vertices)
 {
-    // create edges
-    bool edge_created = false;
+    // collect nearby vertices we can create edge with
+    std::vector<std::pair<std::shared_ptr<Vertex>, double>> edge_candidates;
     {
         // read lock
         std::shared_lock<std::shared_mutex> lock(vertex->rwlock_lifecycle_);
@@ -676,15 +676,48 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
             const double radius0 = vertex->get_radius(shared_from_this());
             const double radius1 = nearby_vertex->get_radius();
             if (!settings_.edge_is_short_enough(distance, radius0, radius1)) continue;
-
-            // create edge
-            storage_->add_edge(shared_from_this(), vertex, nearby_vertex);
-            edge_created = true;
+            
+            // add to edge candidates
+            edge_candidates.emplace_back(nearby_vertex, distance);
         }
     }
     
-    // false if no edge is created
-    if (!edge_created) return false;
+    // false if no edge candidates
+    if (edge_candidates.empty()) return false;
+
+    // create N edges
+    {
+        // sort edge candidates by distance
+        std::sort(edge_candidates.begin(), edge_candidates.end(), [](const std::pair<std::shared_ptr<Vertex>, double>& a, const std::pair<std::shared_ptr<Vertex>, double>& b) { return a.second < b.second; });
+
+        // read lock
+        std::shared_lock<std::shared_mutex> lock(vertex->rwlock_lifecycle_);
+        
+        // need to check expired since connected to surface, surface may transition from seed to non-seed and thus causing the vertex to be expired
+        if (vertex->is_expired()) return false;
+
+        // number of edges created
+        int number_of_edges_created = 0;
+
+        // try create edge with nearby vertices
+        for (const auto& pair : edge_candidates)
+        {
+            // read lock
+            std::shared_lock<std::shared_mutex> lock(pair.first->rwlock_lifecycle_);
+
+            // check input
+            if (pair.first->is_expired()) continue;
+
+            // create edge
+            storage_->add_edge(shared_from_this(), vertex, pair.first);
+
+            // increment
+            number_of_edges_created++;
+
+            // skip if N edges are created
+            if (number_of_edges_created >= settings_.num_of_new_edges_per_vertex) break;
+        }
+    }
 
     // else
     return true;

@@ -110,6 +110,8 @@ Settings::Settings()
 
     high_incident_angle_threshold_std = 0.1;
 
+    num_of_new_edges_per_vertex = 2;
+
     cleanup_seed_surface_after_ith_cloud = -1;
     cleanup_seed_surface_after_distance_travelled = 3.0;
 
