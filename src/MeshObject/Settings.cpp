@@ -94,7 +94,7 @@ Settings::Settings()
 
     std::string dataset = "keble03";
     
-    headless_mode = true;
+    headless_mode = false;
     num_scans = 300;
     save_folder = "/home/jiahao/datasets/spires_benchmark/" + dataset + "/Benchmark_final/PlanarMesh/";
 
