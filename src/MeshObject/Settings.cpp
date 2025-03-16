@@ -206,8 +206,8 @@ Settings::Settings()
     show_internal_vertices = true;
     show_generic_points = false;
     show_interior_points = false;
-    show_pointcloud = false;
-    show_triangle = true;
+    show_pointcloud = true;
+    show_triangle = false;
     show_edge = false;
     show_keycode = false;
     show_seed_surface = false;
