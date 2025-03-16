@@ -60,8 +60,8 @@ public:
 
     double& get_projected_uncertainty();
 
-    std::vector<std::pair<std::shared_ptr<Vertex>, double>>& get_vertex_point_distance_publishers();
-    std::vector<std::pair<std::shared_ptr<InteriorPoint>, double>>& get_interior_point_distance_publishers();
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& get_vertex_point_distance_publishers();
+    std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash>& get_interior_point_distance_publishers();
 
     std::shared_ptr<Edge> get_edge(const std::shared_ptr<Vertex>& vertex) const;
 
@@ -185,11 +185,11 @@ private:
     Eigen::Vector3d projected_position_ = Eigen::Vector3d::Zero();
 
     // a publisher is one that reduces radius of other vertices
-    std::vector<std::pair<std::shared_ptr<Vertex>, double>> vertex_point_distance_publishers_;
-    std::vector<std::pair<std::shared_ptr<InteriorPoint>, double>> interior_point_distance_publishers_;
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertex_point_distance_publishers_;
+    std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> interior_point_distance_publishers_;
 
     // a subscriber is one that is reduced by the current vertex
-    std::vector<std::shared_ptr<Vertex>> vertex_point_distance_subscribers_;
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertex_point_distance_subscribers_;
 
 public:
     double weight_;

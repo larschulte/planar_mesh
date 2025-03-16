@@ -104,7 +104,7 @@ void Vertex::delete_()
     // publishers (disconnect)
     {
         // lock, copy and clear
-        std::vector<std::pair<std::shared_ptr<Vertex>, double>> vertex_point_distance_publishers_copy;
+        std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertex_point_distance_publishers_copy;
         {
             std::unique_lock<std::shared_mutex> lock(rwlock_vertex_point_distance_publishers_);
             vertex_point_distance_publishers_copy = vertex_point_distance_publishers_;
@@ -112,13 +112,13 @@ void Vertex::delete_()
         }
 
         // disconnect
-        for (const auto& [vertex_point_publisher, distance] : vertex_point_distance_publishers_copy) vertex_point_publisher->delete_vertex_point_distance_subscriber(shared_from_this());
+        for (const auto& vertex_point_publisher : vertex_point_distance_publishers_copy) vertex_point_publisher->delete_vertex_point_distance_subscriber(shared_from_this());
     }
 
     // publishers (disconnect)
     {
         // lock, copy and clear
-        std::vector<std::pair<std::shared_ptr<InteriorPoint>, double>> interior_point_distance_publishers_copy;
+        std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> interior_point_distance_publishers_copy;
         {
             std::unique_lock<std::shared_mutex> lock(rwlock_interior_point_distance_publishers_);
             interior_point_distance_publishers_copy = interior_point_distance_publishers_;
@@ -126,13 +126,13 @@ void Vertex::delete_()
         }
 
         // disconnect
-        for (const auto& [interior_point_publisher, distance] : interior_point_distance_publishers_copy) interior_point_publisher->delete_interior_point_distance_subscriber(shared_from_this());
+        for (const auto& interior_point_publisher : interior_point_distance_publishers_copy) interior_point_publisher->delete_interior_point_distance_subscriber(shared_from_this());
     }
 
     // subscribers (disconnect)
     {
         // lock, copy and clear
-        std::vector<std::shared_ptr<Vertex>> vertex_point_distance_subscribers_copy;
+        std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertex_point_distance_subscribers_copy;
         {
             std::unique_lock<std::shared_mutex> lock(rwlock_vertex_point_distance_subscribers_);
             vertex_point_distance_subscribers_copy = vertex_point_distance_subscribers_;
@@ -305,12 +305,12 @@ double& Vertex::get_projected_uncertainty()
     return projected_uncertainty_;
 }
 
-std::vector<std::pair<std::shared_ptr<Vertex>, double>>& Vertex::get_vertex_point_distance_publishers()
+std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& Vertex::get_vertex_point_distance_publishers()
 {
     return vertex_point_distance_publishers_;
 }
 
-std::vector<std::pair<std::shared_ptr<InteriorPoint>, double>>& Vertex::get_interior_point_distance_publishers()
+std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash>& Vertex::get_interior_point_distance_publishers()
 {
     return interior_point_distance_publishers_;
 }
@@ -1014,14 +1014,14 @@ void Vertex::add_vertex_point_distance_publisher(const std::shared_ptr<Vertex> v
         // lock
         std::unique_lock<std::shared_mutex> lock(rwlock_vertex_point_distance_publishers_);
 
-        // skip if already exist
-        for (const auto& pair : vertex_point_distance_publishers_) if (pair.first == vertex_point_publisher) return; // Already exists
+        // skip if already exist in the unordered set
+        if (vertex_point_distance_publishers_.find(vertex_point_publisher) != vertex_point_distance_publishers_.end()) return; // Already exists
 
         // compute distance
         const double distance = (get_position() - vertex_point_publisher->get_position()).norm(); 
 
         // add publisher
-        vertex_point_distance_publishers_.emplace_back(vertex_point_publisher, distance);
+        vertex_point_distance_publishers_.insert(vertex_point_publisher);
     }
 
     // add self to publisher vertex as subscriber
@@ -1038,7 +1038,7 @@ void Vertex::delete_vertex_point_distance_publisher(const std::shared_ptr<Vertex
         std::unique_lock<std::shared_mutex> lock(rwlock_vertex_point_distance_publishers_);
 
         // skip if not exist
-        auto it = std::find_if(vertex_point_distance_publishers_.begin(), vertex_point_distance_publishers_.end(), [&](const std::pair<std::shared_ptr<Vertex>, double>& pair) {return pair.first == vertex_point_publisher;});
+        auto it = vertex_point_distance_publishers_.find(vertex_point_publisher);
         if (it == vertex_point_distance_publishers_.end()) return;
 
         // delete publisher
@@ -1056,10 +1056,10 @@ void Vertex::add_vertex_point_distance_subscriber(const std::shared_ptr<Vertex> 
         std::unique_lock<std::shared_mutex> lock(rwlock_vertex_point_distance_subscribers_);
 
         // skip if already exist
-        for (const auto& vertex_point_subscriber_ : vertex_point_distance_subscribers_) if (vertex_point_subscriber_ == vertex_point_subscriber) return; // Already exists
+        if (vertex_point_distance_subscribers_.find(vertex_point_subscriber) != vertex_point_distance_subscribers_.end()) return; // Already exists
 
         // add subscriber
-        vertex_point_distance_subscribers_.push_back(vertex_point_subscriber);
+        vertex_point_distance_subscribers_.insert(vertex_point_subscriber);
     }
 
     // add self to subscriber vertex as publisher
@@ -1076,7 +1076,7 @@ void Vertex::delete_vertex_point_distance_subscriber(const std::shared_ptr<Verte
         std::unique_lock<std::shared_mutex> lock(rwlock_vertex_point_distance_subscribers_);
 
         // skip if not exist
-        auto it = std::find(vertex_point_distance_subscribers_.begin(), vertex_point_distance_subscribers_.end(), vertex_point_subscriber);
+        auto it = vertex_point_distance_subscribers_.find(vertex_point_subscriber);
         if (it == vertex_point_distance_subscribers_.end()) return; // skip if not exist
 
         // delete subscriber
@@ -1093,14 +1093,14 @@ void Vertex::add_interior_point_distance_publisher(const std::shared_ptr<Interio
         // lock
         std::unique_lock<std::shared_mutex> lock(rwlock_interior_point_distance_publishers_);
 
-        // skip if already exist
-        for (const auto& pair : interior_point_distance_publishers_) if (pair.first == interior_point_publisher) return; // Already exists
+        // skip if already exist in the unordered set
+        if (interior_point_distance_publishers_.find(interior_point_publisher) != interior_point_distance_publishers_.end()) return; // Already exists
     
         // compute distance
         const double distance = (get_position() - interior_point_publisher->get_position()).norm(); 
 
         // add publisher
-        interior_point_distance_publishers_.emplace_back(interior_point_publisher, distance);
+        interior_point_distance_publishers_.insert(interior_point_publisher);
     }
 
     // add self to publisher vertex as subscriber
@@ -1117,7 +1117,7 @@ void Vertex::delete_interior_point_distance_publisher(const std::shared_ptr<Inte
         std::unique_lock<std::shared_mutex> lock(rwlock_interior_point_distance_publishers_);
 
         // skip if not exist
-        auto it = std::find_if(interior_point_distance_publishers_.begin(), interior_point_distance_publishers_.end(), [&](const std::pair<std::shared_ptr<InteriorPoint>, double>& pair) {return pair.first == interior_point_publisher;});
+        auto it = interior_point_distance_publishers_.find(interior_point_publisher);
         if (it == interior_point_distance_publishers_.end()) return;
 
         // delete publisher
@@ -1135,16 +1135,23 @@ double Vertex::compute_radius()
     std::shared_lock<std::shared_mutex> lock_interior_point_distance_publishers(rwlock_interior_point_distance_publishers_);
 
     // reduce value
-    for (const auto& [neighboring_vertex, distance] : vertex_point_distance_publishers_)
+    for (const auto& neighboring_vertex : vertex_point_distance_publishers_)
     {
         const double extra_radius = settings_.extra_radius;
-        if (distance + extra_radius < new_radius) new_radius = distance + extra_radius;
+
+        // compute distance
+        const double new_distance = (get_position() - neighboring_vertex->get_position()).norm();
+
+        if (new_distance + extra_radius < new_radius) new_radius = new_distance + extra_radius;
     }
 
     // reduce value
-    for (const auto& [interior_point, distance] : interior_point_distance_publishers_)
+    for (const auto& interior_point : interior_point_distance_publishers_)
     {
-        if (distance < new_radius) new_radius = distance;
+        // compute distance
+        const double new_distance = (get_position() - interior_point->get_position()).norm();
+
+        if (new_distance < new_radius) new_radius = new_distance;
     }
 
     // return radius

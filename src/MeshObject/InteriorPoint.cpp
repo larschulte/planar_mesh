@@ -70,7 +70,7 @@ void InteriorPoint::delete_()
     // subscribers (disconnect)
     {
         // lock, copy and clear
-        std::vector<std::shared_ptr<Vertex>> interior_point_distance_subscribers_copy;
+        std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> interior_point_distance_subscribers_copy;
         {
             std::unique_lock<std::shared_mutex> lock(rwlock_interior_point_distance_subscribers_);
             interior_point_distance_subscribers_copy = interior_point_distance_subscribers_;
@@ -231,10 +231,10 @@ void InteriorPoint::add_interior_point_distance_subscriber(const std::shared_ptr
         std::unique_lock<std::shared_mutex> lock(rwlock_interior_point_distance_subscribers_);
 
         // skip if already exist
-        for (const auto& interior_point_subscriber_ : interior_point_distance_subscribers_) if (interior_point_subscriber_ == interior_point_subscriber) return; // Already exists
+        if (interior_point_distance_subscribers_.find(interior_point_subscriber) != interior_point_distance_subscribers_.end()) return; // Already exists
 
         // add subscriber
-        interior_point_distance_subscribers_.push_back(interior_point_subscriber);
+        interior_point_distance_subscribers_.insert(interior_point_subscriber);
     }
 
     // add self to subscriber vertex as publisher
@@ -251,7 +251,7 @@ void InteriorPoint::delete_interior_point_distance_subscriber(const std::shared_
         std::unique_lock<std::shared_mutex> lock(rwlock_interior_point_distance_subscribers_);
 
         // skip if not exist
-        auto it = std::find(interior_point_distance_subscribers_.begin(), interior_point_distance_subscribers_.end(), interior_point_subscriber);
+        auto it = interior_point_distance_subscribers_.find(interior_point_subscriber);
         if (it == interior_point_distance_subscribers_.end()) return; // skip if not exist
 
         // delete subscriber
