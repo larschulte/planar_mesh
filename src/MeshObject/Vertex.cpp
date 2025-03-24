@@ -626,6 +626,38 @@ std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> Vertex::get_connecte
     // return
     return connected_boundary_vertices;
 }
+
+void Vertex::depth_first_search(std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& visited)
+{
+    auto self = shared_from_this();
+
+    std::vector<std::shared_ptr<Edge>> edges_copy;
+    {
+        std::shared_lock<std::shared_mutex> lock(rwlock_edges_);
+        edges_copy = edges_;
+    }
+
+    for (const auto& edge : edges_copy)
+    {
+        std::shared_lock<std::shared_mutex> lock(edge->rwlock_lifecycle_);
+        if (edge->is_expired()) continue;
+
+        for (int i = 0; i < 2; ++i)
+        {
+            auto vertex = edge->get_vertex(i);
+
+            // skip if nullptr / self / expired
+            if (!vertex || vertex == self || vertex->is_expired()) continue;
+
+            // Insert and recurse only if not visited
+            if (visited.insert(vertex).second)
+            {
+                vertex->depth_first_search(visited);
+            }
+        }
+    }
+}
+
 // swap surface1 with surface2
 void Vertex::swap(const std::shared_ptr<Surface>& surface1, const std::shared_ptr<Surface>& surface2)
 {
