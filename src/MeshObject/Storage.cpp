@@ -928,6 +928,49 @@ void Storage::delete_to_be_deleted()
     for (const std::shared_ptr<InteriorPoint>& interior_point : interior_points_to_be_deleted) delete_interior_point(interior_point);
 }
 
+void Storage::split_surfaces_per_thread()
+{
+    // make copy of surfaces
+    std::vector<std::shared_ptr<Surface>> surfaces_copy;
+    {
+        // read lock
+        std::shared_lock<std::shared_mutex> lock(rwlock_surfaces_);
+
+        // copy
+        surfaces_copy = std::vector<std::shared_ptr<Surface>>(surfaces_.begin(), surfaces_.end());
+    }
+
+    for (const std::shared_ptr<Surface>& surface : surfaces_copy)
+    {
+        // skip if surface is expired
+        if (surface->is_expired()) continue;
+
+        // skip if modulus is not equal to thread number
+        if (surface->get_id() % settings_.num_threads != omp_get_thread_num()) continue;
+
+        // skip if surface does not have recently removed edges
+        // [todo]
+
+        // split surface
+        surface->split_surface_by_connected_components();
+    }
+}
+
+void Storage::split_surfaces()
+{
+    for (const std::shared_ptr<Surface>& surface : surfaces_)
+    {
+        // skip if surface is expired
+        if (surface->is_expired()) continue;
+
+        // skip if surface does not have recently removed edges
+        // [todo]
+
+        // split surface
+        surface->split_surface_by_connected_components();
+    }
+}
+
 void Storage::add_vertex_that_have_deleted_publishers(const std::shared_ptr<Vertex>& vertex)
 {
     thread_vertices_that_have_deleted_publishers_[omp_get_thread_num()].insert(vertex);

@@ -87,6 +87,8 @@ public:
 
     std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> get_connected_boundary_edges() const;
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> get_connected_boundary_vertices();
+    void swap(const std::shared_ptr<Surface>& surface1, const std::shared_ptr<Surface>& surface2);
+
     bool check_connected_by_edge(const std::shared_ptr<Vertex>& vertex);
     bool check_connected_by_face(const std::shared_ptr<Vertex>& vertex0, const std::shared_ptr<Vertex>& vertex1);
     bool try_close_holes_repeatedly();

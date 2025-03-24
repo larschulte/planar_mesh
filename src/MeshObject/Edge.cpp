@@ -171,6 +171,18 @@ void Edge::disconnect(const std::shared_ptr<Face>& face)
     if (faces_.empty() && !deleting_ && can_self_destruct_) storage_->add_edge_to_be_deleted(shared_from_this());
 }
 
+
+// swap surface1 with surface2
+void Edge::swap(const std::shared_ptr<Surface>& surface1, const std::shared_ptr<Surface>& surface2)
+{
+    if (surface_ == surface1)
+    {
+        surface_ = surface2;
+        surface1->disconnect(shared_from_this());
+        surface2->connect(shared_from_this());
+    }
+}
+
 void Edge::set_can_self_destruct(bool can_self_destruct)
 {
     can_self_destruct_ = can_self_destruct;

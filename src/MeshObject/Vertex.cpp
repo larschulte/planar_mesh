@@ -626,6 +626,17 @@ std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> Vertex::get_connecte
     // return
     return connected_boundary_vertices;
 }
+// swap surface1 with surface2
+void Vertex::swap(const std::shared_ptr<Surface>& surface1, const std::shared_ptr<Surface>& surface2)
+{
+    // if contains surface1
+    if (surface_ == surface1)
+    {
+        surface_ = surface2;
+        surface1->disconnect(shared_from_this());
+        surface2->connect(shared_from_this());
+    }
+}
 
 bool Vertex::check_connected_by_edge(const std::shared_ptr<Vertex>& vertex)
 {

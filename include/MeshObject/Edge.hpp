@@ -45,6 +45,8 @@ public:
     void connect(const std::shared_ptr<Face>& face);
     void disconnect(const std::shared_ptr<Face>& face);
 
+    void swap(const std::shared_ptr<Surface>& surface1, const std::shared_ptr<Surface>& surface2);
+
     void set_can_self_destruct(bool can_self_destruct);
 
     bool is_connected_to_boundary_edges(std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& all_connected_faces, std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& all_connected_edges) const;

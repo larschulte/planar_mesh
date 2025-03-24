@@ -1307,19 +1307,35 @@ void Surface::split_surface_by_connected_components()
 {
     // split surface
     UnionFind uf;
-    uf.add_vertices(vertices_);
-    uf.add_edges(edges_);
+    {
+        // lock vertices and edges
+        std::shared_lock<std::shared_mutex> lock_vertices(rwlock_vertices_);
+        std::shared_lock<std::shared_mutex> lock_edges(rwlock_edges_);
+
+        // add vertices and edges
+        uf.add_vertices(vertices_);
+        uf.add_edges(edges_);
+    }
     std::vector<std::pair<std::shared_ptr<Vertex>, std::vector<std::shared_ptr<Vertex>>>> sorted_grouped_vertices = uf.compute_sorted_grouped_vertices();
 
     // create new surfaces from the second group onwards
     for (std::size_t i = 1; i < sorted_grouped_vertices.size(); i++)
     {
-        // get root vertex
-        const auto& root_vertex = sorted_grouped_vertices[i].first;
-
-        // connect to new surface
+        // get new surface
         std::shared_ptr<Surface> new_surface = storage_->add_surface();
-        // root_vertex->swap(shared_from_this(), new_surface);
+
+        // for each vertex in the group, swap their surface to a new surface
+        for (const auto& vertex : sorted_grouped_vertices[i].second)
+        {
+            // swap
+            vertex->swap(shared_from_this(), new_surface);
+
+            // swap connected edges
+            for (const auto& edge : vertex->get_edges())
+            {
+                edge->swap(shared_from_this(), new_surface);
+            }
+        }
     }
 }
 

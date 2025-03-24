@@ -95,6 +95,9 @@ public: // to user
     void delete_to_be_deleted_repeatedly();
     void delete_to_be_deleted();
 
+    void split_surfaces_per_thread();
+    void split_surfaces();
+
     void add_vertex_that_have_deleted_publishers(const std::shared_ptr<Vertex>& vertex);
     void add_vertex_that_have_added_publishers(const std::shared_ptr<Vertex>& vertex);
     void add_vertex_that_have_changed_box(const std::shared_ptr<Vertex>& vertex);
