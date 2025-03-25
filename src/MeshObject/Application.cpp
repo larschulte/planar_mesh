@@ -890,7 +890,10 @@ void Application<PointT>::loop()
         // clean up surfaces
         storage_->cleanup_surfaces(); // split by surface id modulus num_threads
     }
-    storage_->split_surfaces();
+    #pragma omp parallel num_threads(settings_.num_threads)
+    {
+        storage_->split_surfaces_per_thread();
+    }
     storage_->add_points_in_smaller_repeated_queues_to_main_queue();
 
     num_iteration ++;
