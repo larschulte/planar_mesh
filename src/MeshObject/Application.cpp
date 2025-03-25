@@ -894,6 +894,7 @@ void Application<PointT>::loop()
     {
         storage_->split_surfaces_per_thread();
     }
+    storage_->clear_surfaces_to_be_split();
     storage_->add_points_in_smaller_repeated_queues_to_main_queue();
 
     num_iteration ++;

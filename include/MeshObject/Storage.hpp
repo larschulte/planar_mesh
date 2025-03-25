@@ -92,6 +92,9 @@ public: // to user
     void add_face_to_be_deleted(const std::shared_ptr<Face>& face);
     void add_interior_point_to_be_deleted(const std::shared_ptr<InteriorPoint>& interior_point);
 
+    void add_surface_to_be_split(const std::shared_ptr<Surface>& surface);
+    void clear_surfaces_to_be_split();
+
     void delete_to_be_deleted_repeatedly();
     void delete_to_be_deleted();
 
@@ -185,6 +188,8 @@ private:
     std::vector<std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>> thread_edges_to_be_deleted_;
     std::vector<std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>> thread_faces_to_be_deleted_;
     std::vector<std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash>> thread_interior_points_to_be_deleted_;
+
+    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_to_be_split_;
 
     std::vector<std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>> thread_vertices_that_have_deleted_publishers_;
     std::vector<std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>> thread_vertices_that_have_added_publishers_;

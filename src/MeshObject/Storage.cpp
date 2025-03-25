@@ -888,6 +888,16 @@ void Storage::add_interior_point_to_be_deleted(const std::shared_ptr<InteriorPoi
     thread_interior_points_to_be_deleted_[omp_get_thread_num()].insert(interior_point);
 }
 
+void Storage::add_surface_to_be_split(const std::shared_ptr<Surface>& surface)
+{
+    surfaces_to_be_split_.insert(surface);
+}
+
+void Storage::clear_surfaces_to_be_split()
+{
+    surfaces_to_be_split_.clear();
+}
+
 void Storage::delete_to_be_deleted_repeatedly()
 {
     bool repeat = true;
@@ -930,26 +940,13 @@ void Storage::delete_to_be_deleted()
 
 void Storage::split_surfaces_per_thread()
 {
-    // make copy of surfaces
-    std::vector<std::shared_ptr<Surface>> surfaces_copy;
-    {
-        // read lock
-        std::shared_lock<std::shared_mutex> lock(rwlock_surfaces_);
-
-        // copy
-        surfaces_copy = std::vector<std::shared_ptr<Surface>>(surfaces_.begin(), surfaces_.end());
-    }
-
-    for (const std::shared_ptr<Surface>& surface : surfaces_copy)
+    for (const std::shared_ptr<Surface>& surface : surfaces_to_be_split_)
     {
         // skip if surface is expired
         if (surface->is_expired()) continue;
 
         // skip if modulus is not equal to thread number
         if (surface->get_id() % settings_.num_threads != omp_get_thread_num()) continue;
-
-        // skip if surface does not have recently removed edges
-        // [todo]
 
         // split surface
         surface->split_surface_by_connected_components();

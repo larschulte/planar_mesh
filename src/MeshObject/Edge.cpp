@@ -87,6 +87,9 @@ void Edge::delete_()
     {
         // disconnect
         surface_->disconnect(shared_from_this());
+
+        // add to be split
+        storage_->add_surface_to_be_split(surface_);
         
         // clear surface
         surface_ = nullptr;
