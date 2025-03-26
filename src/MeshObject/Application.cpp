@@ -730,7 +730,7 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
             // remove the point if following conditions are met
             const bool is_within = surface_to_add_to->check_relative_position(vertex) == RelativePosition::WITHIN;
             const bool is_in_smaller_surface = vertex->get_surface()->get_total_point_size() < surface_to_add_to->get_total_point_size();
-            const bool is_within_radius = (vertex->get_position() - new_vertex->get_position()).norm() < vertex->get_radius();
+            const bool is_within_radius = (vertex->get_position() - new_vertex->get_position()).norm() < new_vertex->get_radius();
             if (is_within && is_in_smaller_surface && is_within_radius)
             {
                 // remove the point
