@@ -19,6 +19,7 @@ class InteriorPoint : public std::enable_shared_from_this<InteriorPoint>, public
 protected:
     friend class Storage;
     void initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<Surface>& surface, const std::shared_ptr<Face>& face, const std::shared_ptr<GenericPoint>& generic_point);
+    void initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<Surface>& surface, const std::shared_ptr<Vertex>& vertex, const std::shared_ptr<GenericPoint>& generic_point);
     void delete_(); 
 
 public:
@@ -73,6 +74,7 @@ private:
     std::shared_ptr<Storage> storage_;
 
     std::shared_ptr<Face> face_;
+    std::shared_ptr<Vertex> vertex_;
     std::shared_ptr<Surface> surface_;
 
     Eigen::Vector3d position_;

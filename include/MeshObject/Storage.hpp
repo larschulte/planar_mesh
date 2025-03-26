@@ -46,6 +46,7 @@ public: // to user
     const std::shared_ptr<GenericPoint>& add_generic_point(const std::shared_ptr<Vertex>& vertex);
     const std::shared_ptr<GenericPoint>& add_generic_point(const std::shared_ptr<InteriorPoint>& interior_point);
     const std::shared_ptr<InteriorPoint>& add_interior_point(const std::shared_ptr<Surface>& surface, const std::shared_ptr<Face>& face, const std::shared_ptr<GenericPoint>& generic_point);
+    const std::shared_ptr<InteriorPoint>& add_interior_point(const std::shared_ptr<Surface>& surface, const std::shared_ptr<Vertex>& vertex, const std::shared_ptr<GenericPoint>& generic_point);
     
     void delete_vertex(const std::shared_ptr<Vertex> vertex);
     void delete_edge(const std::shared_ptr<Edge> edge);

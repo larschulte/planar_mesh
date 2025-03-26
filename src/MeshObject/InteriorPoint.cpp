@@ -43,10 +43,56 @@ void InteriorPoint::initialize_(const std::shared_ptr<Storage>& storage, const s
     }
 
     // connect to face
+    if (face)
     {
         // connect to face
         face_ = face;
         face_->connect(shared_from_this());
+    }
+
+    // log
+    if (settings_.log.initialize) std::cout << "InteriorPoint " << id_ << " created.\n";
+}
+
+void InteriorPoint::initialize_(const std::shared_ptr<Storage>& storage, const std::shared_ptr<Surface>& surface, const std::shared_ptr<Vertex>& vertex, const std::shared_ptr<GenericPoint>& generic_point)
+{
+    // set expired
+    is_expired_ = false;
+
+    // check pointer validity
+    if (storage->is_expired()) throw std::runtime_error("Attempts to create interior point with invalid storage.");
+
+    // store
+    storage_ = storage;
+
+    // get id
+    id_ = storage_->get_next_interior_point_id();
+
+    // store
+    position_ = generic_point->get_position();
+    origin_ = generic_point->get_origin();
+    distance_travelled_ = generic_point->get_distance_travelled();
+    direction_ = (position_ - origin_).normalized();
+    radius_ = generic_point->get_radius();
+    num_deletes_ = generic_point->get_num_deletes();
+    projected_uncertainty_ = generic_point->get_projected_uncertainty();
+
+    // connect to surface
+    {
+        // projected position
+        projected_position_ = surface->compute_point_projective_position(origin_, position_);
+
+        // connect to surface
+        surface_ = surface;
+        surface_->connect(shared_from_this());
+    }
+
+    // connect to face
+    if (vertex)
+    {
+        // connect to face
+        vertex_ = vertex;
+        vertex_->connect(shared_from_this());
     }
 
     // log
@@ -94,12 +140,23 @@ void InteriorPoint::delete_()
     }
 
     // faces (disconnect)
+    if (face_)
     {
         // disconnect from faces
         face_->disconnect(shared_from_this());
 
         // clear
         face_ = nullptr;
+    }
+
+    // vertex (disconnect)
+    if (vertex_)
+    {
+        // disconnect from vertices
+        vertex_->disconnect(shared_from_this());
+
+        // clear
+        vertex_ = nullptr;
     }
     
     // create generic point

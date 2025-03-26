@@ -179,6 +179,18 @@ void Vertex::delete_()
         faces_.clear();
     }
 
+    // interior points (delete)
+    {
+        // read lock
+        std::shared_lock<std::shared_mutex> lock_interior_points(rwlock_interior_points_);
+
+        // delete face
+        for (const auto& interior_point : interior_points_) storage_->add_interior_point_to_be_deleted(interior_point);
+
+        // clear
+        interior_points_.clear();
+    }
+
     // create generic point
     {
         // update delete count
@@ -551,6 +563,23 @@ void Vertex::connect(const std::shared_ptr<Face>& face)
     update_singular_state();
 }
 
+void Vertex::connect(const std::shared_ptr<InteriorPoint>& interior_point) 
+{
+    // check input
+    if (interior_point->is_expired()) throw std::runtime_error("Attempts to connect vertex with invalid face.");
+
+    {
+        // write lock
+        std::unique_lock<std::shared_mutex> lock(rwlock_interior_points_);
+
+        // skip if already connected
+        for (const std::shared_ptr<InteriorPoint>& interior_point_ : interior_points_) if (interior_point_ == interior_point) return;
+
+        // connect
+        interior_points_.push_back(interior_point);
+    }
+}
+
 void Vertex::disconnect(const std::shared_ptr<Edge>& edge) 
 {
     // check input
@@ -591,6 +620,24 @@ void Vertex::disconnect(const std::shared_ptr<Face>& face)
 
         // disconnect
         faces_.erase(it);
+    }
+}
+
+void Vertex::disconnect(const std::shared_ptr<InteriorPoint>& interior_point)
+{
+    // check pointer validity
+    if (interior_point->is_expired()) return;
+
+    {
+        // write lock
+        std::unique_lock<std::shared_mutex> lock(rwlock_interior_points_);
+
+        // skip if not connected
+        auto it = std::find(interior_points_.begin(), interior_points_.end(), interior_point);
+        if (it == interior_points_.end()) return;
+
+        // disconnect
+        interior_points_.erase(it);
     }
 }
 

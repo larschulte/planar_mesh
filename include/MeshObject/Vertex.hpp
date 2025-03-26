@@ -40,6 +40,7 @@ public:
 
     mutable std::shared_mutex rwlock_edges_;
     mutable std::shared_mutex rwlock_faces_;
+    mutable std::shared_mutex rwlock_interior_points_;
 
     mutable std::shared_mutex rwlock_lifecycle_;
 
@@ -82,8 +83,10 @@ public:
 
     void connect(const std::shared_ptr<Edge>& edge);
     void connect(const std::shared_ptr<Face>& face);
+    void connect(const std::shared_ptr<InteriorPoint>& interior_point);
     void disconnect(const std::shared_ptr<Edge>& edge);
     void disconnect(const std::shared_ptr<Face>& face);
+    void disconnect(const std::shared_ptr<InteriorPoint>& interior_point);
 
     std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> get_connected_boundary_edges() const;
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> get_connected_boundary_vertices();
@@ -170,6 +173,7 @@ private:
 
     std::vector<std::shared_ptr<Edge>> edges_;
     std::vector<std::shared_ptr<Face>> faces_;
+    std::vector<std::shared_ptr<InteriorPoint>> interior_points_;
     std::shared_ptr<Surface> surface_;
 
     Eigen::Matrix3d eigenvectors_used_;

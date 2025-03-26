@@ -200,6 +200,19 @@ const std::shared_ptr<InteriorPoint>& Storage::add_interior_point(const std::sha
     return *interior_points_.insert(interior_point).first;
 }
 
+const std::shared_ptr<InteriorPoint>& Storage::add_interior_point(const std::shared_ptr<Surface>& surface, const std::shared_ptr<Vertex>& vertex, const std::shared_ptr<GenericPoint>& generic_point) 
+{
+    // create
+    std::shared_ptr<InteriorPoint> interior_point = std::make_shared<InteriorPoint>();
+    interior_point->initialize_(shared_from_this(), surface, vertex, generic_point);
+
+    // write lock
+    std::unique_lock<std::shared_mutex> lock(rwlock_interior_points_);
+
+    // store
+    return *interior_points_.insert(interior_point).first;
+}
+
 // need to ensure the vertex/edge/face are only stored using shared_ptr here and nowhere else
 void Storage::delete_vertex(const std::shared_ptr<Vertex> vertex) 
 {
