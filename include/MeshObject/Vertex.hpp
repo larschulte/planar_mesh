@@ -125,6 +125,7 @@ public:
     double compute_radius();
     void try_update_radius();
     void try_break_edges();
+    void try_delete_interior_points();
 
     void update_singular_state();
     bool is_singular() const;

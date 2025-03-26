@@ -1074,6 +1074,7 @@ void Vertex::upon_adding_publisher()
     if (current_radius < previous_radius) 
     {
         try_break_edges();
+        try_delete_interior_points();
         storage_->add_vertex_that_have_changed_box(shared_from_this());
     }    
 }
@@ -1301,6 +1302,47 @@ void Vertex::try_break_edges()
         storage_->add_edge_to_be_deleted(edge);
     }
 }
+
+void Vertex::try_delete_interior_points()
+{
+    // copy of interior points
+    std::vector<std::shared_ptr<InteriorPoint>> interior_points_copy;
+    {
+        // read lock
+        std::shared_lock<std::shared_mutex> lock(rwlock_interior_points_);
+
+        interior_points_copy = interior_points_;
+    }
+
+    // collect interior points to delete
+    std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> interior_points_to_delete;
+    for (const std::shared_ptr<InteriorPoint>& interior_point : interior_points_copy)
+    {
+        // read lock
+        std::shared_lock<std::shared_mutex> lock(interior_point->rwlock_lifecycle_);
+
+        if (interior_point->is_expired()) continue;
+
+        const double point_to_point_distance = (interior_point->get_position() - get_position()).norm();
+        if (point_to_point_distance < settings_.smaller_radius_ratio * get_radius()) 
+        {
+            interior_points_to_delete.insert(interior_point);
+        }
+    }
+
+    // delete interior_points
+    for (const std::shared_ptr<InteriorPoint>& interior_point : interior_points_to_delete)
+    {
+        // skip if expired
+        if (is_expired()) return;
+
+        // skip if interior_point is expired
+        if (interior_point->is_expired()) continue; 
+
+        storage_->add_interior_point_to_be_deleted(interior_point);
+    }
+}
+
 
 void Vertex::update_singular_state()
 {

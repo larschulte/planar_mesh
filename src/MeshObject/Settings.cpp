@@ -108,6 +108,8 @@ Settings::Settings()
     extra_radius = dataset_map[dataset].extra_radius;
     radius_ratio = dataset_map[dataset].radius_ratio;
 
+    smaller_radius_ratio = 0.2;
+
     high_incident_angle_threshold_std = 0.1;
 
     num_of_new_edges_per_vertex = 2;
