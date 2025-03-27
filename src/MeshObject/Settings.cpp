@@ -15,7 +15,7 @@ struct DatasetParameters
     bool filter_low_intensity_flag = false;
 
     // related parameters
-    double radius_value = 1;
+    double radius_value = 0.1;
     double extra_radius = 0;
 
     // radius ratio
