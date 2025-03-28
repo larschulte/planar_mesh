@@ -210,27 +210,6 @@ pcl::PolygonMesh create_simplified_mesh_impl(const std::shared_ptr<Surface>& sur
         vertex_to_vertex_handle_map[vertex] = vertex_handle;
     }
 
-    // store original triangualtion in aabb tree
-    // original triangles
-    std::vector<Triangle_2> original_triangles; // from surface
-    for (const std::shared_ptr<Face>& face : surface->get_faces())
-    {
-        // get vertices
-        std::vector<std::shared_ptr<Vertex>> face_vertices = face->get_vertices();
-
-        // get 2d points
-        Eigen::Vector2d p0 = face_vertices[0]->get_surface_coordinate();
-        Eigen::Vector2d p1 = face_vertices[1]->get_surface_coordinate();
-        Eigen::Vector2d p2 = face_vertices[2]->get_surface_coordinate();
-
-        // store triangle
-        Triangle_2 triangle(Point_2(p0[0], p0[1]), Point_2(p1[0], p1[1]), Point_2(p2[0], p2[1]));
-        original_triangles.push_back(triangle);
-    }    
-    // aabb tree
-    AABB_Tree aabb_tree(original_triangles.begin(), original_triangles.end());
-    aabb_tree.accelerate_distance_queries();  // Optimizes nearest point queries
-
     // extract faces from triangulation
     std::vector<pcl::Vertices> mesh_faces;
     for (auto delaunay_face_iterator = dt.finite_faces_begin(); delaunay_face_iterator != dt.finite_faces_end(); ++delaunay_face_iterator) 
@@ -244,7 +223,24 @@ pcl::PolygonMesh create_simplified_mesh_impl(const std::shared_ptr<Surface>& sur
         
         // skip if center of delaunay face triangle is not inside original triangulation
         Point_2 center = CGAL::centroid(triangle.vertex(0), triangle.vertex(1), triangle.vertex(2));
-        if (!aabb_tree.do_intersect(center)) continue;
+
+        // check if center is within any existing circles from points
+        bool within_circle = false;
+        for (const std::shared_ptr<Vertex>& vertex : vertices_filtered)
+        {
+            // get 2d point
+            Eigen::Vector2d surface_coordinate = vertex->get_surface_coordinate();
+            Point_2 p2d(surface_coordinate[0], surface_coordinate[1]);
+
+            // check if center is within circle
+            double radius = vertex->get_radius();
+            if (CGAL::squared_distance(center, p2d) < radius * radius) 
+            {
+                within_circle = true;
+            }
+        }
+
+        if (!within_circle) continue;
 
         // vertex handle
         Delaunay::Vertex_handle vertex_handle_0 = delaunay_face_iterator->vertex(0);
