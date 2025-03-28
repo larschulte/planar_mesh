@@ -114,14 +114,7 @@ pcl::PolygonMesh create_simplified_mesh_impl(const std::shared_ptr<Surface>& sur
         {
             const double radius_original = vertex->get_radius() - settings_.extra_radius;
 
-            if (vertex->is_boundary())
-            {
-                vertex_radii[vertex] = std::min(radius_original, settings_.simplify_surfaces_boundary_radius_upper_bound);
-            }
-            else
-            {
-                vertex_radii[vertex] = radius_original;
-            };
+            vertex_radii[vertex] = radius_original;
         }
 
         // sort the vertices by radius
