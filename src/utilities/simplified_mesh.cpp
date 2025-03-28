@@ -132,16 +132,13 @@ pcl::PolygonMesh create_simplified_mesh_impl(const std::shared_ptr<Surface>& sur
             for (const std::shared_ptr<Vertex>& vertex_filtered : vertices_filtered)
             {
                 // radius original
-                const double radius_original = vertex_radii[vertex]; // this checks if existing vertex is within current vertex's radius
-
-                // radius modified
-                const double radius_modified = std::max(radius_original, settings_.simplify_surfaces_radius_lower_bound) * settings_.simplify_surfaces_radius_lower_ratio;
+                const double radius_original = vertex_radii[vertex_filtered]; // this checks if existing vertex is within current vertex's radius
                 
                 // edge length
                 const double edge_length = (vertex->get_position() - vertex_filtered->get_position()).norm();
 
                 // skip if too close
-                if (edge_length < radius_modified) 
+                if (edge_length < radius_original) 
                 {
                     too_close = true;
                     break;
