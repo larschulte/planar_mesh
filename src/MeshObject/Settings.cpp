@@ -229,8 +229,7 @@ Settings::Settings()
 
 bool Settings::edge_is_short_enough(const double& edge_length, const double& radius0, const double& radius1) const
 {
-    const double minimum_edge_length = 0.0f;
-    return edge_length < radius0 + minimum_edge_length && edge_length < radius1 + minimum_edge_length;
+    return edge_length < radius0 || edge_length < radius1;
 }
 
 double Settings::compute_rrs_half_size(const double& radius) const

@@ -671,7 +671,7 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
             // skip if same vertex
             if (nearby_vertex == vertex) continue;
             
-            // skip if edge is longer than any of the radius of vertices
+            // skip if edge is not short enough
             const double distance = (vertex->get_position() - nearby_vertex->get_position()).norm();
             const double radius0 = vertex->get_radius(shared_from_this());
             const double radius1 = nearby_vertex->get_radius();
