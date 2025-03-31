@@ -1048,15 +1048,16 @@ void Storage::add_vertex_that_have_changed_box(const std::shared_ptr<Vertex>& ve
 
 void Storage::update_vertices_that_have_deleted_publishers()
 {
-    // make copy
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertices_that_have_deleted_publishers = thread_vertices_that_have_deleted_publishers_[omp_get_thread_num()];
+    // use while not empty erase idiom
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& vertices_that_have_deleted_publishers = thread_vertices_to_be_deleted_[omp_get_thread_num()];
 
-    // clear
-    thread_vertices_that_have_deleted_publishers_[omp_get_thread_num()].clear();
-
-    // update 
-    for (const std::shared_ptr<Vertex>& vertex : vertices_that_have_deleted_publishers)
+    // update
+    while (!vertices_that_have_deleted_publishers.empty())
     {
+        // get vertex
+        std::shared_ptr<Vertex> vertex = *vertices_that_have_deleted_publishers.begin();
+        vertices_that_have_deleted_publishers.erase(vertex);
+
         // read lock
         std::shared_lock<std::shared_mutex> lock(vertex->rwlock_lifecycle_);
 
@@ -1067,15 +1068,16 @@ void Storage::update_vertices_that_have_deleted_publishers()
 
 void Storage::update_vertices_that_have_added_publishers()
 {
-    // make copy
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertices_that_have_added_publishers = thread_vertices_that_have_added_publishers_[omp_get_thread_num()];
+    // use while not empty erase idiom
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& vertices_that_have_added_publishers = thread_vertices_that_have_added_publishers_[omp_get_thread_num()];
 
-    // clear
-    thread_vertices_that_have_added_publishers_[omp_get_thread_num()].clear();
-
-    // update 
-    for (const std::shared_ptr<Vertex>& vertex : vertices_that_have_added_publishers)
+    // update
+    while (!vertices_that_have_added_publishers.empty())
     {
+        // get vertex
+        std::shared_ptr<Vertex> vertex = *vertices_that_have_added_publishers.begin();
+        vertices_that_have_added_publishers.erase(vertex);
+
         // read lock
         std::shared_lock<std::shared_mutex> lock(vertex->rwlock_lifecycle_);
 
