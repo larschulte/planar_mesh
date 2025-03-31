@@ -794,15 +794,16 @@ void Storage::add_points_in_add_searchable_vertex_queue()
 
 void Storage::add_or_remove_vertices_from_rrs_tree()
 {
-    // copy
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertices_to_update_rrs_tree = smaller_set_of_vertices_to_update_rrs_tree[omp_get_thread_num()];
-
-    // clear
-    smaller_set_of_vertices_to_update_rrs_tree[omp_get_thread_num()].clear();
+    // use while not empty erase idiom
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& vertices_to_update_rrs_tree = smaller_set_of_vertices_to_update_rrs_tree[omp_get_thread_num()];
 
     // update
-    for (const std::shared_ptr<Vertex>& vertex : vertices_to_update_rrs_tree)
+    while (!vertices_to_update_rrs_tree.empty())
     {
+        // get vertex
+        std::shared_ptr<Vertex> vertex = *vertices_to_update_rrs_tree.begin();
+        vertices_to_update_rrs_tree.erase(vertex);
+
         // read lock the vertex
         std::shared_lock<std::shared_mutex> lock(vertex->rwlock_lifecycle_);
 
