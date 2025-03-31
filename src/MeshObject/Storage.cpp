@@ -932,23 +932,72 @@ void Storage::delete_to_be_deleted_repeatedly()
 
 void Storage::delete_to_be_deleted()
 {
-    // make copy
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertices_to_be_deleted = thread_vertices_to_be_deleted_[omp_get_thread_num()];
-    std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges_to_be_deleted = thread_edges_to_be_deleted_[omp_get_thread_num()];
-    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces_to_be_deleted = thread_faces_to_be_deleted_[omp_get_thread_num()];
-    std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> interior_points_to_be_deleted = thread_interior_points_to_be_deleted_[omp_get_thread_num()];
+    // use iterators to avoid invalidation issues
+    int thread_id = omp_get_thread_num();
 
-    // clear
-    thread_vertices_to_be_deleted_[omp_get_thread_num()].clear();
-    thread_edges_to_be_deleted_[omp_get_thread_num()].clear();
-    thread_faces_to_be_deleted_[omp_get_thread_num()].clear();
-    thread_interior_points_to_be_deleted_[omp_get_thread_num()].clear();
+    auto& vertex_set = thread_vertices_to_be_deleted_[thread_id];
+    auto& edge_set = thread_edges_to_be_deleted_[thread_id];
+    auto& face_set = thread_faces_to_be_deleted_[thread_id];
+    auto& interior_point_set = thread_interior_points_to_be_deleted_[thread_id];
 
-    // delete
-    for (const std::shared_ptr<Vertex>& vertex : vertices_to_be_deleted) delete_vertex(vertex);
-    for (const std::shared_ptr<Edge>& edge : edges_to_be_deleted) delete_edge(edge);
-    for (const std::shared_ptr<Face>& face : faces_to_be_deleted) delete_face(face);
-    for (const std::shared_ptr<InteriorPoint>& interior_point : interior_points_to_be_deleted) delete_interior_point(interior_point);
+    while (!vertex_set.empty()) {
+        std::shared_ptr<Vertex> vertex = *vertex_set.begin();
+        vertex_set.erase(vertex);
+        delete_vertex(vertex);
+    }
+
+    while (!edge_set.empty()) {
+        std::shared_ptr<Edge> edge = *edge_set.begin();
+        edge_set.erase(edge);
+        delete_edge(edge);
+    }
+
+    while (!face_set.empty()) {
+        std::shared_ptr<Face> face = *face_set.begin();
+        face_set.erase(face);
+        delete_face(face);
+    }
+
+    while (!interior_point_set.empty()) {
+        std::shared_ptr<InteriorPoint> ip = *interior_point_set.begin();
+        interior_point_set.erase(ip);
+        delete_interior_point(ip);
+    }
+
+    // // move content out instead of copying
+    // int thread_id = omp_get_thread_num();
+    // std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertices_to_be_deleted = std::move(thread_vertices_to_be_deleted_[thread_id]);
+    // std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges_to_be_deleted = std::move(thread_edges_to_be_deleted_[thread_id]);
+    // std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces_to_be_deleted = std::move(thread_faces_to_be_deleted_[thread_id]);
+    // std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> interior_points_to_be_deleted = std::move(thread_interior_points_to_be_deleted_[thread_id]);
+
+    // // containers are already cleared due to move semantics, no need to call clear()
+
+    // // delete
+    // for (const std::shared_ptr<Vertex>& vertex : vertices_to_be_deleted) delete_vertex(vertex);
+    // for (const std::shared_ptr<Edge>& edge : edges_to_be_deleted) delete_edge(edge);
+    // for (const std::shared_ptr<Face>& face : faces_to_be_deleted) delete_face(face);
+    // for (const std::shared_ptr<InteriorPoint>& interior_point : interior_points_to_be_deleted) delete_interior_point(interior_point);
+
+
+    
+    // // make copy
+    // std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertices_to_be_deleted = thread_vertices_to_be_deleted_[omp_get_thread_num()];
+    // std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges_to_be_deleted = thread_edges_to_be_deleted_[omp_get_thread_num()];
+    // std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces_to_be_deleted = thread_faces_to_be_deleted_[omp_get_thread_num()];
+    // std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> interior_points_to_be_deleted = thread_interior_points_to_be_deleted_[omp_get_thread_num()];
+
+    // // clear
+    // thread_vertices_to_be_deleted_[omp_get_thread_num()].clear();
+    // thread_edges_to_be_deleted_[omp_get_thread_num()].clear();
+    // thread_faces_to_be_deleted_[omp_get_thread_num()].clear();
+    // thread_interior_points_to_be_deleted_[omp_get_thread_num()].clear();
+
+    // // delete
+    // for (const std::shared_ptr<Vertex>& vertex : vertices_to_be_deleted) delete_vertex(vertex);
+    // for (const std::shared_ptr<Edge>& edge : edges_to_be_deleted) delete_edge(edge);
+    // for (const std::shared_ptr<Face>& face : faces_to_be_deleted) delete_face(face);
+    // for (const std::shared_ptr<InteriorPoint>& interior_point : interior_points_to_be_deleted) delete_interior_point(interior_point);
 }
 
 void Storage::split_surfaces_per_thread()
