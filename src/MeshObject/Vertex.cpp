@@ -104,7 +104,7 @@ void Vertex::delete_()
     // publishers (disconnect)
     {
         // lock, copy and clear
-        std::unordered_set<std::weak_ptr<Vertex>, MeshObjectHashWeak> vertex_point_distance_publishers_copy;
+        std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertex_point_distance_publishers_copy;
         {
             std::unique_lock<std::shared_mutex> lock(rwlock_vertex_point_distance_publishers_);
             vertex_point_distance_publishers_copy = vertex_point_distance_publishers_;
@@ -112,18 +112,13 @@ void Vertex::delete_()
         }
 
         // disconnect
-        for (const auto& vertex_point_publisher : vertex_point_distance_publishers_copy) 
-        {
-            // try lock weak ptr
-            std::shared_ptr<Vertex> vertex_point_publisher_locked = vertex_point_publisher.lock();
-            vertex_point_publisher_locked->delete_vertex_point_distance_subscriber(shared_from_this());
-        }
+        for (const auto& vertex_point_publisher : vertex_point_distance_publishers_copy) vertex_point_publisher->delete_vertex_point_distance_subscriber(shared_from_this());
     }
 
     // publishers (disconnect)
     {
         // lock, copy and clear
-        std::unordered_set<std::weak_ptr<InteriorPoint>, MeshObjectHashWeak> interior_point_distance_publishers_copy;
+        std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> interior_point_distance_publishers_copy;
         {
             std::unique_lock<std::shared_mutex> lock(rwlock_interior_point_distance_publishers_);
             interior_point_distance_publishers_copy = interior_point_distance_publishers_;
@@ -131,18 +126,13 @@ void Vertex::delete_()
         }
 
         // disconnect
-        for (const auto& interior_point_publisher : interior_point_distance_publishers_copy) 
-        {
-            // try lock weak ptr
-            std::shared_ptr<InteriorPoint> interior_point_publisher_locked = interior_point_publisher.lock();
-            interior_point_publisher_locked->delete_interior_point_distance_subscriber(shared_from_this());
-        }
+        for (const auto& interior_point_publisher : interior_point_distance_publishers_copy) interior_point_publisher->delete_interior_point_distance_subscriber(shared_from_this());
     }
 
     // subscribers (disconnect)
     {
         // lock, copy and clear
-        std::unordered_set<std::weak_ptr<Vertex>, MeshObjectHashWeak> vertex_point_distance_subscribers_copy;
+        std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertex_point_distance_subscribers_copy;
         {
             std::unique_lock<std::shared_mutex> lock(rwlock_vertex_point_distance_subscribers_);
             vertex_point_distance_subscribers_copy = vertex_point_distance_subscribers_;
@@ -150,20 +140,10 @@ void Vertex::delete_()
         }
 
         // disconnect
-        for (const auto& vertex_point_subscriber : vertex_point_distance_subscribers_copy) 
-        {
-            // try lock weak ptr
-            std::shared_ptr<Vertex> vertex_point_subscriber_locked = vertex_point_subscriber.lock();
-            vertex_point_subscriber_locked->delete_vertex_point_distance_publisher(shared_from_this());
-        }
+        for (const auto& vertex_point_subscriber : vertex_point_distance_subscribers_copy) vertex_point_subscriber->delete_vertex_point_distance_publisher(shared_from_this());
 
         // add vertex to list to update
-        for (const auto& vertex_point_subscriber : vertex_point_distance_subscribers_copy) 
-        {
-            // try lock weak ptr
-            std::shared_ptr<Vertex> vertex_point_subscriber_locked = vertex_point_subscriber.lock();
-            storage_->add_vertex_that_have_deleted_publishers(vertex_point_subscriber_locked);
-        }
+        for (const auto& vertex_point_subscriber : vertex_point_distance_subscribers_copy) storage_->add_vertex_that_have_deleted_publishers(vertex_point_subscriber);
     }
 
     // surface (disconnect)
@@ -337,15 +317,15 @@ double& Vertex::get_projected_uncertainty()
     return projected_uncertainty_;
 }
 
-// std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& Vertex::get_vertex_point_distance_publishers()
-// {
-//     return vertex_point_distance_publishers_;
-// }
+std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& Vertex::get_vertex_point_distance_publishers()
+{
+    return vertex_point_distance_publishers_;
+}
 
-// std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash>& Vertex::get_interior_point_distance_publishers()
-// {
-//     return interior_point_distance_publishers_;
-// }
+std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash>& Vertex::get_interior_point_distance_publishers()
+{
+    return interior_point_distance_publishers_;
+}
 
 std::shared_ptr<Edge> Vertex::get_edge(const std::shared_ptr<Vertex>& vertex) const
 {
@@ -1125,17 +1105,14 @@ void Vertex::add_vertex_point_distance_publisher(const std::shared_ptr<Vertex> v
         // lock
         std::unique_lock<std::shared_mutex> lock(rwlock_vertex_point_distance_publishers_);
 
-        // convert to weak pointer
-        std::weak_ptr<Vertex> vertex_point_publisher_weak = vertex_point_publisher;
-
         // skip if already exist in the unordered set
-        if (vertex_point_distance_publishers_.find(vertex_point_publisher_weak) != vertex_point_distance_publishers_.end()) return; // Already exists
+        if (vertex_point_distance_publishers_.find(vertex_point_publisher) != vertex_point_distance_publishers_.end()) return; // Already exists
 
         // compute distance
         const double distance = (get_position() - vertex_point_publisher->get_position()).norm(); 
 
         // add publisher
-        vertex_point_distance_publishers_.insert(vertex_point_publisher_weak);
+        vertex_point_distance_publishers_.insert(vertex_point_publisher);
     }
 
     // add self to publisher vertex as subscriber
@@ -1151,11 +1128,8 @@ void Vertex::delete_vertex_point_distance_publisher(const std::shared_ptr<Vertex
         // lock
         std::unique_lock<std::shared_mutex> lock(rwlock_vertex_point_distance_publishers_);
 
-        // convert to weak pointer
-        std::weak_ptr<Vertex> vertex_point_publisher_weak = vertex_point_publisher;
-
         // skip if not exist
-        auto it = vertex_point_distance_publishers_.find(vertex_point_publisher_weak);
+        auto it = vertex_point_distance_publishers_.find(vertex_point_publisher);
         if (it == vertex_point_distance_publishers_.end()) return;
 
         // delete publisher
@@ -1254,13 +1228,10 @@ double Vertex::compute_radius()
     // reduce value
     for (const auto& neighboring_vertex : vertex_point_distance_publishers_)
     {
-        // lock
-        auto neighboring_vertex_locked = neighboring_vertex.lock();
-
         const double extra_radius = settings_.extra_radius;
 
         // compute distance
-        const double new_distance = (get_position() - neighboring_vertex_locked->get_position()).norm();
+        const double new_distance = (get_position() - neighboring_vertex->get_position()).norm();
 
         if (new_distance + extra_radius < new_radius) new_radius = new_distance + extra_radius;
     }
@@ -1268,11 +1239,8 @@ double Vertex::compute_radius()
     // reduce value
     for (const auto& interior_point : interior_point_distance_publishers_)
     {
-        // lock
-        auto interior_point_locked = interior_point.lock();
-
         // compute distance
-        const double new_distance = (get_position() - interior_point_locked->get_position()).norm();
+        const double new_distance = (get_position() - interior_point->get_position()).norm();
 
         if (new_distance < new_radius) new_radius = new_distance;
     }
@@ -1481,23 +1449,4 @@ bool operator==(const std::shared_ptr<Vertex>& lhs, const std::shared_ptr<Vertex
     if (!lhs && !rhs) return true; // true if both are nullptr
     if (!lhs || !rhs) return false; // false if either is nullptr
     return lhs->get_id() == rhs->get_id();
-}
-
-bool operator< (const std::weak_ptr<Vertex>& lhs, const std::weak_ptr<Vertex>& rhs)
-{
-    if (lhs.lock()->is_expired() || rhs.lock()->is_expired()) throw std::runtime_error("Comparing expired InteriorPoints");
-    return lhs.lock()->get_id() < rhs.lock()->get_id();
-}
-
-bool operator<= (const std::weak_ptr<Vertex>& lhs, const std::weak_ptr<Vertex>& rhs)
-{
-    if (lhs.lock()->is_expired() || rhs.lock()->is_expired()) throw std::runtime_error("Comparing expired InteriorPoints");
-    return lhs.lock()->get_id() <= rhs.lock()->get_id();
-}
-
-bool operator== (const std::weak_ptr<Vertex>& lhs, const std::weak_ptr<Vertex>& rhs)
-{
-    if (!lhs.lock() && !rhs.lock()) return true; // true if both are nullptr
-    if (!lhs.lock() || !rhs.lock()) return false; // false if either is nullptr
-    return lhs.lock()->get_id() == rhs.lock()->get_id();
 }

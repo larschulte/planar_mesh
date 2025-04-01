@@ -116,7 +116,7 @@ void InteriorPoint::delete_()
     // subscribers (disconnect)
     {
         // lock, copy and clear
-        std::unordered_set<std::weak_ptr<Vertex>, MeshObjectHashWeak> interior_point_distance_subscribers_copy;
+        std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> interior_point_distance_subscribers_copy;
         {
             std::unique_lock<std::shared_mutex> lock(rwlock_interior_point_distance_subscribers_);
             interior_point_distance_subscribers_copy = interior_point_distance_subscribers_;
@@ -124,20 +124,10 @@ void InteriorPoint::delete_()
         }
 
         // disconnect
-        for (const auto& interior_point_subscriber : interior_point_distance_subscribers_copy) 
-        {
-            // try lock weak ptr
-            std::shared_ptr<Vertex> interior_point_subscriber_locked = interior_point_subscriber.lock();
-            interior_point_subscriber_locked->delete_interior_point_distance_publisher(shared_from_this());
-        }
+        for (const auto& interior_point_subscriber : interior_point_distance_subscribers_copy) interior_point_subscriber->delete_interior_point_distance_publisher(shared_from_this());
 
         // add vertex to update radius
-        for (const auto& interior_point_subscriber : interior_point_distance_subscribers_copy)
-        {
-            // try lock weak ptr
-            std::shared_ptr<Vertex> interior_point_subscriber_locked = interior_point_subscriber.lock();
-            storage_->add_vertex_that_have_deleted_publishers(interior_point_subscriber_locked);
-        }
+        for (const auto& interior_point_subscriber : interior_point_distance_subscribers_copy) storage_->add_vertex_that_have_deleted_publishers(interior_point_subscriber);
     }
 
     // surface (disconnect)
@@ -297,14 +287,11 @@ void InteriorPoint::add_interior_point_distance_subscriber(const std::shared_ptr
         // lock
         std::unique_lock<std::shared_mutex> lock(rwlock_interior_point_distance_subscribers_);
 
-        // convert to weak ptr
-        std::weak_ptr<Vertex> interior_point_subscriber_weak = interior_point_subscriber;
-
         // skip if already exist
-        if (interior_point_distance_subscribers_.find(interior_point_subscriber_weak) != interior_point_distance_subscribers_.end()) return; // Already exists
+        if (interior_point_distance_subscribers_.find(interior_point_subscriber) != interior_point_distance_subscribers_.end()) return; // Already exists
 
         // add subscriber
-        interior_point_distance_subscribers_.insert(interior_point_subscriber_weak);
+        interior_point_distance_subscribers_.insert(interior_point_subscriber);
     }
 
     // add self to subscriber vertex as publisher
@@ -320,11 +307,8 @@ void InteriorPoint::delete_interior_point_distance_subscriber(const std::shared_
         // lock
         std::unique_lock<std::shared_mutex> lock(rwlock_interior_point_distance_subscribers_);
 
-        // convert to weak ptr
-        std::weak_ptr<Vertex> interior_point_subscriber_weak = interior_point_subscriber;
-
         // skip if not exist
-        auto it = interior_point_distance_subscribers_.find(interior_point_subscriber_weak);
+        auto it = interior_point_distance_subscribers_.find(interior_point_subscriber);
         if (it == interior_point_distance_subscribers_.end()) return; // skip if not exist
 
         // delete subscriber
@@ -354,17 +338,4 @@ bool operator==(const std::shared_ptr<InteriorPoint>& lhs, const std::shared_ptr
     if (!lhs && !rhs) return true; // true if both are nullptr
     if (!lhs || !rhs) return false; // false if either is nullptr
     return lhs->get_id() == rhs->get_id();
-}
-
-bool operator< (const std::weak_ptr<InteriorPoint>& lhs, const std::weak_ptr<InteriorPoint>& rhs)
-{
-    if (lhs.lock()->is_expired() || rhs.lock()->is_expired()) throw std::runtime_error("Comparing expired InteriorPoints");
-    return lhs.lock()->get_id() < rhs.lock()->get_id();
-}
-
-bool operator== (const std::weak_ptr<InteriorPoint>& lhs, const std::weak_ptr<InteriorPoint>& rhs)
-{
-    if (!lhs.lock() && !rhs.lock()) return true; // true if both are nullptr
-    if (!lhs.lock() || !rhs.lock()) return false; // false if either is nullptr
-    return lhs.lock()->get_id() == rhs.lock()->get_id();
 }

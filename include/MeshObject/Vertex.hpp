@@ -194,11 +194,11 @@ private:
     Eigen::Vector3d projected_position_ = Eigen::Vector3d::Zero();
 
     // a publisher is one that reduces radius of other vertices
-    std::unordered_set<std::weak_ptr<Vertex>, MeshObjectHashWeak> vertex_point_distance_publishers_;
-    std::unordered_set<std::weak_ptr<InteriorPoint>, MeshObjectHashWeak> interior_point_distance_publishers_;
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertex_point_distance_publishers_;
+    std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> interior_point_distance_publishers_;
 
     // a subscriber is one that is reduced by the current vertex
-    std::unordered_set<std::weak_ptr<Vertex>, MeshObjectHashWeak> vertex_point_distance_subscribers_;
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertex_point_distance_subscribers_;
 
 public:
     double weight_;
@@ -207,6 +207,3 @@ public:
 bool operator<(const std::shared_ptr<Vertex>& lhs, const std::shared_ptr<Vertex>& rhs);
 bool operator<=(const std::shared_ptr<Vertex>& lhs, const std::shared_ptr<Vertex>& rhs);
 bool operator==(const std::shared_ptr<Vertex>& lhs, const std::shared_ptr<Vertex>& rhs);
-bool operator<(const std::weak_ptr<Vertex>& lhs, const std::weak_ptr<Vertex>& rhs);
-bool operator<=(const std::weak_ptr<Vertex>& lhs, const std::weak_ptr<Vertex>& rhs);
-bool operator==(const std::weak_ptr<Vertex>& lhs, const std::weak_ptr<Vertex>& rhs);

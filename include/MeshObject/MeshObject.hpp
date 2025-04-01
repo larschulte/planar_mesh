@@ -17,15 +17,6 @@ struct MeshObjectHash
     }
 };
 
-struct MeshObjectHashWeak 
-{
-    template<typename T>
-    std::size_t operator()(const std::weak_ptr<T>& v) const 
-    {
-        return std::hash<int>()(v.lock()->get_id());
-    }
-};
-
 struct MeshObjectCompare 
 {
     template<typename T>
