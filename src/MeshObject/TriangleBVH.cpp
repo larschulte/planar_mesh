@@ -4,6 +4,7 @@
 #include "MeshObject/Surface.hpp" // Include the header file for the 'Surface' class
 #include "MeshObject/GenericPoint.hpp" // Include the header file for the 'GenericPoint' class
 #include <iostream>
+#include <queue>
 
 Settings TriangleBVH::settings_;
 

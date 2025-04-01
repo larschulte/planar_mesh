@@ -4,7 +4,7 @@
 #include "MeshObject/Vertex.hpp"
 #include "MeshObject/Edge.hpp"
 #include "MeshObject/Surface.hpp"
-
+#include <queue>
 
 EdgeBVH::BoundingBox::BoundingBox()
     : min(Eigen::Vector3d::Constant(std::numeric_limits<double>::infinity())),

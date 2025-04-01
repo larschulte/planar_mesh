@@ -3,6 +3,7 @@
 
 #include "MeshObject/Surface.hpp"
 #include "MeshObject/GenericPoint.hpp"
+#include <queue>
 
 Settings RRSTree::settings_;
 

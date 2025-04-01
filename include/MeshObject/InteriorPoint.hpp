@@ -5,7 +5,7 @@
 #include <unordered_set>
 
 #include "MeshObject/MeshObject.hpp"
-#include "Cache/FIFOCache.hpp"
+// #include "Cache/FIFOCache.hpp"
 #include "MeshObject/Settings.hpp"
 
 // Forward declarations
@@ -88,8 +88,8 @@ private:
     Eigen::Matrix3d eigenvectors_used_;
     Eigen::Vector2d surface_coordinate_;
 
-    FIFOCache<std::size_t, Eigen::Vector3d> buffer_projected_position_{3};
-    FIFOCache<std::size_t, double> buffer_projected_distance_{3};
+    // FIFOCache<std::size_t, Eigen::Vector3d> buffer_projected_position_{3};
+    // FIFOCache<std::size_t, double> buffer_projected_distance_{3};
 
     Eigen::Vector3d projected_position_ = Eigen::Vector3d::Zero();
 
