@@ -114,7 +114,7 @@ Settings::Settings()
 
     num_of_new_edges_per_vertex = 2;
 
-    cleanup_seed_surface_after_ith_cloud = -1;
+    cleanup_seed_surface_after_ith_cloud = 2;
     cleanup_seed_surface_after_distance_travelled = 3.0;
 
     simplify_surfaces_density_threshold = 0;

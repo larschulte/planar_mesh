@@ -691,12 +691,12 @@ void Storage::cleanup_surfaces()
         // if (distance_travelled_ - surface->get_max_distance_travelled() < settings_.cleanup_seed_surface_after_distance_travelled) continue;
         if (ith_cloud_ - surface->get_ith_cloud() < settings_.cleanup_seed_surface_after_ith_cloud) continue;
 
-        // delete if surface is seed
-        if (surface->is_seed()) 
-        {
+        // // delete if surface is seed
+        // if (surface->is_seed()) 
+        // {
             delete_surface(surface);
             continue;
-        }
+        // }
     }
 
     update_vertices_that_have_added_publishers();
