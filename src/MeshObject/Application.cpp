@@ -636,6 +636,8 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
             }
             else
             {
+                // add to rrs tree
+                storage_->add_searchable_vertex(new_vertex);
                 break;
             }
         }
@@ -678,6 +680,8 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
             }
             else
             {
+                // add to rrs tree
+                storage_->add_searchable_vertex(new_vertex);
                 break;
             }
         }
@@ -708,6 +712,9 @@ void Application<PointT>::add_point_to_map(const std::shared_ptr<GenericPoint>& 
             new_vertex->add_vertex_point_distance_publisher(vertex);
         }
         new_vertex->upon_adding_publisher();
+
+        // add to rrs tree
+        storage_->add_searchable_vertex(new_vertex);
     }
 
     surface_to_add_to->set_ith_cloud(ith_cloud);

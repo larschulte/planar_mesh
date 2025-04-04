@@ -47,9 +47,6 @@ void Vertex::initialize_(const std::shared_ptr<Storage>& storage, const std::sha
         surface_->connect(shared_from_this());
     }
 
-    // check if update search tree
-    check_if_update_search_tree();
-
     // set reverse search radius based on input parameter
     try_update_radius();
 
@@ -209,7 +206,7 @@ void Vertex::delete_()
     // update tree
     {
         // add to update rrs tree vertex set
-        storage_->add_to_set_of_vertices_to_update_rrs_tree(shared_from_this());
+        storage_->remove_searchable_vertex(shared_from_this());
     }
 
     // log
@@ -541,7 +538,7 @@ void Vertex::connect(const std::shared_ptr<Edge>& edge)
 
     }
     
-    check_if_update_search_tree();
+    // check_if_update_search_tree();
 }
 
 void Vertex::connect(const std::shared_ptr<Face>& face) 
@@ -598,8 +595,8 @@ void Vertex::disconnect(const std::shared_ptr<Edge>& edge)
         
     }
 
-    // update boundary state
-    check_if_update_search_tree();
+    // // update boundary state
+    // check_if_update_search_tree();
 
     // check self destruct
     if (!deleting_ && edges_.empty() && can_self_destruct_ && !connecting_to_edges_and_faces_) storage_->add_vertex_to_be_deleted(shared_from_this());
@@ -1075,7 +1072,7 @@ void Vertex::upon_adding_publisher()
     {
         try_break_edges();
         try_delete_interior_points();
-        storage_->add_vertex_that_have_changed_box(shared_from_this());
+        storage_->tree_update_vertex_box(shared_from_this());
     }    
 }
 
@@ -1361,15 +1358,15 @@ bool Vertex::is_singular() const
 
 void Vertex::check_if_update_search_tree()
 {
-    // check if is boundary
-    if (is_boundary() && !is_searchable())
-    {
-        storage_->add_to_set_of_vertices_to_update_rrs_tree(shared_from_this());
-    }
-    else if (!is_boundary() && is_searchable())
-    {
-        storage_->add_to_set_of_vertices_to_update_rrs_tree(shared_from_this());
-    }
+//     // check if is boundary
+//     if (is_boundary() && !is_searchable())
+//     {
+//         storage_->add_to_set_of_vertices_to_update_rrs_tree(shared_from_this());
+//     }
+//     else if (!is_boundary() && is_searchable())
+//     {
+//         storage_->add_to_set_of_vertices_to_update_rrs_tree(shared_from_this());
+//     }
 }
 
 void Vertex::print_info()
