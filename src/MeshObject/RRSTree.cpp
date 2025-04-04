@@ -604,7 +604,7 @@ void RRSTree::print_size()
 
 unsigned int RRSTree::get_size() const
 {
-    return tree_size;
+    return get_node_size();
 }
 
 unsigned int RRSTree::get_node_size() const
