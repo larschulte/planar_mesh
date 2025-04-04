@@ -772,8 +772,18 @@ void Storage::update_radius()
 
 void Storage::add_searchable_vertex(const std::shared_ptr<Vertex>& vertex)
 {
-    // add to a queue that will be processed once all locks are released
-    smaller_add_searchable_vertices_queue_[omp_get_thread_num()].push(vertex);
+    rrs_tree_.tree_add_vertex(vertex);
+}
+
+void Storage::remove_searchable_vertex(const std::shared_ptr<Vertex>& vertex)
+{
+    // remove from rrs_tree
+    rrs_tree_.tree_delete_vertex(vertex);
+}
+
+void Storage::tree_update_vertex_box(const std::shared_ptr<Vertex>& vertex)
+{
+    rrs_tree_.tree_update_vertex_box(vertex);
 }
 
 void Storage::add_points_in_add_searchable_vertex_queue()
@@ -1103,12 +1113,6 @@ void Storage::update_vertices_that_have_changed_box()
         // update
         rrs_tree_.tree_update_vertex_box(vertex);
     }
-}
-
-void Storage::remove_searchable_vertex(const std::shared_ptr<Vertex>& vertex)
-{
-    // remove from rrs_tree
-    rrs_tree_.tree_delete_vertex(vertex);
 }
 
 void Storage::add_to_set_of_vertices_to_update_rrs_tree(const std::shared_ptr<Vertex>& vertex)

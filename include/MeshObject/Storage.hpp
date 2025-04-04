@@ -151,11 +151,14 @@ public: // to user
 private: // to Vertex and Face class
     friend class Vertex;
     friend class Face;
-    void add_searchable_vertex(const std::shared_ptr<Vertex>& vertex);
-    void remove_searchable_vertex(const std::shared_ptr<Vertex>& vertex);
 
     void add_searchable_face(const std::shared_ptr<Face>& face);
     void remove_searchable_face(const std::shared_ptr<Face>& face);
+
+public:
+    void add_searchable_vertex(const std::shared_ptr<Vertex>& vertex);
+    void remove_searchable_vertex(const std::shared_ptr<Vertex>& vertex);
+    void tree_update_vertex_box(const std::shared_ptr<Vertex>& vertex);
 
 public: // to MeshObject class
     int get_next_vertex_id();
