@@ -391,9 +391,9 @@ void RRSNode::node_add_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
         right_ = new_leaf_node;
         new_leaf_node->parent_ = shared_from_this();
 
-        // assign sibling
-        duplicate_node->sibling_ = sibling_;
-        new_leaf_node->sibling_ = duplicate_node;
+        // // assign sibling
+        // duplicate_node->sibling_ = sibling_;
+        // new_leaf_node->sibling_ = duplicate_node;
 
         // change to branch
         isLeaf_ = false;
