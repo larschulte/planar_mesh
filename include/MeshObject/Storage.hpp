@@ -192,6 +192,7 @@ private:
     std::vector<std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>> thread_edges_to_be_deleted_;
     std::vector<std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>> thread_faces_to_be_deleted_;
     std::vector<std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash>> thread_interior_points_to_be_deleted_;
+    std::vector<std::unordered_set<std::shared_ptr<RRSNode>, RRSNodeHasher, RRSNodeEqual>> thread_nodes_to_be_deleted_;
 
     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_to_be_split_;
 

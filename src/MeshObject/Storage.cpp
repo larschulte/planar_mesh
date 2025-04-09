@@ -35,6 +35,7 @@ Storage::Storage()
     thread_vertices_that_have_deleted_publishers_.resize(settings_.num_threads);
     thread_vertices_that_have_added_publishers_.resize(settings_.num_threads);
     thread_vertices_that_have_changed_box_.resize(settings_.num_threads);
+    thread_nodes_to_be_deleted_.resize(settings_.num_threads);
     
     // initialize with queue or stack
     for (size_t i = 0; i < settings_.num_threads; ++i)
@@ -777,6 +778,15 @@ void Storage::add_searchable_vertex(const std::shared_ptr<Vertex>& vertex)
 
 void Storage::remove_searchable_vertex(const std::shared_ptr<Vertex>& vertex)
 {
+    // get node
+    std::shared_ptr<RRSNode> node = vertex->node;
+
+    // skip if node does not exist
+    if (node == nullptr) return;
+
+    // add node to thread_nodes_to_be_deleted_
+    thread_nodes_to_be_deleted_[omp_get_thread_num()].insert(node);
+
     // remove from rrs_tree
     rrs_tree_.tree_delete_vertex(vertex);
 }
