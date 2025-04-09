@@ -945,7 +945,8 @@ void Application<PointT>::loop()
     std::cout << "total duration: " << duration.count() << " = " << rrs_search_duration << " + " << rrs_update_duration << " + " << bvh_search_duration << " + " << bvh_update_duration << " + " << add_to_map_duration << " + " << delete_from_map_duration << " + " << relative_position_duration << std::endl;
 
     // print size of rrs, vertices, and boundary vertices
-    std::cout << "rrs size: " << storage_->get_rrs_size() << " | vertices size: " << storage_->get_vertices_size() << " | total point size: " << storage_->get_vertices_size() + storage_->get_interior_points_size() << std::endl;
+    // std::cout << "rrs size: " << storage_->get_rrs_size() << " | vertices size: " << storage_->get_vertices_size() << " | total point size: " << storage_->get_vertices_size() + storage_->get_interior_points_size() << std::endl;
+    std::cout << "vertices size: " << storage_->get_vertices_size() << " | total point size: " << storage_->get_vertices_size() + storage_->get_interior_points_size() << std::endl;
     // print size of bvh, faces
     std::cout << "bvh size: " << storage_->get_bvh_size() << " | faces size: " << storage_->get_faces_size() << std::endl;
 
