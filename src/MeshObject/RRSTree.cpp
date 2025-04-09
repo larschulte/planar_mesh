@@ -451,29 +451,31 @@ void RRSNode::node_delete_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
 
 void RRSNode::node_delete_self()
 {
-    // this node could be locked by other thread and add new vertex before we obtain the lock
-    if (!isLeaf_)
-    {
-        throw std::runtime_error("Node is not leaf.");
-    }
+    // skip if contains vertex (after the vertex is deleted, the node could be given another vertex)
+    if (boundary_vertex_) return;
 
-    // throw if have no parent
-    if (!parent_)
-    {
-        throw std::runtime_error("Node has no parent.");
-    }
+    // skip if is branch now (after storing antoher vertex, the node could become a branch node)
+    if (!isLeaf_) return;
 
-    // remove from parent
+    // throw if have no parent (unless this is truely root node, in which case i should implement something)
+    if (!parent_) throw std::runtime_error("Node has no parent.");
+
+    // remove from parent and simplify tree
     parent_->node_delete_child(shared_from_this());
 }
 
 void RRSNode::node_delete_child(const std::shared_ptr<RRSNode> child)
 {
-    // throw if any left or right is null
-    if (!left_ || !right_)
-    {
-        throw std::runtime_error("One or more Child is null.");
-    }
+    // replace this parent with the other child, instead of copying it, this allow the other child, if also removed vertex, to be deleted as well
+    
+    // throw if have no parent (unless this is truely root node, in which case i should implement something)
+    if (!parent_) throw std::runtime_error("Node has no parent.");
+    
+    // throw if any left or right is null (since this function is called by children)
+    if (!left_ || !right_) throw std::runtime_error("One or more Child is null.");
+
+    // get grandparent
+    std::shared_ptr<RRSNode> grandparent = parent_;
 
     // get other child
     std::shared_ptr<RRSNode> other_child;
@@ -487,73 +489,58 @@ void RRSNode::node_delete_child(const std::shared_ptr<RRSNode> child)
     }
     else
     {
-        throw std::runtime_error("Child is not a child of this node.");
+        throw std::runtime_error("Input child is not a child of its parent.");
+    }
+
+    // disconnect grandparent
+    {
+        // grandparent -> parent
+        if (grandparent->left_ == shared_from_this())
+        {
+            grandparent->left_ = nullptr;
+        }
+        else if (grandparent->right_ == shared_from_this())
+        {
+            grandparent->right_ = nullptr;
+        }
+        else
+        {
+            throw std::runtime_error("This node is not a child of the grandparent.");
+        }
+
+        // parent -> grandparent
+        parent_ = nullptr;
     }
 
     // disconnect child and other child
     {
+        // parent -> children
         left_ = nullptr;
         right_ = nullptr;
+
+        // children -> parent
         child->parent_ = nullptr;
         other_child->parent_ = nullptr;
     }
 
-    // if other child is leaf
-    if (other_child->isLeaf_)
+    // connect other child with grandparent
     {
-        // throw if have children
-        if (other_child->left_ || other_child->right_)
+        // grandparent -> other child
+        if (grandparent->left_ == nullptr)
         {
-            throw std::runtime_error("Other child is leaf but has children.");
+            grandparent->left_ = other_child;
+        }
+        else if (grandparent->right_ == nullptr)
+        {
+            grandparent->right_ = other_child;
+        }
+        else
+        {
+            throw std::runtime_error("Grandparent already has two children.");
         }
 
-        // copy vertex of the other child
-        boundary_vertex_ = other_child->boundary_vertex_;
-        if (boundary_vertex_) boundary_vertex_->node = shared_from_this();
-
-        // copy box of the other child
-        box_ = other_child->box_;
-
-        // copy isLeaf
-        isLeaf_.store(other_child->isLeaf_.load());
-    }
-    else
-    {
-        // the other child is not leaf
-
-        // throw if any of the children is null 
-        if (!other_child->left_ || !other_child->right_)
-        {
-            throw std::runtime_error("One or more Child of the other child is null.");
-        }
-
-        // copy children of the other child
-        std::shared_ptr<RRSNode> left_child = other_child->left_;
-        std::shared_ptr<RRSNode> right_child = other_child->right_;
-
-        // disconnect left and right child from the other child
-        {
-            other_child->left_ = nullptr;
-            other_child->right_ = nullptr;
-            left_child->parent_ = nullptr;
-            right_child->parent_ = nullptr;
-        }
-
-        // assign the children to this node
-        {
-            left_ = left_child;
-            right_ = right_child;
-
-            // assign parent
-            left_->parent_ = shared_from_this();
-            right_->parent_ = shared_from_this();
-        }
-        
-        // copy box of the other child
-        box_ = other_child->box_;
-        
-        // copy isLeaf
-        isLeaf_.store(other_child->isLeaf_.load());
+        // other child -> grandparent
+        other_child->parent_ = grandparent;
     }
 }
 
