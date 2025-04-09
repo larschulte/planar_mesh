@@ -445,8 +445,6 @@ void RRSNode::node_delete_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
         // shrink parent box
         recursive_shrink_parent_box();
     }
-
-    node_delete_self();
 }
 
 void RRSNode::node_delete_self()
