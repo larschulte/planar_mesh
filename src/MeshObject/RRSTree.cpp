@@ -150,6 +150,13 @@ double RRSBoundingBox::get_surface_area()
     return surface_area; // Return by value
 }
 
+std::atomic<unsigned int> RRSNode::counter_ = 0;
+
+RRSNode::RRSNode()
+{
+    id_ = counter_.fetch_add(1);
+}
+
 void RRSNode::recursive_expand_parent_box()
 {
     if (parent_)

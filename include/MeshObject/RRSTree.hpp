@@ -55,7 +55,10 @@ enum class RRSReturnType
 
 class RRSNode : public std::enable_shared_from_this<RRSNode>
 {
-    public:
+    static std::atomic<unsigned int> counter_;
+
+public:
+    unsigned int id_;
     RRSBoundingBox box_;
     std::shared_ptr<RRSNode> parent_;
     std::shared_ptr<RRSNode> left_;
@@ -69,6 +72,7 @@ class RRSNode : public std::enable_shared_from_this<RRSNode>
     mutable std::shared_mutex rwlock_node_;
     mutable std::shared_mutex rwlock_box_;
 
+    RRSNode();
     void recursive_expand_parent_box();
     void recursive_shrink_parent_box();
 
@@ -80,6 +84,18 @@ class RRSNode : public std::enable_shared_from_this<RRSNode>
     void node_print(int level) const;
     void node_flattern(std::vector<std::shared_ptr<Vertex>>& flatten_list);
     void node_count(unsigned int& count) const;
+};
+
+struct RRSNodeHasher {
+    std::size_t operator()(const std::shared_ptr<RRSNode>& node) const {
+        return std::hash<unsigned int>()(node->id_);
+    }
+};
+
+struct RRSNodeEqual {
+    bool operator()(const std::shared_ptr<RRSNode>& a, const std::shared_ptr<RRSNode>& b) const {
+        return a->id_ == b->id_;
+    }
 };
 
 
