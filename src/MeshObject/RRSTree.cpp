@@ -402,6 +402,18 @@ void RRSNode::node_add_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
 
 void RRSNode::node_delete_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
 {
+    // throw if node is not leaf
+    if (!isLeaf_)
+    {
+        throw std::runtime_error("Node is not leaf.");
+    }
+
+    // throw if have no parent
+    if (!parent_)
+    {
+        throw std::runtime_error("Node has no parent.");
+    }
+
     {
         // write lock
         std::unique_lock<std::shared_mutex> lock(rwlock_node_);
@@ -414,7 +426,8 @@ void RRSNode::node_delete_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
         // remove vertex from node
         boundary_vertex_ = nullptr;
 
-        // keep in parent's left or right
+        // remove from parent
+        parent_->node_delete_child(shared_from_this());
 
         // reset box
         {
@@ -428,6 +441,96 @@ void RRSNode::node_delete_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
 
     // shrink parent box
     recursive_shrink_parent_box();
+}
+
+void RRSNode::node_delete_child(const std::shared_ptr<RRSNode> child)
+{
+    // throw if any left or right is null
+    if (!left_ || !right_)
+    {
+        throw std::runtime_error("One or more Child is null.");
+    }
+
+    // get other child
+    std::shared_ptr<RRSNode> other_child;
+    if (left_ == child)
+    {
+        other_child = right_;
+    }
+    else if (right_ == child)
+    {
+        other_child = left_;
+    }
+    else
+    {
+        throw std::runtime_error("Child is not a child of this node.");
+    }
+
+    // disconnect child and other child
+    {
+        left_ = nullptr;
+        right_ = nullptr;
+        child->parent_ = nullptr;
+        other_child->parent_ = nullptr;
+    }
+
+    // if other child is leaf
+    if (other_child->isLeaf_)
+    {
+        // throw if have children
+        if (other_child->left_ || other_child->right_)
+        {
+            throw std::runtime_error("Other child is leaf but has children.");
+        }
+
+        // copy vertex of the other child
+        boundary_vertex_ = other_child->boundary_vertex_;
+        if (boundary_vertex_) boundary_vertex_->node = shared_from_this();
+
+        // copy box of the other child
+        box_ = other_child->box_;
+
+        // copy isLeaf
+        isLeaf_.store(other_child->isLeaf_.load());
+    }
+    else
+    {
+        // the other child is not leaf
+
+        // throw if any of the children is null 
+        if (!other_child->left_ || !other_child->right_)
+        {
+            throw std::runtime_error("One or more Child of the other child is null.");
+        }
+
+        // copy children of the other child
+        std::shared_ptr<RRSNode> left_child = other_child->left_;
+        std::shared_ptr<RRSNode> right_child = other_child->right_;
+
+        // disconnect left and right child from the other child
+        {
+            other_child->left_ = nullptr;
+            other_child->right_ = nullptr;
+            left_child->parent_ = nullptr;
+            right_child->parent_ = nullptr;
+        }
+
+        // assign the children to this node
+        {
+            left_ = left_child;
+            right_ = right_child;
+
+            // assign parent
+            left_->parent_ = shared_from_this();
+            right_->parent_ = shared_from_this();
+        }
+        
+        // copy box of the other child
+        box_ = other_child->box_;
+        
+        // copy isLeaf
+        isLeaf_.store(other_child->isLeaf_.load());
+    }
 }
 
 void RRSNode::node_update_vertex_box(const std::shared_ptr<Vertex>& boundary_vertex)
