@@ -4,6 +4,7 @@
 #include "MeshObject/Surface.hpp"
 #include "MeshObject/GenericPoint.hpp"
 #include <queue>
+#include <thread>
 
 Settings RRSTree::settings_;
 
@@ -438,6 +439,18 @@ void RRSNode::node_delete_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
         recursive_shrink_parent_box();
     }
 
+    // throw if num of ref is not three
+    // (one from shared_from_this | one from parent | one from the function that calls this function)
+    if (shared_from_this().use_count() != 3)
+    {
+        // pause for some time
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+
+        if (shared_from_this().use_count() != 3)
+        {
+            throw std::runtime_error("num of ref is not three but is instead " + std::to_string(shared_from_this().use_count()));
+        }
+    }
 }
 
 void RRSNode::node_delete_child(const std::shared_ptr<RRSNode> child)
