@@ -446,18 +446,25 @@ void RRSNode::node_delete_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
         recursive_shrink_parent_box();
     }
 
-    // throw if num of ref is not three
-    // (one from shared_from_this | one from parent | one from the function that calls this function)
-    if (shared_from_this().use_count() != 3)
-    {
-        // pause for some time
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    node_delete_self();
+}
 
-        if (shared_from_this().use_count() != 3)
-        {
-            throw std::runtime_error("num of ref is not three but is instead " + std::to_string(shared_from_this().use_count()));
-        }
+void RRSNode::node_delete_self()
+{
+    // this node could be locked by other thread and add new vertex before we obtain the lock
+    if (!isLeaf_)
+    {
+        throw std::runtime_error("Node is not leaf.");
     }
+
+    // throw if have no parent
+    if (!parent_)
+    {
+        throw std::runtime_error("Node has no parent.");
+    }
+
+    // remove from parent
+    parent_->node_delete_child(shared_from_this());
 }
 
 void RRSNode::node_delete_child(const std::shared_ptr<RRSNode> child)

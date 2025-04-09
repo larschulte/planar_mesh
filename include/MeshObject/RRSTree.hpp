@@ -78,6 +78,7 @@ public:
 
     void node_add_vertex(const std::shared_ptr<Vertex>& boundary_vertex);
     void node_delete_vertex(const std::shared_ptr<Vertex>& boundary_vertex);
+    void node_delete_self();
     void node_delete_child(const std::shared_ptr<RRSNode> node);
     void node_update_vertex_box(const std::shared_ptr<Vertex>& boundary_vertex);
     RRSReturnType node_reverse_radius_search(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Vertex>>& search_results);
