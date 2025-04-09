@@ -793,22 +793,18 @@ void Storage::remove_searchable_vertex(const std::shared_ptr<Vertex>& vertex)
 
 void Storage::remove_nodes_from_rrs_tree()
 {
-    // create a unique set of nodes to be deleted
-    std::unordered_set<std::shared_ptr<RRSNode>, RRSNodeHasher, RRSNodeEqual> unique_nodes_to_be_deleted;
-    for (std::unordered_set<std::shared_ptr<RRSNode>, RRSNodeHasher, RRSNodeEqual>& nodes : thread_nodes_to_be_deleted_)
+    // use while not empty erase idiom
+    for (auto& nodes : thread_nodes_to_be_deleted_)
     {
-        // insert into unique set
-        unique_nodes_to_be_deleted.insert(nodes.begin(), nodes.end());
+        while (!nodes.empty())
+        {
+            // get node
+            std::shared_ptr<RRSNode> node = *nodes.begin();
+            nodes.erase(node);
 
-        // clear
-        nodes.clear();
-    }
-
-    // remove from rrs_tree
-    for (const std::shared_ptr<RRSNode>& node : unique_nodes_to_be_deleted)
-    {
-        // remove from rrs_tree
-        node->node_delete_self();
+            // remove from rrs_tree
+            node->node_delete_self();
+        }   
     }
 }
 
