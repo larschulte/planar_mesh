@@ -176,14 +176,14 @@ void RRSNode::recursive_shrink_parent_box()
 
         // expand new parent box
         {
-            // read lock
-            std::shared_lock<std::shared_mutex> lock(parent_->rwlock_node_);
+            // // read lock
+            // std::shared_lock<std::shared_mutex> lock(parent_->rwlock_node_);
 
             // expand left box
             if (parent_->left_)
             {
-                // read lock
-                std::shared_lock<std::shared_mutex> lock_left(parent_->left_->rwlock_node_);
+                // // read lock
+                // std::shared_lock<std::shared_mutex> lock_left(parent_->left_->rwlock_node_);
 
                 new_parent_box.expand_box_no_return(parent_->left_->box_);
             }
@@ -191,8 +191,8 @@ void RRSNode::recursive_shrink_parent_box()
             // expand right box
             if (parent_->right_)
             {
-                // read lock
-                std::shared_lock<std::shared_mutex> lock_right(parent_->right_->rwlock_node_);
+                // // read lock
+                // std::shared_lock<std::shared_mutex> lock_right(parent_->right_->rwlock_node_);
 
                 new_parent_box.expand_box_no_return(parent_->right_->box_);
             }
@@ -402,10 +402,19 @@ void RRSNode::node_add_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
 
 void RRSNode::node_delete_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
 {
-    // throw if node is not leaf
+    // write lock
+    std::unique_lock<std::shared_mutex> lock(rwlock_node_);
+
+    // this node could be locked by other thread and add new vertex before we obtain the lock
     if (!isLeaf_)
     {
-        throw std::runtime_error("Node is not leaf.");
+        // obtain new node and delete vertex from it
+        std::shared_ptr<RRSNode> new_node = boundary_vertex->node;
+
+        // remove from node
+        new_node->node_delete_vertex(boundary_vertex);
+
+        return;
     }
 
     // throw if have no parent
@@ -414,33 +423,21 @@ void RRSNode::node_delete_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
         throw std::runtime_error("Node has no parent.");
     }
 
+    // actual deletion
     {
-        // write lock
-        std::unique_lock<std::shared_mutex> lock(rwlock_node_);
-
-        // boundary vertex is only stored in leaf node
-
         // remove node from vertices
         boundary_vertex->node = nullptr;
 
         // remove vertex from node
         boundary_vertex_ = nullptr;
 
-        // remove from parent
-        parent_->node_delete_child(shared_from_this());
-
         // reset box
-        {
-            // write lock
-            std::unique_lock<std::shared_mutex> lock_box(rwlock_box_);
+        box_ = RRSBoundingBox(); // here
 
-            // reset box
-            box_ = RRSBoundingBox(); // here
-        }
+        // shrink parent box
+        recursive_shrink_parent_box();
     }
 
-    // shrink parent box
-    recursive_shrink_parent_box();
 }
 
 void RRSNode::node_delete_child(const std::shared_ptr<RRSNode> child)
