@@ -455,8 +455,8 @@ void RRSNode::node_delete_self()
     // skip if is branch now (after storing antoher vertex, the node could become a branch node)
     if (!isLeaf_) return;
 
-    // skip if have no parent as it may have been deleted before (or could be that this is a root node, in which case we should not delete the root node)
-    if (!parent_) return;
+    // throw if have no parent (unless this is truely root node, in which case i should implement something)
+    if (!parent_) throw std::runtime_error("Node has no parent.");
 
     // remove from parent and simplify tree
     parent_->node_delete_child(shared_from_this());
