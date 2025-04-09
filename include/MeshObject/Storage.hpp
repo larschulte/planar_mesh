@@ -158,6 +158,7 @@ private: // to Vertex and Face class
 public:
     void add_searchable_vertex(const std::shared_ptr<Vertex>& vertex);
     void remove_searchable_vertex(const std::shared_ptr<Vertex>& vertex);
+    void remove_nodes_from_rrs_tree();
     void tree_update_vertex_box(const std::shared_ptr<Vertex>& vertex);
 
 public: // to MeshObject class
