@@ -77,6 +77,7 @@ public: // to user
     void clear_queues();
 
     void cleanup_surfaces();
+    void remove_all_surfaces();
     void remove_non_manifold_edges();
     void remove_non_manifold_vertices();
     void remove_non_manifold_faces();

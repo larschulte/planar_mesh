@@ -565,4 +565,12 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
         // log
         std::cout << "restarted" << std::endl;
     }
+    if (event.getKeySym() == "o" && event.keyDown())
+    {
+        // remove all surfaces
+        storage_->remove_all_surfaces();
+
+        // log
+        std::cout << "removed all surfaces" << std::endl;
+    }
 }

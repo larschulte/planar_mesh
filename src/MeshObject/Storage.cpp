@@ -708,6 +708,43 @@ void Storage::cleanup_surfaces()
     add_or_remove_edges_from_edgeBVH_tree();
 }
 
+void Storage::remove_all_surfaces()
+{
+    // make copy of surfaces
+    std::vector<std::shared_ptr<Surface>> surfaces_copy;
+    {
+        // read lock
+        std::shared_lock<std::shared_mutex> lock(rwlock_surfaces_);
+
+        // copy
+        surfaces_copy = std::vector<std::shared_ptr<Surface>>(surfaces_.begin(), surfaces_.end());
+    }
+
+    // for each surface
+    for (const std::shared_ptr<Surface>& surface : surfaces_copy)
+    {
+        // delete if surface is seed
+        delete_surface(surface);
+    }
+
+    delete_to_be_deleted_repeatedly();
+    update_vertices_that_have_changed_box();
+    add_or_remove_vertices_from_rrs_tree();
+    remove_nodes_from_rrs_tree();
+    add_or_remove_faces_from_bvh_tree();
+    add_or_remove_edges_from_edgeBVH_tree();
+
+    // print rrs tree size
+    std::cout << "rrs tree size: " << rrs_tree_.get_size() << std::endl;
+
+    // print storage vertex, edge, face, interior point size
+    std::cout << "vertex size: " << vertices_.size() << std::endl;
+    std::cout << "edge size: " << edges_.size() << std::endl;
+    std::cout << "face size: " << faces_.size() << std::endl;
+    std::cout << "interior size: " << interior_points_.size() << std::endl;
+    std::cout << "surface size: " << surfaces_.size() << std::endl;
+}
+
 void Storage::remove_non_manifold_edges()
 {
     // make copy of edges

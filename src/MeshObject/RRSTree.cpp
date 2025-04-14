@@ -467,7 +467,8 @@ void RRSNode::node_delete_child(const std::shared_ptr<RRSNode> child)
     // replace this parent with the other child, instead of copying it, this allow the other child, if also removed vertex, to be deleted as well
     
     // throw if have no parent (unless this is truely root node, in which case i should implement something)
-    if (!parent_) throw std::runtime_error("node_delete_child, Node has no parent.");
+    // if (!parent_) throw std::runtime_error("node_delete_child, Parent node has no parent.");
+    if (!parent_) return; // this is root node
     
     // throw if any left or right is null (since this function is called by children)
     if (!left_ || !right_) throw std::runtime_error("One or more Child is null.");
