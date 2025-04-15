@@ -1333,7 +1333,7 @@ void Surface::split_surface_by_connected_components()
             // swap connected edges
             for (const auto& edge : vertex->get_edges())
             {
-                edge->swap(shared_from_this(), new_surface);
+                edge.lock()->swap(shared_from_this(), new_surface);
             }
         }
     }

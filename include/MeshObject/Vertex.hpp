@@ -53,16 +53,16 @@ public:
     const Eigen::Vector3d& get_origin() const;
     const double& get_distance_travelled() const;
     const Eigen::Vector3d& get_direction() const;
-    const std::shared_ptr<Surface>& get_surface() const;
-    std::vector<std::shared_ptr<Edge>> get_edges() const;
-    std::vector<std::shared_ptr<Face>> get_faces() const;
+    std::shared_ptr<Surface> get_surface() const;
+    std::vector<std::weak_ptr<Edge>> get_edges() const;
+    std::vector<std::weak_ptr<Face>> get_faces() const;
     std::size_t get_num_deletes() const;
     double get_current_surface_uncertainty() const;
 
     double& get_projected_uncertainty();
 
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& get_vertex_point_distance_publishers();
-    std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash>& get_interior_point_distance_publishers();
+    std::unordered_set<std::weak_ptr<Vertex>, MeshObjectHash>& get_vertex_point_distance_publishers();
+    std::unordered_set<std::weak_ptr<InteriorPoint>, MeshObjectHash>& get_interior_point_distance_publishers();
 
     std::shared_ptr<Edge> get_edge(const std::shared_ptr<Vertex>& vertex) const;
 
@@ -168,14 +168,14 @@ private:
     std::size_t num_deletes_;
 
     int id_;
-    std::shared_ptr<Storage> storage_;
+    std::weak_ptr<Storage> storage_;
 
     bool connecting_to_edges_and_faces_ = false;
 
-    std::vector<std::shared_ptr<Edge>> edges_;
-    std::vector<std::shared_ptr<Face>> faces_;
-    std::vector<std::shared_ptr<InteriorPoint>> interior_points_;
-    std::shared_ptr<Surface> surface_;
+    std::vector<std::weak_ptr<Edge>> edges_;
+    std::vector<std::weak_ptr<Face>> faces_;
+    std::vector<std::weak_ptr<InteriorPoint>> interior_points_;
+    std::weak_ptr<Surface> surface_;
 
     Eigen::Matrix3d eigenvectors_used_;
     Eigen::Vector2d surface_coordinate_;
@@ -194,11 +194,11 @@ private:
     Eigen::Vector3d projected_position_ = Eigen::Vector3d::Zero();
 
     // a publisher is one that reduces radius of other vertices
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertex_point_distance_publishers_;
-    std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> interior_point_distance_publishers_;
+    std::unordered_set<std::weak_ptr<Vertex>, MeshObjectHash> vertex_point_distance_publishers_;
+    std::unordered_set<std::weak_ptr<InteriorPoint>, MeshObjectHash> interior_point_distance_publishers_;
 
     // a subscriber is one that is reduced by the current vertex
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertex_point_distance_subscribers_;
+    std::unordered_set<std::weak_ptr<Vertex>, MeshObjectHash> vertex_point_distance_subscribers_;
 
 public:
     double weight_;
