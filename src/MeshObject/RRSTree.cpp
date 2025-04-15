@@ -425,11 +425,11 @@ void RRSNode::node_delete_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
         return;
     }
 
-    // throw if have no parent
-    if (!parent_)
-    {
-        throw std::runtime_error("node_delete_vertex, Node has no parent.");
-    }
+    // // throw if have no parent
+    // if (!parent_)
+    // {    
+    //     // throw std::runtime_error("node_delete_vertex, Node has no parent.");
+    // }
 
     // actual deletion
     {
