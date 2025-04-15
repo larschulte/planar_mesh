@@ -38,6 +38,7 @@ find_package(Matplot++ REQUIRED)
 
 # MeshObject
 set(MeshObject_SOURCE 
+  src/MeshObject/MeshObject.cpp
   src/MeshObject/Vertex.cpp
   src/MeshObject/Edge.cpp
   src/MeshObject/Face.cpp
