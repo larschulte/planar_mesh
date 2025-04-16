@@ -101,7 +101,7 @@ pcl::PolygonMesh create_simplified_mesh_impl(const std::shared_ptr<Surface>& sur
     if (surface->is_seed()) return pcl::PolygonMesh();
 
     // get list of vertices
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertices = surface->get_vertices();
+    std::unordered_set<std::weak_ptr<Vertex>, MeshObjectHash> vertices = surface->get_vertices();
 
     Settings settings_;
 
@@ -110,11 +110,11 @@ pcl::PolygonMesh create_simplified_mesh_impl(const std::shared_ptr<Surface>& sur
     {
         // cap radius of boundary vertices
         std::unordered_map<std::shared_ptr<Vertex>, double, MeshObjectHash> vertex_radii;
-        for (const std::shared_ptr<Vertex>& vertex : vertices)
+        for (const std::weak_ptr<Vertex>& vertex : vertices)
         {
-            const double radius_original = vertex->get_radius() - settings_.extra_radius;
+            const double radius_original = vertex.lock()->get_radius() - settings_.extra_radius;
 
-            vertex_radii[vertex] = radius_original;
+            vertex_radii[vertex.lock()] = radius_original;
         }
 
         // sort the vertices by radius

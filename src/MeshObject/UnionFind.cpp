@@ -10,21 +10,21 @@
 #include "MeshObject/Vertex.hpp"
 #include "MeshObject/Edge.hpp"
 
-void UnionFind::add_vertices(const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& vertices) 
+void UnionFind::add_vertices(const std::unordered_set<std::weak_ptr<Vertex>, MeshObjectHash>& vertices) 
 {
     for (const auto& vertex : vertices) 
     {
-        parent[vertex] = vertex;
-        rank[vertex] = 0;
+        parent[vertex.lock()] = vertex.lock();
+        rank[vertex.lock()] = 0;
     }
 }
 
-void UnionFind::add_edges(const std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& edges) 
+void UnionFind::add_edges(const std::unordered_set<std::weak_ptr<Edge>, MeshObjectHash>& edges) 
 {
     for (const auto& edge : edges) 
     {
-        const std::shared_ptr<Vertex>& u = edge->get_vertex(0);
-        const std::shared_ptr<Vertex>& v = edge->get_vertex(1);
+        const std::shared_ptr<Vertex>& u = edge.lock()->get_vertex(0);
+        const std::shared_ptr<Vertex>& v = edge.lock()->get_vertex(1);
         make_share_root(u, v);
     }
 }

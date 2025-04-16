@@ -63,8 +63,8 @@ void Surface::delete_()
         // delete vertex
         for (const auto& vertex : vertices_) 
         {
-            vertex->set_do_not_add_back_due_to_seed_surface(true);
-            storage_->add_vertex_to_be_deleted(vertex);
+            vertex.lock()->set_do_not_add_back_due_to_seed_surface(true);
+            storage_.lock()->add_vertex_to_be_deleted(vertex.lock());
         }
 
         // clear
@@ -77,7 +77,7 @@ void Surface::delete_()
         std::shared_lock<std::shared_mutex> lock_edges(rwlock_edges_);
 
         // delete edge
-        for (const auto& edge : edges_) storage_->add_edge_to_be_deleted(edge);
+        for (const auto& edge : edges_) storage_.lock()->add_edge_to_be_deleted(edge.lock());
 
         // clear
         edges_.clear();
@@ -89,7 +89,7 @@ void Surface::delete_()
         std::shared_lock<std::shared_mutex> lock_faces(rwlock_faces_);
 
         // delete face
-        for (const auto& face : faces_) storage_->add_face_to_be_deleted(face);
+        for (const auto& face : faces_) storage_.lock()->add_face_to_be_deleted(face.lock());
 
         // clear
         faces_.clear();
@@ -103,8 +103,8 @@ void Surface::delete_()
         // delete interior point
         for (const auto& interior_point : interior_points_) 
         {
-            interior_point->set_do_not_add_back_due_to_seed_surface(true);
-            storage_->add_interior_point_to_be_deleted(interior_point);
+            interior_point.lock()->set_do_not_add_back_due_to_seed_surface(true);
+            storage_.lock()->add_interior_point_to_be_deleted(interior_point.lock());
         }
 
         // clear
@@ -340,31 +340,31 @@ void Surface::merge_surface(const std::shared_ptr<Surface>& surface)
 
     // merge
     const auto& surface_valid = surface;
-    for (const auto& vertex : surface_valid->vertices_) connect(vertex);
+    for (const auto& vertex : surface_valid->vertices_) connect(vertex.lock());
 
     // log
     if (settings_.log.merge_surface) std::cout << "Surface " << surface_valid->get_id() << " merged into surface " << id_ << std::endl;
 
     // delete
-    storage_->delete_surface(surface);
+    storage_.lock()->delete_surface(surface);
 }
 
-const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& Surface::get_vertices() const
+std::unordered_set<std::weak_ptr<Vertex>, MeshObjectHash> Surface::get_vertices() const
 {
     return vertices_;
 }
 
-const std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash>& Surface::get_interior_points() const
+std::unordered_set<std::weak_ptr<InteriorPoint>, MeshObjectHash> Surface::get_interior_points() const
 {
     return interior_points_;
 }
 
-const std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& Surface::get_edges() const
+std::unordered_set<std::weak_ptr<Edge>, MeshObjectHash> Surface::get_edges() const
 {
     return edges_;
 }
 
-const std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& Surface::get_faces() const
+std::unordered_set<std::weak_ptr<Face>, MeshObjectHash> Surface::get_faces() const
 {
     return faces_;
 }
@@ -425,12 +425,12 @@ const std::vector<double>& Surface::get_point_to_plane_distance_stats()
         // add
         for (const auto& vertex : vertices_)
         {
-            double point2plane_distance = (vertex->get_original_position() - get_mean()).dot(get_normal());
+            double point2plane_distance = (vertex.lock()->get_original_position() - get_mean()).dot(get_normal());
             stored_point_to_plane_distance_stats_.push_back(point2plane_distance);
         }
         for (const auto& interior_point : interior_points_)
         {
-            double point2plane_distance = (interior_point->get_original_position() - get_mean()).dot(get_normal());
+            double point2plane_distance = (interior_point.lock()->get_original_position() - get_mean()).dot(get_normal());
             stored_point_to_plane_distance_stats_.push_back(point2plane_distance);
         }
 
@@ -453,12 +453,12 @@ const std::vector<double>& Surface::get_projective_distance_stats()
         // add
         for (const auto& vertex : vertices_)
         {
-            double projective_distance = vertex->compute_projected_distance();
+            double projective_distance = vertex.lock()->compute_projected_distance();
             stored_projective_distance_stats_.push_back(projective_distance);
         }
         for (const auto& interior_point : interior_points_)
         {
-            double projective_distance = interior_point->compute_projected_distance();
+            double projective_distance = interior_point.lock()->compute_projected_distance();
             stored_projective_distance_stats_.push_back(projective_distance);
         }
 
@@ -555,10 +555,10 @@ bool Surface::can_merge(const std::shared_ptr<Surface>& surface) const
 
     // compute projective distance stats for the combined surface
     std::vector<double> projective_distance_list;
-    for (const auto& vertex : vertices_)                            projective_distance_list.push_back((new_mean - vertex->get_original_position()).dot(new_normal) / vertex->get_direction().dot(new_normal));
-    for (const auto& interior_point : interior_points_)             projective_distance_list.push_back((new_mean - interior_point->get_original_position()).dot(new_normal) / interior_point->get_direction().dot(new_normal));
-    for (const auto& vertex : surface->vertices_)                   projective_distance_list.push_back((new_mean - vertex->get_original_position()).dot(new_normal) / vertex->get_direction().dot(new_normal));
-    for (const auto& interior_point : surface->interior_points_)    projective_distance_list.push_back((new_mean - interior_point->get_original_position()).dot(new_normal) / interior_point->get_direction().dot(new_normal));
+    for (const auto& vertex : vertices_)                            projective_distance_list.push_back((new_mean - vertex.lock()->get_original_position()).dot(new_normal) / vertex.lock()->get_direction().dot(new_normal));
+    for (const auto& interior_point : interior_points_)             projective_distance_list.push_back((new_mean - interior_point.lock()->get_original_position()).dot(new_normal) / interior_point.lock()->get_direction().dot(new_normal));
+    for (const auto& vertex : surface->vertices_)                   projective_distance_list.push_back((new_mean - vertex.lock()->get_original_position()).dot(new_normal) / vertex.lock()->get_direction().dot(new_normal));
+    for (const auto& interior_point : surface->interior_points_)    projective_distance_list.push_back((new_mean - interior_point.lock()->get_original_position()).dot(new_normal) / interior_point.lock()->get_direction().dot(new_normal));
 
     // subtract accuracy from each distance
     std::vector<double> projective_distance_list_modified = projective_distance_list;
@@ -709,7 +709,7 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
             if (pair.first->is_expired()) continue;
 
             // create edge
-            storage_->add_edge(shared_from_this(), vertex, pair.first);
+            storage_.lock()->add_edge(shared_from_this(), vertex, pair.first);
 
             // increment
             number_of_edges_created++;
@@ -733,10 +733,10 @@ void Surface::compute_surface_position_std_in_normal_direction()
     for (auto& vertex : vertices_)
     {
         // compute conversion ratio
-        double ratio = std::fabs(normal_.dot(vertex->get_direction()));
+        double ratio = std::fabs(normal_.dot(vertex.lock()->get_direction()));
 
         // mean and informaiton
-        double mean = ratio * vertex->compute_projected_distance();
+        double mean = ratio * vertex.lock()->compute_projected_distance();
         double std = ratio * settings_.range_precision;
         double information = 1.0 / (std * std);
         
@@ -747,10 +747,10 @@ void Surface::compute_surface_position_std_in_normal_direction()
     for (auto& interior_point : interior_points_)
     {
         // compute conversion ratio
-        double ratio = std::fabs(normal_.dot(interior_point->get_direction()));
+        double ratio = std::fabs(normal_.dot(interior_point.lock()->get_direction()));
 
         // mean and informaiton
-        double mean = ratio * interior_point->compute_projected_distance();
+        double mean = ratio * interior_point.lock()->compute_projected_distance();
         double std = ratio * settings_.range_precision;
         double information = 1.0 / (std * std);
         
@@ -800,7 +800,7 @@ void Surface::connect(const std::shared_ptr<Edge>& edge)
         edges_.insert(edge);
     }
 
-    // storage_->add_to_set_of_edge_to_update_edgeBVH_tree(edge, shared_from_this());
+    // storage_.lock()->add_to_set_of_edge_to_update_edgeBVH_tree(edge, shared_from_this());
 }
 
 void Surface::connect(const std::shared_ptr<Face>& face)
@@ -895,7 +895,7 @@ void Surface::disconnect(const std::shared_ptr<Edge>& edge)
         edges_.erase(it);
     }
 
-    // storage_->add_to_set_of_edge_to_update_edgeBVH_tree(edge, shared_from_this());
+    // storage_.lock()->add_to_set_of_edge_to_update_edgeBVH_tree(edge, shared_from_this());
 }
 
 void Surface::disconnect(const std::shared_ptr<Face>& face)
@@ -949,7 +949,7 @@ std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> Surface::get_boundar
     // get boundary vertices
     for (const auto& vertex : vertices_)
     {
-        if (vertex->is_boundary()) boundary_vertices.insert(vertex);
+        if (vertex.lock()->is_boundary()) boundary_vertices.insert(vertex.lock());
     }
 
     // return
@@ -992,11 +992,11 @@ bool Surface::try_close_holes()
 void Surface::remove_non_manifold_edges()
 {
     // make copy of edges
-    std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges_copy = edges_;
+    std::unordered_set<std::weak_ptr<Edge>, MeshObjectHash> edges_copy = edges_;
 
     for (const auto& edge : edges_copy)
     {
-        if (edge->is_non_manifold()) disconnect(edge);
+        if (edge.lock()->is_non_manifold()) disconnect(edge.lock());
     }
 }
 
@@ -1176,7 +1176,7 @@ void Surface::update_seed_status()
     if (!(previous_is_seed && !current_is_seed)) return;
 
     // make copy of vertices
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertices_copy;
+    std::unordered_set<std::weak_ptr<Vertex>, MeshObjectHash> vertices_copy;
     {
         // read lock
         std::shared_lock<std::shared_mutex> lock_vertices(rwlock_vertices_);
@@ -1188,18 +1188,20 @@ void Surface::update_seed_status()
     // check each vertex
     for (const auto& vertex : vertices_copy)
     {
+        auto vertex_locked = vertex.lock();
+
         // lock vertex
-        std::shared_lock<std::shared_mutex> lock_vertex(vertex->rwlock_lifecycle_);
+        std::shared_lock<std::shared_mutex> lock_vertex(vertex_locked->rwlock_lifecycle_);
 
         // skip if vertex is expired
-        if (vertex->is_expired()) continue;
+        if (vertex_locked->is_expired()) continue;
 
         // old projected position
-        Eigen::Vector3d old_projected_position = vertex->get_position();
+        Eigen::Vector3d old_projected_position = vertex_locked->get_position();
 
         // new projected position
-        Eigen::Vector3d point = vertex->get_original_position();
-        Eigen::Vector3d origin = vertex->get_origin();
+        Eigen::Vector3d point = vertex_locked->get_original_position();
+        Eigen::Vector3d origin = vertex_locked->get_origin();
         Eigen::Vector3d rayDirection = (point - origin).normalized();
         double distance = (mean_ - point).dot(normal_) / rayDirection.dot(normal_);
         Eigen::Vector3d new_projected_position = point + distance * rayDirection;
@@ -1207,7 +1209,7 @@ void Surface::update_seed_status()
         // if too different, delete to re-add the point
         if ((new_projected_position - old_projected_position).norm() > 0.05)
         {
-            storage_->add_vertex_to_be_deleted(vertex);
+            storage_.lock()->add_vertex_to_be_deleted(vertex_locked);
         }
     }
 }
@@ -1228,11 +1230,11 @@ void Surface::optimize_surface_normal()
     std::vector<std::pair<Eigen::Vector3d, Eigen::Vector3d>> dataset;
     for (const auto& vertex : vertices_)
     {
-        dataset.push_back(std::make_pair(vertex->get_origin(), vertex->get_original_position()));
+        dataset.push_back(std::make_pair(vertex.lock()->get_origin(), vertex.lock()->get_original_position()));
     }
     for (const auto& interior_point : interior_points_)
     {
-        dataset.push_back(std::make_pair(interior_point->get_origin(), interior_point->get_original_position()));
+        dataset.push_back(std::make_pair(interior_point.lock()->get_origin(), interior_point.lock()->get_original_position()));
     }
 
     fit_plane_to_points(dataset, mean_, normal_, bearing_noise, range_noise);
@@ -1248,10 +1250,10 @@ bool Surface::remove_unmatched_points()
     for (const auto& vertex : vertices_)
     {
         // check input
-        if (vertex->is_expired()) throw std::runtime_error("Surface contains expired vertex.");
+        if (vertex.lock()->is_expired()) throw std::runtime_error("Surface contains expired vertex.");
 
         // if vertex is not within the surface, add to remove list
-        if (check_relative_position(vertex) != RelativePosition::WITHIN) vertices_to_delete.push_back(vertex);
+        if (check_relative_position(vertex.lock()) != RelativePosition::WITHIN) vertices_to_delete.push_back(vertex.lock());
     }
 
     // collect interior points to delete
@@ -1259,23 +1261,23 @@ bool Surface::remove_unmatched_points()
     for (const auto& interior_point : interior_points_)
     {
         // check input
-        if (interior_point->is_expired()) throw std::runtime_error("Surface contains expired interior point.");
+        if (interior_point.lock()->is_expired()) throw std::runtime_error("Surface contains expired interior point.");
 
         // if interior point is not within the surface, add to remove list
-        if (check_relative_position(interior_point) != RelativePosition::WITHIN) interior_points_to_delete.push_back(interior_point);
+        if (check_relative_position(interior_point.lock()) != RelativePosition::WITHIN) interior_points_to_delete.push_back(interior_point.lock());
     }
 
     // delete points
     for (const auto& vertex : vertices_to_delete)
     {
         if (vertex->is_expired()) continue;
-        storage_->delete_vertex(vertex);
+        storage_.lock()->delete_vertex(vertex);
     }
 
     for (const auto& interior_point : interior_points_to_delete)
     {
         if (interior_point->is_expired()) continue;
-        storage_->delete_interior_point(interior_point);
+        storage_.lock()->delete_interior_point(interior_point);
     }
 
     // return
@@ -1287,19 +1289,19 @@ void Surface::remove_singular_components()
     // get singular components
     std::vector<std::shared_ptr<Vertex>> singular_vertices;
     std::vector<std::shared_ptr<Edge>> singular_edges;
-    for (const auto& vertex : vertices_) if (vertex->is_singular()) singular_vertices.push_back(vertex);
-    for (const auto& edge : edges_) if (edge->is_singular()) singular_edges.push_back(edge);
+    for (const auto& vertex : vertices_) if (vertex.lock()->is_singular()) singular_vertices.push_back(vertex.lock());
+    for (const auto& edge : edges_) if (edge.lock()->is_singular()) singular_edges.push_back(edge.lock());
 
     // delete singular components
     for (const auto& vertex : singular_vertices)
     {
         if (vertex->is_expired()) continue;
-        storage_->delete_vertex(vertex);
+        storage_.lock()->delete_vertex(vertex);
     }
     for (const auto& edge : singular_edges)
     {
         if (edge->is_expired()) continue;
-        storage_->delete_edge(edge);
+        storage_.lock()->delete_edge(edge);
     }
 }
 
@@ -1322,7 +1324,7 @@ void Surface::split_surface_by_connected_components()
     for (std::size_t i = 1; i < sorted_grouped_vertices.size(); i++)
     {
         // get new surface
-        std::shared_ptr<Surface> new_surface = storage_->add_surface();
+        std::shared_ptr<Surface> new_surface = storage_.lock()->add_surface();
 
         // for each vertex in the group, swap their surface to a new surface
         for (const auto& vertex : sorted_grouped_vertices[i].second)

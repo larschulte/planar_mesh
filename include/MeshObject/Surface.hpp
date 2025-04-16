@@ -63,10 +63,10 @@ public:
     void merge_surface(const std::shared_ptr<Surface>& surface);
 
     const int& get_id() const;
-    const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& get_vertices() const;
-    const std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash>& get_interior_points() const;
-    const std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& get_edges() const;
-    const std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& get_faces() const;
+    std::unordered_set<std::weak_ptr<Vertex>, MeshObjectHash> get_vertices() const;
+    std::unordered_set<std::weak_ptr<InteriorPoint>, MeshObjectHash> get_interior_points() const;
+    std::unordered_set<std::weak_ptr<Edge>, MeshObjectHash> get_edges() const;
+    std::unordered_set<std::weak_ptr<Face>, MeshObjectHash> get_faces() const;
     const Eigen::Vector3d& get_mean() const;
     const Eigen::Matrix3d& get_covariance() const;
     const Eigen::Matrix3d& get_eigenvectors() const;
@@ -138,14 +138,14 @@ private:
     EdgeBVH edge_bvh_;
 
     int id_;
-    std::shared_ptr<Storage> storage_;
+    std::weak_ptr<Storage> storage_;
 
     std::size_t composition_hash_;
 
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertices_;
-    std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges_;
-    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces_;
-    std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> interior_points_;
+    std::unordered_set<std::weak_ptr<Vertex>, MeshObjectHash> vertices_;
+    std::unordered_set<std::weak_ptr<Edge>, MeshObjectHash> edges_;
+    std::unordered_set<std::weak_ptr<Face>, MeshObjectHash> faces_;
+    std::unordered_set<std::weak_ptr<InteriorPoint>, MeshObjectHash> interior_points_;
 
     void add_point_to_surface_fitting(const Eigen::Vector3d& point, const Eigen::Vector3d& origin, double distance_travelled, double projection_uncertainty);
     void remove_point_from_surface_fitting(const Eigen::Vector3d& position, const Eigen::Vector3d& origin, double distance_travelled, double projection_uncertainty);
