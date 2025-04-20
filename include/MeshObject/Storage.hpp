@@ -87,7 +87,7 @@ public: // to user
 
     void add_or_remove_vertices_from_rrs_tree();
     void add_or_remove_faces_from_bvh_tree();
-    void add_or_remove_edges_from_edgeBVH_tree();
+    // void add_or_remove_edges_from_edgeBVH_tree();
 
     void add_vertex_to_be_deleted(const std::shared_ptr<Vertex>& vertex);
     void add_edge_to_be_deleted(const std::shared_ptr<Edge>& edge);
@@ -112,7 +112,7 @@ public: // to user
 
     void add_to_set_of_vertices_to_update_rrs_tree(const std::shared_ptr<Vertex>& vertex);
     void add_to_set_of_faces_to_update_bvh_tree(const std::shared_ptr<Face>& face);
-    void add_to_set_of_edge_to_update_edgeBVH_tree(const std::shared_ptr<Edge>& edge, const std::shared_ptr<Surface>& surface);
+    // void add_to_set_of_edge_to_update_edgeBVH_tree(const std::shared_ptr<Edge>& edge, const std::shared_ptr<Surface>& surface);
 
     RRSReturnType reverse_radius_search(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Vertex>>& result);
     BVHReturnType face_intersection_search(const std::shared_ptr<GenericPoint>& generic_point, std::vector<std::shared_ptr<Face>>& result);
@@ -188,7 +188,7 @@ private:
     std::vector<std::queue<std::shared_ptr<Vertex>>> smaller_add_searchable_vertices_queue_;
     std::vector<std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>> smaller_set_of_vertices_to_update_rrs_tree;
     std::vector<std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>> smaller_set_of_faces_to_update_rrs_tree;
-    std::vector<std::vector<std::pair<std::shared_ptr<Edge>, std::shared_ptr<Surface>>> > smaller_set_of_edges_to_update_edgeBVH_tree;
+    // std::vector<std::vector<std::pair<std::shared_ptr<Edge>, std::shared_ptr<Surface>>> > smaller_set_of_edges_to_update_edgeBVH_tree;
 
     std::vector<std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>> thread_vertices_to_be_deleted_;
     std::vector<std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>> thread_edges_to_be_deleted_;

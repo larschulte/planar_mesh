@@ -425,14 +425,14 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
     std::chrono::duration<double> bvh_update_duration = bvh_update_duration_end - bvh_update_duration_start;
     bvh_update_duration_per_thread[omp_get_thread_num()] += bvh_update_duration.count();
 
-    // update edge bvh tree duration
-    std::chrono::time_point<std::chrono::high_resolution_clock> add_to_map_duration_start2 = std::chrono::high_resolution_clock::now();
+    // // update edge bvh tree duration
+    // std::chrono::time_point<std::chrono::high_resolution_clock> add_to_map_duration_start2 = std::chrono::high_resolution_clock::now();
 
-    storage_->add_or_remove_edges_from_edgeBVH_tree();
+    // storage_->add_or_remove_edges_from_edgeBVH_tree();
 
-    std::chrono::time_point<std::chrono::high_resolution_clock> add_to_map_duration_end2 = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> add_to_map_duration2 = add_to_map_duration_end2 - add_to_map_duration_start2;
-    add_to_map_duration_per_thread[omp_get_thread_num()] += add_to_map_duration2.count();
+    // std::chrono::time_point<std::chrono::high_resolution_clock> add_to_map_duration_end2 = std::chrono::high_resolution_clock::now();
+    // std::chrono::duration<double> add_to_map_duration2 = add_to_map_duration_end2 - add_to_map_duration_start2;
+    // add_to_map_duration_per_thread[omp_get_thread_num()] += add_to_map_duration2.count();
 }
 
 template <typename PointT>

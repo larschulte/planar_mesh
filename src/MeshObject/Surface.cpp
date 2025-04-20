@@ -614,36 +614,36 @@ void Surface::connect(const std::shared_ptr<Vertex>& vertex)
     add_point_to_surface_fitting(vertex->get_original_position(), vertex->get_origin(), vertex->get_distance_travelled(), vertex->weight_);
 }
 
-bool Surface::tree_intersect_edge(const std::shared_ptr<Vertex>& vertex0, const std::shared_ptr<Vertex>& vertex1)
-{
-    // initialize
-    std::vector<std::shared_ptr<Edge>> edges_encountered;
+// bool Surface::tree_intersect_edge(const std::shared_ptr<Vertex>& vertex0, const std::shared_ptr<Vertex>& vertex1)
+// {
+//     // initialize
+//     std::vector<std::shared_ptr<Edge>> edges_encountered;
 
-    // search for encountered edges
-    EdgeBVH::EdgeBVHReturnType result = edge_bvh_.tree_intersect_edge(vertex0, vertex1, edges_encountered);
+//     // search for encountered edges
+//     EdgeBVH::EdgeBVHReturnType result = edge_bvh_.tree_intersect_edge(vertex0, vertex1, edges_encountered);
 
-    // false if no encountered edges
-    if (result == EdgeBVH::EdgeBVHReturnType::SKIP) return false;
+//     // false if no encountered edges
+//     if (result == EdgeBVH::EdgeBVHReturnType::SKIP) return false;
     
-    // else check for each edge
-    for (const auto& edge : edges_encountered)
-    {
-        // skip if nullptr
-        if (!edge) continue;
+//     // else check for each edge
+//     for (const auto& edge : edges_encountered)
+//     {
+//         // skip if nullptr
+//         if (!edge) continue;
 
-        // read lock edge
-        std::shared_lock<std::shared_mutex> lock(edge->rwlock_lifecycle_);
+//         // read lock edge
+//         std::shared_lock<std::shared_mutex> lock(edge->rwlock_lifecycle_);
         
-        // skip if edge is expired
-        if (edge->is_expired()) continue;
+//         // skip if edge is expired
+//         if (edge->is_expired()) continue;
 
-        // true if intersect
-        if (edge->intersects_edge(vertex0, vertex1)) return true;
-    }
+//         // true if intersect
+//         if (edge->intersects_edge(vertex0, vertex1)) return true;
+//     }
 
-    // false if no intersection
-    return false;
-}
+//     // false if no intersection
+//     return false;
+// }
 
 bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& all_nearby_vertices)
 {
@@ -1021,15 +1021,15 @@ void Surface::resume_normal_std_update()
     compute_surface_position_std_in_normal_direction();
 }
 
-void Surface::add_searchable_edge(const std::shared_ptr<Edge>& edge)
-{
-    edge_bvh_.tree_add_edge(edge);
-}
+// void Surface::add_searchable_edge(const std::shared_ptr<Edge>& edge)
+// {
+//     edge_bvh_.tree_add_edge(edge);
+// }
 
-void Surface::remove_searchable_edge(const std::shared_ptr<Edge>& edge)
-{    
-    edge_bvh_.tree_delete_edge(edge);
-}
+// void Surface::remove_searchable_edge(const std::shared_ptr<Edge>& edge)
+// {    
+//     edge_bvh_.tree_delete_edge(edge);
+// }
 
 void Surface::print_info()
 {

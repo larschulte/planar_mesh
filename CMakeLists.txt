@@ -47,7 +47,7 @@ set(MeshObject_SOURCE
   src/MeshObject/GenericPoint.cpp
   src/MeshObject/InteriorPoint.cpp
   src/MeshObject/TriangleBVH.cpp
-  src/MeshObject/EdgeBVH.cpp
+  # src/MeshObject/EdgeBVH.cpp
   src/MeshObject/RRSTree.cpp
   src/MeshObject/UnionFind.cpp
   src/MeshObject/Application.cpp

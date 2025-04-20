@@ -926,8 +926,8 @@ bool Vertex::try_close_holes_between_self_and(std::shared_ptr<Vertex>& vertex0, 
     const double radius1 = vertex1->get_radius();
     if (!settings_.edge_is_short_enough(edge_length, radius0, radius1)) return false;
 
-    // skip if edge intersects
-    if (get_surface()->tree_intersect_edge(vertex0, vertex1)) return false;
+    // // skip if edge intersects
+    // if (get_surface()->tree_intersect_edge(vertex0, vertex1)) return false;
 
     // get inter edge and its lock
     std::shared_ptr<Edge> inter_edge = nullptr;

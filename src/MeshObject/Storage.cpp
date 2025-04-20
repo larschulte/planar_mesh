@@ -27,7 +27,7 @@ Storage::Storage()
     smaller_add_searchable_vertices_queue_.resize(settings_.num_threads);
     smaller_set_of_vertices_to_update_rrs_tree.resize(settings_.num_threads);
     smaller_set_of_faces_to_update_rrs_tree.resize(settings_.num_threads);
-    smaller_set_of_edges_to_update_edgeBVH_tree.resize(settings_.num_threads);
+    // smaller_set_of_edges_to_update_edgeBVH_tree.resize(settings_.num_threads);
     thread_vertices_to_be_deleted_.resize(settings_.num_threads);
     thread_edges_to_be_deleted_.resize(settings_.num_threads);
     thread_faces_to_be_deleted_.resize(settings_.num_threads);
@@ -705,7 +705,7 @@ void Storage::cleanup_surfaces()
     update_vertices_that_have_changed_box();
     add_or_remove_vertices_from_rrs_tree();
     add_or_remove_faces_from_bvh_tree();
-    add_or_remove_edges_from_edgeBVH_tree();
+    // add_or_remove_edges_from_edgeBVH_tree();
 }
 
 void Storage::remove_all_surfaces()
@@ -732,7 +732,7 @@ void Storage::remove_all_surfaces()
     add_or_remove_vertices_from_rrs_tree();
     remove_nodes_from_rrs_tree();
     add_or_remove_faces_from_bvh_tree();
-    add_or_remove_edges_from_edgeBVH_tree();
+    // add_or_remove_edges_from_edgeBVH_tree();
 
     // print rrs tree size
     std::cout << "rrs tree size: " << rrs_tree_.get_size() << std::endl;
@@ -930,35 +930,35 @@ void Storage::add_or_remove_faces_from_bvh_tree()
     }
 }
 
-void Storage::add_or_remove_edges_from_edgeBVH_tree()
-{
-    for (const std::pair<std::shared_ptr<Edge>, std::shared_ptr<Surface>>& edge_surface_pair : smaller_set_of_edges_to_update_edgeBVH_tree[omp_get_thread_num()])
-    {
-        // at this point in time, is the edge expired?
-        bool is_expired;
-        {
-            // read lock the edge
-            std::shared_lock<std::shared_mutex> lock(edge_surface_pair.first->rwlock_lifecycle_);
+// void Storage::add_or_remove_edges_from_edgeBVH_tree()
+// {
+//     for (const std::pair<std::shared_ptr<Edge>, std::shared_ptr<Surface>>& edge_surface_pair : smaller_set_of_edges_to_update_edgeBVH_tree[omp_get_thread_num()])
+//     {
+//         // at this point in time, is the edge expired?
+//         bool is_expired;
+//         {
+//             // read lock the edge
+//             std::shared_lock<std::shared_mutex> lock(edge_surface_pair.first->rwlock_lifecycle_);
 
-            // check if edge is expired
-            is_expired = edge_surface_pair.first->is_expired();
-        }
+//             // check if edge is expired
+//             is_expired = edge_surface_pair.first->is_expired();
+//         }
 
-        // if expired, remove from tree
-        if (is_expired)
-        {
-            edge_surface_pair.second->remove_searchable_edge(edge_surface_pair.first);
-        }
-        // if not expired, remove from tree
-        else
-        {
-            edge_surface_pair.second->add_searchable_edge(edge_surface_pair.first);
-        }
-    }
+//         // if expired, remove from tree
+//         if (is_expired)
+//         {
+//             edge_surface_pair.second->remove_searchable_edge(edge_surface_pair.first);
+//         }
+//         // if not expired, remove from tree
+//         else
+//         {
+//             edge_surface_pair.second->add_searchable_edge(edge_surface_pair.first);
+//         }
+//     }
 
-    // clear
-    smaller_set_of_edges_to_update_edgeBVH_tree[omp_get_thread_num()].clear();
-}
+//     // clear
+//     smaller_set_of_edges_to_update_edgeBVH_tree[omp_get_thread_num()].clear();
+// }
 
 void Storage::add_vertex_to_be_deleted(const std::shared_ptr<Vertex>& vertex)
 {
@@ -1195,11 +1195,11 @@ void Storage::add_to_set_of_faces_to_update_bvh_tree(const std::shared_ptr<Face>
     smaller_set_of_faces_to_update_rrs_tree[omp_get_thread_num()].insert(face);
 }
 
-void Storage::add_to_set_of_edge_to_update_edgeBVH_tree(const std::shared_ptr<Edge>& edge, const std::shared_ptr<Surface>& surface)
-{
-    // add to affected vertices set
-    smaller_set_of_edges_to_update_edgeBVH_tree[omp_get_thread_num()].emplace_back(edge, surface);
-}
+// void Storage::add_to_set_of_edge_to_update_edgeBVH_tree(const std::shared_ptr<Edge>& edge, const std::shared_ptr<Surface>& surface)
+// {
+//     // add to affected vertices set
+//     smaller_set_of_edges_to_update_edgeBVH_tree[omp_get_thread_num()].emplace_back(edge, surface);
+// }
 
 void Storage::add_searchable_face(const std::shared_ptr<Face>& face)
 {

@@ -4,8 +4,9 @@
 #include <vector>
 #include <Eigen/Dense>
 
-#include "MeshObject/EdgeBVH.hpp"
-
+// #include "MeshObject/EdgeBVH.hpp"
+#include <shared_mutex>
+#include <unordered_set>
 #include "MeshObject/MeshObject.hpp"
 #include "MeshObject/Settings.hpp"
 
@@ -108,7 +109,7 @@ public:
 
     void set_random_color();
 
-    bool tree_intersect_edge(const std::shared_ptr<Vertex>& vertex0, const std::shared_ptr<Vertex>& vertex1);
+    // bool tree_intersect_edge(const std::shared_ptr<Vertex>& vertex0, const std::shared_ptr<Vertex>& vertex1);
     bool connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, const std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& all_nearby_vertices);
 
     void compute_surface_position_std_in_normal_direction();
@@ -119,8 +120,8 @@ public:
     void remove_singular_components();
     void split_surface_by_connected_components();
 
-    void add_searchable_edge(const std::shared_ptr<Edge>& edge);
-    void remove_searchable_edge(const std::shared_ptr<Edge>& edge);
+    // void add_searchable_edge(const std::shared_ptr<Edge>& edge);
+    // void remove_searchable_edge(const std::shared_ptr<Edge>& edge);
     
     void print_info();
 
@@ -135,7 +136,7 @@ private:
 
     bool update_normal_position_std_ = true;
 
-    EdgeBVH edge_bvh_;
+    // EdgeBVH edge_bvh_;
 
     int id_;
     std::weak_ptr<Storage> storage_;
