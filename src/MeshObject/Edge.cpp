@@ -47,7 +47,7 @@ void Edge::initialize_(const std::shared_ptr<Storage>& storage, const std::share
     {
         // connect to surface
         surface_ = surface;
-        surface_->connect(shared_from_this());
+        surface->connect(shared_from_this());
     }
 
     // center min and max are computed once, and are not updated, otherwise BVH tree will cause search error
@@ -86,19 +86,29 @@ void Edge::delete_()
     // surface (disconnect)
     {
         // disconnect
-        surface_->disconnect(shared_from_this());
+        surface_.lock()->disconnect(shared_from_this());
 
         // add to be split
-        storage_->add_surface_to_be_split(surface_);
+        storage_.lock()->add_surface_to_be_split(surface_.lock());
         
         // clear surface
-        surface_ = nullptr;
+        surface_.reset();
     }
 
     // vertices (disconnect)
     {
         // disconnect from vertices
-        for (const auto& vertex : vertices_) vertex->disconnect(shared_from_this());
+        for (const auto& vertex : vertices_)
+        {
+            if (vertex.lock())
+            {
+                // check if vertex is expired
+                if (vertex.lock()->is_expired()) continue;
+
+                // disconnect
+                vertex.lock()->disconnect(shared_from_this());
+            }
+        } 
 
         // clear vertices
         vertices_.clear();
@@ -110,7 +120,7 @@ void Edge::delete_()
         std::shared_lock<std::shared_mutex> lock_faces(rwlock_faces_);
 
         // delete face
-        for (const auto& face : faces_) storage_->add_face_to_be_deleted(face);
+        for (const auto& face : faces_) storage_.lock()->add_face_to_be_deleted(face.lock());
 
         // clear faces
         faces_.clear();
@@ -138,7 +148,7 @@ void Edge::connect(const std::shared_ptr<Face>& face)
         std::unique_lock lock(rwlock_faces_);
 
         // skip if already connected
-        for (const std::shared_ptr<Face>& face_ : faces_) if (face_ == face) return;
+        for (const std::weak_ptr<Face>& face_ : faces_) if (face_.lock() == face) return;
 
         // connect
         faces_.push_back(face);
@@ -171,14 +181,14 @@ void Edge::disconnect(const std::shared_ptr<Face>& face)
 
     // do not self destruct when have no face
     // check self destruct
-    if (faces_.empty() && !deleting_ && can_self_destruct_) storage_->add_edge_to_be_deleted(shared_from_this());
+    if (faces_.empty() && !deleting_ && can_self_destruct_) storage_.lock()->add_edge_to_be_deleted(shared_from_this());
 }
 
 
 // swap surface1 with surface2
 void Edge::swap(const std::shared_ptr<Surface>& surface1, const std::shared_ptr<Surface>& surface2)
 {
-    if (surface_ == surface1)
+    if (surface_.lock() == surface1)
     {
         surface_ = surface2;
         surface1->disconnect(shared_from_this());
@@ -194,16 +204,16 @@ void Edge::set_can_self_destruct(bool can_self_destruct)
 bool Edge::is_connected_to_boundary_edges(std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& all_connected_faces, std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& all_connected_edges) const
 {
     // check for each face
-    for (const std::shared_ptr<Face>& face : get_faces())
+    for (std::weak_ptr<Face> face : get_faces())
     {
         // add to visited faces
-        const bool inserted = all_connected_faces.insert(face).second;
+        const bool inserted = all_connected_faces.insert(face.lock()).second;
 
         // skip if face is already visited
         if (!inserted) continue;
 
         // return true if face is boundary
-        if (face->is_connected_to_boundary_edges(all_connected_faces, all_connected_edges)) return true;
+        if (face.lock()->is_connected_to_boundary_edges(all_connected_faces, all_connected_edges)) return true;
     }
 
     return false;
@@ -214,12 +224,12 @@ const int& Edge::get_id() const
     return id_; 
 }
 
-const std::shared_ptr<Vertex>& Edge::get_vertex(int index) const
+std::shared_ptr<Vertex> Edge::get_vertex(int index) const
 {
     if (is_expired_) throw std::runtime_error("Accessing expired edge.");
     if (index < 0 || index > 1) throw std::runtime_error("Invalid vertex index.");
     if (vertices_.size() != 2) throw std::runtime_error("Edge does not have 2 vertices.");
-    return *std::next(vertices_.begin(), index);
+    return (*std::next(vertices_.begin(), index)).lock();
 }
 
 bool Edge::is_expired() const
@@ -273,9 +283,9 @@ void Edge::update_boundary_state()
     if (changed_boundary_state) 
     {
         // update connected vertices
-        for (const std::shared_ptr<Vertex>& vertex : vertices_)
+        for (const std::weak_ptr<Vertex>& vertex : vertices_)
         {
-            vertex->check_if_update_search_tree();
+            vertex.lock()->check_if_update_search_tree();
         }
     }
 }
@@ -286,12 +296,12 @@ bool Edge::is_non_manifold() const
     return faces_.size() > 2;
 }
 
-const std::shared_ptr<Surface>& Edge::get_surface() const
+std::shared_ptr<Surface> Edge::get_surface() const
 {
-    return surface_;
+    return surface_.lock();
 }
 
-std::vector<std::shared_ptr<Face>> Edge::get_faces() const
+std::vector<std::weak_ptr<Face>> Edge::get_faces() const
 {
     // read lock
     std::shared_lock lock(rwlock_faces_);
@@ -329,10 +339,10 @@ bool Edge::intersects_edge(const std::shared_ptr<Vertex>& vertex0, const std::sh
     if (vertices_[0] == vertex0 || vertices_[0] == vertex1 || vertices_[1] == vertex0 || vertices_[1] == vertex1) return false;
 
     // get surface coordinates
-    const Eigen::Vector2d& p1 = vertex0->get_surface_coordinate(surface_);
-    const Eigen::Vector2d& p2 = vertex1->get_surface_coordinate(surface_);
-    const Eigen::Vector2d& q1 = vertices_[0]->get_surface_coordinate(surface_);
-    const Eigen::Vector2d& q2 = vertices_[1]->get_surface_coordinate(surface_);
+    const Eigen::Vector2d& p1 = vertex0->get_surface_coordinate(surface_.lock());
+    const Eigen::Vector2d& p2 = vertex1->get_surface_coordinate(surface_.lock());
+    const Eigen::Vector2d& q1 = vertices_[0].lock()->get_surface_coordinate(surface_.lock());
+    const Eigen::Vector2d& q2 = vertices_[1].lock()->get_surface_coordinate(surface_.lock());
     
     // check if edge intersects
     return segments_intersect(p1, p2, q1, q2);
