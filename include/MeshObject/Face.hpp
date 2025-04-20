@@ -49,12 +49,12 @@ public:
 
     const int& get_id() const;
     const Eigen::Vector3d& get_center() const;
-    const std::vector<std::shared_ptr<Vertex>>& get_vertices() const;
-    std::vector<std::shared_ptr<InteriorPoint>> get_interior_points() const;
-    const std::vector<std::shared_ptr<Edge>>& get_edges() const;
-    const std::shared_ptr<Vertex>& get_vertex(int index) const;
-    const std::shared_ptr<Surface>& get_surface() const;
-    const std::shared_ptr<Vertex>& get_first_vertex() const;
+    const std::vector<std::weak_ptr<Vertex>>& get_vertices() const;
+    const std::vector<std::weak_ptr<InteriorPoint>>& get_interior_points() const;
+    const std::vector<std::weak_ptr<Edge>>& get_edges() const;
+    std::shared_ptr<Vertex> get_vertex(int index) const;
+    std::shared_ptr<Surface> get_surface() const;
+    std::shared_ptr<Vertex> get_first_vertex() const;
     const Eigen::Vector3d& get_min() const;
     const Eigen::Vector3d& get_max() const;
     double get_area() const;
@@ -93,14 +93,14 @@ private:
     double area_;
 
     int id_;
-    std::shared_ptr<Storage> storage_;
+    std::weak_ptr<Storage> storage_;
 
-    std::vector<std::shared_ptr<Vertex>> vertices_;
-    std::vector<std::shared_ptr<Edge>> edges_;
-    std::vector<std::shared_ptr<InteriorPoint>> interior_points_;
-    std::shared_ptr<Surface> surface_;
+    std::vector<std::weak_ptr<Vertex>> vertices_;
+    std::vector<std::weak_ptr<Edge>> edges_;
+    std::vector<std::weak_ptr<InteriorPoint>> interior_points_;
+    std::weak_ptr<Surface> surface_;
 
-    std::shared_ptr<Vertex> first_vertex_;
+    std::weak_ptr<Vertex> first_vertex_;
 };
 
 bool operator<(const std::shared_ptr<Face>& lhs, const std::shared_ptr<Face>& rhs);

@@ -483,7 +483,18 @@ std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> Vertex::compu
     std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> connected_interior_points;
     for (const std::weak_ptr<Face>& face : faces_)
     {
-        connected_interior_points.insert(face.lock()->get_interior_points().begin(), face.lock()->get_interior_points().end());
+        for (const std::weak_ptr<InteriorPoint>& interior_point : face.lock()->get_interior_points())
+        {
+            auto interior_point_locked = interior_point.lock();
+
+            // read lock
+            std::shared_lock<std::shared_mutex> lock(interior_point_locked->rwlock_lifecycle_);
+
+            // skip if interior point is expired
+            if (interior_point_locked->is_expired()) continue;
+
+            connected_interior_points.insert(interior_point_locked);
+        }
     }
 
     // return

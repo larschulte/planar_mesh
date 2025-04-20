@@ -25,7 +25,7 @@ void Face::initialize_(const std::shared_ptr<Storage>& storage, const std::share
     storage_ = storage;
 
     // get id
-    id_ = storage_->get_next_face_id();
+    id_ = storage_.lock()->get_next_face_id();
 
     // add to vertices
     vertices_.push_back(vertex0);
@@ -51,7 +51,7 @@ void Face::initialize_(const std::shared_ptr<Storage>& storage, const std::share
     {
         // connect surface
         surface_ = surface;
-        surface_->connect(shared_from_this());
+        surface_.lock()->connect(shared_from_this());
     }
 
     // compute min and max
@@ -87,8 +87,8 @@ void Face::initialize_(const std::shared_ptr<Storage>& storage, const std::share
     center_ = (pos0 + pos1 + pos2) / 3;
 
     // add to search
-    // storage_->add_searchable_face(shared_from_this());
-    storage_->add_to_set_of_faces_to_update_bvh_tree(shared_from_this());
+    // storage_.lock()->add_searchable_face(shared_from_this());
+    storage_.lock()->add_to_set_of_faces_to_update_bvh_tree(shared_from_this());
 
     // log
     if (settings_.log.initialize) std::cout << "Face " << id_ << " created between vertex " << vertex0->get_id() << ", vertex " << vertex1->get_id() << " and vertex " << vertex2->get_id() << std::endl;
@@ -117,7 +117,7 @@ void Face::initialize_(
     storage_ = storage;
 
     // get id
-    id_ = storage_->get_next_face_id();
+    id_ = storage_.lock()->get_next_face_id();
 
     // add to vertices
     vertices_.push_back(vertex0);
@@ -143,7 +143,7 @@ void Face::initialize_(
     {
         // connect surface
         surface_ = surface;
-        surface_->connect(shared_from_this());
+        surface_.lock()->connect(shared_from_this());
     }
 
     // compute min and max
@@ -174,8 +174,8 @@ void Face::initialize_(
     center_ = (pos0 + pos1 + pos2) / 3;
 
     // add to search
-    // storage_->add_searchable_face(shared_from_this());
-    storage_->add_to_set_of_faces_to_update_bvh_tree(shared_from_this());
+    // storage_.lock()->add_searchable_face(shared_from_this());
+    storage_.lock()->add_to_set_of_faces_to_update_bvh_tree(shared_from_this());
 
     // log
     if (settings_.log.initialize) std::cout << "Face " << id_ << " created between vertex " << vertex0->get_id() << ", vertex " << vertex1->get_id() << " and vertex " << vertex2->get_id() << std::endl;
@@ -202,16 +202,16 @@ void Face::delete_()
     // surface (disconnect)
     {
         // disconnect surface
-        surface_->disconnect(shared_from_this());
+        surface_.lock()->disconnect(shared_from_this());
 
         // clear surface
-        surface_ = nullptr;
+        surface_.reset();
     }
 
     // vertices (disconnect)
     {
         // disconnect vertices
-        for (const auto& vertex : vertices_) vertex->disconnect(shared_from_this());
+        for (const auto& vertex : vertices_) vertex.lock()->disconnect(shared_from_this());
 
         // clear vertices
         vertices_.clear();
@@ -220,7 +220,7 @@ void Face::delete_()
     // edges (disconnect)
     {
         // disconnect edges
-        for (const auto& edge : edges_) edge->disconnect(shared_from_this());
+        for (const auto& edge : edges_) edge.lock()->disconnect(shared_from_this());
 
         // clear edges
         edges_.clear();
@@ -232,7 +232,7 @@ void Face::delete_()
         std::unique_lock<std::shared_mutex> lock(rwlock_interior_points_);
 
         // delete interior points
-        for (const auto& interior_point : interior_points_) storage_->add_interior_point_to_be_deleted(interior_point);
+        for (const auto& interior_point : interior_points_) storage_.lock()->add_interior_point_to_be_deleted(interior_point.lock());
 
         // clear interior points
         interior_points_.clear();
@@ -241,7 +241,7 @@ void Face::delete_()
     // update tree
     {
         // add to affected faces set
-        storage_->add_to_set_of_faces_to_update_bvh_tree(shared_from_this());
+        storage_.lock()->add_to_set_of_faces_to_update_bvh_tree(shared_from_this());
     }
 
     // log
@@ -281,9 +281,9 @@ void Face::temp_initialize(const Eigen::Vector3d& end_point)
 void Face::un_add_face()
 {
     // get copy of vertices
-    std::shared_ptr<Vertex> vertex0 = *vertices_.begin();
-    std::shared_ptr<Vertex> vertex1 = *std::next(vertices_.begin(), 1);
-    std::shared_ptr<Vertex> vertex2 = *std::next(vertices_.begin(), 2);
+    std::shared_ptr<Vertex> vertex0 = (*vertices_.begin()).lock();
+    std::shared_ptr<Vertex> vertex1 = (*std::next(vertices_.begin(), 1)).lock();
+    std::shared_ptr<Vertex> vertex2 = (*std::next(vertices_.begin(), 2)).lock();
 
     // set can self destruct
     vertex0->set_can_self_destruct(false);
@@ -294,7 +294,7 @@ void Face::un_add_face()
     vertex2->get_edge(vertex0)->set_can_self_destruct(false);
 
     // delete face
-    storage_->delete_face(shared_from_this());
+    storage_.lock()->delete_face(shared_from_this());
 
     // set can self destruct
     vertex0->set_can_self_destruct(true);
@@ -315,39 +315,37 @@ const Eigen::Vector3d& Face::get_center() const
     return center_;
 }
 
-const std::vector<std::shared_ptr<Vertex>>& Face::get_vertices() const
+const std::vector<std::weak_ptr<Vertex>>& Face::get_vertices() const
 {
     return vertices_;
 }
 
-std::vector<std::shared_ptr<InteriorPoint>> Face::get_interior_points() const
+const std::vector<std::weak_ptr<InteriorPoint>>& Face::get_interior_points() const
 {
-    // read lock
-    std::shared_lock<std::shared_mutex> lock(rwlock_interior_points_);
     return interior_points_;
 }
 
-const std::vector<std::shared_ptr<Edge>>& Face::get_edges() const
+const std::vector<std::weak_ptr<Edge>>& Face::get_edges() const
 {
     return edges_;
 }
 
-const std::shared_ptr<Vertex>& Face::get_vertex(int index) const
+std::shared_ptr<Vertex> Face::get_vertex(int index) const
 {
     if (index < 0 || index > 2) throw std::runtime_error("Invalid index for vertex.");
     auto it = vertices_.begin();
     for (int i = 0; i < index; i++) it++;
-    return *it;
+    return (*it).lock();
 }
 
-const std::shared_ptr<Vertex>& Face::get_first_vertex() const
+std::shared_ptr<Vertex> Face::get_first_vertex() const
 {
-    return first_vertex_;
+    return first_vertex_.lock();
 }
 
-const std::shared_ptr<Surface>& Face::get_surface() const
+std::shared_ptr<Surface> Face::get_surface() const
 {
-    return surface_;
+    return surface_.lock();
 }
 
 const Eigen::Vector3d& Face::get_min() const
@@ -382,7 +380,7 @@ bool Face::is_searchable() const
 
 bool Face::has_vertex(const std::shared_ptr<Vertex>& vertex) const
 {
-    for (const std::shared_ptr<Vertex>& vertex_ : vertices_) if (vertex_ == vertex) return true;
+    for (const std::weak_ptr<Vertex>& vertex_ : vertices_) if (vertex_.lock() == vertex) return true;
     return false;
 }
 
@@ -421,9 +419,9 @@ Eigen::Vector3d Face::compute_intersection_point(const Eigen::Vector3d& origin, 
 {
     // get first Vertex in vertices_
     auto it = vertices_.begin();
-    std::shared_ptr vertex0 = *(it++);
-    std::shared_ptr vertex1 = *(it++);
-    std::shared_ptr vertex2 = *(it++);
+    std::shared_ptr vertex0 = (*(it++)).lock();
+    std::shared_ptr vertex1 = (*(it++)).lock();
+    std::shared_ptr vertex2 = (*(it++)).lock();
     const Eigen::Vector3d& v0 = vertex0->get_position();
     const Eigen::Vector3d& v1 = vertex1->get_position();
     const Eigen::Vector3d& v2 = vertex2->get_position();
@@ -462,7 +460,7 @@ void Face::connect(const std::shared_ptr<InteriorPoint>& interior_point)
         std::unique_lock<std::shared_mutex> lock(rwlock_interior_points_);
 
         // skip if already connected
-        for (const std::shared_ptr<InteriorPoint>& interior_point_ : interior_points_) if (interior_point_ == interior_point) return;
+        for (const std::weak_ptr<InteriorPoint>& interior_point_ : interior_points_) if (interior_point_.lock() == interior_point) return;
 
         // connect
         interior_points_.push_back(interior_point);
@@ -490,19 +488,19 @@ void Face::disconnect(const std::shared_ptr<InteriorPoint>& interior_point)
 bool Face::is_connected_to_boundary_edges(std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& all_connected_faces, std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& all_connected_edges) const
 {
     // check for each edge
-    for (const std::shared_ptr<Edge>& edge : get_edges())
+    for (const std::weak_ptr<Edge>& edge : get_edges())
     {
         // add to visited edges
-        const bool inserted = all_connected_edges.insert(edge).second;
+        const bool inserted = all_connected_edges.insert(edge.lock()).second;
 
         // skip if edge is already visited
         if (!inserted) continue;
 
         // return true if edge is boundary
-        if (edge->is_boundary()) return true;
+        if (edge.lock()->is_boundary()) return true;
         
         // else, recursively check connected faces
-        if (edge->is_connected_to_boundary_edges(all_connected_faces, all_connected_edges)) return true;        
+        if (edge.lock()->is_connected_to_boundary_edges(all_connected_faces, all_connected_edges)) return true;        
     }
 
     return false;
