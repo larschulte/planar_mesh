@@ -21,7 +21,7 @@ void InteriorPoint::initialize_(const std::shared_ptr<Storage>& storage, const s
     storage_ = storage;
 
     // get id
-    id_ = storage_->get_next_interior_point_id();
+    id_ = storage_.lock()->get_next_interior_point_id();
 
     // store
     position_ = generic_point->get_position();
@@ -39,7 +39,7 @@ void InteriorPoint::initialize_(const std::shared_ptr<Storage>& storage, const s
 
         // connect to surface
         surface_ = surface;
-        surface_->connect(shared_from_this());
+        surface_.lock()->connect(shared_from_this());
     }
 
     // connect to face
@@ -47,7 +47,7 @@ void InteriorPoint::initialize_(const std::shared_ptr<Storage>& storage, const s
     {
         // connect to face
         face_ = face;
-        face_->connect(shared_from_this());
+        face_.lock()->connect(shared_from_this());
     }
 
     // log
@@ -66,7 +66,7 @@ void InteriorPoint::initialize_(const std::shared_ptr<Storage>& storage, const s
     storage_ = storage;
 
     // get id
-    id_ = storage_->get_next_interior_point_id();
+    id_ = storage_.lock()->get_next_interior_point_id();
 
     // store
     position_ = generic_point->get_position();
@@ -84,7 +84,7 @@ void InteriorPoint::initialize_(const std::shared_ptr<Storage>& storage, const s
 
         // connect to surface
         surface_ = surface;
-        surface_->connect(shared_from_this());
+        surface_.lock()->connect(shared_from_this());
     }
 
     // connect to face
@@ -92,7 +92,7 @@ void InteriorPoint::initialize_(const std::shared_ptr<Storage>& storage, const s
     {
         // connect to face
         vertex_ = vertex;
-        vertex_->connect(shared_from_this());
+        vertex_.lock()->connect(shared_from_this());
     }
 
     // log
@@ -116,7 +116,7 @@ void InteriorPoint::delete_()
     // subscribers (disconnect)
     {
         // lock, copy and clear
-        std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> interior_point_distance_subscribers_copy;
+        std::unordered_set<std::weak_ptr<Vertex>, MeshObjectHash> interior_point_distance_subscribers_copy;
         {
             std::unique_lock<std::shared_mutex> lock(rwlock_interior_point_distance_subscribers_);
             interior_point_distance_subscribers_copy = interior_point_distance_subscribers_;
@@ -124,39 +124,45 @@ void InteriorPoint::delete_()
         }
 
         // disconnect
-        for (const auto& interior_point_subscriber : interior_point_distance_subscribers_copy) interior_point_subscriber->delete_interior_point_distance_publisher(shared_from_this());
+        for (const auto& interior_point_subscriber : interior_point_distance_subscribers_copy) 
+        {
+            interior_point_subscriber.lock()->delete_interior_point_distance_publisher(shared_from_this());
+        }
 
         // add vertex to update radius
-        for (const auto& interior_point_subscriber : interior_point_distance_subscribers_copy) storage_->add_vertex_that_have_deleted_publishers(interior_point_subscriber);
+        for (const auto& interior_point_subscriber : interior_point_distance_subscribers_copy)
+        {
+            storage_.lock()->add_vertex_that_have_deleted_publishers(interior_point_subscriber.lock());
+        } 
     }
 
     // surface (disconnect)
     {
         // disconnect from surface
-        surface_->disconnect(shared_from_this());
+        surface_.lock()->disconnect(shared_from_this());
 
         // clear
-        surface_ = nullptr;
+        surface_.reset();
     }
 
     // faces (disconnect)
-    if (face_)
+    if (face_.lock())
     {
         // disconnect from faces
-        face_->disconnect(shared_from_this());
+        face_.lock()->disconnect(shared_from_this());
 
         // clear
-        face_ = nullptr;
+        face_.reset();
     }
 
     // vertex (disconnect)
-    if (vertex_)
+    if (vertex_.lock())
     {
         // disconnect from vertices
-        vertex_->disconnect(shared_from_this());
+        vertex_.lock()->disconnect(shared_from_this());
 
         // clear
-        vertex_ = nullptr;
+        vertex_.reset();
     }
     
     // create generic point
@@ -169,7 +175,7 @@ void InteriorPoint::delete_()
         }
         else
         {
-            storage_->add_to_queue(shared_from_this());
+            storage_.lock()->add_to_queue(shared_from_this());
         }
     }
 
@@ -218,9 +224,9 @@ const Eigen::Vector3d& InteriorPoint::get_direction() const
     return direction_;
 }
 
-const std::shared_ptr<Surface>& InteriorPoint::get_surface() const
+std::shared_ptr<Surface> InteriorPoint::get_surface() const
 {    
-    return surface_;
+    return surface_.lock();
 }
 
 const double& InteriorPoint::get_radius() const

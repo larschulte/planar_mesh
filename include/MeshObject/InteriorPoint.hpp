@@ -37,7 +37,7 @@ public:
     const Eigen::Vector3d& get_origin() const;
     const double& get_distance_travelled() const;
     const Eigen::Vector3d& get_direction() const;
-    const std::shared_ptr<Surface>& get_surface() const;
+    std::shared_ptr<Surface> get_surface() const;
     const double& get_radius() const;
     bool is_expired() const;
 
@@ -71,11 +71,11 @@ private:
     bool do_not_add_back_due_to_seed_surface_ = false;
 
     int id_;
-    std::shared_ptr<Storage> storage_;
+    std::weak_ptr<Storage> storage_;
 
-    std::shared_ptr<Face> face_;
-    std::shared_ptr<Vertex> vertex_;
-    std::shared_ptr<Surface> surface_;
+    std::weak_ptr<Face> face_;
+    std::weak_ptr<Vertex> vertex_;
+    std::weak_ptr<Surface> surface_;
 
     Eigen::Vector3d position_;
     Eigen::Vector3d origin_;
@@ -93,7 +93,7 @@ private:
 
     Eigen::Vector3d projected_position_ = Eigen::Vector3d::Zero();
 
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> interior_point_distance_subscribers_;
+    std::unordered_set<std::weak_ptr<Vertex>, MeshObjectHash> interior_point_distance_subscribers_;
 
 public:
     double weight_;
