@@ -34,6 +34,7 @@ public:
 
     const int& get_id() const;
     std::shared_ptr<Vertex> get_vertex(int index) const;
+    std::weak_ptr<Vertex> get_vertex_weak_ptr(int index) const;
     std::shared_ptr<Surface> get_surface() const;
     std::vector<std::weak_ptr<Face>> get_faces() const;
     const Eigen::Vector3d& get_center() const;

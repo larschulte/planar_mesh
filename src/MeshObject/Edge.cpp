@@ -232,6 +232,14 @@ std::shared_ptr<Vertex> Edge::get_vertex(int index) const
     return (*std::next(vertices_.begin(), index)).lock();
 }
 
+std::weak_ptr<Vertex> Edge::get_vertex_weak_ptr(int index) const
+{
+    if (is_expired_) throw std::runtime_error("Accessing expired edge.");
+    if (index < 0 || index > 1) throw std::runtime_error("Invalid vertex index.");
+    if (vertices_.size() != 2) throw std::runtime_error("Edge does not have 2 vertices.");
+    return vertices_[index];
+}
+
 bool Edge::is_expired() const
 {
     return is_expired_;

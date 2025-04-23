@@ -109,7 +109,13 @@ void Vertex::delete_()
         }
 
         // disconnect
-        for (const auto& vertex_point_publisher : vertex_point_distance_publishers_copy) vertex_point_publisher.lock()->delete_vertex_point_distance_subscriber(shared_from_this());
+        for (const auto& vertex_point_publisher : vertex_point_distance_publishers_copy) 
+        {
+            if (vertex_point_publisher.lock())
+            {
+                vertex_point_publisher.lock()->delete_vertex_point_distance_subscriber(shared_from_this());
+            }
+        }
     }
 
     // publishers (disconnect)
@@ -123,7 +129,13 @@ void Vertex::delete_()
         }
 
         // disconnect
-        for (const auto& interior_point_publisher : interior_point_distance_publishers_copy) interior_point_publisher.lock()->delete_interior_point_distance_subscriber(shared_from_this());
+        for (const auto& interior_point_publisher : interior_point_distance_publishers_copy) 
+        {
+            if (interior_point_publisher.lock())
+            {
+                interior_point_publisher.lock()->delete_interior_point_distance_subscriber(shared_from_this());
+            }
+        }
     }
 
     // subscribers (disconnect)
@@ -137,10 +149,14 @@ void Vertex::delete_()
         }
 
         // disconnect
-        for (const auto& vertex_point_subscriber : vertex_point_distance_subscribers_copy) vertex_point_subscriber.lock()->delete_vertex_point_distance_publisher(shared_from_this());
-
-        // add vertex to list to update
-        for (const auto& vertex_point_subscriber : vertex_point_distance_subscribers_copy) storage_.lock()->add_vertex_that_have_deleted_publishers(vertex_point_subscriber.lock());
+        for (const auto& vertex_point_subscriber : vertex_point_distance_subscribers_copy) 
+        {
+            if (vertex_point_subscriber.lock())
+            {
+                vertex_point_subscriber.lock()->delete_vertex_point_distance_publisher(shared_from_this());
+                storage_.lock()->add_vertex_that_have_deleted_publishers(vertex_point_subscriber.lock());
+            }
+        }
     }
 
     // surface (disconnect)
@@ -1297,8 +1313,11 @@ void Vertex::try_break_edges()
         if (edge_locked->is_expired()) continue; // could turn expired if below deletes an edge which then deletes a face
 
         const double edge_length = edge_locked->get_length();
-        const double radius0 = edge_locked->get_vertex(0)->get_radius();
-        const double radius1 = edge_locked->get_vertex(1)->get_radius();
+        std::shared_ptr<Vertex> vertex0 = edge_locked->get_vertex_weak_ptr(0).lock();
+        std::shared_ptr<Vertex> vertex1 = edge_locked->get_vertex_weak_ptr(1).lock();
+        if (!vertex0 || !vertex1) continue; // skip if nullptr
+        const double radius0 = vertex0->get_radius();
+        const double radius1 = vertex1->get_radius();
         if (!settings_.edge_is_short_enough(edge_length, radius0, radius1))
         {
             edges_to_delete.insert(edge_locked);
