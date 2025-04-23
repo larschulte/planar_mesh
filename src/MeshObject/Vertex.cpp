@@ -528,7 +528,8 @@ bool Vertex::is_boundary() const
 
 bool Vertex::is_searchable() const
 {
-    return node != nullptr;
+    if (node.lock()) return true;
+    else return false;
 }
 
 bool Vertex::is_deleting() const

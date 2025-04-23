@@ -816,7 +816,7 @@ void Storage::add_searchable_vertex(const std::shared_ptr<Vertex>& vertex)
 void Storage::remove_searchable_vertex(const std::shared_ptr<Vertex>& vertex)
 {
     // get node
-    std::shared_ptr<RRSNode> node = vertex->node;
+    std::shared_ptr<RRSNode> node = vertex->node.lock();
 
     // skip if node does not exist
     if (node == nullptr) return;

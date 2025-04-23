@@ -159,25 +159,25 @@ RRSNode::RRSNode()
 
 void RRSNode::recursive_expand_parent_box()
 {
-    if (parent_)
+    if (parent_.lock())
     {
         // expanded
-        const bool expanded = parent_->box_.expand_box(box_);
+        const bool expanded = parent_.lock()->box_.expand_box(box_);
 
         // recursive update
         if (expanded)
         {
-            parent_->recursive_expand_parent_box();
+            parent_.lock()->recursive_expand_parent_box();
         }
     }
 }
 
 void RRSNode::recursive_shrink_parent_box()
 {
-    if (parent_)
+    if (parent_.lock())
     {
         // old parent box
-        RRSBoundingBox old_parent_box = parent_->box_;
+        RRSBoundingBox old_parent_box = parent_.lock()->box_;
 
         // new parent box
         RRSBoundingBox new_parent_box = RRSBoundingBox();
@@ -185,24 +185,24 @@ void RRSNode::recursive_shrink_parent_box()
         // expand new parent box
         {
             // // read lock
-            // std::shared_lock<std::shared_mutex> lock(parent_->rwlock_node_);
+            // std::shared_lock<std::shared_mutex> lock(parent_.lock()->rwlock_node_);
 
             // expand left box
-            if (parent_->left_)
+            if (parent_.lock()->left_)
             {
                 // // read lock
-                // std::shared_lock<std::shared_mutex> lock_left(parent_->left_->rwlock_node_);
+                // std::shared_lock<std::shared_mutex> lock_left(parent_.lock()->left_->rwlock_node_);
 
-                new_parent_box.expand_box_no_return(parent_->left_->box_);
+                new_parent_box.expand_box_no_return(parent_.lock()->left_->box_);
             }
 
             // expand right box
-            if (parent_->right_)
+            if (parent_.lock()->right_)
             {
                 // // read lock
-                // std::shared_lock<std::shared_mutex> lock_right(parent_->right_->rwlock_node_);
+                // std::shared_lock<std::shared_mutex> lock_right(parent_.lock()->right_->rwlock_node_);
 
-                new_parent_box.expand_box_no_return(parent_->right_->box_);
+                new_parent_box.expand_box_no_return(parent_.lock()->right_->box_);
             }
         }
         
@@ -217,8 +217,8 @@ void RRSNode::recursive_shrink_parent_box()
         // recursive update
         if (shrunk) 
         {
-            parent_->box_ = new_parent_box;
-            parent_->recursive_shrink_parent_box();
+            parent_.lock()->box_ = new_parent_box;
+            parent_.lock()->recursive_shrink_parent_box();
         }
     }
 }
@@ -252,7 +252,7 @@ std::shared_ptr<RRSNode> RRSTree::find_best_node(const std::shared_ptr<RRSNode>&
         if (inherited_cost > best_cost) continue;
 
         // cost to add to the node directly if the node is leaf and does not have boundary vertex
-        if (current_node->isLeaf_ && current_node->boundary_vertex_ == nullptr)
+        if (current_node->isLeaf_ && current_node->boundary_vertex_.lock() == nullptr)
         {
             // total cost
             double cost = inherited_cost;
@@ -346,10 +346,10 @@ void RRSNode::node_add_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
     std::unique_lock<std::shared_mutex> lock(rwlock_node_);
 
     // if node is leaf, and do not have boundary vertex, simply add boundary_vertex to node
-    if (isLeaf_ && boundary_vertex_ == nullptr)
+    if (isLeaf_ && boundary_vertex_.lock() == nullptr)
     {
         boundary_vertex_ = boundary_vertex;
-        boundary_vertex_->node = shared_from_this();
+        boundary_vertex_.lock()->node = shared_from_this();
         box_.expand_box_no_return(boundary_vertex->get_min(), boundary_vertex->get_max());
         recursive_expand_parent_box();
         return;
@@ -360,7 +360,7 @@ void RRSNode::node_add_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
     {
         new_leaf_node->box_.expand_box_no_return(boundary_vertex->get_min(), boundary_vertex->get_max());
         new_leaf_node->boundary_vertex_ = boundary_vertex;
-        new_leaf_node->boundary_vertex_->node = new_leaf_node;
+        new_leaf_node->boundary_vertex_.lock()->node = new_leaf_node;
     }
     
     // create duplicate node
@@ -372,7 +372,7 @@ void RRSNode::node_add_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
         if (isLeaf_)
         {
             duplicate_node->boundary_vertex_ = boundary_vertex_;
-            if (duplicate_node->boundary_vertex_) duplicate_node->boundary_vertex_->node = duplicate_node;
+            if (duplicate_node->boundary_vertex_.lock()) duplicate_node->boundary_vertex_.lock()->node = duplicate_node;
         }
         else
         {
@@ -417,7 +417,7 @@ void RRSNode::node_delete_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
     if (!isLeaf_)
     {
         // obtain new node and delete vertex from it
-        std::shared_ptr<RRSNode> new_node = boundary_vertex->node;
+        std::shared_ptr<RRSNode> new_node = boundary_vertex->node.lock();
 
         // remove from node
         new_node->node_delete_vertex(boundary_vertex);
@@ -434,10 +434,10 @@ void RRSNode::node_delete_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
     // actual deletion
     {
         // remove node from vertices
-        boundary_vertex->node = nullptr;
+        boundary_vertex->node.reset();
 
         // remove vertex from node
-        boundary_vertex_ = nullptr;
+        boundary_vertex_.reset();
 
         // reset box
         box_ = RRSBoundingBox(); // here
@@ -450,16 +450,16 @@ void RRSNode::node_delete_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
 void RRSNode::node_delete_self()
 {
     // skip if contains vertex (after the vertex is deleted, the node could be given another vertex)
-    if (boundary_vertex_) return;
+    if (boundary_vertex_.lock()) return;
 
     // skip if is branch now (after storing antoher vertex, the node could become a branch node)
     if (!isLeaf_) return;
 
     // throw if have no parent (unless this is truely root node, in which case i should implement something)
-    if (!parent_) throw std::runtime_error("node_delete_self, Node has no parent.");
+    if (!parent_.lock()) throw std::runtime_error("node_delete_self, Node has no parent.");
 
     // remove from parent and simplify tree
-    parent_->node_delete_child(shared_from_this());
+    parent_.lock()->node_delete_child(shared_from_this());
 }
 
 void RRSNode::node_delete_child(const std::shared_ptr<RRSNode> child)
@@ -468,13 +468,13 @@ void RRSNode::node_delete_child(const std::shared_ptr<RRSNode> child)
     
     // throw if have no parent (unless this is truely root node, in which case i should implement something)
     // if (!parent_) throw std::runtime_error("node_delete_child, Parent node has no parent.");
-    if (!parent_) return; // this is root node
+    if (!parent_.lock()) return; // this is root node
     
     // throw if any left or right is null (since this function is called by children)
     if (!left_ || !right_) throw std::runtime_error("One or more Child is null.");
 
     // get grandparent
-    std::shared_ptr<RRSNode> grandparent = parent_;
+    std::shared_ptr<RRSNode> grandparent = parent_.lock();
 
     // get other child
     std::shared_ptr<RRSNode> other_child;
@@ -508,7 +508,7 @@ void RRSNode::node_delete_child(const std::shared_ptr<RRSNode> child)
         }
 
         // parent -> grandparent
-        parent_ = nullptr;
+        parent_.reset();
     }
 
     // disconnect child and other child
@@ -518,8 +518,8 @@ void RRSNode::node_delete_child(const std::shared_ptr<RRSNode> child)
         right_ = nullptr;
 
         // children -> parent
-        child->parent_ = nullptr;
-        other_child->parent_ = nullptr;
+        child->parent_.reset();
+        other_child->parent_.reset();
     }
 
     // connect other child with grandparent
@@ -598,7 +598,7 @@ RRSReturnType RRSNode::node_reverse_radius_search(const std::shared_ptr<GenericP
     else
     {        
         // store
-        search_results.push_back(boundary_vertex_);
+        search_results.push_back(boundary_vertex_.lock());
 
         // return
         return RRSReturnType::INTERSECTED;
@@ -614,7 +614,7 @@ void RRSNode::node_flattern(std::vector<std::shared_ptr<Vertex>>& flatten_list)
     }
     else
     {
-        flatten_list.push_back(boundary_vertex_);
+        flatten_list.push_back(boundary_vertex_.lock());
     }
 }
 
@@ -645,7 +645,7 @@ void RRSNode::node_print(int level) const
     }
     else
     {
-        std::cout << "Level: " <<  level << " | ID: " << boundary_vertex_->get_id() << " | Position: " << boundary_vertex_->get_position().transpose() << " | Radius: " << boundary_vertex_->get_radius() << std::endl;
+        std::cout << "Level: " <<  level << " | ID: " << boundary_vertex_.lock()->get_id() << " | Position: " << boundary_vertex_.lock()->get_position().transpose() << " | Radius: " << boundary_vertex_.lock()->get_radius() << std::endl;
         std::cout << std::endl;
     }
 }
@@ -658,7 +658,7 @@ RRSTree::RRSTree() : tree_size(0), leaf_size(1)
 void RRSTree::tree_add_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
 {   
     // get vertex's node
-    std::shared_ptr<RRSNode> node = boundary_vertex->node;
+    std::shared_ptr<RRSNode> node = boundary_vertex->node.lock();
 
     // skip if vertex already in tree
     if (node != nullptr) return;
@@ -676,7 +676,7 @@ void RRSTree::tree_add_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
 void RRSTree::tree_delete_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
 {
     // get vertex's node
-    std::shared_ptr<RRSNode> node = boundary_vertex->node;
+    std::shared_ptr<RRSNode> node = boundary_vertex->node.lock();
 
     // skip if vertex not in tree
     if (node == nullptr) return;
@@ -691,7 +691,7 @@ void RRSTree::tree_delete_vertex(const std::shared_ptr<Vertex>& boundary_vertex)
 void RRSTree::tree_update_vertex_box(const std::shared_ptr<Vertex>& boundary_vertex)
 {
     // get vertex's node
-    std::shared_ptr<RRSNode> node = boundary_vertex->node;
+    std::shared_ptr<RRSNode> node = boundary_vertex->node.lock();
 
     // skip if vertex not in tree
     if (node == nullptr) return;

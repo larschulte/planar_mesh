@@ -60,11 +60,11 @@ class RRSNode : public std::enable_shared_from_this<RRSNode>
 public:
     unsigned int id_;
     RRSBoundingBox box_;
-    std::shared_ptr<RRSNode> parent_;
+    std::weak_ptr<RRSNode> parent_;
     std::shared_ptr<RRSNode> left_;
     std::shared_ptr<RRSNode> right_;
     std::atomic<bool> isLeaf_ = true;
-    std::shared_ptr<Vertex> boundary_vertex_;
+    std::weak_ptr<Vertex> boundary_vertex_;
 
     bool locked_children = false;
 
