@@ -13,6 +13,7 @@
 
 #include <omp.h>
 #include "utilities/queue_or_stack.hpp"
+#include <utility>
 
 Settings Storage::settings_;
 
@@ -734,6 +735,10 @@ void Storage::remove_all_surfaces()
     add_or_remove_faces_from_bvh_tree();
     // add_or_remove_edges_from_edgeBVH_tree();
 
+    // clear all storage vectors
+    while (!main_queue_.empty()) main_queue_.pop();
+    clear_all_queues();
+
     // print rrs tree size
     std::cout << "rrs tree size: " << rrs_tree_.get_size() << std::endl;
 
@@ -743,6 +748,87 @@ void Storage::remove_all_surfaces()
     std::cout << "face size: " << faces_.size() << std::endl;
     std::cout << "interior size: " << interior_points_.size() << std::endl;
     std::cout << "surface size: " << surfaces_.size() << std::endl;
+}
+
+void Storage::clear_all_queues()
+{
+    // std::queue<std::shared_ptr<GenericPoint>> main_queue_;
+    // std::queue<std::shared_ptr<GenericPoint>> main_repeated_queue_;
+    // std::vector<queue_or_stack<std::shared_ptr<GenericPoint>>> smaller_queues_;
+    // std::vector<queue_or_stack<std::shared_ptr<GenericPoint>>> smaller_repeated_queues_;
+    // std::vector<queue_or_stack<std::shared_ptr<GenericPoint>>> smaller_abort_queues_;
+    // std::vector<std::queue<std::shared_ptr<Vertex>>> smaller_add_searchable_vertices_queue_;
+    // std::vector<std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>> smaller_set_of_vertices_to_update_rrs_tree;
+    // std::vector<std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>> smaller_set_of_faces_to_update_rrs_tree;
+    // std::vector<std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>> thread_vertices_to_be_deleted_;
+    // std::vector<std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>> thread_edges_to_be_deleted_;
+    // std::vector<std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>> thread_faces_to_be_deleted_;
+    // std::vector<std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash>> thread_interior_points_to_be_deleted_;
+    // std::vector<std::unordered_set<std::shared_ptr<RRSNode>, RRSNodeHasher, RRSNodeEqual>> thread_nodes_to_be_deleted_;
+    // std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_to_be_split_;
+    // std::vector<std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>> thread_vertices_that_have_deleted_publishers_;
+    // std::vector<std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>> thread_vertices_that_have_added_publishers_;
+    // std::vector<std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>> thread_vertices_that_have_changed_box_;
+
+    // while (!main_queue_.empty()) main_queue_.pop();
+    while (!main_repeated_queue_.empty()) main_repeated_queue_.pop();
+    for (queue_or_stack<std::shared_ptr<GenericPoint>>& queue : smaller_queues_)
+    {
+        while (!queue.empty()) queue.pop();
+    }
+    for (queue_or_stack<std::shared_ptr<GenericPoint>>& repeated_queue : smaller_repeated_queues_)
+    {
+        while (!repeated_queue.empty()) repeated_queue.pop();
+    }
+    for (queue_or_stack<std::shared_ptr<GenericPoint>>& abort_queue : smaller_abort_queues_)
+    {
+        while (!abort_queue.empty()) abort_queue.pop();
+    }
+    for (std::queue<std::shared_ptr<Vertex>>& queue : smaller_add_searchable_vertices_queue_)
+    {
+        while (!queue.empty()) queue.pop();
+    }
+    for (std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& vertices : smaller_set_of_vertices_to_update_rrs_tree)
+    {
+        vertices.clear();
+    }
+    for (std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& faces : smaller_set_of_faces_to_update_rrs_tree)
+    {
+        faces.clear();
+    }
+    for (std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& vertices : thread_vertices_to_be_deleted_)
+    {
+        vertices.clear();
+    }
+    for (std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& edges : thread_edges_to_be_deleted_)
+    {
+        edges.clear();
+    }
+    for (std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>& faces : thread_faces_to_be_deleted_)
+    {
+        faces.clear();
+    }
+    for (std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash>& interior_points : thread_interior_points_to_be_deleted_)
+    {
+        interior_points.clear();
+    }
+    for (std::unordered_set<std::shared_ptr<RRSNode>, RRSNodeHasher, RRSNodeEqual>& nodes : thread_nodes_to_be_deleted_)
+    {
+        nodes.clear();
+    }
+    surfaces_to_be_split_.clear();
+    for (std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& vertices : thread_vertices_that_have_deleted_publishers_)
+    {
+        vertices.clear();
+    }
+    for (std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& vertices : thread_vertices_that_have_added_publishers_)
+    {
+        vertices.clear();
+    }
+    for (std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& vertices : thread_vertices_that_have_changed_box_)
+    {
+        vertices.clear();
+    }
 }
 
 void Storage::remove_non_manifold_edges()

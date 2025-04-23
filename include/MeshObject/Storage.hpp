@@ -75,6 +75,7 @@ public: // to user
     unsigned int get_repeated_queue_size();
     unsigned int get_abort_queue_size();
     void clear_queues();
+    void clear_all_queues();
 
     void cleanup_surfaces();
     void remove_all_surfaces();

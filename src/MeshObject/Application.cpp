@@ -904,6 +904,7 @@ void Application<PointT>::loop()
     storage_->remove_nodes_from_rrs_tree();
     storage_->clear_surfaces_to_be_split();
     storage_->add_points_in_smaller_repeated_queues_to_main_queue();
+    storage_->clear_all_queues();
 
     num_iteration ++;
 
