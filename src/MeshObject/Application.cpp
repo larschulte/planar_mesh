@@ -893,9 +893,13 @@ void Application<PointT>::loop()
                 process_point(generic_point);
             }
         }
-
-        // clean up surfaces
-        storage_->cleanup_surfaces(); // split by surface id modulus num_threads
+    }
+    // here, ask all surfaces to check if they need to be deleted, in a single thread
+    storage_->collect_surfaces_to_delete();
+    // then, in multi thread delete the surface.
+    #pragma omp parallel num_threads(settings_.num_threads)
+    {
+        storage_->delete_or_store_surfaces();
     }
     #pragma omp parallel num_threads(settings_.num_threads)
     {

@@ -37,6 +37,7 @@ Storage::Storage()
     thread_vertices_that_have_added_publishers_.resize(settings_.num_threads);
     thread_vertices_that_have_changed_box_.resize(settings_.num_threads);
     thread_nodes_to_be_deleted_.resize(settings_.num_threads);
+    thread_surfaces_to_be_deleted_or_stored_.resize(settings_.num_threads);
     
     // initialize with queue or stack
     for (size_t i = 0; i < settings_.num_threads; ++i)
@@ -707,6 +708,53 @@ void Storage::cleanup_surfaces()
     add_or_remove_vertices_from_rrs_tree();
     add_or_remove_faces_from_bvh_tree();
     // add_or_remove_edges_from_edgeBVH_tree();
+}
+
+void Storage::collect_surfaces_to_delete()
+{
+    // skip if settings is -1
+    if (settings_.cleanup_seed_surface_after_ith_cloud == -1) return;
+
+    // check if surface needs to be deleted
+    for (const std::shared_ptr<Surface>& surface : surfaces_)
+    {
+        // skip if surface is expired
+        if (surface->is_expired()) continue;
+
+        // skip if surface recently get updated
+        // if (distance_travelled_ - surface->get_max_distance_travelled() < settings_.cleanup_seed_surface_after_distance_travelled) continue;
+        if (ith_cloud_ - surface->get_ith_cloud() < settings_.cleanup_seed_surface_after_ith_cloud) continue;
+
+        // compute surface thread number
+        const int surface_thread_num = surface->get_id() % settings_.num_threads;
+        
+        // put surface to the delete list according to the thread number
+        thread_surfaces_to_be_deleted_or_stored_[surface_thread_num].insert(surface);
+    }
+}
+
+void Storage::delete_or_store_surfaces()
+{
+    // current thread id
+    int thread_id = omp_get_thread_num();
+
+    // current surface set
+    auto& surface_set = thread_surfaces_to_be_deleted_or_stored_[thread_id];
+
+    // use while not empty erase idiom
+    while (!surface_set.empty()) 
+    {
+        // pop surface
+        std::shared_ptr<Surface> surface = *surface_set.begin();
+        surface_set.erase(surface);
+
+        // delete surface
+        delete_surface(surface);
+    }
+ 
+    delete_to_be_deleted_repeatedly();
+    update_vertices_that_have_changed_box();
+    add_or_remove_vertices_from_rrs_tree();
 }
 
 void Storage::remove_all_surfaces()

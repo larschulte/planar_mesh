@@ -78,6 +78,8 @@ public: // to user
     void clear_all_queues();
 
     void cleanup_surfaces();
+    void collect_surfaces_to_delete();
+    void delete_or_store_surfaces();
     void remove_all_surfaces();
     void remove_non_manifold_edges();
     void remove_non_manifold_vertices();
@@ -196,6 +198,7 @@ private:
     std::vector<std::unordered_set<std::shared_ptr<Face>, MeshObjectHash>> thread_faces_to_be_deleted_;
     std::vector<std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash>> thread_interior_points_to_be_deleted_;
     std::vector<std::unordered_set<std::shared_ptr<RRSNode>, RRSNodeHasher, RRSNodeEqual>> thread_nodes_to_be_deleted_;
+    std::vector<std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash>> thread_surfaces_to_be_deleted_or_stored_;
 
     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_to_be_split_;
 
