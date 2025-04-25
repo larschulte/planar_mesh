@@ -162,7 +162,10 @@ void Vertex::delete_()
     // surface (disconnect)
     {
         // ask to be removed from surface
-        surface_.lock()->disconnect(shared_from_this());
+        if (surface_.lock())
+        {
+            surface_.lock()->disconnect(shared_from_this());    
+        }
 
         // clear surface
         surface_.reset();

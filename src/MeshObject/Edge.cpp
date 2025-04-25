@@ -85,12 +85,15 @@ void Edge::delete_()
 
     // surface (disconnect)
     {
-        // disconnect
-        surface_.lock()->disconnect(shared_from_this());
+        if (surface_.lock())
+        {
+            // disconnect
+            surface_.lock()->disconnect(shared_from_this());
 
-        // add to be split
-        storage_.lock()->add_surface_to_be_split(surface_.lock());
-        
+            // add to be split
+            storage_.lock()->add_surface_to_be_split(surface_.lock());
+        }
+
         // clear surface
         surface_.reset();
     }
