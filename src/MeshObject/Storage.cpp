@@ -730,8 +730,8 @@ void Storage::collect_surfaces_to_delete()
     // check if surface needs to be deleted
     for (const std::shared_ptr<Surface>& surface : surfaces_)
     {
-        // skip if surface is expired
-        if (surface->is_expired()) continue;
+        // // skip if surface is expired
+        // if (surface->is_expired()) continue;
 
         // skip if surface recently get updated
         // if (distance_travelled_ - surface->get_max_distance_travelled() < settings_.cleanup_seed_surface_after_distance_travelled) continue;
