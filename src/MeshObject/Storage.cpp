@@ -40,8 +40,9 @@ Storage::Storage()
     thread_surfaces_to_be_deleted_or_stored_.resize(settings_.num_threads);
 
     // reserve 
-    vertices_.reserve(2000000);
+    vertices_.reserve(3000000);
     edges_.reserve(10000000);
+    surfaces_.reserve(700000);
     
     // initialize with queue or stack
     for (size_t i = 0; i < settings_.num_threads; ++i)
@@ -158,6 +159,10 @@ const std::shared_ptr<Surface>& Storage::add_surface()
 
     // write lock
     std::unique_lock<std::shared_mutex> lock(rwlock_surfaces_);
+
+    // if (surfaces_.size() % 1000 == 0) {
+    //     std::cout << "surfaces_ size: " << surfaces_.size() << " buckets: " << surfaces_.bucket_count() << "\n";
+    // }
     
     // store
     return *surfaces_.insert(surface).first;
