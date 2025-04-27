@@ -38,6 +38,10 @@ Storage::Storage()
     thread_vertices_that_have_changed_box_.resize(settings_.num_threads);
     thread_nodes_to_be_deleted_.resize(settings_.num_threads);
     thread_surfaces_to_be_deleted_or_stored_.resize(settings_.num_threads);
+
+    // reserve 
+    vertices_.reserve(2000000);
+    edges_.reserve(10000000);
     
     // initialize with queue or stack
     for (size_t i = 0; i < settings_.num_threads; ++i)
@@ -88,6 +92,10 @@ const std::shared_ptr<Vertex>& Storage::add_vertex(const std::shared_ptr<Surface
     // write lock
     std::unique_lock<std::shared_mutex> lock(rwlock_vertices_);
 
+    // if (vertices_.size() % 10000 == 0) {
+    //     std::cout << "verties_ size: " << vertices_.size() << " buckets: " << vertices_.bucket_count() << "\n";
+    // }
+
     // store
     return *vertices_.insert(vertex).first;
 }
@@ -100,6 +108,10 @@ const std::shared_ptr<Edge>& Storage::add_edge(const std::shared_ptr<Surface>& s
 
     // write lock
     std::unique_lock<std::shared_mutex> lock(rwlock_edges_);
+
+    // if (edges_.size() % 10000 == 0) {
+    //     std::cout << "edges_ size: " << edges_.size() << " buckets: " << edges_.bucket_count() << "\n";
+    // }
 
     // store
     return *edges_.insert(edge).first;
