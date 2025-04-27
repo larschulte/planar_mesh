@@ -456,10 +456,14 @@ void RRSNode::node_delete_self()
     if (!isLeaf_) return;
 
     // throw if have no parent (unless this is truely root node, in which case i should implement something)
-    if (!parent_.lock()) throw std::runtime_error("node_delete_self, Node has no parent.");
+    // if (!parent_.lock()) throw std::runtime_error("node_delete_self, Node has no parent.");
+
+    // change into this since allow repeated deletion of node to maximum Storage::remove_nodes_from_rrs_tree() efficiency
+    std::shared_ptr<RRSNode> parent = parent_.lock();
+    if (!parent) return; // this is root node
 
     // remove from parent and simplify tree
-    parent_.lock()->node_delete_child(shared_from_this());
+    parent->node_delete_child(shared_from_this());
 }
 
 void RRSNode::node_delete_child(const std::shared_ptr<RRSNode> child)
