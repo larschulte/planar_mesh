@@ -149,146 +149,186 @@ void Application<PointT>::load_point_cloud()
 template <typename PointT>
 void Application<PointT>::write_mesh()
 {
-    // update settings
-    settings_.point_mode = PointMode::PROJECTED;
-    settings_.color_mode = ColorMode::ID;
+    // // update settings
+    // settings_.point_mode = PointMode::PROJECTED;
+    // settings_.color_mode = ColorMode::ID;
 
-    // get vertex and faces
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr vertex_pointcloud = compute_vertex_point_pointcloud(settings_);
-    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces = storage_->get_faces();
+    // // get vertex and faces
+    // pcl::PointCloud<pcl::PointXYZRGB>::Ptr vertex_pointcloud = compute_vertex_point_pointcloud(settings_);
+    // std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces = storage_->get_faces();
 
-    // log
-    std::cout << "filtering faces by edge length radius" << std::endl;
+    // // log
+    // std::cout << "filtering faces by edge length radius" << std::endl;
 
-    // filter face by edge length radius
-    std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> filtered_faces;
-    unsigned int count = 0;
-    unsigned int total = faces.size();
-    for (const std::shared_ptr<Face>& face : faces)
+    // // filter face by edge length radius
+    // std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> filtered_faces;
+    // unsigned int count = 0;
+    // unsigned int total = faces.size();
+    // for (const std::shared_ptr<Face>& face : faces)
+    // {
+    //     // skip if seed surface
+    //     if (face->get_surface()->is_seed()) continue;
+
+    //     // log
+    //     count++;
+    //     if (count % 10000 == 0) std::cout << "filtering faces by edge length radius " << count << " of " << total << std::endl;
+
+    //     // skip if expired
+    //     if (face->is_expired()) continue;
+
+    //     // get vertices
+    //     std::shared_ptr<Vertex> vertex0 = face->get_vertex(0);
+    //     std::shared_ptr<Vertex> vertex1 = face->get_vertex(1);
+    //     std::shared_ptr<Vertex> vertex2 = face->get_vertex(2);
+
+    //     // get projected position
+    //     Eigen::Vector3d position0 = vertex0->compute_projected_position();
+    //     Eigen::Vector3d position1 = vertex1->compute_projected_position();
+    //     Eigen::Vector3d position2 = vertex2->compute_projected_position();
+
+    //     // get projected edge length
+    //     double edge_length0 = (position0 - position1).norm();
+    //     double edge_length1 = (position1 - position2).norm();
+    //     double edge_length2 = (position2 - position0).norm();
+
+    //     // skip if edge length radius is too long
+    //     if (edge_length0 > vertex0->get_radius() || edge_length0 > vertex1->get_radius()) continue;
+    //     if (edge_length1 > vertex1->get_radius() || edge_length1 > vertex2->get_radius()) continue;
+    //     if (edge_length2 > vertex2->get_radius() || edge_length2 > vertex0->get_radius()) continue;
+
+    //     // store
+    //     filtered_faces.insert(face);
+    // }
+
+    // // log
+    // std::cout << "creating triangle mesh" << std::endl;
+
+    // // create triangle mesh
+    // pcl::PolygonMesh triangle_mesh;
+    // pcl::toPCLPointCloud2(*vertex_pointcloud, triangle_mesh.cloud);
+    // for (const std::shared_ptr<Face>& face : filtered_faces)
+    // {
+    //     // skip if can't find all indices
+    //     if (vertex_to_cloud_indices_map.find(face->get_vertex(0)) == vertex_to_cloud_indices_map.end()) continue;
+    //     if (vertex_to_cloud_indices_map.find(face->get_vertex(1)) == vertex_to_cloud_indices_map.end()) continue;
+    //     if (vertex_to_cloud_indices_map.find(face->get_vertex(2)) == vertex_to_cloud_indices_map.end()) continue;
+
+    //     pcl::Vertices triangle;
+    //     triangle.vertices.push_back(vertex_to_cloud_indices_map.at(face->get_vertex(0)));
+    //     triangle.vertices.push_back(vertex_to_cloud_indices_map.at(face->get_vertex(1)));
+    //     triangle.vertices.push_back(vertex_to_cloud_indices_map.at(face->get_vertex(2)));
+    //     triangle_mesh.polygons.push_back(triangle);
+    // }
+
+    // // create folder for triangle mesh if not exists
+    // if (!boost::filesystem::exists(settings_.save_folder))
+    // {
+    //     boost::filesystem::create_directories(settings_.save_folder);
+    // }
+
+    // // save triangle mesh
+    // std::string write_path = settings_.save_folder + "mesh.ply";
+    // pcl::io::savePLYFileBinary(write_path, triangle_mesh);
+    // std::cout << "write mesh to " << write_path << std::endl;
+
+    // // save duration to file for triangle mesh
+    // std::string duration_file_path = settings_.save_folder + "duration.txt";
+    // std::ofstream duration_file(duration_file_path);
+    // for (double duration : duration_list)
+    // {
+    //     duration_file << duration << std::endl;
+    // }
+
+    // // create simplified mesh
+    // pcl::PolygonMesh simplified_mesh;
+    // for (const std::shared_ptr<Surface>& surface : storage_->get_surfaces())
+    // {
+    //     // skip if seed surface
+    //     if (surface->is_seed()) continue;
+
+    //     pcl::PolygonMesh surface_mesh = create_simplified_mesh(surface);
+    //     merge_polygon_mesh(simplified_mesh, surface_mesh);
+    // }
+    
+    // // create folder for simplified mesh if not exists
+    // std::string simplified_folder = settings_.save_folder;
+    // simplified_folder.insert(simplified_folder.size() - 1, "_simplified_mesh");
+    // if (!boost::filesystem::exists(simplified_folder))
+    // {
+    //     boost::filesystem::create_directories(simplified_folder);
+    // }
+
+    // // save simplified mesh
+    // std::string simplified_mesh_path = simplified_folder + "simplified_mesh.ply";
+    // pcl::io::savePLYFileBinary(simplified_mesh_path, simplified_mesh);
+    // std::cout << "write simplified mesh to " << simplified_mesh_path << std::endl;
+
+    // // create simplified mesh with color
+    // pcl::PolygonMesh simplified_mesh_with_color;
+    // for (const std::shared_ptr<Surface>& surface : storage_->get_surfaces())
+    // {
+    //     // skip if seed surface
+    //     if (surface->is_seed()) continue;
+
+    //     pcl::PolygonMesh surface_mesh_with_color = create_simplified_mesh(surface, true);
+    //     merge_polygon_mesh(simplified_mesh_with_color, surface_mesh_with_color);
+    // }
+    
+    // // save simplified mesh with color
+    // std::string simplified_mesh_with_color_path = simplified_folder + "simplified_mesh_with_color.ply";
+    // pcl::io::savePLYFileBinary(simplified_mesh_with_color_path, simplified_mesh_with_color);
+    // std::cout << "write simplified mesh with color to " << simplified_mesh_with_color_path << std::endl;
+    
+    // // save duration to file for simplified mesh
+    // std::string simplified_duration_file_path = simplified_folder + "duration.txt";
+    // std::ofstream simplified_duration_file(simplified_duration_file_path);
+    // for (double duration : duration_list)
+    // {
+    //     simplified_duration_file << duration << std::endl;
+    // }
+
+    // // save stack duration to file for simplified mesh
+    // std::string stack_duration_file_path = simplified_folder + "stack_duration.txt";
+    // std::ofstream stack_duration_file(stack_duration_file_path);
+    // for (unsigned int index = 0; index < duration_list.size(); index++)
+    // {
+    //     double total_duration = duration_list[index];
+    //     double rrs_search_duration = rrs_search_duration_list[index];
+    //     double rrs_update_duration = rrs_update_duration_list[index];
+    //     double bvh_search_duration = bvh_search_duration_list[index];
+    //     double bvh_update_duration = bvh_update_duration_list[index];
+    //     double add_to_map_duration = add_to_map_duration_list[index];
+    //     double delete_from_map_duration = delete_from_map_duration_list[index];
+    //     double relative_position_duration = relative_position_duration_list[index];
+        
+    //     const std::string separator = ",";
+    //     stack_duration_file << total_duration << separator
+    //                         << rrs_search_duration << separator
+    //                         << rrs_update_duration << separator
+    //                         << bvh_search_duration << separator
+    //                         << bvh_update_duration << separator
+    //                         << add_to_map_duration << separator
+    //                         << delete_from_map_duration << separator
+    //                         << relative_position_duration << std::endl;
+    // }
+
+    // create folder for duration benchmarking if not exists
+    std::string duration_folder = settings_.save_folder;
+    if (!boost::filesystem::exists(duration_folder))
     {
-        // skip if seed surface
-        if (face->get_surface()->is_seed()) continue;
-
-        // log
-        count++;
-        if (count % 10000 == 0) std::cout << "filtering faces by edge length radius " << count << " of " << total << std::endl;
-
-        // skip if expired
-        if (face->is_expired()) continue;
-
-        // get vertices
-        std::shared_ptr<Vertex> vertex0 = face->get_vertex(0);
-        std::shared_ptr<Vertex> vertex1 = face->get_vertex(1);
-        std::shared_ptr<Vertex> vertex2 = face->get_vertex(2);
-
-        // get projected position
-        Eigen::Vector3d position0 = vertex0->compute_projected_position();
-        Eigen::Vector3d position1 = vertex1->compute_projected_position();
-        Eigen::Vector3d position2 = vertex2->compute_projected_position();
-
-        // get projected edge length
-        double edge_length0 = (position0 - position1).norm();
-        double edge_length1 = (position1 - position2).norm();
-        double edge_length2 = (position2 - position0).norm();
-
-        // skip if edge length radius is too long
-        if (edge_length0 > vertex0->get_radius() || edge_length0 > vertex1->get_radius()) continue;
-        if (edge_length1 > vertex1->get_radius() || edge_length1 > vertex2->get_radius()) continue;
-        if (edge_length2 > vertex2->get_radius() || edge_length2 > vertex0->get_radius()) continue;
-
-        // store
-        filtered_faces.insert(face);
+        boost::filesystem::create_directories(duration_folder);
     }
 
-    // log
-    std::cout << "creating triangle mesh" << std::endl;
-
-    // create triangle mesh
-    pcl::PolygonMesh triangle_mesh;
-    pcl::toPCLPointCloud2(*vertex_pointcloud, triangle_mesh.cloud);
-    for (const std::shared_ptr<Face>& face : filtered_faces)
-    {
-        // skip if can't find all indices
-        if (vertex_to_cloud_indices_map.find(face->get_vertex(0)) == vertex_to_cloud_indices_map.end()) continue;
-        if (vertex_to_cloud_indices_map.find(face->get_vertex(1)) == vertex_to_cloud_indices_map.end()) continue;
-        if (vertex_to_cloud_indices_map.find(face->get_vertex(2)) == vertex_to_cloud_indices_map.end()) continue;
-
-        pcl::Vertices triangle;
-        triangle.vertices.push_back(vertex_to_cloud_indices_map.at(face->get_vertex(0)));
-        triangle.vertices.push_back(vertex_to_cloud_indices_map.at(face->get_vertex(1)));
-        triangle.vertices.push_back(vertex_to_cloud_indices_map.at(face->get_vertex(2)));
-        triangle_mesh.polygons.push_back(triangle);
-    }
-
-    // create folder for triangle mesh if not exists
-    if (!boost::filesystem::exists(settings_.save_folder))
-    {
-        boost::filesystem::create_directories(settings_.save_folder);
-    }
-
-    // save triangle mesh
-    std::string write_path = settings_.save_folder + "mesh.ply";
-    pcl::io::savePLYFileBinary(write_path, triangle_mesh);
-    std::cout << "write mesh to " << write_path << std::endl;
-
-    // save duration to file for triangle mesh
-    std::string duration_file_path = settings_.save_folder + "duration.txt";
+    // save duration to file
+    std::string duration_file_path = duration_folder + "/duration.txt";
     std::ofstream duration_file(duration_file_path);
     for (double duration : duration_list)
     {
         duration_file << duration << std::endl;
     }
 
-    // create simplified mesh
-    pcl::PolygonMesh simplified_mesh;
-    for (const std::shared_ptr<Surface>& surface : storage_->get_surfaces())
-    {
-        // skip if seed surface
-        if (surface->is_seed()) continue;
-
-        pcl::PolygonMesh surface_mesh = create_simplified_mesh(surface);
-        merge_polygon_mesh(simplified_mesh, surface_mesh);
-    }
-    
-    // create folder for simplified mesh if not exists
-    std::string simplified_folder = settings_.save_folder;
-    simplified_folder.insert(simplified_folder.size() - 1, "_simplified_mesh");
-    if (!boost::filesystem::exists(simplified_folder))
-    {
-        boost::filesystem::create_directories(simplified_folder);
-    }
-
-    // save simplified mesh
-    std::string simplified_mesh_path = simplified_folder + "simplified_mesh.ply";
-    pcl::io::savePLYFileBinary(simplified_mesh_path, simplified_mesh);
-    std::cout << "write simplified mesh to " << simplified_mesh_path << std::endl;
-
-    // create simplified mesh with color
-    pcl::PolygonMesh simplified_mesh_with_color;
-    for (const std::shared_ptr<Surface>& surface : storage_->get_surfaces())
-    {
-        // skip if seed surface
-        if (surface->is_seed()) continue;
-
-        pcl::PolygonMesh surface_mesh_with_color = create_simplified_mesh(surface, true);
-        merge_polygon_mesh(simplified_mesh_with_color, surface_mesh_with_color);
-    }
-    
-    // save simplified mesh with color
-    std::string simplified_mesh_with_color_path = simplified_folder + "simplified_mesh_with_color.ply";
-    pcl::io::savePLYFileBinary(simplified_mesh_with_color_path, simplified_mesh_with_color);
-    std::cout << "write simplified mesh with color to " << simplified_mesh_with_color_path << std::endl;
-    
-    // save duration to file for simplified mesh
-    std::string simplified_duration_file_path = simplified_folder + "duration.txt";
-    std::ofstream simplified_duration_file(simplified_duration_file_path);
-    for (double duration : duration_list)
-    {
-        simplified_duration_file << duration << std::endl;
-    }
-
     // save stack duration to file for simplified mesh
-    std::string stack_duration_file_path = simplified_folder + "stack_duration.txt";
+    std::string stack_duration_file_path = duration_folder + "/stack_duration.txt";
     std::ofstream stack_duration_file(stack_duration_file_path);
     for (unsigned int index = 0; index < duration_list.size(); index++)
     {

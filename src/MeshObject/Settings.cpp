@@ -94,9 +94,9 @@ Settings::Settings()
 
     std::string dataset = "christchurch03";
     
-    headless_mode = false;
+    headless_mode = true;
     num_scans = 300;
-    save_folder = "/home/jiahao/datasets/spires_benchmark/" + dataset + "/Benchmark_final/PlanarMesh/";
+    save_folder = "/home/jiahao/ros2_ws/src/eye_patch/benchmarks/2025-04-29/" + dataset + "/300_after";
 
     data_loader_settings.pcd_file_folder = dataset_map[dataset].pcd_file_folder;
     data_loader_settings.pose_file_path = dataset_map[dataset].pose_file_path;
