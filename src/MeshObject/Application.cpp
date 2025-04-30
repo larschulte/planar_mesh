@@ -905,6 +905,7 @@ void Application<PointT>::loop()
     t_init = std::chrono::high_resolution_clock::now();
     accumulated_points = 0;
 
+    // [todo] when a point is deleted due to being included by a larger surface, instead of deleting it then readd, consider swapping directly
 
 
     // process all points
@@ -954,7 +955,7 @@ void Application<PointT>::loop()
             }
         }
     }
-    
+
     // #pragma omp parallel num_threads(settings_.num_threads)
     // {
     //     storage_->split_surfaces_per_thread();
