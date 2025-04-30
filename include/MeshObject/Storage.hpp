@@ -28,6 +28,8 @@ public: // to user
     Storage();
     ~Storage();
 
+    std::vector<queue_or_stack<std::shared_ptr<GenericPoint>>> smaller_repeated_queues_;
+
     const std::shared_ptr<Vertex>& add_vertex(const std::shared_ptr<Surface>& surface, const Eigen::Vector3d& origin, const Eigen::Vector3d& position, double distance_travelled);
     const std::shared_ptr<Vertex>& add_vertex(const std::shared_ptr<Surface>& surface, const Eigen::Vector3d& origin, const Eigen::Vector3d& position, const double& radius, double distance_travelled);
     const std::shared_ptr<Vertex>& add_vertex(const std::shared_ptr<Surface>& surface, const std::shared_ptr<GenericPoint>& generic_point);
@@ -184,7 +186,6 @@ private:
     std::queue<std::shared_ptr<GenericPoint>> main_queue_;
     std::queue<std::shared_ptr<GenericPoint>> main_repeated_queue_;
     std::vector<queue_or_stack<std::shared_ptr<GenericPoint>>> smaller_queues_;
-    std::vector<queue_or_stack<std::shared_ptr<GenericPoint>>> smaller_repeated_queues_;
     std::vector<queue_or_stack<std::shared_ptr<GenericPoint>>> smaller_abort_queues_;
     unsigned int num_delete_before_put_to_repeated_queue_ = 2;
 

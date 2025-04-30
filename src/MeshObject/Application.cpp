@@ -473,6 +473,20 @@ void Application<PointT>::process_point(const std::shared_ptr<GenericPoint>& gen
     // std::chrono::time_point<std::chrono::high_resolution_clock> add_to_map_duration_end2 = std::chrono::high_resolution_clock::now();
     // std::chrono::duration<double> add_to_map_duration2 = add_to_map_duration_end2 - add_to_map_duration_start2;
     // add_to_map_duration_per_thread[omp_get_thread_num()] += add_to_map_duration2.count();
+
+
+    // create new sub tasks
+    int thread_id = omp_get_thread_num();
+    while (!storage_->smaller_repeated_queues_[thread_id].empty()) 
+    {
+        std::shared_ptr<GenericPoint> point = storage_->smaller_repeated_queues_[thread_id].get();
+        storage_->smaller_repeated_queues_[thread_id].pop();
+
+        #pragma omp task firstprivate(point)
+        {
+            process_point(point);
+        }
+    }
 }
 
 template <typename PointT>
@@ -878,18 +892,6 @@ void Application<PointT>::step()
 template <typename PointT>
 void Application<PointT>::loop()
 {
-    // add all points from the cloud to the storage's processing queue
-    for (std::size_t i = 0; i < ith_size; i++)
-    {
-        Eigen::Vector3d thisPointVEC = pointcloud->points[i].getVector3fMap().template cast<double>();
-        Eigen::Vector3d thisPointOriginVEC = this->origin;
-
-        storage_->add_to_main_queue(thisPointVEC, thisPointOriginVEC, distance_travelled_);
-    }
-
-    // split the queue into smaller queues
-    storage_->split_main_queue_into_smaller_queues();
-
     // initialize vector to store duration
     rrs_search_duration_per_thread.resize(settings_.num_threads);
     rrs_update_duration_per_thread.resize(settings_.num_threads);
@@ -903,37 +905,27 @@ void Application<PointT>::loop()
     t_init = std::chrono::high_resolution_clock::now();
     accumulated_points = 0;
 
-    // process all points in the queue
-    unsigned int num_iteration = 0;
-    #pragma omp parallel num_threads(settings_.num_threads)
+
+
+
+    #pragma omp parallel
+    #pragma omp single
     {
-        while (true)
+        for (std::size_t i = 0; i < pointcloud->points.size(); i++)
         {
-            std::shared_ptr<GenericPoint> generic_point = nullptr;
-            unsigned int total_points_in_queue = 0;
+            // convert to generic point
+            std::shared_ptr<GenericPoint> generic_point = std::make_shared<GenericPoint>();
+            generic_point->initialize_(storage_, pointcloud->points[i].getVector3fMap().template cast<double>(), this->origin, distance_travelled_);
 
-            total_points_in_queue = storage_->get_queue_size();
-            if (total_points_in_queue > 0)
+            #pragma omp task firstprivate(generic_point)
             {
-                generic_point = storage_->pop_from_queue();
-                if (settings_.log.step) 
-                {
-                    std::stringstream ss;
-                    ss << " | remaining point " << total_points_in_queue << " | Processing point " << generic_point->get_id() << " | by thread " << omp_get_thread_num() << std::endl;
-                    std::cout << ss.str();
-                }
-            }
-
-            // If the queue is empty, break the loop
-            if (!generic_point) break;
-
-            // Process the point (outside the critical section)
-            if (generic_point)
-            {
+                // process point
                 process_point(generic_point);
             }
         }
     }
+
+
     // here, ask all surfaces to check if they need to be deleted, in a single thread
     storage_->collect_surfaces_to_delete();
     // then, in multi thread delete the surface.
@@ -941,16 +933,27 @@ void Application<PointT>::loop()
     {
         storage_->delete_or_store_surfaces();
     }
-    #pragma omp parallel num_threads(settings_.num_threads)
-    {
-        storage_->split_surfaces_per_thread();
-    }
+    // #pragma omp parallel num_threads(settings_.num_threads)
+    // {
+    //     storage_->split_surfaces_per_thread();
+    // }
     storage_->remove_nodes_from_rrs_tree();
     storage_->clear_surfaces_to_be_split();
-    storage_->add_points_in_smaller_repeated_queues_to_main_queue();
+    // storage_->add_points_in_smaller_repeated_queues_to_main_queue();
     storage_->clear_all_queues();
 
-    num_iteration ++;
+
+
+
+
+
+
+
+
+
+
+
+
 
     std::chrono::high_resolution_clock::time_point t_end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = t_end - t_init;
