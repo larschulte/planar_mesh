@@ -907,32 +907,54 @@ void Application<PointT>::loop()
 
 
 
-
+    // process all points
     #pragma omp parallel
-    #pragma omp single
     {
-        for (std::size_t i = 0; i < pointcloud->points.size(); i++)
+        #pragma omp single
         {
-            // convert to generic point
-            std::shared_ptr<GenericPoint> generic_point = std::make_shared<GenericPoint>();
-            generic_point->initialize_(storage_, pointcloud->points[i].getVector3fMap().template cast<double>(), this->origin, distance_travelled_);
-
-            #pragma omp task firstprivate(generic_point)
+            for (std::size_t i = 0; i < pointcloud->points.size(); i++)
             {
-                // process point
-                process_point(generic_point);
+                // convert to generic point
+                std::shared_ptr<GenericPoint> generic_point = std::make_shared<GenericPoint>();
+                generic_point->initialize_(storage_, pointcloud->points[i].getVector3fMap().template cast<double>(), this->origin, distance_travelled_);
+    
+                #pragma omp task firstprivate(generic_point)
+                {
+                    // process point
+                    process_point(generic_point);
+                }
             }
         }
     }
 
-
-    // here, ask all surfaces to check if they need to be deleted, in a single thread
-    storage_->collect_surfaces_to_delete();
-    // then, in multi thread delete the surface.
-    #pragma omp parallel num_threads(settings_.num_threads)
+    // clean up surfaces
+    #pragma omp parallel
     {
-        storage_->delete_or_store_surfaces();
+        #pragma omp single
+        {
+            // make a copy of all surfaces
+            std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_copy = storage_->surfaces_;
+    
+            // check if surface needs to be deleted
+            for (const std::shared_ptr<Surface>& surface : surfaces_copy)
+            {    
+                // skip if surface recently get updated
+                if (ith_cloud - surface->get_ith_cloud() < settings_.cleanup_seed_surface_after_ith_cloud) continue;
+    
+                #pragma omp task firstprivate(surface)
+                {
+                    // delete surface
+                    storage_->delete_surface(surface);
+                    
+                    // clean up
+                    storage_->delete_to_be_deleted_repeatedly();
+                    storage_->update_vertices_that_have_changed_box();
+                    storage_->add_or_remove_vertices_from_rrs_tree();
+                }
+            }
+        }
     }
+    
     // #pragma omp parallel num_threads(settings_.num_threads)
     // {
     //     storage_->split_surfaces_per_thread();

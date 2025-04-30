@@ -29,6 +29,7 @@ public: // to user
     ~Storage();
 
     std::vector<queue_or_stack<std::shared_ptr<GenericPoint>>> smaller_repeated_queues_;
+    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_;
 
     const std::shared_ptr<Vertex>& add_vertex(const std::shared_ptr<Surface>& surface, const Eigen::Vector3d& origin, const Eigen::Vector3d& position, double distance_travelled);
     const std::shared_ptr<Vertex>& add_vertex(const std::shared_ptr<Surface>& surface, const Eigen::Vector3d& origin, const Eigen::Vector3d& position, const double& radius, double distance_travelled);
@@ -210,7 +211,7 @@ private:
     std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertices_;
     std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges_;
     std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces_;
-    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_;
+    
     std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> interior_points_;
     std::unordered_set<std::shared_ptr<GenericPoint>, MeshObjectHash> genertic_points_;
 
