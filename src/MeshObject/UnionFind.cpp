@@ -23,9 +23,22 @@ void UnionFind::add_edges(const std::unordered_set<std::weak_ptr<Edge>, MeshObje
 {
     for (const auto& edge : edges) 
     {
-        const std::shared_ptr<Vertex>& u = edge.lock()->get_vertex(0);
-        const std::shared_ptr<Vertex>& v = edge.lock()->get_vertex(1);
-        make_share_root(u, v);
+        // edge locked
+        std::shared_ptr<Edge> edge_locked = edge.lock();
+
+        // skip if nullptr
+        if (!edge_locked) continue;
+
+        std::weak_ptr<Vertex> u = edge_locked->get_vertex_weak_ptr(0);
+        std::weak_ptr<Vertex> v = edge_locked->get_vertex_weak_ptr(1);
+
+        std::shared_ptr<Vertex> u_locked = u.lock();
+        std::shared_ptr<Vertex> v_locked = v.lock();
+
+        // skip if nullptr
+        if (!u_locked || !v_locked) continue;
+
+        make_share_root(u_locked, v_locked);
     }
 }
 

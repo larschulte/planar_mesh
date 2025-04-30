@@ -84,19 +84,17 @@ void Edge::delete_()
     if (settings_.log.deletion) std::cout << "Destroying edge " << id_ << std::endl;
 
     // surface (disconnect)
+    std::shared_ptr<Surface> surface_locked = surface_.lock();
+    if (surface_locked)
     {
-        if (surface_.lock())
-        {
-            // disconnect
-            surface_.lock()->disconnect(shared_from_this());
+        // disconnect
+        surface_locked->disconnect(shared_from_this());
 
-            // add to be split
-            storage_.lock()->add_surface_to_be_split(surface_.lock());
-        }
-
-        // clear surface
-        surface_.reset();
+        // add to be split
+        storage_.lock()->add_surface_to_be_split(surface_locked);     
     }
+    // clear surface
+    surface_.reset();
 
     // vertices (disconnect)
     {
