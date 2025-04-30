@@ -151,10 +151,11 @@ void Vertex::delete_()
         // disconnect
         for (const auto& vertex_point_subscriber : vertex_point_distance_subscribers_copy) 
         {
-            if (vertex_point_subscriber.lock())
+            std::shared_ptr<Vertex> vertex_point_subscriber_locked = vertex_point_subscriber.lock();
+            if (vertex_point_subscriber_locked)
             {
-                vertex_point_subscriber.lock()->delete_vertex_point_distance_publisher(shared_from_this());
-                storage_.lock()->add_vertex_that_have_deleted_publishers(vertex_point_subscriber.lock());
+                vertex_point_subscriber_locked->delete_vertex_point_distance_publisher(shared_from_this());
+                storage_.lock()->add_vertex_that_have_deleted_publishers(vertex_point_subscriber_locked);
             }
         }
     }
@@ -1260,10 +1261,15 @@ double Vertex::compute_radius()
     // reduce value
     for (const auto& neighboring_vertex : vertex_point_distance_publishers_)
     {
+        // skip if nullptr
+        std::shared_ptr<Vertex> neighboring_vertex_locked = neighboring_vertex.lock();
+
+        if (!neighboring_vertex_locked) continue;
+
         const double extra_radius = settings_.extra_radius;
 
         // compute distance
-        const double new_distance = (get_position() - neighboring_vertex.lock()->get_position()).norm();
+        const double new_distance = (get_position() - neighboring_vertex_locked->get_position()).norm();
 
         if (new_distance + extra_radius < new_radius) new_radius = new_distance + extra_radius;
     }
@@ -1309,6 +1315,9 @@ void Vertex::try_break_edges()
     for (const std::weak_ptr<Edge>& edge : edges_copy)
     {
         auto edge_locked = edge.lock();
+
+        // skip if nullptr
+        if (!edge_locked) continue;
 
         // read lock
         std::shared_lock<std::shared_mutex> lock(edge_locked->rwlock_lifecycle_);

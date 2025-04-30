@@ -174,10 +174,15 @@ void RRSNode::recursive_expand_parent_box()
 
 void RRSNode::recursive_shrink_parent_box()
 {
-    if (parent_.lock())
+    // skip if no parent
+    std::shared_ptr<RRSNode> parent_locked = parent_.lock();
+
+    if (!parent_locked) return;
+
+    if (parent_locked)
     {
         // old parent box
-        RRSBoundingBox old_parent_box = parent_.lock()->box_;
+        RRSBoundingBox old_parent_box = parent_locked->box_;
 
         // new parent box
         RRSBoundingBox new_parent_box = RRSBoundingBox();
@@ -185,24 +190,24 @@ void RRSNode::recursive_shrink_parent_box()
         // expand new parent box
         {
             // // read lock
-            // std::shared_lock<std::shared_mutex> lock(parent_.lock()->rwlock_node_);
+            // std::shared_lock<std::shared_mutex> lock(parent_locked->rwlock_node_);
 
             // expand left box
-            if (parent_.lock()->left_)
+            if (parent_locked->left_)
             {
                 // // read lock
-                // std::shared_lock<std::shared_mutex> lock_left(parent_.lock()->left_->rwlock_node_);
+                // std::shared_lock<std::shared_mutex> lock_left(parent_locked->left_->rwlock_node_);
 
-                new_parent_box.expand_box_no_return(parent_.lock()->left_->box_);
+                new_parent_box.expand_box_no_return(parent_locked->left_->box_);
             }
 
             // expand right box
-            if (parent_.lock()->right_)
+            if (parent_locked->right_)
             {
                 // // read lock
-                // std::shared_lock<std::shared_mutex> lock_right(parent_.lock()->right_->rwlock_node_);
+                // std::shared_lock<std::shared_mutex> lock_right(parent_locked->right_->rwlock_node_);
 
-                new_parent_box.expand_box_no_return(parent_.lock()->right_->box_);
+                new_parent_box.expand_box_no_return(parent_locked->right_->box_);
             }
         }
         
@@ -217,8 +222,8 @@ void RRSNode::recursive_shrink_parent_box()
         // recursive update
         if (shrunk) 
         {
-            parent_.lock()->box_ = new_parent_box;
-            parent_.lock()->recursive_shrink_parent_box();
+            parent_locked->box_ = new_parent_box;
+            parent_locked->recursive_shrink_parent_box();
         }
     }
 }
