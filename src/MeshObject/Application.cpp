@@ -928,32 +928,43 @@ void Application<PointT>::loop()
         }
     }
 
-    // clean up surfaces
+    // collect surfaces to delete / store
+    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_to_delete_or_store;
+    for (const std::shared_ptr<Surface>& surface : storage_->surfaces_)
+    {
+        // check if surface needs to be deleted / stored
+        if (ith_cloud - surface->get_ith_cloud() > settings_.cleanup_seed_surface_after_ith_cloud)
+        {
+            surfaces_to_delete_or_store.insert(surface);
+        }
+    }
+
+    // delete / store surfaces
     #pragma omp parallel
     {
         #pragma omp single
         {
-            // make a copy of all surfaces
-            std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_copy = storage_->surfaces_;
-    
-            // check if surface needs to be deleted
-            for (const std::shared_ptr<Surface>& surface : surfaces_copy)
-            {    
-                // skip if surface recently get updated
-                if (ith_cloud - surface->get_ith_cloud() < settings_.cleanup_seed_surface_after_ith_cloud) continue;
-    
+            // check if surface needs to be deleted / stored
+            for (const std::shared_ptr<Surface>& surface : surfaces_to_delete_or_store)
+            {        
                 #pragma omp task firstprivate(surface)
                 {
-                    // delete surface
+                    // delete surface (or store surface, in the future)
                     storage_->delete_surface(surface);
-                    
-                    // clean up
-                    storage_->delete_to_be_deleted_repeatedly();
-                    storage_->update_vertices_that_have_changed_box();
-                    storage_->add_or_remove_vertices_from_rrs_tree();
                 }
             }
         }
+    }
+
+    // need a function to cleanup vertices, then at the end, recurse the same function to cleanup vertices using other thread
+
+
+    // clean up after delete/store surfaces
+    #pragma omp parallel
+    {
+        storage_->delete_to_be_deleted_repeatedly();
+        storage_->update_vertices_that_have_changed_box();
+        storage_->add_or_remove_vertices_from_rrs_tree();
     }
 
     // #pragma omp parallel num_threads(settings_.num_threads)
