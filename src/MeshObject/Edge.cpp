@@ -101,14 +101,16 @@ void Edge::delete_()
         // disconnect from vertices
         for (const auto& vertex : vertices_)
         {
-            if (vertex.lock())
-            {
-                // check if vertex is expired
-                if (vertex.lock()->is_expired()) continue;
+            // skip if nullptr
+            std::shared_ptr<Vertex> vertex_locked = vertex.lock();
 
-                // disconnect
-                vertex.lock()->disconnect(shared_from_this());
-            }
+            if (!vertex_locked) continue;
+
+            // check if vertex is expired
+            if (vertex_locked->is_expired()) continue;
+            
+            // disconnect
+            vertex_locked->disconnect(shared_from_this());
         } 
 
         // clear vertices

@@ -1190,6 +1190,9 @@ void Surface::update_seed_status()
     {
         auto vertex_locked = vertex.lock();
 
+        // skip if nullptr
+        if (!vertex_locked) continue;
+
         // lock vertex
         std::shared_lock<std::shared_mutex> lock_vertex(vertex_locked->rwlock_lifecycle_);
 
