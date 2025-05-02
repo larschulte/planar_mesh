@@ -71,6 +71,14 @@ void Edge::initialize_(const std::shared_ptr<Storage>& storage, const std::share
 
 void Edge::delete_()
 {
+    // simplify delete_ when under_surface_deletion
+    if (under_surface_deletion_)
+    {
+        deleting_ = true;
+        is_expired_ = true;
+        return;
+    }
+
     // write lock
     std::unique_lock<std::shared_mutex> lock(rwlock_lifecycle_);
 

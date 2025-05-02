@@ -98,46 +98,6 @@ void Vertex::delete_()
     // log
     if (settings_.log.deletion) std::cout << "Destroying vertex " << id_ << std::endl;
     
-    // publishers (disconnect)
-    {
-        // lock, copy and clear
-        std::unordered_set<std::weak_ptr<Vertex>, MeshObjectHash> vertex_point_distance_publishers_copy;
-        {
-            std::unique_lock<std::shared_mutex> lock(rwlock_vertex_point_distance_publishers_);
-            vertex_point_distance_publishers_copy = vertex_point_distance_publishers_;
-            vertex_point_distance_publishers_.clear();
-        }
-
-        // disconnect
-        for (const auto& vertex_point_publisher : vertex_point_distance_publishers_copy) 
-        {
-            if (vertex_point_publisher.lock())
-            {
-                vertex_point_publisher.lock()->delete_vertex_point_distance_subscriber(shared_from_this());
-            }
-        }
-    }
-
-    // publishers (disconnect)
-    {
-        // lock, copy and clear
-        std::unordered_set<std::weak_ptr<InteriorPoint>, MeshObjectHash> interior_point_distance_publishers_copy;
-        {
-            std::unique_lock<std::shared_mutex> lock(rwlock_interior_point_distance_publishers_);
-            interior_point_distance_publishers_copy = interior_point_distance_publishers_;
-            interior_point_distance_publishers_.clear();
-        }
-
-        // disconnect
-        for (const auto& interior_point_publisher : interior_point_distance_publishers_copy) 
-        {
-            if (interior_point_publisher.lock())
-            {
-                interior_point_publisher.lock()->delete_interior_point_distance_subscriber(shared_from_this());
-            }
-        }
-    }
-
     // subscribers (disconnect)
     {
         // lock, copy and clear
@@ -154,13 +114,13 @@ void Vertex::delete_()
             std::shared_ptr<Vertex> vertex_point_subscriber_locked = vertex_point_subscriber.lock();
             if (vertex_point_subscriber_locked)
             {
-                vertex_point_subscriber_locked->delete_vertex_point_distance_publisher(shared_from_this());
                 storage_.lock()->add_vertex_that_have_deleted_publishers(vertex_point_subscriber_locked);
             }
         }
     }
 
     // surface (disconnect)
+    if (!under_surface_deletion_)
     {
         // ask to be removed from surface
         if (surface_.lock())
@@ -173,45 +133,39 @@ void Vertex::delete_()
     }
 
     // edges (delete)
+    if (!under_surface_deletion_)
     {
         // read lock
         std::shared_lock<std::shared_mutex> lock_edges(rwlock_edges_);
 
         // delete edge
-        if (!under_surface_deletion_)
-        {
-            for (const auto& edge : edges_) storage_.lock()->add_edge_to_be_deleted(edge.lock());
-        }
+        for (const auto& edge : edges_) storage_.lock()->add_edge_to_be_deleted(edge.lock());
 
         // clear
         edges_.clear();
     }
     
     // faces (delete)
+    if (!under_surface_deletion_)
     {
         // read lock
         std::shared_lock<std::shared_mutex> lock_faces(rwlock_faces_);
 
         // delete face
-        if (!under_surface_deletion_)
-        {
-            for (const auto& face : faces_) storage_.lock()->add_face_to_be_deleted(face.lock());
-        }
+        for (const auto& face : faces_) storage_.lock()->add_face_to_be_deleted(face.lock());
 
         // clear
         faces_.clear();
     }
 
     // interior points (delete)
+    if (!under_surface_deletion_)
     {
         // read lock
         std::shared_lock<std::shared_mutex> lock_interior_points(rwlock_interior_points_);
 
         // delete interior point
-        if (!under_surface_deletion_)
-        {
-            for (const auto& interior_point : interior_points_) storage_.lock()->add_interior_point_to_be_deleted(interior_point.lock());
-        }
+        for (const auto& interior_point : interior_points_) storage_.lock()->add_interior_point_to_be_deleted(interior_point.lock());
 
         // clear
         interior_points_.clear();
