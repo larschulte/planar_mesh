@@ -216,7 +216,7 @@ private:
     std::vector<std::unordered_set<std::shared_ptr<RRSNode>, RRSNodeHasher, RRSNodeEqual>> thread_nodes_to_be_deleted_;
     std::vector<std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash>> thread_surfaces_to_be_deleted_or_stored_;
 
-    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_to_be_split_;
+    tbb::concurrent_unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_to_be_split_;
 
     std::vector<std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>> thread_vertices_that_have_deleted_publishers_;
     std::vector<std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>> thread_vertices_that_have_added_publishers_;
