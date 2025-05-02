@@ -64,7 +64,7 @@ void Surface::delete_()
         for (const auto& vertex : vertices_) 
         {
             vertex.lock()->set_under_surface_deletion(true);
-            storage_.lock()->add_vertex_to_be_deleted(vertex.lock());
+            storage_.lock()->add_vertex_to_be_deleted_single_thread(vertex.lock());
         }
 
         // clear
@@ -80,7 +80,7 @@ void Surface::delete_()
         for (const auto& edge : edges_)
         {
             edge.lock()->set_under_surface_deletion(true);
-            storage_.lock()->add_edge_to_be_deleted(edge.lock());
+            storage_.lock()->add_edge_to_be_deleted_single_thread(edge.lock());
         }
 
         // clear
