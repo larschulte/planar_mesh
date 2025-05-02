@@ -1343,7 +1343,7 @@ void Storage::add_vertex_that_have_changed_box(const std::shared_ptr<Vertex>& ve
 void Storage::update_vertices_that_have_deleted_publishers()
 {
     // use while not empty erase idiom
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& vertices_that_have_deleted_publishers = thread_vertices_to_be_deleted_[omp_get_thread_num()];
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& vertices_that_have_deleted_publishers = thread_vertices_that_have_deleted_publishers_[omp_get_thread_num()];
 
     // update
     while (!vertices_that_have_deleted_publishers.empty())
