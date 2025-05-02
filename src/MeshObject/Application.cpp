@@ -956,6 +956,9 @@ void Application<PointT>::loop()
         }
     }
 
+    // clear surfaces_to_delete_or_store
+    surfaces_to_delete_or_store.clear();
+
     const size_t bulk_size = 1024;
     #pragma omp parallel
     {
