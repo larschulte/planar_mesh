@@ -318,6 +318,36 @@ void Storage::delete_interior_point(const std::shared_ptr<InteriorPoint> interio
     }    
 }
 
+void Storage::delete_vertex_delayed_removal(const std::shared_ptr<Vertex> vertex) 
+{
+    // member delete
+    vertex->delete_();
+}
+
+void Storage::delete_edge_delayed_removal(const std::shared_ptr<Edge> edge) 
+{
+    // member delete
+    edge->delete_();
+}
+
+void Storage::remove_expired_vertices(const tbb::concurrent_unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& vertices)
+{
+    for (const auto& vertex : vertices)
+    {
+        // storage delete
+        vertices_.erase(vertex);
+    }
+}
+
+void Storage::remove_expired_edges(const tbb::concurrent_unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& edges)
+{
+    for (const auto& edge : edges)
+    {
+        // storage delete
+        edges_.erase(edge);
+    }
+}
+
 void Storage::add_to_main_queue(const Eigen::Vector3d& position, const Eigen::Vector3d& origin, double distance_travelled)
 {
     std::shared_ptr<GenericPoint> queue_point = std::make_shared<GenericPoint>();
