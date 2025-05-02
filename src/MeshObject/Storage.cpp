@@ -1126,6 +1126,35 @@ void Storage::add_interior_point_to_be_deleted(const std::shared_ptr<InteriorPoi
     thread_interior_points_to_be_deleted_[omp_get_thread_num()].insert(interior_point);
 }
 
+void Storage::collect_all_vertices_to_be_deleted(std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& vertices_to_be_deleted)
+{
+    // reserve space
+    size_t total_vertices_to_delete = 0;
+    for (const auto& vertices : thread_vertices_to_be_deleted_) total_vertices_to_delete += vertices.size();
+    vertices_to_be_deleted.reserve(total_vertices_to_delete);
+
+    // collect all vertices to be deleted
+    for (auto& vertices : thread_vertices_to_be_deleted_)
+    {
+        vertices_to_be_deleted.insert(vertices.begin(), vertices.end());
+        vertices.clear();
+    }
+}
+
+void Storage::collect_all_edges_to_be_deleted(std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& edges_to_be_deleted)
+{
+    // reserve space
+    size_t total_edges_to_delete = 0;
+    for (const auto& edges : thread_edges_to_be_deleted_) total_edges_to_delete += edges.size();
+    edges_to_be_deleted.reserve(total_edges_to_delete);
+
+    // collect all edges to be deleted
+    for (auto& edges : thread_edges_to_be_deleted_)
+    {
+        edges_to_be_deleted.insert(edges.begin(), edges.end());
+        edges.clear();
+    }
+}
 void Storage::add_surface_to_be_split(const std::shared_ptr<Surface>& surface)
 {
     surfaces_to_be_split_.insert(surface);

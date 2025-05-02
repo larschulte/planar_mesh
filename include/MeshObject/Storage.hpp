@@ -99,6 +99,8 @@ public: // to user
     void add_edge_to_be_deleted(const std::shared_ptr<Edge>& edge);
     void add_face_to_be_deleted(const std::shared_ptr<Face>& face);
     void add_interior_point_to_be_deleted(const std::shared_ptr<InteriorPoint>& interior_point);
+    void collect_all_vertices_to_be_deleted(std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& vertices_to_be_deleted);
+    void collect_all_edges_to_be_deleted(std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& edges_to_be_deleted);
 
     void add_surface_to_be_split(const std::shared_ptr<Surface>& surface);
     void clear_surfaces_to_be_split();
