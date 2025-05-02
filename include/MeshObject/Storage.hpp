@@ -14,6 +14,8 @@
 #include <omp.h>
 #include <mutex>
 
+#include <tbb/concurrent_unordered_set.h>
+
 // forward declarations
 class Vertex;
 class Edge;
@@ -31,6 +33,8 @@ public: // to user
     std::vector<queue_or_stack<std::shared_ptr<GenericPoint>>> smaller_repeated_queues_;
     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_;
 
+    tbb::concurrent_unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertices_to_be_deleted_single_thread_;
+    tbb::concurrent_unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges_to_be_deleted_single_thread_;
     const std::shared_ptr<Vertex>& add_vertex(const std::shared_ptr<Surface>& surface, const Eigen::Vector3d& origin, const Eigen::Vector3d& position, double distance_travelled);
     const std::shared_ptr<Vertex>& add_vertex(const std::shared_ptr<Surface>& surface, const Eigen::Vector3d& origin, const Eigen::Vector3d& position, const double& radius, double distance_travelled);
     const std::shared_ptr<Vertex>& add_vertex(const std::shared_ptr<Surface>& surface, const std::shared_ptr<GenericPoint>& generic_point);
@@ -101,6 +105,8 @@ public: // to user
     void add_interior_point_to_be_deleted(const std::shared_ptr<InteriorPoint>& interior_point);
     void collect_all_vertices_to_be_deleted(std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>& vertices_to_be_deleted);
     void collect_all_edges_to_be_deleted(std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>& edges_to_be_deleted);
+    void add_vertex_to_be_deleted_single_thread(const std::shared_ptr<Vertex>& vertex);
+    void add_edge_to_be_deleted_single_thread(const std::shared_ptr<Edge>& edge);
 
     void add_surface_to_be_split(const std::shared_ptr<Surface>& surface);
     void clear_surfaces_to_be_split();

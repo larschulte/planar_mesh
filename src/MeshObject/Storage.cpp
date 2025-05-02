@@ -1155,6 +1155,17 @@ void Storage::collect_all_edges_to_be_deleted(std::unordered_set<std::shared_ptr
         edges.clear();
     }
 }
+
+void Storage::add_vertex_to_be_deleted_single_thread(const std::shared_ptr<Vertex>& vertex)
+{
+    vertices_to_be_deleted_single_thread_.insert(vertex);
+}
+
+void Storage::add_edge_to_be_deleted_single_thread(const std::shared_ptr<Edge>& edge)
+{
+    edges_to_be_deleted_single_thread_.insert(edge);
+}
+
 void Storage::add_surface_to_be_split(const std::shared_ptr<Surface>& surface)
 {
     surfaces_to_be_split_.insert(surface);
