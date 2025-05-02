@@ -178,7 +178,10 @@ void Vertex::delete_()
         std::shared_lock<std::shared_mutex> lock_edges(rwlock_edges_);
 
         // delete edge
-        for (const auto& edge : edges_) storage_.lock()->add_edge_to_be_deleted(edge.lock());
+        if (!under_surface_deletion_)
+        {
+            for (const auto& edge : edges_) storage_.lock()->add_edge_to_be_deleted(edge.lock());
+        }
 
         // clear
         edges_.clear();
@@ -190,7 +193,10 @@ void Vertex::delete_()
         std::shared_lock<std::shared_mutex> lock_faces(rwlock_faces_);
 
         // delete face
-        for (const auto& face : faces_) storage_.lock()->add_face_to_be_deleted(face.lock());
+        if (!under_surface_deletion_)
+        {
+            for (const auto& face : faces_) storage_.lock()->add_face_to_be_deleted(face.lock());
+        }
 
         // clear
         faces_.clear();
@@ -201,8 +207,11 @@ void Vertex::delete_()
         // read lock
         std::shared_lock<std::shared_mutex> lock_interior_points(rwlock_interior_points_);
 
-        // delete face
-        for (const auto& interior_point : interior_points_) storage_.lock()->add_interior_point_to_be_deleted(interior_point.lock());
+        // delete interior point
+        if (!under_surface_deletion_)
+        {
+            for (const auto& interior_point : interior_points_) storage_.lock()->add_interior_point_to_be_deleted(interior_point.lock());
+        }
 
         // clear
         interior_points_.clear();
@@ -213,7 +222,7 @@ void Vertex::delete_()
         // update delete count
         num_deletes_++;
  
-        if (do_not_add_back_due_to_not_connected_ || do_not_add_back_due_to_seed_surface_)
+        if (do_not_add_back_due_to_not_connected_ || under_surface_deletion_)
         {
             // do nothing
         }
@@ -635,7 +644,7 @@ void Vertex::disconnect(const std::shared_ptr<Edge>& edge)
     // check_if_update_search_tree();
 
     // check self destruct
-    if (!deleting_ && edges_.empty() && can_self_destruct_ && !connecting_to_edges_and_faces_) storage_.lock()->add_vertex_to_be_deleted(shared_from_this());
+    if (!deleting_ && edges_.empty() && can_self_destruct_ && !connecting_to_edges_and_faces_ && !under_surface_deletion_) storage_.lock()->add_vertex_to_be_deleted(shared_from_this());
 }
 
 void Vertex::disconnect(const std::shared_ptr<Face>& face)
@@ -1432,9 +1441,9 @@ void Vertex::set_do_not_add_back_due_to_not_connected(bool do_not_add_back_due_t
     do_not_add_back_due_to_not_connected_ = do_not_add_back_due_to_not_connected;
 }
 
-void Vertex::set_do_not_add_back_due_to_seed_surface(bool do_not_add_back_due_to_seed_surface)
+void Vertex::set_under_surface_deletion(bool flag)
 {
-    do_not_add_back_due_to_seed_surface_ = do_not_add_back_due_to_seed_surface;
+    under_surface_deletion_ = flag;
 }
 
 const Eigen::Vector3d& Vertex::get_min() const

@@ -135,7 +135,7 @@ public:
     void print_info();
 
     void set_do_not_add_back_due_to_not_connected(bool do_not_add_back_due_to_not_connected);
-    void set_do_not_add_back_due_to_seed_surface(bool do_not_add_back_due_to_seed_surface);
+    void set_under_surface_deletion(bool flag);
 
 public: // for reverse radius search
     const Eigen::Vector3d& get_min() const;
@@ -162,7 +162,7 @@ private:
     bool is_singular_;
     bool can_self_destruct_ = true;
     bool do_not_add_back_due_to_not_connected_ = false;
-    bool do_not_add_back_due_to_seed_surface_ = false;
+    bool under_surface_deletion_ = false;
     double current_surface_uncertainty_;
 
     std::size_t num_deletes_;

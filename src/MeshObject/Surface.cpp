@@ -63,7 +63,7 @@ void Surface::delete_()
         // delete vertex
         for (const auto& vertex : vertices_) 
         {
-            vertex.lock()->set_do_not_add_back_due_to_seed_surface(true);
+            vertex.lock()->set_under_surface_deletion(true);
             storage_.lock()->add_vertex_to_be_deleted(vertex.lock());
         }
 
@@ -77,7 +77,11 @@ void Surface::delete_()
         std::shared_lock<std::shared_mutex> lock_edges(rwlock_edges_);
 
         // delete edge
-        for (const auto& edge : edges_) storage_.lock()->add_edge_to_be_deleted(edge.lock());
+        for (const auto& edge : edges_)
+        {
+            edge.lock()->set_under_surface_deletion(true);
+            storage_.lock()->add_edge_to_be_deleted(edge.lock());
+        }
 
         // clear
         edges_.clear();

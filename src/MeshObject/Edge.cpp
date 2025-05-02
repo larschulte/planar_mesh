@@ -123,7 +123,10 @@ void Edge::delete_()
         std::shared_lock<std::shared_mutex> lock_faces(rwlock_faces_);
 
         // delete face
-        for (const auto& face : faces_) storage_.lock()->add_face_to_be_deleted(face.lock());
+        if (!under_surface_deletion_)
+        {
+            for (const auto& face : faces_) storage_.lock()->add_face_to_be_deleted(face.lock());
+        }
 
         // clear faces
         faces_.clear();
@@ -184,7 +187,7 @@ void Edge::disconnect(const std::shared_ptr<Face>& face)
 
     // do not self destruct when have no face
     // check self destruct
-    if (faces_.empty() && !deleting_ && can_self_destruct_) storage_.lock()->add_edge_to_be_deleted(shared_from_this());
+    if (faces_.empty() && !deleting_ && can_self_destruct_ && !under_surface_deletion_) storage_.lock()->add_edge_to_be_deleted(shared_from_this());
 }
 
 
@@ -357,6 +360,11 @@ bool Edge::intersects_edge(const std::shared_ptr<Vertex>& vertex0, const std::sh
     
     // check if edge intersects
     return segments_intersect(p1, p2, q1, q2);
+}
+
+void Edge::set_under_surface_deletion(bool flag)
+{
+    under_surface_deletion_ = flag;
 }
 
 bool operator<(const std::shared_ptr<Edge>& lhs, const std::shared_ptr<Edge>& rhs)

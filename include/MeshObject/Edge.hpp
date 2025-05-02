@@ -62,6 +62,8 @@ public:
 
     bool intersects_edge(const std::shared_ptr<Vertex>& vertex0, const std::shared_ptr<Vertex>& vertex1);
 
+    void set_under_surface_deletion(bool flag);
+
 private:
     static Settings settings_;
 
@@ -70,6 +72,7 @@ private:
     bool is_boundary_;
     bool is_singular_;
     bool is_searchable_;
+    bool under_surface_deletion_ = false;
 
     bool can_self_destruct_ = true;
 
