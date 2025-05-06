@@ -114,6 +114,7 @@ Settings::Settings()
 
     num_of_new_edges_per_vertex = 2;
 
+    cleanup_stale_surfaces_vertices_mode = CleanupStaleSurfacesVerticesMode::TASK_BASED;
     cleanup_seed_surface_after_ith_cloud = 30;
     cleanup_seed_surface_after_distance_travelled = 3.0;
 

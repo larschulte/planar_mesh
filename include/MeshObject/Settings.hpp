@@ -43,6 +43,12 @@ enum class PointMode
     PROJECTED
 };
 
+enum class CleanupStaleSurfacesVerticesMode
+{
+    TASK_BASED,
+    THREAD_BASED
+};
+
 inline std::ostream& operator<<(std::ostream& os, const PointMode& mode)
 {
     switch (mode)
@@ -106,6 +112,7 @@ struct Settings
 
     unsigned int num_of_new_edges_per_vertex;
 
+    CleanupStaleSurfacesVerticesMode cleanup_stale_surfaces_vertices_mode;
     double cleanup_seed_surface_after_ith_cloud;
     double cleanup_seed_surface_after_distance_travelled;
     
