@@ -119,77 +119,76 @@ void Vertex::delete_()
         }
     }
 
-    // surface (disconnect)
-    if (!under_surface_deletion_)
-    {
-        // ask to be removed from surface
-        if (surface_.lock())
-        {
-            surface_.lock()->disconnect(shared_from_this());    
-        }
-
-        // clear surface
-        surface_.reset();
-    }
-
-    // edges (delete)
-    if (!under_surface_deletion_)
-    {
-        // read lock
-        std::shared_lock<std::shared_mutex> lock_edges(rwlock_edges_);
-
-        // delete edge
-        for (const auto& edge : edges_) storage_.lock()->add_edge_to_be_deleted(edge.lock());
-
-        // clear
-        edges_.clear();
-    }
-    
-    // faces (delete)
-    if (!under_surface_deletion_)
-    {
-        // read lock
-        std::shared_lock<std::shared_mutex> lock_faces(rwlock_faces_);
-
-        // delete face
-        for (const auto& face : faces_) storage_.lock()->add_face_to_be_deleted(face.lock());
-
-        // clear
-        faces_.clear();
-    }
-
-    // interior points (delete)
-    if (!under_surface_deletion_)
-    {
-        // read lock
-        std::shared_lock<std::shared_mutex> lock_interior_points(rwlock_interior_points_);
-
-        // delete interior point
-        for (const auto& interior_point : interior_points_) storage_.lock()->add_interior_point_to_be_deleted(interior_point.lock());
-
-        // clear
-        interior_points_.clear();
-    }
-
-    // create generic point
-    {
-        // update delete count
-        num_deletes_++;
- 
-        if (do_not_add_back_due_to_not_connected_ || under_surface_deletion_)
-        {
-            // do nothing
-        }
-        else
-        {
-            storage_.lock()->add_to_queue(shared_from_this());
-        }
-    }
-
     // update tree
     {
         // add to update rrs tree vertex set
         storage_.lock()->remove_searchable_vertex(shared_from_this());
+    }
+
+    if (!under_surface_deletion_)
+    {
+        // surface (disconnect)
+        {
+            // ask to be removed from surface
+            if (surface_.lock())
+            {
+                surface_.lock()->disconnect(shared_from_this());    
+            }
+
+            // clear surface
+            surface_.reset();
+        }
+        
+        // edges (delete)
+        {
+            // read lock
+            std::shared_lock<std::shared_mutex> lock_edges(rwlock_edges_);
+            
+            // delete edge
+            for (const auto& edge : edges_) storage_.lock()->add_edge_to_be_deleted(edge.lock());
+            
+            // clear
+            edges_.clear();
+        }
+        
+        // faces (delete)
+        {
+            // read lock
+            std::shared_lock<std::shared_mutex> lock_faces(rwlock_faces_);
+            
+            // delete face
+            for (const auto& face : faces_) storage_.lock()->add_face_to_be_deleted(face.lock());
+            
+            // clear
+            faces_.clear();
+        }
+        
+        // interior points (delete)
+        {
+            // read lock
+            std::shared_lock<std::shared_mutex> lock_interior_points(rwlock_interior_points_);
+            
+            // delete interior point
+            for (const auto& interior_point : interior_points_) storage_.lock()->add_interior_point_to_be_deleted(interior_point.lock());
+            
+            // clear
+            interior_points_.clear();
+        }
+        
+        // create generic point
+        {
+            // update delete count
+            num_deletes_++;
+            
+            if (do_not_add_back_due_to_not_connected_)
+            {
+                // do nothing
+            }
+            else
+            {
+                storage_.lock()->add_to_queue(shared_from_this());
+            }
+        }
     }
 
     // log
