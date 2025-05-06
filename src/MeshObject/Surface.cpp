@@ -46,93 +46,38 @@ void Surface::initialize_(const std::shared_ptr<Storage>& storage)
 
 void Surface::delete_()
 {
-    // write lock
-    std::unique_lock<std::shared_mutex> lock(rwlock_lifecycle_);
-
-    // set deletion flag
+    // start deletion
     deleting_ = true;
-
-    // log
-    if (settings_.log.deletion) std::cout << "Destroying surface " << id_ << std::endl;
-
-    // vertices (delete)
+ 
+    // delete vertex
+    for (const auto& vertex : vertices_) 
     {
-        // read lock
-        std::shared_lock<std::shared_mutex> lock_vertices(rwlock_vertices_);
-
-        // delete vertex
-        for (const auto& vertex : vertices_) 
+        vertex.lock()->set_under_surface_deletion(true);
+        if (settings_.cleanup_stale_surfaces_vertices_mode == CleanupStaleSurfacesVerticesMode::TASK_BASED)
         {
-            vertex.lock()->set_under_surface_deletion(true);
-            if (settings_.cleanup_stale_surfaces_vertices_mode == CleanupStaleSurfacesVerticesMode::TASK_BASED)
-            {
-                storage_.lock()->add_vertex_to_be_deleted_single_thread(vertex.lock());
-            }
-            else
-            {
-                storage_.lock()->add_vertex_to_be_deleted(vertex.lock());
-            }
+            storage_.lock()->add_vertex_to_be_deleted_single_thread(vertex.lock());
         }
-
-        // clear
-        vertices_.clear();
-    }
-
-    // edges (delete)
-    {
-        // read lock
-        std::shared_lock<std::shared_mutex> lock_edges(rwlock_edges_);
-
-        // delete edge
-        for (const auto& edge : edges_)
+        else
         {
-            edge.lock()->set_under_surface_deletion(true);
-            if (settings_.cleanup_stale_surfaces_vertices_mode == CleanupStaleSurfacesVerticesMode::TASK_BASED)
-            {
-                storage_.lock()->add_edge_to_be_deleted_single_thread(edge.lock());
-            }
-            else
-            {
-                storage_.lock()->add_edge_to_be_deleted(edge.lock());
-            }
+            storage_.lock()->add_vertex_to_be_deleted(vertex.lock());
         }
-
-        // clear
-        edges_.clear();
     }
 
-    // faces (delete)
+    // delete edge
+    for (const auto& edge : edges_)
     {
-        // read lock
-        std::shared_lock<std::shared_mutex> lock_faces(rwlock_faces_);
-
-        // delete face
-        for (const auto& face : faces_) storage_.lock()->add_face_to_be_deleted(face.lock());
-
-        // clear
-        faces_.clear();
-    }
-
-    // interior points (delete)
-    {
-        // read lock
-        std::shared_lock<std::shared_mutex> lock_interior_points(rwlock_interior_points_);
-
-        // delete interior point
-        for (const auto& interior_point : interior_points_) 
+        edge.lock()->set_under_surface_deletion(true);
+        if (settings_.cleanup_stale_surfaces_vertices_mode == CleanupStaleSurfacesVerticesMode::TASK_BASED)
         {
-            interior_point.lock()->set_do_not_add_back_due_to_seed_surface(true);
-            storage_.lock()->add_interior_point_to_be_deleted(interior_point.lock());
+            storage_.lock()->add_edge_to_be_deleted_single_thread(edge.lock());
         }
-
-        // clear
-        interior_points_.clear();
+        else
+        {
+            storage_.lock()->add_edge_to_be_deleted(edge.lock());
+        }
     }
 
-    // log
-    if (settings_.log.deletion) std::cout << "---------- surface " << id_ << " destroyed" << std::endl;
-
-    // set expired
+    // complete deletion
     is_expired_ = true;
 }
 
