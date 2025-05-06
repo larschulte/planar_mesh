@@ -956,9 +956,6 @@ void Application<PointT>::loop()
         }
     }
 
-    // clear surfaces_to_delete_or_store
-    surfaces_to_delete_or_store.clear();
-
     if (settings_.cleanup_stale_surfaces_vertices_mode == CleanupStaleSurfacesVerticesMode::TASK_BASED)
     {
         const size_t bulk_size = 1024;
@@ -1036,6 +1033,10 @@ void Application<PointT>::loop()
     // {
     //     storage_->split_surfaces_per_thread();
     // }
+
+    // clear surfaces_to_delete_or_store
+    surfaces_to_delete_or_store.clear();
+
     storage_->remove_nodes_from_rrs_tree();
     storage_->clear_surfaces_to_be_split();
     // storage_->add_points_in_smaller_repeated_queues_to_main_queue();
