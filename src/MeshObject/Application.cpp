@@ -944,13 +944,16 @@ void Application<PointT>::loop()
     {
         #pragma omp single
         {
-            // check if surface needs to be deleted / stored
-            for (const std::shared_ptr<Surface>& surface : surfaces_to_delete_or_store)
-            {        
-                #pragma omp task firstprivate(surface)
+            while (!surfaces_to_delete_or_store.empty())
+            {
+                // get surface to delete
+                std::shared_ptr<Surface> surface = *surfaces_to_delete_or_store.begin();
+                surfaces_to_delete_or_store.erase(surfaces_to_delete_or_store.begin());
+
+                #pragma omp task
                 {
-                    // delete surface (or store surface, in the future)
-                    storage_->delete_surface(surface);
+                    auto moved_surface = std::move(surface); // thus deinitialization happens in parallel
+                    storage_->delete_surface(moved_surface);
                 }
             }
         }
@@ -1033,9 +1036,6 @@ void Application<PointT>::loop()
     // {
     //     storage_->split_surfaces_per_thread();
     // }
-
-    // clear surfaces_to_delete_or_store
-    surfaces_to_delete_or_store.clear();
 
     storage_->remove_nodes_from_rrs_tree();
     storage_->clear_surfaces_to_be_split();
