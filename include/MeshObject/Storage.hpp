@@ -32,6 +32,8 @@ public: // to user
 
     std::vector<queue_or_stack<std::shared_ptr<GenericPoint>>> smaller_repeated_queues_;
     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_;
+    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertices_;
+    std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges_;
 
     tbb::concurrent_unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertices_to_be_deleted_single_thread_;
     tbb::concurrent_unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges_to_be_deleted_single_thread_;
@@ -222,8 +224,6 @@ private:
     std::vector<std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>> thread_vertices_that_have_added_publishers_;
     std::vector<std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>> thread_vertices_that_have_changed_box_;
 
-    std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash> vertices_;
-    std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges_;
     std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces_;
     
     std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash> interior_points_;

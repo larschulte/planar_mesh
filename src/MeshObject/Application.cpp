@@ -961,65 +961,47 @@ void Application<PointT>::loop()
 
     if (settings_.cleanup_stale_surfaces_vertices_mode == CleanupStaleSurfacesVerticesMode::TASK_BASED)
     {
-        const size_t bulk_size = 1024;
-        #pragma omp parallel
-        {
-            #pragma omp single
-            {
-                // for each thread, for each vertex, allocate to thread to delete as task
-                for (unsigned int start = 0; start < storage_->vertices_to_be_deleted_single_thread_.size(); start += bulk_size)
-                {
-                    const size_t end = std::min(start + bulk_size, storage_->vertices_to_be_deleted_single_thread_.size());
-    
-                    #pragma omp task firstprivate(start, end)
-                    {
-                        // delete vertices
-                        auto it = std::next(storage_->vertices_to_be_deleted_single_thread_.begin(), start);
-                        for (size_t i = start; i < end; ++i, ++it)
-                        {
-                            std::shared_ptr<Vertex> vertex = *it;
-    
-                            storage_->delete_vertex_delayed_removal(vertex);
-                            storage_->update_vertices_that_have_deleted_publishers();
-                            storage_->update_vertices_that_have_changed_box();
-                            storage_->add_or_remove_vertices_from_rrs_tree();    
-                        }
-                    }
-                }
-            }
-        }
-    
-        #pragma omp parallel
-        {
-            #pragma omp single
-            {
-                // for each thread, for each vertex, allocate to thread to delete as task
-                for (unsigned int start = 0; start < storage_->edges_to_be_deleted_single_thread_.size(); start += bulk_size)
-                {
-                    const size_t end = std::min(start + bulk_size, storage_->edges_to_be_deleted_single_thread_.size());
-    
-                    #pragma omp task firstprivate(start, end)
-                    {
-                        // delete vertices
-                        auto it = std::next(storage_->edges_to_be_deleted_single_thread_.begin(), start);
-                        for (size_t i = start; i < end; ++i, ++it)
-                        {
-                            std::shared_ptr<Edge> edge = *it;
-    
-                            storage_->delete_edge_delayed_removal(edge);
-                        }
-                    }
-                }
-            }
-        }
-    
-        // todo remove expired vertices/edges/surfaces from storage
-        storage_->remove_expired_vertices(storage_->vertices_to_be_deleted_single_thread_);
-        storage_->remove_expired_edges(storage_->edges_to_be_deleted_single_thread_);
-    
-        // clear vertices_to_be_deleted_single_thread_
-        storage_->vertices_to_be_deleted_single_thread_.clear();
+        // 1.  Extract ownership from the single‑thread containers
+        std::vector<std::shared_ptr<Vertex>> vertices_to_delete;
+        std::vector<std::shared_ptr<Edge>> edges_to_delete;
+
+        vertices_to_delete.reserve(storage_->vertices_to_be_deleted_single_thread_.size());
+        edges_to_delete.reserve(storage_->edges_to_be_deleted_single_thread_.size());
+
+        for (auto &v : storage_->vertices_to_be_deleted_single_thread_) vertices_to_delete.emplace_back(std::move(v));
+        for (auto &e : storage_->edges_to_be_deleted_single_thread_) edges_to_delete.emplace_back(std::move(e));
+        
+        storage_->vertices_to_be_deleted_single_thread_.clear();   // container now empty
         storage_->edges_to_be_deleted_single_thread_.clear();
+
+
+        // 2.  Remove handles from stroage
+        for (auto &v : vertices_to_delete) storage_->vertices_.erase(v);
+        for (auto &e : edges_to_delete) storage_->edges_.erase(e);
+
+        // 3.  Parallel destruction / update
+        // 3a. Vertices
+        #pragma omp parallel for schedule(dynamic)
+        for (std::size_t i = 0; i < vertices_to_delete.size(); ++i)
+        {
+            // Task‑local copy ensures ~Vertex() executes on this thread
+            std::shared_ptr<Vertex> vertex = std::move(vertices_to_delete[i]);
+
+            storage_->delete_vertex_delayed_removal(vertex);
+            storage_->update_vertices_that_have_deleted_publishers();
+            storage_->update_vertices_that_have_changed_box();
+            storage_->add_or_remove_vertices_from_rrs_tree();
+            // vertex goes out of scope here → reference count drops
+        }
+
+        // 3b. Edges
+        #pragma omp parallel for schedule(dynamic)
+        for (std::size_t i = 0; i < edges_to_delete.size(); ++i)
+        {
+            std::shared_ptr<Edge> edge = std::move(edges_to_delete[i]);
+            storage_->delete_edge_delayed_removal(edge);
+            // edge is released at loop‑end; ~Edge() runs here when ref‑count hits zero
+        }
     }
     else
     {
