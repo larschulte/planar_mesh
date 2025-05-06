@@ -55,11 +55,11 @@ void Surface::delete_()
         vertex.lock()->set_under_surface_deletion(true);
         if (settings_.cleanup_stale_surfaces_vertices_mode == CleanupStaleSurfacesVerticesMode::TASK_BASED)
         {
-            storage_.lock()->add_vertex_to_be_deleted_single_thread(vertex.lock());
+            storage_->add_vertex_to_be_deleted_single_thread(vertex.lock());
         }
         else
         {
-            storage_.lock()->add_vertex_to_be_deleted(vertex.lock());
+            storage_->add_vertex_to_be_deleted(vertex.lock());
         }
     }
 
@@ -69,13 +69,15 @@ void Surface::delete_()
         edge.lock()->set_under_surface_deletion(true);
         if (settings_.cleanup_stale_surfaces_vertices_mode == CleanupStaleSurfacesVerticesMode::TASK_BASED)
         {
-            storage_.lock()->add_edge_to_be_deleted_single_thread(edge.lock());
+            storage_->add_edge_to_be_deleted_single_thread(edge.lock());
         }
         else
         {
-            storage_.lock()->add_edge_to_be_deleted(edge.lock());
+            storage_->add_edge_to_be_deleted(edge.lock());
         }
     }
+
+    storage_.reset();
 
     // complete deletion
     is_expired_ = true;
@@ -309,7 +311,7 @@ void Surface::merge_surface(const std::shared_ptr<Surface>& surface)
     if (settings_.log.merge_surface) std::cout << "Surface " << surface_valid->get_id() << " merged into surface " << id_ << std::endl;
 
     // delete
-    storage_.lock()->delete_surface(surface);
+    storage_->delete_surface(surface);
 }
 
 std::unordered_set<std::weak_ptr<Vertex>, MeshObjectHash> Surface::get_vertices() const
@@ -672,7 +674,7 @@ bool Surface::connect_by_edges_and_faces(const std::shared_ptr<Vertex>& vertex, 
             if (pair.first->is_expired()) continue;
 
             // create edge
-            storage_.lock()->add_edge(shared_from_this(), vertex, pair.first);
+            storage_->add_edge(shared_from_this(), vertex, pair.first);
 
             // increment
             number_of_edges_created++;
@@ -763,7 +765,7 @@ void Surface::connect(const std::shared_ptr<Edge>& edge)
         edges_.insert(edge);
     }
 
-    // storage_.lock()->add_to_set_of_edge_to_update_edgeBVH_tree(edge, shared_from_this());
+    // storage_->add_to_set_of_edge_to_update_edgeBVH_tree(edge, shared_from_this());
 }
 
 void Surface::connect(const std::shared_ptr<Face>& face)
@@ -858,7 +860,7 @@ void Surface::disconnect(const std::shared_ptr<Edge>& edge)
         edges_.erase(it);
     }
 
-    // storage_.lock()->add_to_set_of_edge_to_update_edgeBVH_tree(edge, shared_from_this());
+    // storage_->add_to_set_of_edge_to_update_edgeBVH_tree(edge, shared_from_this());
 }
 
 void Surface::disconnect(const std::shared_ptr<Face>& face)
@@ -1175,7 +1177,7 @@ void Surface::update_seed_status()
         // if too different, delete to re-add the point
         if ((new_projected_position - old_projected_position).norm() > 0.05)
         {
-            storage_.lock()->add_vertex_to_be_deleted(vertex_locked);
+            storage_->add_vertex_to_be_deleted(vertex_locked);
         }
     }
 }
@@ -1237,13 +1239,13 @@ bool Surface::remove_unmatched_points()
     for (const auto& vertex : vertices_to_delete)
     {
         if (vertex->is_expired()) continue;
-        storage_.lock()->delete_vertex(vertex);
+        storage_->delete_vertex(vertex);
     }
 
     for (const auto& interior_point : interior_points_to_delete)
     {
         if (interior_point->is_expired()) continue;
-        storage_.lock()->delete_interior_point(interior_point);
+        storage_->delete_interior_point(interior_point);
     }
 
     // return
@@ -1262,12 +1264,12 @@ void Surface::remove_singular_components()
     for (const auto& vertex : singular_vertices)
     {
         if (vertex->is_expired()) continue;
-        storage_.lock()->delete_vertex(vertex);
+        storage_->delete_vertex(vertex);
     }
     for (const auto& edge : singular_edges)
     {
         if (edge->is_expired()) continue;
-        storage_.lock()->delete_edge(edge);
+        storage_->delete_edge(edge);
     }
 }
 
@@ -1290,7 +1292,7 @@ void Surface::split_surface_by_connected_components()
     for (std::size_t i = 1; i < sorted_grouped_vertices.size(); i++)
     {
         // get new surface
-        std::shared_ptr<Surface> new_surface = storage_.lock()->add_surface();
+        std::shared_ptr<Surface> new_surface = storage_->add_surface();
 
         // for each vertex in the group, swap their surface to a new surface
         for (const auto& vertex : sorted_grouped_vertices[i].second)

@@ -99,7 +99,7 @@ void Edge::delete_()
         surface_locked->disconnect(shared_from_this());
 
         // add to be split
-        storage_.lock()->add_surface_to_be_split(surface_locked);     
+        storage_->add_surface_to_be_split(surface_locked);     
     }
     // clear surface
     surface_.reset();
@@ -133,7 +133,7 @@ void Edge::delete_()
         // delete face
         if (!under_surface_deletion_)
         {
-            for (const auto& face : faces_) storage_.lock()->add_face_to_be_deleted(face.lock());
+            for (const auto& face : faces_) storage_->add_face_to_be_deleted(face.lock());
         }
 
         // clear faces
@@ -142,6 +142,8 @@ void Edge::delete_()
     
     // log
     if (settings_.log.deletion) std::cout << "---------- edge " << id_ << " destroyed" << std::endl;
+
+    storage_.reset();
 
     // set expired
     is_expired_ = true;
@@ -195,7 +197,7 @@ void Edge::disconnect(const std::shared_ptr<Face>& face)
 
     // do not self destruct when have no face
     // check self destruct
-    if (faces_.empty() && !deleting_ && can_self_destruct_ && !under_surface_deletion_) storage_.lock()->add_edge_to_be_deleted(shared_from_this());
+    if (faces_.empty() && !deleting_ && can_self_destruct_ && !under_surface_deletion_) storage_->add_edge_to_be_deleted(shared_from_this());
 }
 
 

@@ -21,7 +21,7 @@ void InteriorPoint::initialize_(const std::shared_ptr<Storage>& storage, const s
     storage_ = storage;
 
     // get id
-    id_ = storage_.lock()->get_next_interior_point_id();
+    id_ = storage_->get_next_interior_point_id();
 
     // store
     position_ = generic_point->get_position();
@@ -66,7 +66,7 @@ void InteriorPoint::initialize_(const std::shared_ptr<Storage>& storage, const s
     storage_ = storage;
 
     // get id
-    id_ = storage_.lock()->get_next_interior_point_id();
+    id_ = storage_->get_next_interior_point_id();
 
     // store
     position_ = generic_point->get_position();
@@ -132,7 +132,7 @@ void InteriorPoint::delete_()
         // add vertex to update radius
         for (const auto& interior_point_subscriber : interior_point_distance_subscribers_copy)
         {
-            storage_.lock()->add_vertex_that_have_deleted_publishers(interior_point_subscriber.lock());
+            storage_->add_vertex_that_have_deleted_publishers(interior_point_subscriber.lock());
         } 
     }
 
@@ -175,13 +175,15 @@ void InteriorPoint::delete_()
         }
         else
         {
-            storage_.lock()->add_to_queue(shared_from_this());
+            storage_->add_to_queue(shared_from_this());
         }
     }
 
     // log
     if (settings_.log.deletion) std::cout << "---------- InteriorPoint " << id_ << " destroyed" << std::endl;
 
+    storage_.reset();
+    
     // set expired
     is_expired_ = true;
 }

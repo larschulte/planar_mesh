@@ -25,7 +25,7 @@ void Face::initialize_(const std::shared_ptr<Storage>& storage, const std::share
     storage_ = storage;
 
     // get id
-    id_ = storage_.lock()->get_next_face_id();
+    id_ = storage_->get_next_face_id();
 
     // add to vertices
     vertices_.push_back(vertex0);
@@ -87,8 +87,8 @@ void Face::initialize_(const std::shared_ptr<Storage>& storage, const std::share
     center_ = (pos0 + pos1 + pos2) / 3;
 
     // add to search
-    // storage_.lock()->add_searchable_face(shared_from_this());
-    storage_.lock()->add_to_set_of_faces_to_update_bvh_tree(shared_from_this());
+    // storage_->add_searchable_face(shared_from_this());
+    storage_->add_to_set_of_faces_to_update_bvh_tree(shared_from_this());
 
     // log
     if (settings_.log.initialize) std::cout << "Face " << id_ << " created between vertex " << vertex0->get_id() << ", vertex " << vertex1->get_id() << " and vertex " << vertex2->get_id() << std::endl;
@@ -117,7 +117,7 @@ void Face::initialize_(
     storage_ = storage;
 
     // get id
-    id_ = storage_.lock()->get_next_face_id();
+    id_ = storage_->get_next_face_id();
 
     // add to vertices
     vertices_.push_back(vertex0);
@@ -174,8 +174,8 @@ void Face::initialize_(
     center_ = (pos0 + pos1 + pos2) / 3;
 
     // add to search
-    // storage_.lock()->add_searchable_face(shared_from_this());
-    storage_.lock()->add_to_set_of_faces_to_update_bvh_tree(shared_from_this());
+    // storage_->add_searchable_face(shared_from_this());
+    storage_->add_to_set_of_faces_to_update_bvh_tree(shared_from_this());
 
     // log
     if (settings_.log.initialize) std::cout << "Face " << id_ << " created between vertex " << vertex0->get_id() << ", vertex " << vertex1->get_id() << " and vertex " << vertex2->get_id() << std::endl;
@@ -232,7 +232,7 @@ void Face::delete_()
         std::unique_lock<std::shared_mutex> lock(rwlock_interior_points_);
 
         // delete interior points
-        for (const auto& interior_point : interior_points_) storage_.lock()->add_interior_point_to_be_deleted(interior_point.lock());
+        for (const auto& interior_point : interior_points_) storage_->add_interior_point_to_be_deleted(interior_point.lock());
 
         // clear interior points
         interior_points_.clear();
@@ -241,12 +241,14 @@ void Face::delete_()
     // update tree
     {
         // add to affected faces set
-        storage_.lock()->add_to_set_of_faces_to_update_bvh_tree(shared_from_this());
+        storage_->add_to_set_of_faces_to_update_bvh_tree(shared_from_this());
     }
 
     // log
     if (settings_.log.deletion) std::cout << "---------- face " << id_ << " destroyed" << std::endl;
 
+    storage_.reset();
+    
     // set expired
     is_expired_ = true;
 }
@@ -294,7 +296,7 @@ void Face::un_add_face()
     vertex2->get_edge(vertex0)->set_can_self_destruct(false);
 
     // delete face
-    storage_.lock()->delete_face(shared_from_this());
+    storage_->delete_face(shared_from_this());
 
     // set can self destruct
     vertex0->set_can_self_destruct(true);

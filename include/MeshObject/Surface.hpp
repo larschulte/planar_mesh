@@ -139,7 +139,7 @@ private:
     // EdgeBVH edge_bvh_;
 
     int id_;
-    std::weak_ptr<Storage> storage_;
+    std::shared_ptr<Storage> storage_;
 
     std::size_t composition_hash_;
 

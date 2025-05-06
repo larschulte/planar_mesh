@@ -114,7 +114,7 @@ void Vertex::delete_()
             std::shared_ptr<Vertex> vertex_point_subscriber_locked = vertex_point_subscriber.lock();
             if (vertex_point_subscriber_locked)
             {
-                storage_.lock()->add_vertex_that_have_deleted_publishers(vertex_point_subscriber_locked);
+                storage_->add_vertex_that_have_deleted_publishers(vertex_point_subscriber_locked);
             }
         }
     }
@@ -122,7 +122,7 @@ void Vertex::delete_()
     // update tree
     {
         // add to update rrs tree vertex set
-        storage_.lock()->remove_searchable_vertex(shared_from_this());
+        storage_->remove_searchable_vertex(shared_from_this());
     }
 
     if (!under_surface_deletion_)
@@ -145,7 +145,7 @@ void Vertex::delete_()
             std::shared_lock<std::shared_mutex> lock_edges(rwlock_edges_);
             
             // delete edge
-            for (const auto& edge : edges_) storage_.lock()->add_edge_to_be_deleted(edge.lock());
+            for (const auto& edge : edges_) storage_->add_edge_to_be_deleted(edge.lock());
             
             // clear
             edges_.clear();
@@ -157,7 +157,7 @@ void Vertex::delete_()
             std::shared_lock<std::shared_mutex> lock_faces(rwlock_faces_);
             
             // delete face
-            for (const auto& face : faces_) storage_.lock()->add_face_to_be_deleted(face.lock());
+            for (const auto& face : faces_) storage_->add_face_to_be_deleted(face.lock());
             
             // clear
             faces_.clear();
@@ -169,7 +169,7 @@ void Vertex::delete_()
             std::shared_lock<std::shared_mutex> lock_interior_points(rwlock_interior_points_);
             
             // delete interior point
-            for (const auto& interior_point : interior_points_) storage_.lock()->add_interior_point_to_be_deleted(interior_point.lock());
+            for (const auto& interior_point : interior_points_) storage_->add_interior_point_to_be_deleted(interior_point.lock());
             
             // clear
             interior_points_.clear();
@@ -186,7 +186,7 @@ void Vertex::delete_()
             }
             else
             {
-                storage_.lock()->add_to_queue(shared_from_this());
+                storage_->add_to_queue(shared_from_this());
             }
         }
     }
@@ -194,6 +194,8 @@ void Vertex::delete_()
     // log
     if (settings_.log.deletion) std::cout << "---------- vertex " << id_ << " destroyed" << std::endl;
 
+    storage_.reset();
+    
     // set expired
     is_expired_ = true;
 }
@@ -597,7 +599,7 @@ void Vertex::disconnect(const std::shared_ptr<Edge>& edge)
     // check_if_update_search_tree();
 
     // check self destruct
-    if (!deleting_ && edges_.empty() && can_self_destruct_ && !connecting_to_edges_and_faces_ && !under_surface_deletion_) storage_.lock()->add_vertex_to_be_deleted(shared_from_this());
+    if (!deleting_ && edges_.empty() && can_self_destruct_ && !connecting_to_edges_and_faces_ && !under_surface_deletion_) storage_->add_vertex_to_be_deleted(shared_from_this());
 }
 
 void Vertex::disconnect(const std::shared_ptr<Face>& face)
@@ -955,7 +957,7 @@ bool Vertex::try_close_holes_between_self_and(std::shared_ptr<Vertex>& vertex0, 
     if (!inter_edge)
     {
         // create edge
-        inter_edge = storage_.lock()->add_edge(surface_.lock(), vertex0, vertex1);
+        inter_edge = storage_->add_edge(surface_.lock(), vertex0, vertex1);
 
         // read lock on the inter edge
         inter_edge_lock = std::shared_lock<std::shared_mutex>(inter_edge->rwlock_lifecycle_);
@@ -998,7 +1000,7 @@ bool Vertex::try_close_holes_between_self_and(std::shared_ptr<Vertex>& vertex0, 
     if (!edge0->is_boundary() || !edge1->is_boundary() || !inter_edge->is_boundary()) return false;
 
     // create face
-    std::shared_ptr<Face> new_face = storage_.lock()->add_face(get_surface(), shared_from_this(), vertex0, vertex1, edge0, edge1, inter_edge);
+    std::shared_ptr<Face> new_face = storage_->add_face(get_surface(), shared_from_this(), vertex0, vertex1, edge0, edge1, inter_edge);
 
     // read lock face
     std::shared_lock<std::shared_mutex> lock(new_face->rwlock_lifecycle_);
@@ -1070,7 +1072,7 @@ void Vertex::upon_adding_publisher()
     {
         try_break_edges();
         try_delete_interior_points();
-        storage_.lock()->tree_update_vertex_box(shared_from_this());
+        storage_->tree_update_vertex_box(shared_from_this());
     }    
 }
 
@@ -1087,7 +1089,7 @@ void Vertex::upon_deleting_publisher()
     // only try close holes and update node box if radius is increased
     if (current_radius > previous_radius) 
     {
-        storage_.lock()->add_vertex_that_have_changed_box(shared_from_this());
+        storage_->add_vertex_that_have_changed_box(shared_from_this());
     }
 }
 
@@ -1307,7 +1309,7 @@ void Vertex::try_break_edges()
         // skip if edge is expired
         if (edge->is_expired()) continue; 
 
-        storage_.lock()->add_edge_to_be_deleted(edge);
+        storage_->add_edge_to_be_deleted(edge);
     }
 }
 
@@ -1347,7 +1349,7 @@ void Vertex::try_delete_interior_points()
         // skip if interior_point is expired
         if (interior_point->is_expired()) continue; 
 
-        storage_.lock()->add_interior_point_to_be_deleted(interior_point);
+        storage_->add_interior_point_to_be_deleted(interior_point);
     }
 }
 
@@ -1372,11 +1374,11 @@ void Vertex::check_if_update_search_tree()
 //     // check if is boundary
 //     if (is_boundary() && !is_searchable())
 //     {
-//         storage_.lock()->add_to_set_of_vertices_to_update_rrs_tree(shared_from_this());
+//         storage_->add_to_set_of_vertices_to_update_rrs_tree(shared_from_this());
 //     }
 //     else if (!is_boundary() && is_searchable())
 //     {
-//         storage_.lock()->add_to_set_of_vertices_to_update_rrs_tree(shared_from_this());
+//         storage_->add_to_set_of_vertices_to_update_rrs_tree(shared_from_this());
 //     }
 }
 

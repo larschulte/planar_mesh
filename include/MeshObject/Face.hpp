@@ -93,7 +93,7 @@ private:
     double area_;
 
     int id_;
-    std::weak_ptr<Storage> storage_;
+    std::shared_ptr<Storage> storage_;
 
     std::vector<std::weak_ptr<Vertex>> vertices_;
     std::vector<std::weak_ptr<Edge>> edges_;

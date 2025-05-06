@@ -71,7 +71,7 @@ private:
     bool do_not_add_back_due_to_seed_surface_ = false;
 
     int id_;
-    std::weak_ptr<Storage> storage_;
+    std::shared_ptr<Storage> storage_;
 
     std::weak_ptr<Face> face_;
     std::weak_ptr<Vertex> vertex_;

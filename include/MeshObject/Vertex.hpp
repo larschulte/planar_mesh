@@ -168,7 +168,7 @@ private:
     std::size_t num_deletes_;
 
     int id_;
-    std::weak_ptr<Storage> storage_;
+    std::shared_ptr<Storage> storage_;
 
     bool connecting_to_edges_and_faces_ = false;
 
