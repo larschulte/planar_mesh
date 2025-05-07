@@ -961,19 +961,48 @@ void Application<PointT>::loop()
 
     if (settings_.cleanup_stale_surfaces_vertices_mode == CleanupStaleSurfacesVerticesMode::TASK_BASED)
     {
-        // 1.  Extract ownership from the single‑thread containers
-        std::vector<std::shared_ptr<Vertex>> vertices_to_delete;
-        std::vector<std::shared_ptr<Edge>> edges_to_delete;
+        // 1. collect vertices and edges to be deleted        
+        // 1.1  Parallel size collection
+       const std::size_t nT = storage_->thread_vertices_to_be_deleted_.size();
+        std::vector<std::size_t> v_sizes(nT), e_sizes(nT);
+        #pragma omp parallel for
+        for (std::size_t t = 0; t < nT; ++t) {
+            v_sizes[t] = storage_->thread_vertices_to_be_deleted_[t].size();
+            e_sizes[t] = storage_->thread_edges_to_be_deleted_[t].size();
+        }
 
-        vertices_to_delete.reserve(storage_->vertices_to_be_deleted_single_thread_.size());
-        edges_to_delete.reserve(storage_->edges_to_be_deleted_single_thread_.size());
+        // 1.2 Parallel prefix sum
+        std::vector<std::size_t> v_offset(nT), e_offset(nT);
+        std::size_t v_total = 0, e_total = 0;
+        for (std::size_t t = 0; t < nT; ++t) {
+            v_offset[t] = v_total;
+            v_total    += v_sizes[t];
 
-        for (auto &v : storage_->vertices_to_be_deleted_single_thread_) vertices_to_delete.emplace_back(std::move(v));
-        for (auto &e : storage_->edges_to_be_deleted_single_thread_) edges_to_delete.emplace_back(std::move(e));
-        
-        storage_->vertices_to_be_deleted_single_thread_.clear();   // container now empty
-        storage_->edges_to_be_deleted_single_thread_.clear();
+            e_offset[t] = e_total;
+            e_total    += e_sizes[t];
+        }
 
+        // 1.3 Allocate slices
+        std::vector<std::shared_ptr<Vertex>> vertices_to_delete(v_total);
+        std::vector<std::shared_ptr<Edge>>   edges_to_delete   (e_total);
+
+        // 1.4 Parallel move
+        #pragma omp parallel for
+        for (std::size_t t = 0; t < nT; ++t)
+        {
+            auto &v_set = storage_->thread_vertices_to_be_deleted_[t];
+            auto &e_set = storage_->thread_edges_to_be_deleted_[t];
+
+            std::size_t v_idx = v_offset[t];
+            for (auto &ptr : v_set)
+                vertices_to_delete[v_idx++] = std::move(ptr);
+            v_set.clear();                                    // reuse set later
+
+            std::size_t e_idx = e_offset[t];
+            for (auto &ptr : e_set)
+                edges_to_delete[e_idx++] = std::move(ptr);
+            e_set.clear();
+        }
 
         // 2.  Remove handles from stroage
         for (auto &v : vertices_to_delete) storage_->vertices_.erase(v);

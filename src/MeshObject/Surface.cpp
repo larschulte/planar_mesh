@@ -53,28 +53,14 @@ void Surface::delete_()
     for (const auto& vertex : vertices_) 
     {
         vertex.lock()->set_under_surface_deletion(true);
-        if (settings_.cleanup_stale_surfaces_vertices_mode == CleanupStaleSurfacesVerticesMode::TASK_BASED)
-        {
-            storage_->add_vertex_to_be_deleted_single_thread(vertex.lock());
-        }
-        else
-        {
-            storage_->add_vertex_to_be_deleted(vertex.lock());
-        }
+        storage_->add_vertex_to_be_deleted(vertex.lock());
     }
 
     // delete edge
     for (const auto& edge : edges_)
     {
         edge.lock()->set_under_surface_deletion(true);
-        if (settings_.cleanup_stale_surfaces_vertices_mode == CleanupStaleSurfacesVerticesMode::TASK_BASED)
-        {
-            storage_->add_edge_to_be_deleted_single_thread(edge.lock());
-        }
-        else
-        {
-            storage_->add_edge_to_be_deleted(edge.lock());
-        }
+        storage_->add_edge_to_be_deleted(edge.lock());
     }
 
     storage_.reset();
