@@ -1043,14 +1043,34 @@ void Application<PointT>::loop()
         }
     }
 
-    // #pragma omp parallel num_threads(settings_.num_threads)
-    // {
-    //     storage_->split_surfaces_per_thread();
-    // }
-
+    if (settings_.split_surface)
+    {
+        // split surfaces
+        // 1. collect surfaces to be split
+        std::vector<std::shared_ptr<Surface>> surfaces_to_be_split;
+        surfaces_to_be_split.reserve(storage_->surfaces_to_be_split_.size());
+    
+        surfaces_to_be_split.insert(                     // one bulk move
+            surfaces_to_be_split.end(),
+            std::make_move_iterator(storage_->surfaces_to_be_split_.begin()),
+            std::make_move_iterator(storage_->surfaces_to_be_split_.end()));
+    
+        storage_->surfaces_to_be_split_.clear();         // source container now empty
+    
+        // 2. Split each surface in parallel
+        #pragma omp parallel for schedule(dynamic)
+        for (std::size_t i = 0; i < surfaces_to_be_split.size(); ++i)
+        {
+            std::shared_ptr<Surface> surface = std::move(surfaces_to_be_split[i]);
+            
+            // skip if surface is expired
+            if (surface->is_expired()) continue;
+    
+            surface->split_surface_by_connected_components();
+        }
+    }
+    
     storage_->remove_nodes_from_rrs_tree();
-    storage_->clear_surfaces_to_be_split();
-    // storage_->add_points_in_smaller_repeated_queues_to_main_queue();
     storage_->clear_all_queues();
 
 

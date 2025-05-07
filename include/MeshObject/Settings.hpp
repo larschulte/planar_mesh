@@ -116,6 +116,8 @@ struct Settings
     double cleanup_seed_surface_after_ith_cloud;
     double cleanup_seed_surface_after_distance_travelled;
     
+    bool split_surface;
+
     double odometry_position_uncertainty_rate;
     double odometry_angular_uncertainty_rate;
     

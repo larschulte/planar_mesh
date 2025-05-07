@@ -39,7 +39,8 @@ public: // to user
     tbb::concurrent_unordered_set<std::shared_ptr<Edge>, MeshObjectHash> edges_to_be_deleted_single_thread_;
     std::vector<std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>> thread_vertices_to_be_deleted_;
     std::vector<std::unordered_set<std::shared_ptr<Edge>, MeshObjectHash>> thread_edges_to_be_deleted_;
-    
+    tbb::concurrent_unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_to_be_split_;
+
     const std::shared_ptr<Vertex>& add_vertex(const std::shared_ptr<Surface>& surface, const Eigen::Vector3d& origin, const Eigen::Vector3d& position, double distance_travelled);
     const std::shared_ptr<Vertex>& add_vertex(const std::shared_ptr<Surface>& surface, const Eigen::Vector3d& origin, const Eigen::Vector3d& position, const double& radius, double distance_travelled);
     const std::shared_ptr<Vertex>& add_vertex(const std::shared_ptr<Surface>& surface, const std::shared_ptr<GenericPoint>& generic_point);
@@ -218,8 +219,6 @@ private:
     std::vector<std::unordered_set<std::shared_ptr<InteriorPoint>, MeshObjectHash>> thread_interior_points_to_be_deleted_;
     std::vector<std::unordered_set<std::shared_ptr<RRSNode>, RRSNodeHasher, RRSNodeEqual>> thread_nodes_to_be_deleted_;
     std::vector<std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash>> thread_surfaces_to_be_deleted_or_stored_;
-
-    tbb::concurrent_unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces_to_be_split_;
 
     std::vector<std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>> thread_vertices_that_have_deleted_publishers_;
     std::vector<std::unordered_set<std::shared_ptr<Vertex>, MeshObjectHash>> thread_vertices_that_have_added_publishers_;
