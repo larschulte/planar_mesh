@@ -86,8 +86,12 @@ void Vertex::initialize_(const std::shared_ptr<Storage>& storage, const std::sha
 
 void Vertex::delete_()
 {
-    // write lock
-    std::unique_lock<std::shared_mutex> lock(rwlock_lifecycle_);
+    // only lock if not during surface deletion
+    std::unique_lock<std::shared_mutex> lock(rwlock_lifecycle_, std::defer_lock);
+    if (!under_surface_deletion_)
+    {
+        lock.lock();
+    }
 
     // skip if already deleted
     if (is_expired_) return;
@@ -98,23 +102,39 @@ void Vertex::delete_()
     // log
     if (settings_.log.deletion) std::cout << "Destroying vertex " << id_ << std::endl;
     
-    // subscribers (disconnect)
+    // no lock and copy needed during surface deletion
+    if (under_surface_deletion_)
     {
-        // lock, copy and clear
-        std::unordered_set<std::weak_ptr<Vertex>, MeshObjectHash> vertex_point_distance_subscribers_copy;
-        {
-            std::unique_lock<std::shared_mutex> lock(rwlock_vertex_point_distance_subscribers_);
-            vertex_point_distance_subscribers_copy = vertex_point_distance_subscribers_;
-            vertex_point_distance_subscribers_.clear();
-        }
-
         // disconnect
-        for (const auto& vertex_point_subscriber : vertex_point_distance_subscribers_copy) 
+        for (const auto& vertex_point_subscriber : vertex_point_distance_subscribers_) 
         {
             std::shared_ptr<Vertex> vertex_point_subscriber_locked = vertex_point_subscriber.lock();
             if (vertex_point_subscriber_locked)
             {
                 storage_->add_vertex_that_have_deleted_publishers(vertex_point_subscriber_locked);
+            }
+        }
+    }
+    else
+    {
+        // subscribers (disconnect)
+        {
+            // lock, copy and clear
+            std::unordered_set<std::weak_ptr<Vertex>, MeshObjectHash> vertex_point_distance_subscribers_copy;
+            {
+                std::unique_lock<std::shared_mutex> lock(rwlock_vertex_point_distance_subscribers_);
+                vertex_point_distance_subscribers_copy = vertex_point_distance_subscribers_;
+                vertex_point_distance_subscribers_.clear();
+            }
+    
+            // disconnect
+            for (const auto& vertex_point_subscriber : vertex_point_distance_subscribers_copy) 
+            {
+                std::shared_ptr<Vertex> vertex_point_subscriber_locked = vertex_point_subscriber.lock();
+                if (vertex_point_subscriber_locked)
+                {
+                    storage_->add_vertex_that_have_deleted_publishers(vertex_point_subscriber_locked);
+                }
             }
         }
     }
