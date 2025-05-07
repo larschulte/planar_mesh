@@ -36,6 +36,9 @@ find_package(GTSAM REQUIRED)
 # matplotlib-cpp
 find_package(Matplot++ REQUIRED)
 
+# jemalloc
+find_library(JEMALLOC_LIB jemalloc REQUIRED)
+
 # MeshObject
 set(MeshObject_SOURCE 
   src/MeshObject/MeshObject.cpp
@@ -64,7 +67,7 @@ set(MeshObject_SOURCE
 
 # add executable
 add_executable(main src/main.cpp ${MeshObject_SOURCE})
-target_link_libraries (main ${PCL_LIBRARIES} gtsam CGAL::CGAL CGAL::CGAL_Core)
+target_link_libraries (main ${PCL_LIBRARIES} gtsam CGAL::CGAL CGAL::CGAL_Core ${JEMALLOC_LIB})
 target_include_directories(main
   PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
