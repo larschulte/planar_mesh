@@ -69,6 +69,12 @@ Settings::Settings()
     dataset_map["kitti01"].pose_file_path = "/home/jiahao/datasets/spires_benchmark/kitti_dataset/poses/01.txt";
     dataset_map["kitti01"].range_precision = 0.02; // Velodyne HDL-64E Laserscanner
 
+    dataset_map["keble01"] = DatasetParameters();
+    dataset_map["keble01"].pcd_file_folder = "/home/jiahao/datasets/spires_benchmark/keble01/undist-clouds-filtered/";
+    dataset_map["keble01"].pose_file_path = "/home/jiahao/datasets/spires_benchmark/keble01/slam-poses.csv";
+    dataset_map["keble01"].remove_double_return_flag = false;
+    dataset_map["keble01"].filter_low_intensity_flag = false;
+
     // ======= benchmark final =======
 
     dataset_map["christchurch03"] = DatasetParameters();
@@ -92,11 +98,11 @@ Settings::Settings()
     dataset_map["observatory01"].filter_low_intensity_flag = false;
     // 300 scans
 
-    std::string dataset = "christchurch03";
+    std::string dataset = "keble01";
     
-    headless_mode = false;
-    num_scans = 300;
-    save_folder = "/home/jiahao/ros2_ws/src/eye_patch/benchmarks/2025-04-30/" + dataset + "/task_based_parallelization/";
+    headless_mode = true;
+    num_scans = -1;
+    save_folder = "/home/jiahao/ros2_ws/src/eye_patch/benchmarks/2025-05-15/" + dataset + "/all/";
 
     data_loader_settings.pcd_file_folder = dataset_map[dataset].pcd_file_folder;
     data_loader_settings.pose_file_path = dataset_map[dataset].pose_file_path;
