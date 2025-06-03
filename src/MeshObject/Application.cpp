@@ -115,7 +115,13 @@ void Application<PointT>::load_point_cloud()
     typename pcl::PointCloud<PointT>::Ptr pointcloud_local = data_loader.get_cloud(ith_cloud);
     Eigen::Affine3d pose = data_loader.get_pose(ith_cloud);
 
-    // get number of points in the current cloud
+    load_external_point_cloud(pointcloud_local, pose);
+}
+
+template <typename PointT>
+void Application<PointT>::load_external_point_cloud(typename pcl::PointCloud<PointT>::Ptr pointcloud_local, Eigen::Affine3d& pose)
+{
+    // get number of points in the current cloud 
     ith_size = pointcloud_local->size();
 
     // transform cloud to global

@@ -55,6 +55,7 @@ public:
     
     // data
     void load_point_cloud();
+    void load_external_point_cloud(typename pcl::PointCloud<PointT>::Ptr pointcloud_local, Eigen::Affine3d& pose);
 
     void write_mesh();
 
