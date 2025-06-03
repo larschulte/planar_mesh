@@ -100,7 +100,7 @@ Settings::Settings()
 
     std::string dataset = "keble01";
     
-    headless_mode = true;
+    headless_mode = false;
     num_scans = -1;
     save_folder = "/home/jiahao/ros2_ws/src/eye_patch/benchmarks/2025-05-15/" + dataset + "/all/";
 
