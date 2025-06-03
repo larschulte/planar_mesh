@@ -898,6 +898,9 @@ void Application<PointT>::step()
 template <typename PointT>
 void Application<PointT>::loop()
 {
+    // get next pointcloud
+    load_point_cloud();
+
     // initialize vector to store duration
     rrs_search_duration_per_thread.resize(settings_.num_threads);
     rrs_update_duration_per_thread.resize(settings_.num_threads);
@@ -1149,7 +1152,6 @@ void Application<PointT>::loop()
 
     // load next cloud
     ith_cloud += 1;
-    load_point_cloud();
 }
 
 template <typename PointT>
@@ -1178,9 +1180,6 @@ void Application<PointT>::restart()
 
     total_duration = 0;
     total_loops = 0;
-    
-    // load point cloud
-    load_point_cloud();
 }
 
 template <typename PointT>

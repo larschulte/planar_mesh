@@ -15,14 +15,13 @@ void headless_mode()
     Settings settings;
 
     // process
-    app.load_point_cloud();
     if (settings.num_scans == -1)
     {
         app.process_the_rest();
     }
     else
     {
-        for (int i = 0; i < settings.num_scans - 1; i++)
+        for (int i = 0; i < settings.num_scans; i++)
         {
             app.loop();
         }
