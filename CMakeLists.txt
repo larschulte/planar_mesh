@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(mesh_object)
+project(planarmesh)
 
 list(APPEND CMAKE_PREFIX_PATH "/usr/local/")
 
@@ -19,6 +19,8 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(std_msgs REQUIRED)
 
 # pcl library
 find_package(PCL 1.14 REQUIRED)
@@ -63,6 +65,16 @@ set(MeshObject_SOURCE
   src/utilities/simplified_mesh.cpp
 )
 
+# for ros2 node
+add_executable(ros2_node src/ros2_node.cpp ${MeshObject_SOURCE})
+target_link_libraries(ros2_node ${PCL_LIBRARIES} CGAL::CGAL CGAL::CGAL_Core ${JEMALLOC_LIB})
+target_include_directories(ros2_node
+  PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>)
+ament_target_dependencies(ros2_node rclcpp std_msgs)
+install(TARGETS ros2_node DESTINATION lib/${PROJECT_NAME})
+
 # add executable
 add_executable(main src/main.cpp ${MeshObject_SOURCE})
 target_link_libraries (main ${PCL_LIBRARIES} CGAL::CGAL CGAL::CGAL_Core ${JEMALLOC_LIB})
@@ -83,88 +95,88 @@ install(TARGETS
   DESTINATION lib/${PROJECT_NAME}
 )
 
-# add executable
-add_executable(Surface_test src/test/Surface_test.cpp ${MeshObject_SOURCE})
-target_link_libraries (Surface_test ${PCL_LIBRARIES})
-target_include_directories(Surface_test
-  PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:include>)
+# # add executable
+# add_executable(Surface_test src/test/Surface_test.cpp ${MeshObject_SOURCE})
+# target_link_libraries (Surface_test ${PCL_LIBRARIES})
+# target_include_directories(Surface_test
+#   PUBLIC
+#     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+#     $<INSTALL_INTERFACE:include>)
 
-# add executable
-add_executable(RRSTree_test src/test/RRSTree_test.cpp ${MeshObject_SOURCE})
-target_link_libraries (RRSTree_test ${PCL_LIBRARIES})
-target_include_directories(RRSTree_test
-  PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:include>)
+# # add executable
+# add_executable(RRSTree_test src/test/RRSTree_test.cpp ${MeshObject_SOURCE})
+# target_link_libraries (RRSTree_test ${PCL_LIBRARIES})
+# target_include_directories(RRSTree_test
+#   PUBLIC
+#     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+#     $<INSTALL_INTERFACE:include>)
 
 
-# add executable
-add_executable(MeshObject_test src/test/MeshObject_test.cpp ${MeshObject_SOURCE})
-target_link_libraries (MeshObject_test ${PCL_LIBRARIES})
-target_include_directories(MeshObject_test
-  PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:include>)
+# # add executable
+# add_executable(MeshObject_test src/test/MeshObject_test.cpp ${MeshObject_SOURCE})
+# target_link_libraries (MeshObject_test ${PCL_LIBRARIES})
+# target_include_directories(MeshObject_test
+#   PUBLIC
+#     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+#     $<INSTALL_INTERFACE:include>)
 
-# add executable
-add_executable(TriangleBVH_test src/test/TriangleBVH_test.cpp ${MeshObject_SOURCE})
-target_link_libraries (TriangleBVH_test ${PCL_LIBRARIES})
-target_include_directories(TriangleBVH_test
-  PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:include>)
+# # add executable
+# add_executable(TriangleBVH_test src/test/TriangleBVH_test.cpp ${MeshObject_SOURCE})
+# target_link_libraries (TriangleBVH_test ${PCL_LIBRARIES})
+# target_include_directories(TriangleBVH_test
+#   PUBLIC
+#     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+#     $<INSTALL_INTERFACE:include>)
 
-add_executable(covariance_math_test src/test/covariance_math_test.cpp src/utilities/covariance_math.cpp)
-target_link_libraries (covariance_math_test ${PCL_LIBRARIES})
-target_include_directories(covariance_math_test
-  PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:include>)
+# add_executable(covariance_math_test src/test/covariance_math_test.cpp src/utilities/covariance_math.cpp)
+# target_link_libraries (covariance_math_test ${PCL_LIBRARIES})
+# target_include_directories(covariance_math_test
+#   PUBLIC
+#     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+#     $<INSTALL_INTERFACE:include>)
 
-add_executable(test_UnionFind src/test/test_UnionFind.cpp ${MeshObject_SOURCE})
-target_link_libraries (test_UnionFind ${PCL_LIBRARIES})
-target_include_directories(test_UnionFind
-  PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:include>)
+# add_executable(test_UnionFind src/test/test_UnionFind.cpp ${MeshObject_SOURCE})
+# target_link_libraries (test_UnionFind ${PCL_LIBRARIES})
+# target_include_directories(test_UnionFind
+#   PUBLIC
+#     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+#     $<INSTALL_INTERFACE:include>)
 
-add_executable(test_MeshObjectHash src/test/test_MeshObjectHash.cpp ${MeshObject_SOURCE})
-target_link_libraries (test_MeshObjectHash ${PCL_LIBRARIES})
-target_include_directories(test_MeshObjectHash
-PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-  $<INSTALL_INTERFACE:include>)
+# add_executable(test_MeshObjectHash src/test/test_MeshObjectHash.cpp ${MeshObject_SOURCE})
+# target_link_libraries (test_MeshObjectHash ${PCL_LIBRARIES})
+# target_include_directories(test_MeshObjectHash
+# PUBLIC
+#   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+#   $<INSTALL_INTERFACE:include>)
 
-add_executable(test_RRSTree src/test/test_RRSTree.cpp ${MeshObject_SOURCE})
-target_link_libraries (test_RRSTree ${PCL_LIBRARIES})
-target_include_directories(test_RRSTree
-PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-  $<INSTALL_INTERFACE:include>)
+# add_executable(test_RRSTree src/test/test_RRSTree.cpp ${MeshObject_SOURCE})
+# target_link_libraries (test_RRSTree ${PCL_LIBRARIES})
+# target_include_directories(test_RRSTree
+# PUBLIC
+#   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+#   $<INSTALL_INTERFACE:include>)
   
-add_executable(test_Simulation src/test/test_Simulation.cpp ${MeshObject_SOURCE})
-target_link_libraries (test_Simulation ${PCL_LIBRARIES})
-target_include_directories(test_Simulation
-PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-  $<INSTALL_INTERFACE:include>)
+# add_executable(test_Simulation src/test/test_Simulation.cpp ${MeshObject_SOURCE})
+# target_link_libraries (test_Simulation ${PCL_LIBRARIES})
+# target_include_directories(test_Simulation
+# PUBLIC
+#   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+#   $<INSTALL_INTERFACE:include>)
 
-add_executable(test_add_remove_point_from_surface_fitting src/test/test_add_remove_point_from_surface_fitting.cpp ${MeshObject_SOURCE})
-target_link_libraries (test_add_remove_point_from_surface_fitting ${PCL_LIBRARIES})
-target_include_directories(test_add_remove_point_from_surface_fitting
-PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-  $<INSTALL_INTERFACE:include>)
+# add_executable(test_add_remove_point_from_surface_fitting src/test/test_add_remove_point_from_surface_fitting.cpp ${MeshObject_SOURCE})
+# target_link_libraries (test_add_remove_point_from_surface_fitting ${PCL_LIBRARIES})
+# target_include_directories(test_add_remove_point_from_surface_fitting
+# PUBLIC
+#   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+#   $<INSTALL_INTERFACE:include>)
 
-# add executable
-add_executable(optimization src/utilities/optimization.cpp)
-target_link_libraries (optimization ${PCL_LIBRARIES} Ceres::ceres)
-target_include_directories(optimization
-  PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:include>)
+# # add executable
+# add_executable(optimization src/utilities/optimization.cpp)
+# target_link_libraries (optimization ${PCL_LIBRARIES} Ceres::ceres)
+# target_include_directories(optimization
+#   PUBLIC
+#     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+#     $<INSTALL_INTERFACE:include>)
 
 
 
