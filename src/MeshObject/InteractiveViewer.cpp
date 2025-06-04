@@ -268,7 +268,8 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
     }
     if (event.getKeySym() == "space" && event.keyDown())
     {
-        app_.loop();
+        app_.load_pointcloud_from_dataloader();
+        app_.process_pointcloud();
         if (settings_.update_display) update_display();
 
         // log
@@ -402,7 +403,11 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
     }
     if (event.getKeySym() == "6" && event.keyDown())
     {
-        for (int i = 0; i < 10; i++) app_.loop();
+        for (int i = 0; i < 10; i++)
+        {
+            app_.load_pointcloud_from_dataloader();
+            app_.process_pointcloud();
+        } 
         update_display();
 
         // log
@@ -410,7 +415,11 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
     }
     if (event.getKeySym() == "7" && event.keyDown())
     {
-        for (int i = 0; i < 50; i++) app_.loop();
+        for (int i = 0; i < 50; i++)
+        {
+            app_.load_pointcloud_from_dataloader();
+            app_.process_pointcloud();
+        } 
         update_display();
 
         // log
@@ -418,7 +427,11 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
     }
     if (event.getKeySym() == "8" && event.keyDown())
     {
-        for (int i = 0; i < 100; i++) app_.loop();
+        for (int i = 0; i < 100; i++)
+        {
+            app_.load_pointcloud_from_dataloader();
+            app_.process_pointcloud();
+        } 
         update_display();
 
         // log

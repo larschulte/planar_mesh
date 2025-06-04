@@ -23,7 +23,8 @@ void headless_mode()
     {
         for (int i = 0; i < settings.num_scans; i++)
         {
-            app.loop();
+            app.load_pointcloud_from_dataloader();
+            app.process_pointcloud();
         }
     }    
     app.write_mesh();

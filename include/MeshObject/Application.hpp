@@ -40,7 +40,7 @@ public:
     void get_lidar_data(Eigen::Vector3d& origin, Eigen::Vector3d& position);
     void get_sim_data(Eigen::Vector3d& origin, Eigen::Vector3d& position);
     void step();
-    void loop();
+    void process_pointcloud();
     void process_the_rest();
     void restart();
     std::shared_ptr<Storage> get_storage();
@@ -54,8 +54,8 @@ public:
     std::vector<std::shared_ptr<Vertex>> get_rrs_vertices();
     
     // data
-    void load_point_cloud();
-    void load_external_point_cloud(typename pcl::PointCloud<PointT>::Ptr pointcloud_local, Eigen::Affine3d& pose);
+    void load_pointcloud_from_dataloader();
+    void load_pointcloud(typename pcl::PointCloud<PointT>::Ptr pointcloud_local, Eigen::Affine3d& pose);
 
     void write_mesh();
 

@@ -95,7 +95,7 @@ double Application<PointT>::compute_eigenvalue_of_merged_surfaces(std::shared_pt
 
 
 template <typename PointT>
-void Application<PointT>::load_point_cloud()
+void Application<PointT>::load_pointcloud_from_dataloader()
 {
     std::cout << data_loader.size() << std::endl;
 
@@ -115,11 +115,11 @@ void Application<PointT>::load_point_cloud()
     typename pcl::PointCloud<PointT>::Ptr pointcloud_local = data_loader.get_cloud(ith_cloud);
     Eigen::Affine3d pose = data_loader.get_pose(ith_cloud);
 
-    load_external_point_cloud(pointcloud_local, pose);
+    load_pointcloud(pointcloud_local, pose);
 }
 
 template <typename PointT>
-void Application<PointT>::load_external_point_cloud(typename pcl::PointCloud<PointT>::Ptr pointcloud_local, Eigen::Affine3d& pose)
+void Application<PointT>::load_pointcloud(typename pcl::PointCloud<PointT>::Ptr pointcloud_local, Eigen::Affine3d& pose)
 {
     // get number of points in the current cloud 
     ith_size = pointcloud_local->size();
@@ -850,7 +850,7 @@ void Application<PointT>::get_lidar_data(Eigen::Vector3d& origin, Eigen::Vector3
     {
         ith_cloud += 1;
         ith_point = 0;
-        load_point_cloud();
+        load_pointcloud_from_dataloader();
     }
 }
 
@@ -896,11 +896,8 @@ void Application<PointT>::step()
 }
 
 template <typename PointT>
-void Application<PointT>::loop()
+void Application<PointT>::process_pointcloud()
 {
-    // get next pointcloud
-    load_point_cloud();
-
     // initialize vector to store duration
     rrs_search_duration_per_thread.resize(settings_.num_threads);
     rrs_update_duration_per_thread.resize(settings_.num_threads);
@@ -1159,7 +1156,8 @@ void Application<PointT>::process_the_rest()
 {
     for (int i = ith_cloud; i < data_loader.size() - 1; i++)
     {
-        loop();
+        load_pointcloud_from_dataloader();
+        process_pointcloud();
     }
 }
 
