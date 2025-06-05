@@ -75,6 +75,24 @@ target_include_directories(ros2_node
 ament_target_dependencies(ros2_node rclcpp std_msgs)
 install(TARGETS ros2_node DESTINATION lib/${PROJECT_NAME})
 
+# ros2 tutorial nodes
+add_executable(tutorial_publisher src/tutorial_publisher.cpp)
+target_include_directories(tutorial_publisher
+  PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>)
+ament_target_dependencies(tutorial_publisher rclcpp std_msgs)
+install(TARGETS tutorial_publisher DESTINATION lib/${PROJECT_NAME})
+
+add_executable(tutorial_subscriber src/tutorial_subscriber.cpp)
+target_include_directories(tutorial_subscriber
+  PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>)
+ament_target_dependencies(tutorial_subscriber rclcpp std_msgs)
+install(TARGETS tutorial_subscriber DESTINATION lib/${PROJECT_NAME})
+
+
 # add executable
 add_executable(main src/main.cpp ${MeshObject_SOURCE})
 target_link_libraries (main ${PCL_LIBRARIES} CGAL::CGAL CGAL::CGAL_Core ${JEMALLOC_LIB})
