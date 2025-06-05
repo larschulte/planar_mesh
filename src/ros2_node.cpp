@@ -41,9 +41,8 @@ private:
     void pointcloud_callback(const sensor_msgs::msg::PointCloud2::SharedPtr msg)
     {
         // Process the incoming point cloud message
-        RCLCPP_INFO(this->get_logger(), "Received point cloud with %zu points", msg->data.size());
-
-        publisher_->publish(*msg);
+        unsigned int num_points = msg->width * msg->height;
+        RCLCPP_INFO(this->get_logger(), "Received point cloud with %u points", num_points);
 
         // get frame id of the msg
         std::string frame_id = msg->header.frame_id;
