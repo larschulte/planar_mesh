@@ -119,13 +119,22 @@ void Application<PointT>::load_pointcloud_from_dataloader()
 }
 
 template <typename PointT>
-void Application<PointT>::load_pointcloud(typename pcl::PointCloud<PointT>::Ptr pointcloud_local, Eigen::Affine3d& pose)
+void Application<PointT>::load_pointcloud(typename pcl::PointCloud<PointT>::Ptr pointcloud_local, Eigen::Affine3d& pose, bool already_in_global_frame)
 {
     // get number of points in the current cloud 
     ith_size = pointcloud_local->size();
 
     // transform cloud to global
-    pointcloud = transform_cloud_to_global<PointT>(pointcloud_local, pose);
+    if (already_in_global_frame)
+    {
+        // copy over
+        pointcloud = pointcloud_local;
+    }
+    else
+    {
+        // transform pointcloud to global frame
+        pointcloud = transform_cloud_to_global<PointT>(pointcloud_local, pose);
+    }
 
     // update starting point if first cloud
     if (first_cloud_)
