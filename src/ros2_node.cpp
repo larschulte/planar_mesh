@@ -51,7 +51,7 @@ private:
         // get pose of the msg by querying the tf buffer
         geometry_msgs::msg::TransformStamped transform;
         try {
-            transform = tf_buffer_->lookupTransform(target_frame_, frame_id, rclcpp::Time(0));
+            transform = tf_buffer_->lookupTransform(target_frame_, frame_id, msg->header.stamp);
             RCLCPP_INFO(this->get_logger(), "Transform from %s to %s found", frame_id.c_str(), target_frame_.c_str());
         } catch (const tf2::TransformException &ex) {
             RCLCPP_ERROR(this->get_logger(), "Could not transform %s to %s: %s", frame_id.c_str(), target_frame_.c_str(), ex.what());
