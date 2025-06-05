@@ -3,6 +3,8 @@ project(planarmesh)
 
 list(APPEND CMAKE_PREFIX_PATH "/usr/local/")
 
+set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
+
 # settings for complier version
 find_program(CCACHE_FOUND ccache)
 if(CCACHE_FOUND)
