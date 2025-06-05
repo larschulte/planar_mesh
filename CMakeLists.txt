@@ -21,6 +21,9 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
+find_package(geometry_msgs REQUIRED)
+find_package(tf2_ros REQUIRED)
 
 # pcl library
 find_package(PCL 1.14 REQUIRED)
@@ -72,7 +75,7 @@ target_include_directories(ros2_node
   PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>)
-ament_target_dependencies(ros2_node rclcpp std_msgs)
+ament_target_dependencies(ros2_node rclcpp std_msgs sensor_msgs tf2_ros geometry_msgs)
 install(TARGETS ros2_node DESTINATION lib/${PROJECT_NAME})
 
 # ros2 tutorial nodes
@@ -91,6 +94,15 @@ target_include_directories(tutorial_subscriber
     $<INSTALL_INTERFACE:include>)
 ament_target_dependencies(tutorial_subscriber rclcpp std_msgs)
 install(TARGETS tutorial_subscriber DESTINATION lib/${PROJECT_NAME})
+
+# add_executable(tutorial_tf src/tutorial_tf.cpp)
+# target_include_directories(tutorial_tf
+#   PUBLIC
+#     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+#     $<INSTALL_INTERFACE:include>)
+# ament_target_dependencies(tutorial_tf rclcpp std_msgs sensor_msgs tf2_ros)
+# install(TARGETS tutorial_tf DESTINATION lib/${PROJECT_NAME})
+
 
 
 # add executable
