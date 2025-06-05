@@ -99,6 +99,9 @@ void Application<PointT>::load_pointcloud_from_dataloader()
 {
     std::cout << data_loader.size() << std::endl;
 
+    // load next pointcloud
+    ith_cloud += 1;
+
     // fix ith_cloud
     if (ith_cloud < 0)
     {
@@ -1155,9 +1158,6 @@ void Application<PointT>::process_pointcloud()
 
     // print repeated queue size
     if (settings_.log.step) std::cout << "==================================================================== repeated queue size: " << storage_->get_repeated_queue_size() << std::endl;
-
-    // load next cloud
-    ith_cloud += 1;
 }
 
 template <typename PointT>
