@@ -933,7 +933,8 @@ void Application<PointT>::process_pointcloud()
 
 
     // process all points
-    #pragma omp parallel
+    // set number of threads
+    #pragma omp parallel num_threads(settings_.num_threads)
     {
         #pragma omp single
         {
@@ -964,7 +965,7 @@ void Application<PointT>::process_pointcloud()
     }
 
     // delete / store surfaces
-    #pragma omp parallel
+    #pragma omp parallel num_threads(settings_.num_threads)
     {
         #pragma omp single
         {
@@ -989,7 +990,7 @@ void Application<PointT>::process_pointcloud()
         // 1.1  Parallel size collection
        const std::size_t nT = storage_->thread_vertices_to_be_deleted_.size();
         std::vector<std::size_t> v_sizes(nT), e_sizes(nT);
-        #pragma omp parallel for
+        #pragma omp parallel for num_threads(settings_.num_threads)
         for (std::size_t t = 0; t < nT; ++t) {
             v_sizes[t] = storage_->thread_vertices_to_be_deleted_[t].size();
             e_sizes[t] = storage_->thread_edges_to_be_deleted_[t].size();
@@ -1011,7 +1012,7 @@ void Application<PointT>::process_pointcloud()
         std::vector<std::shared_ptr<Edge>>   edges_to_delete   (e_total);
 
         // 1.4 Parallel move
-        #pragma omp parallel for
+        #pragma omp parallel for num_threads(settings_.num_threads)
         for (std::size_t t = 0; t < nT; ++t)
         {
             auto &v_set = storage_->thread_vertices_to_be_deleted_[t];
@@ -1034,7 +1035,7 @@ void Application<PointT>::process_pointcloud()
 
         // 3.  Parallel destruction / update
         // 3a. Vertices
-        #pragma omp parallel for schedule(dynamic)
+        #pragma omp parallel for schedule(dynamic) num_threads(settings_.num_threads)
         for (std::size_t i = 0; i < vertices_to_delete.size(); ++i)
         {
             // Task‑local copy ensures ~Vertex() executes on this thread
@@ -1048,7 +1049,7 @@ void Application<PointT>::process_pointcloud()
         }
 
         // 3b. Edges
-        #pragma omp parallel for schedule(dynamic)
+        #pragma omp parallel for schedule(dynamic) num_threads(settings_.num_threads)
         for (std::size_t i = 0; i < edges_to_delete.size(); ++i)
         {
             std::shared_ptr<Edge> edge = std::move(edges_to_delete[i]);
@@ -1058,7 +1059,7 @@ void Application<PointT>::process_pointcloud()
     }
     else
     {
-        #pragma omp parallel
+        #pragma omp parallel num_threads(settings_.num_threads)
         {
             storage_->delete_to_be_deleted_repeatedly();
             storage_->update_vertices_that_have_deleted_publishers();
@@ -1082,7 +1083,7 @@ void Application<PointT>::process_pointcloud()
         storage_->surfaces_to_be_split_.clear();         // source container now empty
     
         // 2. Split each surface in parallel
-        #pragma omp parallel for schedule(dynamic)
+        #pragma omp parallel for schedule(dynamic) num_threads(settings_.num_threads)
         for (std::size_t i = 0; i < surfaces_to_be_split.size(); ++i)
         {
             std::shared_ptr<Surface> surface = std::move(surfaces_to_be_split[i]);
