@@ -3,6 +3,7 @@
 
 // third party
 #include <pcl/point_types.h>
+#include <pcl_conversions/pcl_conversions.h>
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/string.hpp"
 #include <sensor_msgs/msg/point_cloud2.hpp>
@@ -57,6 +58,40 @@ private:
             RCLCPP_ERROR(this->get_logger(), "Could not transform %s to %s: %s", frame_id.c_str(), target_frame_.c_str(), ex.what());
             return;
         }
+
+        // convert to pcl point cloud and eigen affine3d pose
+        pcl::PointCloud<VilensPointT>::Ptr cloud(new pcl::PointCloud<VilensPointT>());
+        pcl::fromROSMsg(*msg, *cloud);
+
+        // convert geometry_msgs::msg::TransformStamped to Eigen::Affine3d
+        Eigen::Affine3d eigen_transform;
+        eigen_transform.translation() = Eigen::Vector3d(
+            transform.transform.translation.x,
+            transform.transform.translation.y,
+            transform.transform.translation.z);
+        eigen_transform.linear() = Eigen::Quaterniond(
+            transform.transform.rotation.w,
+            transform.transform.rotation.x,
+            transform.transform.rotation.y,
+            transform.transform.rotation.z).toRotationMatrix();
+        
+        // feed application with the point cloud and transform
+        app_.load_pointcloud(cloud, eigen_transform);
+        app_.process_pointcloud();
+
+        // get the processed point cloud
+        pcl::PointCloud<pcl::PointXYZRGB>::Ptr output_pointcloud;
+        app_.get_output_pointcloud(output_pointcloud);
+
+        // publish the processed point cloud
+        sensor_msgs::msg::PointCloud2 output_msg;
+        pcl::toROSMsg(*output_pointcloud, output_msg);
+        output_msg.header.frame_id = target_frame_;
+        output_msg.header.stamp = msg->header.stamp;
+        publisher_->publish(output_msg);
+
+        // info
+        RCLCPP_INFO(this->get_logger(), "Published processed point cloud with %zu points", output_pointcloud->size());
     }
 
     // ros related
