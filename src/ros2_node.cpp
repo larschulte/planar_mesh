@@ -29,7 +29,7 @@ public:
         const std::string base_frame_name = "odom_vilens";
         
         // create subscription and publisher
-        subscription_ = this->create_subscription<sensor_msgs::msg::PointCloud2>(subscription_topic_name, 10, std::bind(&PlanarMeshNode::pointcloud_callback, this, std::placeholders::_1));
+        subscription_ = this->create_subscription<sensor_msgs::msg::PointCloud2>(subscription_topic_name, 1, std::bind(&PlanarMeshNode::pointcloud_callback, this, std::placeholders::_1));
         publisher_ = this->create_publisher<sensor_msgs::msg::PointCloud2>(publisher_topic_name, 10);
 
         // create tf buffer and listener
