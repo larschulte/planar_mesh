@@ -99,9 +99,6 @@ void Application<PointT>::load_pointcloud_from_dataloader()
 {
     std::cout << data_loader.size() << std::endl;
 
-    // load next pointcloud
-    ith_cloud += 1;
-
     // fix ith_cloud
     if (ith_cloud < 0)
     {
@@ -124,6 +121,9 @@ void Application<PointT>::load_pointcloud_from_dataloader()
 template <typename PointT>
 void Application<PointT>::load_pointcloud(typename pcl::PointCloud<PointT>::Ptr pointcloud_local, Eigen::Affine3d& pose, bool already_in_global_frame)
 {
+    // increment ith_cloud
+    ith_cloud += 1;
+
     // get number of points in the current cloud 
     ith_size = pointcloud_local->size();
 
