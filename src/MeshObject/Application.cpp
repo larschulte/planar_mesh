@@ -165,6 +165,12 @@ void Application<PointT>::load_pointcloud(typename pcl::PointCloud<PointT>::Ptr 
 }
 
 template <typename PointT>
+void Application<PointT>::get_output_pointcloud(pcl::PointCloud<pcl::PointXYZRGB>::Ptr& pointcloud_out)
+{
+    pointcloud_out = compute_vertex_point_pointcloud(settings_);
+}
+
+template <typename PointT>
 void Application<PointT>::write_mesh()
 {
     // // update settings

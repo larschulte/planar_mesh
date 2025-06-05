@@ -56,6 +56,7 @@ public:
     // data
     void load_pointcloud_from_dataloader();
     void load_pointcloud(typename pcl::PointCloud<PointT>::Ptr pointcloud_local, Eigen::Affine3d& pose, bool already_in_global_frame = false);
+    void get_output_pointcloud(pcl::PointCloud<pcl::PointXYZRGB>::Ptr& pointcloud_out);
 
     void write_mesh();
 
