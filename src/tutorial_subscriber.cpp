@@ -23,6 +23,8 @@ private:
     {
         RCLCPP_INFO(this->get_logger(), "I heard: '%s'", msg->data.c_str());
     }
+    
+    // member variables
     rclcpp::Subscription<std_msgs::msg::String>::SharedPtr subscription_;
 };
 
