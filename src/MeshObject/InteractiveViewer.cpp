@@ -10,7 +10,7 @@
 #include "point_type/VilensPointT.hpp"
 #include "point_type/BagPointT.hpp"
 
-#include "utilities/simplified_mesh.hpp"
+// #include "utilities/simplified_mesh.hpp"
 
 template class InteractiveViewer<VilensPointT>;
 template class InteractiveViewer<BagPointT>;
@@ -38,65 +38,65 @@ InteractiveViewer<PointT>::InteractiveViewer(Application<PointT>& app)
     viewer_->spin();
 }
 
-template <typename PointT>
-void InteractiveViewer<PointT>::save_simplified_surfaces()
-{
-    // all surfaces
-    std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces = storage_->get_surfaces();
+// template <typename PointT>
+// void InteractiveViewer<PointT>::save_simplified_surfaces()
+// {
+//     // all surfaces
+//     std::unordered_set<std::shared_ptr<Surface>, MeshObjectHash> surfaces = storage_->get_surfaces();
 
-    // initialize all mesh
-    pcl::PolygonMesh simplified_mesh;
+//     // initialize all mesh
+//     pcl::PolygonMesh simplified_mesh;
 
-    // if largest surface only
-    const bool only_largest_surface = false;
-    if (only_largest_surface)
-    {
-        // find the largest mesh by area
-        double max_area = 0;
-        std::shared_ptr<Surface> largest_surface = nullptr;
-        for (const std::shared_ptr<Surface>& surface : surfaces)
-        {
-            // get area
-            if (surface->get_surface_area() > max_area) 
-            {
-                max_area = surface->get_surface_area();
-                largest_surface = surface;
-            }
-        }
-        // create mesh
-        pcl::PolygonMesh triangle_mesh = create_simplified_mesh(largest_surface);
-        // merge
-        merge_polygon_mesh(simplified_mesh, triangle_mesh);
-    }
-    else
-    {
-        // add meshes
-        unsigned int index = 0;
-        for (const std::shared_ptr<Surface>& surface : surfaces)
-        {
-            // log
-            std::cout << "simplified surface " << index++ << " / " << surfaces.size() << std::endl;
+//     // if largest surface only
+//     const bool only_largest_surface = false;
+//     if (only_largest_surface)
+//     {
+//         // find the largest mesh by area
+//         double max_area = 0;
+//         std::shared_ptr<Surface> largest_surface = nullptr;
+//         for (const std::shared_ptr<Surface>& surface : surfaces)
+//         {
+//             // get area
+//             if (surface->get_surface_area() > max_area) 
+//             {
+//                 max_area = surface->get_surface_area();
+//                 largest_surface = surface;
+//             }
+//         }
+//         // create mesh
+//         pcl::PolygonMesh triangle_mesh = create_simplified_mesh(largest_surface);
+//         // merge
+//         merge_polygon_mesh(simplified_mesh, triangle_mesh);
+//     }
+//     else
+//     {
+//         // add meshes
+//         unsigned int index = 0;
+//         for (const std::shared_ptr<Surface>& surface : surfaces)
+//         {
+//             // log
+//             std::cout << "simplified surface " << index++ << " / " << surfaces.size() << std::endl;
 
-            // create mesh
-            pcl::PolygonMesh triangle_mesh = create_simplified_mesh(surface, true);
+//             // create mesh
+//             pcl::PolygonMesh triangle_mesh = create_simplified_mesh(surface, true);
 
-            // merge
-            merge_polygon_mesh(simplified_mesh, triangle_mesh);
-        }
-    }
+//             // merge
+//             merge_polygon_mesh(simplified_mesh, triangle_mesh);
+//         }
+//     }
 
-    // clear display
-    viewer_->removeShape("point_cloud");
-    viewer_->removeShape("interior_points");
-    viewer_->removeShape("boundary_edges");
-    viewer_->removeShape("triangle_mesh");
-    viewer_->removeShape("simplified_mesh");
-    viewer_->addPolygonMesh(simplified_mesh, "simplified_mesh");
+//     // clear display
+//     viewer_->removeShape("point_cloud");
+//     viewer_->removeShape("interior_points");
+//     viewer_->removeShape("boundary_edges");
+//     viewer_->removeShape("triangle_mesh");
+//     viewer_->removeShape("simplified_mesh");
+//     viewer_->addPolygonMesh(simplified_mesh, "simplified_mesh");
 
-    // save to ply
-    pcl::io::savePLYFile("simplified.ply", simplified_mesh);
-    std::cout << "exported simplified.ply" << std::endl;
-}
+//     // save to ply
+//     pcl::io::savePLYFile("simplified.ply", simplified_mesh);
+//     std::cout << "exported simplified.ply" << std::endl;
+// }
 
 template <typename PointT>
 void InteractiveViewer<PointT>::update_display(bool export_ply)
@@ -520,13 +520,13 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
     //     // log
     //     std::cout << "show_sphere: " << settings_.show_sphere << std::endl;
     // }
-    if (event.getKeySym() == "b" && event.keyDown())
-    {
-        save_simplified_surfaces();
+    // if (event.getKeySym() == "b" && event.keyDown())
+    // {
+    //     save_simplified_surfaces();
 
-        // log
-        std::cout << "simplified surface" << std::endl;
-    }
+    //     // log
+    //     std::cout << "simplified surface" << std::endl;
+    // }
     if (event.getKeySym() == "n" && event.keyDown())
     {
         storage_->remove_non_manifold_edges();

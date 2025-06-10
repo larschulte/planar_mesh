@@ -29,22 +29,24 @@ find_package(tf2_ros REQUIRED)
 find_package(pcl_conversions REQUIRED)
 
 # pcl library
-find_package(PCL 1.14 REQUIRED)
+find_package(PCL REQUIRED)
 include_directories(${PCL_INCLUDE_DIRS})
 link_directories(${PCL_LIBRARY_DIRS})
 add_definitions(${PCL_DEFINITIONS})
 
-# cgal
-find_package(CGAL REQUIRED COMPONENTS Core)
+find_package(OpenMP REQUIRED)
 
-# ceres solver
-find_package(Ceres REQUIRED)
+# # cgal
+# find_package(CGAL REQUIRED COMPONENTS Core)
 
-# matplotlib-cpp
-find_package(Matplot++ REQUIRED)
+# # ceres solver
+# find_package(Ceres REQUIRED)
 
-# jemalloc
-find_library(JEMALLOC_LIB jemalloc REQUIRED)
+# # matplotlib-cpp
+# find_package(Matplot++ REQUIRED)
+
+# # jemalloc
+# find_library(JEMALLOC_LIB jemalloc REQUIRED)
 
 # MeshObject
 set(MeshObject_SOURCE 
@@ -68,12 +70,12 @@ set(MeshObject_SOURCE
   src/utilities/utilities.cpp
   src/MeshObject/Simulation.cpp
   src/utilities/omp_utilities.cpp
-  src/utilities/simplified_mesh.cpp
+  # src/utilities/simplified_mesh.cpp
 )
 
 # for ros2 node
 add_executable(ros2_node src/ros2_node.cpp ${MeshObject_SOURCE})
-target_link_libraries(ros2_node ${PCL_LIBRARIES} CGAL::CGAL CGAL::CGAL_Core ${JEMALLOC_LIB})
+target_link_libraries(ros2_node ${PCL_LIBRARIES} OpenMP::OpenMP_CXX)
 target_include_directories(ros2_node
   PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -110,7 +112,7 @@ install(TARGETS tutorial_subscriber DESTINATION lib/${PROJECT_NAME})
 
 # add executable
 add_executable(main src/main.cpp ${MeshObject_SOURCE})
-target_link_libraries (main ${PCL_LIBRARIES} CGAL::CGAL CGAL::CGAL_Core ${JEMALLOC_LIB})
+target_link_libraries (main ${PCL_LIBRARIES} OpenMP::OpenMP_CXX)
 target_include_directories(main
   PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>

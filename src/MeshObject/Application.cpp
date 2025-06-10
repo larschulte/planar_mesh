@@ -10,7 +10,7 @@
 #include "MeshObject/Storage.hpp"
 #include "utilities/utilities.hpp"
 #include "utilities/covariance_math.hpp"
-#include "utilities/simplified_mesh.hpp"
+// #include "utilities/simplified_mesh.hpp"
 
 #include <iostream>
 #include <random>
