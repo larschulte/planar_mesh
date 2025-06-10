@@ -11,6 +11,14 @@ std::vector<std::string> read_under_folder(std::string pcd_file_folder)
 
     // read
     DIR *dirstream = opendir(pcd_file_folder.c_str());
+
+    // check if directory exists
+    if (dirstream == NULL)
+    {
+        std::cerr << "Error: Directory " << pcd_file_folder << " does not exist." << std::endl;
+        return pcd_file_list; // return empty list
+    }
+
     struct dirent *entry;
     while ((entry = readdir(dirstream)) != NULL) 
     {
