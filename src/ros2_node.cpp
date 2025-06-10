@@ -74,6 +74,24 @@ private:
             transform.transform.rotation.x,
             transform.transform.rotation.y,
             transform.transform.rotation.z).toRotationMatrix();
+
+        // compute distance travelled
+        Eigen::Affine3d current_pose = eigen_transform;
+        if (previous_pose_.matrix().isZero()) 
+        {
+            previous_pose_ = current_pose;
+        }
+        double distance_travelled = (current_pose.translation() - previous_pose_.translation()).norm();
+
+        // skip processing if distance travelled is too small
+        if (distance_travelled < 0.5) 
+        {
+            RCLCPP_INFO(this->get_logger(), "Distance travelled is too small: %f, skipping processing", distance_travelled);
+            return;
+        }
+
+        // update previous pose
+        previous_pose_ = current_pose;
         
         // feed application with the point cloud and transform
         app_.load_pointcloud(cloud, eigen_transform);
@@ -103,6 +121,9 @@ private:
 
     // algortihm related
     Application<VilensPointT> app_;
+
+    // local algorithm
+    Eigen::Affine3d previous_pose_;
 };
 
 int main(int argc, char *argv[])
