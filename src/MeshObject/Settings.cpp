@@ -102,7 +102,7 @@ Settings::Settings()
     
     headless_mode = false;
     num_scans = -1;
-    save_folder = "/home/jiahao/ros2_ws/src/eye_patch/benchmarks/2025-05-15/" + dataset + "/all/";
+    save_folder = "/home/jiahao/planarmesh_benchmarks/2025-06-13/" + dataset + "/all/";
 
     data_loader_settings.pcd_file_folder = dataset_map[dataset].pcd_file_folder;
     data_loader_settings.pose_file_path = dataset_map[dataset].pose_file_path;
