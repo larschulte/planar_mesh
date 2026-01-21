@@ -32,6 +32,13 @@ The project requires the following dependencies to be installed on your system:
 *   **OpenMP**
 *   **Git LFS**
 
+
+## Demonstration
+
+Video demonstration of the sample dataset. 
+https://drive.google.com/file/d/1MKtGLPgHi0fm0rIQSkwBCwgRKYpoOG-N/view?usp=sharing
+
+
 ## Build Instructions
 
 1.  Clone the repository and fetch sample data:
