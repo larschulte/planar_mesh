@@ -32,12 +32,6 @@ The project requires the following dependencies to be installed on your system:
 *   **OpenMP**
 
 
-## Demonstration
-
-Video demonstration of the sample dataset. 
-https://drive.google.com/file/d/1MKtGLPgHi0fm0rIQSkwBCwgRKYpoOG-N/view?usp=sharing
-
-
 ## Build Instructions
 
 1.  Clone the repository:
@@ -69,7 +63,7 @@ https://drive.google.com/file/d/1MKtGLPgHi0fm0rIQSkwBCwgRKYpoOG-N/view?usp=shari
 
 All configuration, including the path to the dataset, is hardcoded in `src/MeshObject/Settings.cpp`. 
 
-**Default Dataset** By default, the application requires the sample dataset.
+**Default Dataset** By default, the application uses the sample dataset. [Link to video demonstration](https://drive.google.com/file/d/1MKtGLPgHi0fm0rIQSkwBCwgRKYpoOG-N/view?usp=sharing).
 1. **Download:** [Get the sample dataset here](https://drive.google.com/file/d/1rLUc6_Em_md6K8rd4fgqMyjkoJQz2Il_/view?usp=drive_link).
 2. **Install:** Unzip the contents directly into the PlanarMesh directory.
 
