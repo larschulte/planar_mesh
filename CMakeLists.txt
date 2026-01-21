@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(mesh_object)
+project(planar_mesh)
 
 list(APPEND CMAKE_PREFIX_PATH "/usr/local/")
 list(APPEND CMAKE_PREFIX_PATH "/opt/homebrew/opt/libomp")
