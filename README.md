@@ -6,6 +6,9 @@ PlanarMesh is a novel, incremental, mesh-based LiDAR reconstruction system. It a
 
 The system uses a multi-threaded architecture with a Bounding Volume Hierarchy (BVH) for efficient data storage and fast search operations, which allows it to achieve real-time performance. Compared to state-of-the-art techniques, PlanarMesh produces significantly smaller output files while maintaining comparable or superior reconstruction accuracy.
 
+[![planar mesh](https://img.youtube.com/vi/GmMR96nYp90/0.jpg)](https://www.youtube.com/watch?v=GmMR96nYp90)
+
+
 ## Citation
 
 If you use PlanarMesh in your research, please cite the following publication:
@@ -179,3 +182,8 @@ The `src/MeshObject/Settings.cpp` file contains numerous other parameters for co
 ## Code Status
 
 Please be aware that not all of the code in this repository is actively used by the final application. The codebase contains some legacy and development code that was part of earlier experiments and was subsequently abandoned.
+
+
+## License
+
+Please see attached the license for this work which corresponds to GPLv3.
