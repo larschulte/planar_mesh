@@ -6,6 +6,8 @@ PlanarMesh is a novel, incremental, mesh-based LiDAR reconstruction system. It a
 
 The system uses a multi-threaded architecture with a Bounding Volume Hierarchy (BVH) for efficient data storage and fast search operations, which allows it to achieve real-time performance. Compared to state-of-the-art techniques, PlanarMesh produces significantly smaller output files while maintaining comparable or superior reconstruction accuracy.
 
+Watch our demonstration video:
+
 [![planar mesh](https://img.youtube.com/vi/GmMR96nYp90/0.jpg)](https://www.youtube.com/watch?v=GmMR96nYp90)
 
 
