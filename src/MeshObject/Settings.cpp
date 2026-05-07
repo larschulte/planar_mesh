@@ -116,7 +116,7 @@ Settings::Settings()
 
     std::string dataset = "maicity00";
 
-    headless_mode = false;
+    headless_mode = true;
     num_scans = 700;
     save_folder = "/app/results/" + dataset + "/Benchmark/";
 

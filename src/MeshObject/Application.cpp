@@ -24,6 +24,7 @@
 
 #include "MeshObject/TriangleBVH.hpp"
 #include <pcl/filters/passthrough.h>
+#include <pcl/point_types.h>
 
 #include "point_type/VilensPointT.hpp"
 #include "point_type/BagPointT.hpp"
@@ -1394,3 +1395,4 @@ void Application<PointT>::change_color()
 
 template class Application<VilensPointT>;
 template class Application<BagPointT>;
+template class Application<pcl::PointXYZ>;

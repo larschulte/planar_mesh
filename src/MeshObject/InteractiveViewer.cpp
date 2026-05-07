@@ -6,6 +6,7 @@
 #include "MeshObject/Surface.hpp"
 #include <unordered_set>
 #include <pcl/io/ply_io.h>
+#include <pcl/point_types.h>
 
 #include "point_type/VilensPointT.hpp"
 #include "point_type/BagPointT.hpp"
@@ -566,3 +567,4 @@ void InteractiveViewer<PointT>::keyboard_callback(const pcl::visualization::Keyb
 
 template class InteractiveViewer<VilensPointT>;
 template class InteractiveViewer<BagPointT>;
+template class InteractiveViewer<pcl::PointXYZ>;

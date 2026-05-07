@@ -1,6 +1,7 @@
 #include "utilities/DataLoader.hpp"
 #include "point_type/VilensPointT.hpp"
 #include "point_type/BagPointT.hpp"
+#include <pcl/point_types.h>
 #include <pcl/filters/passthrough.h>
 #include <pcl/kdtree/kdtree_flann.h>
 
@@ -452,3 +453,4 @@ int DataLoader<PointT>::size()
 // Explicit template instantiation
 template class DataLoader<VilensPointT>;
 template class DataLoader<BagPointT>;
+template class DataLoader<pcl::PointXYZ>;

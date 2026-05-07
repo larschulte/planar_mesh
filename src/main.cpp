@@ -6,7 +6,7 @@
 #include "MeshObject/Settings.hpp"
 
 // using InputPointT = VilensPointT;
-using InputPointT = BagPointT;
+using InputPointT = pcl::PointXYZ;
 
 void headless_mode()
 {
@@ -26,7 +26,7 @@ void headless_mode()
         {
             app.loop();
         }
-    }    
+    }
     app.write_mesh();
 }
 
@@ -42,7 +42,7 @@ void display_mode()
 int main()
 {
     // Fixed seed
-    std::srand(30); 
+    std::srand(30);
     std::cout << std::rand() << std::endl;
 
     // mode
