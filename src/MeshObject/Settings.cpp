@@ -22,7 +22,7 @@ struct DatasetParameters
     double radius_ratio = 0.02;
 };
 
-Settings::Settings() 
+Settings::Settings()
 {
     // application settings
     std::map<std::string, DatasetParameters> dataset_map;
@@ -69,6 +69,11 @@ Settings::Settings()
     dataset_map["kitti01"].pose_file_path = "/home/jiahao/datasets/spires_benchmark/kitti_dataset/poses/01.txt";
     dataset_map["kitti01"].range_precision = 0.02; // Velodyne HDL-64E Laserscanner
 
+    dataset_map["kitti00"] = DatasetParameters();
+    dataset_map["kitti00"].pcd_file_folder = "/datasets/kitti_velodyne/dataset/sequences/00/velodyne_pcd/";
+    dataset_map["kitti00"].pose_file_path = "/datasets/kitti_velodyne/dataset/sequences/00/poses.txt";
+    dataset_map["kitti00"].range_precision = 0.02; // Velodyne HDL-64E Laserscanner
+
     dataset_map["mac_keble03"] = DatasetParameters();
     dataset_map["mac_keble03"].pcd_file_folder = "/Users/jiahao/dataset/keble03/undist-clouds-filtered/";
     dataset_map["mac_keble03"].pose_file_path = "/Users/jiahao/dataset/keble03/gt-tum.txt";
@@ -81,6 +86,11 @@ Settings::Settings()
     dataset_map["sample"].remove_double_return_flag = false;
     dataset_map["sample"].filter_low_intensity_flag = false;
 
+    dataset_map["maicity00"] = DatasetParameters();
+    dataset_map["maicity00"].pcd_file_folder = "/datasets/mai_city/pcd/sequences/00/velodyne/";
+    dataset_map["maicity00"].pose_file_path = "/datasets/mai_city/pcd/sequences/00/poses.txt";
+    dataset_map["maicity00"].filter_low_intensity_flag = false;
+    dataset_map["maicity00"].range_precision = 0.02;
     // ======= benchmark final =======
 
     dataset_map["christchurch03"] = DatasetParameters();
@@ -104,11 +114,11 @@ Settings::Settings()
     dataset_map["observatory01"].filter_low_intensity_flag = false;
     // 300 scans
 
-    std::string dataset = "sample";
-    
+    std::string dataset = "maicity00";
+
     headless_mode = false;
-    num_scans = 50;
-    save_folder = "/home/jiahao/datasets/spires_benchmark/" + dataset + "/Benchmark_final/PlanarMesh/";
+    num_scans = 700;
+    save_folder = "/app/results/" + dataset + "/Benchmark/";
 
     data_loader_settings.pcd_file_folder = dataset_map[dataset].pcd_file_folder;
     data_loader_settings.pose_file_path = dataset_map[dataset].pose_file_path;
@@ -138,7 +148,7 @@ Settings::Settings()
     data_loader_settings.start_point = 0;
 
     process_every_n_points = 1;
-    
+
     fit_plane_threshold = 3;
     shuffle_pointcloud = true;
     use_radius_value = true;
@@ -158,7 +168,7 @@ Settings::Settings()
     seed_surface_area_threshold = 0.02; // below which is considered as a seed surface | 0.01 m^2 = 100 cm^2
 
     // num_of_delete_before_put_to_repeated_queue = 2;
-    
+
     num_threads = 1;
     record_countent_surface_count = false;
 
@@ -182,7 +192,7 @@ Settings::Settings()
         log.review_surfaces = true;
         log.connect_by_edges_and_faces = true;
         log.can_merge = true;
-        log.merge_surface = true;    
+        log.merge_surface = true;
         log.duplicated_point = true;
         log.num_of_concurrent_processes = true;
         log.total_processed_points = true;
