@@ -165,4 +165,8 @@ struct Settings
     bool show_wireframe;
     bool show_sphere;
     int number_of_spheres_to_display;  
+
+    // mesh export settings
+    bool mesh_include_seed_surfaces;
+    bool mesh_filter_faces_by_edge_length_radius;
 };

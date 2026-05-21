@@ -12,7 +12,7 @@ std::vector<std::string> read_under_folder(std::string pcd_file_folder)
     // read
     DIR *dirstream = opendir(pcd_file_folder.c_str());
     struct dirent *entry;
-    while ((entry = readdir(dirstream)) != NULL) 
+    while ((entry = readdir(dirstream)) != NULL)
     {
         // obtain file name
         std::string file_name = entry->d_name;
@@ -22,15 +22,15 @@ std::vector<std::string> read_under_folder(std::string pcd_file_folder)
         pcd_file_list.push_back(pcd_file_folder + file_name);
     }
     closedir(dirstream);
-    
+
     // sort
     std::sort(pcd_file_list.begin(), pcd_file_list.end());
 
-    // return 
+    // return
     return pcd_file_list;
 }
 
-bool parse_g2o_file(const std::string& pose_file, const std::string& pcd_file, Eigen::Affine3d& pose_eigen) 
+bool parse_g2o_file(const std::string& pose_file, const std::string& pcd_file, Eigen::Affine3d& pose_eigen)
 {
     // get timestamp from pcd file
     std::string pcd_file_name = pcd_file.substr(pcd_file.find_last_of("/\\") + 1);
@@ -56,7 +56,7 @@ bool parse_g2o_file(const std::string& pose_file, const std::string& pcd_file, E
 
         // skip if timestamp does not match
         if (timestamp_sec != std::stoi(sec_str) || timestamp_nsec != std::stoi(nsec_str)) continue;
-        
+
         // construct pose
         pose_eigen.translation() << x, y, z;
         Eigen::Quaterniond q(qw, qx, qy, qz);
@@ -69,7 +69,7 @@ bool parse_g2o_file(const std::string& pose_file, const std::string& pcd_file, E
     return false;
 }
 
-bool parse_csv_file(const std::string& pose_file, const std::string& pcd_file, Eigen::Affine3d& pose_eigen) 
+bool parse_csv_file(const std::string& pose_file, const std::string& pcd_file, Eigen::Affine3d& pose_eigen)
 {
     // get timestamp from pcd file
     std::string pcd_file_name = pcd_file.substr(pcd_file.find_last_of("/\\") + 1);
@@ -79,7 +79,7 @@ bool parse_csv_file(const std::string& pose_file, const std::string& pcd_file, E
     // read each line of pose file
     std::ifstream pose_file_stream(pose_file);
     std::string pose_file_line;
-    while (std::getline(pose_file_stream, pose_file_line)) 
+    while (std::getline(pose_file_stream, pose_file_line))
     {
         // skip if line is a comment
         if (pose_file_line[0] == '#') continue;
@@ -124,7 +124,7 @@ bool parse_tum_file(const std::string& pose_file, const std::string& pcd_file, E
     // read each line of pose file
     std::ifstream pose_file_stream(pose_file);
     std::string pose_file_line;
-    while (std::getline(pose_file_stream, pose_file_line)) 
+    while (std::getline(pose_file_stream, pose_file_line))
     {
         // get individual values
         std::istringstream iss(pose_file_line);
@@ -152,18 +152,20 @@ bool parse_tum_file(const std::string& pose_file, const std::string& pcd_file, E
 bool parse_kitti_file(const std::string& pose_file, const std::string& pcd_file, Eigen::Affine3d& pose_vel)
 {
     // get line number from pcd file
+    std::cout << "pcd_file: " << pcd_file << std::endl;
     std::string pcd_file_name = pcd_file.substr(pcd_file.find_last_of("/\\") + 1);
     std::string pcd_file_name_no_extension = pcd_file_name.substr(0, pcd_file_name.find_last_of("."));
+    std::cout << "pcd_file_name_no_extension: " << pcd_file_name_no_extension << std::endl;
     unsigned int line_number = std::stoi(pcd_file_name_no_extension);
 
     // read each line of pose file
     std::ifstream pose_file_stream(pose_file);
     std::string pose_file_line;
     unsigned int current_line = 0;
-    while (std::getline(pose_file_stream, pose_file_line)) 
+    while (std::getline(pose_file_stream, pose_file_line))
     {
         // skip if current line is not the line number
-        if (current_line != line_number) 
+        if (current_line != line_number)
         {
             current_line++;
             continue;
@@ -185,31 +187,31 @@ bool parse_kitti_file(const std::string& pose_file, const std::string& pcd_file,
         T_vel_into_cam_frame.matrix() <<  4.276802385584e-04, -9.999672484946e-01, -8.084491683471e-03, -1.198459927713e-02,
                                     -7.210626507497e-03, 8.081198471645e-03, -9.999413164504e-01, -5.403984729748e-02,
                                     9.999738645903e-01, 4.859485810390e-04, -7.206933692422e-03, -2.921968648686e-01;
-        
+
         // pose of velodyne
-        pose_vel = pose_cam * T_vel_into_cam_frame;
+        pose_vel = pose_cam;
 
         // return
-        return true;        
+        return true;
     }
 
     return false;
 }
 
-bool find_pose(const std::string& pcd_file, const std::string& pose_file, Eigen::Affine3d& pose_eigen) 
-{    
+bool find_pose(const std::string& pcd_file, const std::string& pose_file, Eigen::Affine3d& pose_eigen)
+{
     // determine parser from pose file
     std::string pose_file_name = pose_file.substr(pose_file.find_last_of("/\\") + 1);
     std::string extension = pose_file_name.substr(pose_file_name.find_last_of(".") + 1);
     std::function<bool(const std::string&, const std::string&, Eigen::Affine3d&)> parser;
-    if (extension == "g2o" || extension == "slam") 
+    if (extension == "g2o" || extension == "slam")
     {
         parser = parse_g2o_file;
-    } 
-    else if (extension == "csv") 
+    }
+    else if (extension == "csv")
     {
         parser = parse_csv_file;
-    } 
+    }
     else if (pose_file_name.find("tum") != std::string::npos)
     {
         parser = parse_tum_file;
@@ -218,7 +220,7 @@ bool find_pose(const std::string& pcd_file, const std::string& pose_file, Eigen:
     {
         parser = parse_kitti_file;
     }
-    else 
+    else
     {
         std::cerr << "Unsupported file format: " << extension << std::endl;
         return false;
@@ -240,7 +242,7 @@ std::map<std::string, Eigen::Affine3d> create_file_to_pose_map(std::vector<std::
         const bool found = find_pose(pcd_file, pose_file_path, pose_eigen);
 
         // skip if pose not found
-        if (!found) 
+        if (!found)
         {
             std::cout << "Pose not found for " << pcd_file << std::endl;
             continue;
@@ -249,11 +251,11 @@ std::map<std::string, Eigen::Affine3d> create_file_to_pose_map(std::vector<std::
         file_to_pose_map[pcd_file] = pose_eigen;
     }
 
-    // return 
+    // return
     return file_to_pose_map;
 }
 
-template<typename PointT> 
+template<typename PointT>
 typename pcl::PointCloud<PointT>::Ptr load_pointcloud(std::string pcd_file)
 {
     // load the pcd file
@@ -328,7 +330,7 @@ typename pcl::PointCloud<PointT>::Ptr DataLoader<PointT>::remove_double_return(t
             const double difference = std::abs(range - point_map[std::make_pair(azimuth, altitude)].first);
 
             // skip this point if range difference is large enough
-            if (difference > 0.1) 
+            if (difference > 0.1)
             {
                 // remove the point from the map
                 point_map.erase(std::make_pair(azimuth, altitude));
@@ -342,7 +344,7 @@ typename pcl::PointCloud<PointT>::Ptr DataLoader<PointT>::remove_double_return(t
             {
                 point_map[std::make_pair(azimuth, altitude)] = std::make_pair(range, i);
             }
-        }        
+        }
     }
 
     // from the map, create a new pointcloud
@@ -352,7 +354,7 @@ typename pcl::PointCloud<PointT>::Ptr DataLoader<PointT>::remove_double_return(t
         output_pointcloud->push_back(input_pointcloud->points[point.second.second]);
     }
 
-    // return 
+    // return
     return output_pointcloud;
 }
 
@@ -372,16 +374,16 @@ typename pcl::PointCloud<PointT>::Ptr DataLoader<PointT>::remove_double_return_2
     // Vector to mark points as processed
     std::vector<bool> processed(input_pointcloud->size(), false);
 
-    for (size_t i = 0; i < input_pointcloud->points.size(); ++i) 
+    for (size_t i = 0; i < input_pointcloud->points.size(); ++i)
     {
         // skip if marked prosessed
-        if (processed[i]) continue; 
-        
+        if (processed[i]) continue;
+
         // prepare search
         PointT searchPoint = input_pointcloud->points[i];
         std::vector<int> point_idx_radius_search;
         std::vector<float> point_radius_squared_distance;
-        
+
         // skip if no neighbors found
         if (kdtree.radiusSearch(searchPoint, radius, point_idx_radius_search, point_radius_squared_distance) == 1) continue;
 
@@ -389,7 +391,7 @@ typename pcl::PointCloud<PointT>::Ptr DataLoader<PointT>::remove_double_return_2
         filtered_cloud->points.push_back(searchPoint);
 
         // makr the neighbors as processed
-        for (int idx : point_idx_radius_search) 
+        for (int idx : point_idx_radius_search)
         {
             processed[idx] = true;
         }

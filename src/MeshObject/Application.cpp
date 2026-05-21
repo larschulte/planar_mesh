@@ -148,32 +148,53 @@ void Application<PointT>::load_point_cloud()
 template <typename PointT>
 void Application<PointT>::write_mesh()
 {
-    // update settings
-    settings_.point_mode = PointMode::PROJECTED;
-    settings_.color_mode = ColorMode::ID;
+    // update settings for mesh export
+    Settings mesh_settings = settings_;
+    mesh_settings.point_mode = PointMode::PROJECTED;
+    mesh_settings.color_mode = ColorMode::ID;
+    mesh_settings.show_seed_surface = settings_.mesh_include_seed_surfaces;
+    mesh_settings.show_internal_vertices = true;
 
-    // get vertex and faces
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr vertex_pointcloud = compute_vertex_point_pointcloud(settings_);
+    // get faces
     std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> faces = storage_->get_faces();
 
     // log
-    std::cout << "filtering faces by edge length radius" << std::endl;
+    std::cout << "filtering faces by edge length radius ("
+              << (settings_.mesh_filter_faces_by_edge_length_radius ? "enabled" : "disabled")
+              << ", include seed surfaces: "
+              << (settings_.mesh_include_seed_surfaces ? "yes" : "no")
+              << ")" << std::endl;
 
     // filter face by edge length radius
     std::unordered_set<std::shared_ptr<Face>, MeshObjectHash> filtered_faces;
     unsigned int count = 0;
     unsigned int total = faces.size();
+    std::size_t kept_faces = 0;
+    std::size_t skipped_seed = 0;
+    std::size_t skipped_expired = 0;
+    std::size_t skipped_edge_length = 0;
     for (const std::shared_ptr<Face>& face : faces)
     {
-        // skip if seed surface
-        if (face->get_surface()->is_seed()) continue;
-
         // log
         count++;
-        if (count % 10000 == 0) std::cout << "filtering faces by edge length radius " << count << " of " << total << std::endl;
+        if (settings_.mesh_filter_faces_by_edge_length_radius && count % 10000 == 0)
+        {
+            std::cout << "filtering faces by edge length radius " << count << " of " << total << std::endl;
+        }
+
+        // skip if seed surface (optional)
+        if (!settings_.mesh_include_seed_surfaces && face->get_surface()->is_seed())
+        {
+            skipped_seed++;
+            continue;
+        }
 
         // skip if expired
-        if (face->is_expired()) continue;
+        if (face->is_expired())
+        {
+            skipped_expired++;
+            continue;
+        }
 
         // get vertices
         std::shared_ptr<Vertex> vertex0 = face->get_vertex(0);
@@ -190,27 +211,176 @@ void Application<PointT>::write_mesh()
         double edge_length1 = (position1 - position2).norm();
         double edge_length2 = (position2 - position0).norm();
 
-        // skip if edge length radius is too long
-        if (edge_length0 > vertex0->get_radius() || edge_length0 > vertex1->get_radius()) continue;
-        if (edge_length1 > vertex1->get_radius() || edge_length1 > vertex2->get_radius()) continue;
-        if (edge_length2 > vertex2->get_radius() || edge_length2 > vertex0->get_radius()) continue;
+        // skip if edge length radius is too long (optional)
+        if (settings_.mesh_filter_faces_by_edge_length_radius)
+        {
+            if (edge_length0 > vertex0->get_radius() || edge_length0 > vertex1->get_radius())
+            {
+                skipped_edge_length++;
+                continue;
+            }
+            if (edge_length1 > vertex1->get_radius() || edge_length1 > vertex2->get_radius())
+            {
+                skipped_edge_length++;
+                continue;
+            }
+            if (edge_length2 > vertex2->get_radius() || edge_length2 > vertex0->get_radius())
+            {
+                skipped_edge_length++;
+                continue;
+            }
+        }
 
         // store
         filtered_faces.insert(face);
+        kept_faces++;
     }
 
     // log
+    std::cout << "faces kept: " << kept_faces << " / " << total
+              << " (skipped seed: " << skipped_seed
+              << ", expired: " << skipped_expired
+              << ", edge-length: " << skipped_edge_length << ")" << std::endl;
+
+    // build vertex cloud from kept faces to avoid missing indices
+    vertex_to_cloud_indices_map.clear();
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr vertex_pointcloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+    std::size_t skipped_expired_vertices = 0;
+
+    auto add_vertex_to_cloud = [&](const std::shared_ptr<Vertex>& vertex)
+    {
+        if (!vertex) return;
+        if (vertex->is_expired())
+        {
+            skipped_expired_vertices++;
+            return;
+        }
+        if (vertex_to_cloud_indices_map.find(vertex) != vertex_to_cloud_indices_map.end()) return;
+
+        pcl::PointXYZRGB point;
+        if (mesh_settings.point_mode == PointMode::PROJECTED)
+        {
+            point.x = vertex->compute_projected_position()[0];
+            point.y = vertex->compute_projected_position()[1];
+            point.z = vertex->compute_projected_position()[2];
+        }
+        else if (mesh_settings.point_mode == PointMode::ORIGINAL)
+        {
+            point.x = vertex->get_original_position()[0];
+            point.y = vertex->get_original_position()[1];
+            point.z = vertex->get_original_position()[2];
+        }
+        else if (mesh_settings.point_mode == PointMode::USED)
+        {
+            point.x = vertex->get_position()[0];
+            point.y = vertex->get_position()[1];
+            point.z = vertex->get_position()[2];
+        }
+
+        if (mesh_settings.color_mode == ColorMode::ID)
+        {
+            const std::tuple<int, int, int>& color = vertex->get_surface()->get_color();
+            point.r = std::get<0>(color);
+            point.g = std::get<1>(color);
+            point.b = std::get<2>(color);
+        }
+        else if (mesh_settings.color_mode == ColorMode::POSITIONAL_UNCERTAINTY)
+        {
+            double distance = std::abs(vertex->compute_projected_distance() / 0.05);
+            std::tuple<int, int, int> color = valueToJet(distance);
+            point.r = std::get<0>(color);
+            point.g = std::get<1>(color);
+            point.b = std::get<2>(color);
+        }
+        else if (mesh_settings.color_mode == ColorMode::POSITIONAL_UNCERTAINTY_NORMALIZED)
+        {
+            double distance = std::abs(vertex->compute_projected_distance()) / vertex->get_projected_uncertainty() / 3.f;
+            std::tuple<int, int, int> color = valueToJet(distance);
+            point.r = std::get<0>(color);
+            point.g = std::get<1>(color);
+            point.b = std::get<2>(color);
+        }
+        else if (mesh_settings.color_mode == ColorMode::PROJECTED_UNCERTAINTY)
+        {
+            double distance = vertex->get_projected_uncertainty() / 0.1f;
+            std::tuple<int, int, int> color = valueToJet(distance);
+            point.r = std::get<0>(color);
+            point.g = std::get<1>(color);
+            point.b = std::get<2>(color);
+        }
+        else if (mesh_settings.color_mode == ColorMode::RADIUS)
+        {
+            double ratio = vertex->get_radius() / mesh_settings.radius_denominator;
+            std::tuple<int, int, int> color = valueToJet(1.0 - ratio);
+            point.r = std::get<0>(color);
+            point.g = std::get<1>(color);
+            point.b = std::get<2>(color);
+        }
+        else if (mesh_settings.color_mode == ColorMode::SURFACE_UNCERTAINTY)
+        {
+            double distance = vertex->get_surface()->get_surface_position_std_in_normal_direction() / mesh_settings.positional_uncertainty_denominator;
+            std::tuple<int, int, int> color = valueToJet(distance);
+            point.r = std::get<0>(color);
+            point.g = std::get<1>(color);
+            point.b = std::get<2>(color);
+        }
+        else if (mesh_settings.color_mode == ColorMode::MAX_DISTANCE_TRAVELLED)
+        {
+            double distance = vertex->get_surface()->get_max_distance_travelled() / 20.f;
+            std::tuple<int, int, int> color = valueToJet(distance);
+            point.r = std::get<0>(color);
+            point.g = std::get<1>(color);
+            point.b = std::get<2>(color);
+        }
+        else if (mesh_settings.color_mode == ColorMode::DISTANCE_TRAVELLED)
+        {
+            double distance = vertex->get_distance_travelled() / 20.f;
+            std::tuple<int, int, int> color = valueToJet(distance);
+            point.r = std::get<0>(color);
+            point.g = std::get<1>(color);
+            point.b = std::get<2>(color);
+        }
+        else if (mesh_settings.color_mode == ColorMode::WEIGHT)
+        {
+            const double best_weight = 1.f / (settings_.range_precision * settings_.range_precision);
+            double distance = vertex->weight_ / best_weight;
+            std::tuple<int, int, int> color = valueToJet(distance);
+            point.r = std::get<0>(color);
+            point.g = std::get<1>(color);
+            point.b = std::get<2>(color);
+        }
+
+
+        vertex_to_cloud_indices_map[vertex] = static_cast<int>(vertex_pointcloud->size());
+        vertex_pointcloud->push_back(point);
+    };
+
+    for (const std::shared_ptr<Face>& face : filtered_faces)
+    {
+        add_vertex_to_cloud(face->get_vertex(0));
+        add_vertex_to_cloud(face->get_vertex(1));
+        add_vertex_to_cloud(face->get_vertex(2));
+    }
+
+    std::cout << "prepared mesh vertices: " << vertex_pointcloud->size()
+              << " (skipped expired vertices: " << skipped_expired_vertices << ")" << std::endl;
+
     std::cout << "creating triangle mesh" << std::endl;
 
     // create triangle mesh
     pcl::PolygonMesh triangle_mesh;
     pcl::toPCLPointCloud2(*vertex_pointcloud, triangle_mesh.cloud);
+    std::size_t skipped_missing_vertices = 0;
     for (const std::shared_ptr<Face>& face : filtered_faces)
     {
         // skip if can't find all indices
-        if (vertex_to_cloud_indices_map.find(face->get_vertex(0)) == vertex_to_cloud_indices_map.end()) continue;
-        if (vertex_to_cloud_indices_map.find(face->get_vertex(1)) == vertex_to_cloud_indices_map.end()) continue;
-        if (vertex_to_cloud_indices_map.find(face->get_vertex(2)) == vertex_to_cloud_indices_map.end()) continue;
+        if (vertex_to_cloud_indices_map.find(face->get_vertex(0)) == vertex_to_cloud_indices_map.end() ||
+            vertex_to_cloud_indices_map.find(face->get_vertex(1)) == vertex_to_cloud_indices_map.end() ||
+            vertex_to_cloud_indices_map.find(face->get_vertex(2)) == vertex_to_cloud_indices_map.end())
+        {
+            skipped_missing_vertices++;
+            continue;
+        }
 
         pcl::Vertices triangle;
         triangle.vertices.push_back(vertex_to_cloud_indices_map.at(face->get_vertex(0)));
@@ -218,6 +388,12 @@ void Application<PointT>::write_mesh()
         triangle.vertices.push_back(vertex_to_cloud_indices_map.at(face->get_vertex(2)));
         triangle_mesh.polygons.push_back(triangle);
     }
+
+    // log mesh size
+    std::cout << "mesh vertices: " << vertex_pointcloud->size()
+              << " | mesh polygons: " << triangle_mesh.polygons.size()
+              << " | faces skipped (missing vertex index): " << skipped_missing_vertices
+              << std::endl;
 
     // create folder for triangle mesh if not exists
     if (!boost::filesystem::exists(settings_.save_folder))

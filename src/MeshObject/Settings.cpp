@@ -19,10 +19,12 @@ struct DatasetParameters
     double extra_radius = 0.1;
 
     // radius ratio
-    double radius_ratio = 0.02;
+    double radius_ratio = 0.04;
+
+    std::string seq_num;
 };
 
-Settings::Settings() 
+Settings::Settings()
 {
     // application settings
     std::map<std::string, DatasetParameters> dataset_map;
@@ -84,17 +86,25 @@ Settings::Settings()
     // ======= benchmark final =======
 
     dataset_map["christchurch03"] = DatasetParameters();
-    dataset_map["christchurch03"].pcd_file_folder = "/home/jiahao/datasets/spires_benchmark/christchurch03/undist-clouds-filtered/";
-    dataset_map["christchurch03"].pose_file_path = "/home/jiahao/datasets/spires_benchmark/christchurch03/gt-tum.txt";
+    dataset_map["christchurch03"].pcd_file_folder = "/datasets/spires/bin/sequences/01/pcd/";
+    dataset_map["christchurch03"].pose_file_path = "/datasets/spires/bin/sequences/01/poses.txt";
     dataset_map["christchurch03"].remove_double_return_flag = false;
+    dataset_map["christchurch03"].seq_num = "01";
     dataset_map["christchurch03"].filter_low_intensity_flag = false;
     // 290 scans
+    dataset_map["christchurch05"] = DatasetParameters();
+    dataset_map["christchurch05"].pcd_file_folder = "/datasets/spires/bin/sequences/02/pcd/";
+    dataset_map["christchurch05"].pose_file_path = "/datasets/spires/bin/sequences/02/poses.txt";
+    dataset_map["christchurch05"].remove_double_return_flag = false;
+    dataset_map["christchurch05"].filter_low_intensity_flag = false;
+    dataset_map["christchurch05"].seq_num = "02";
 
     dataset_map["keble03"] = DatasetParameters();
-    dataset_map["keble03"].pcd_file_folder = "/home/jiahao/datasets/spires_benchmark/keble03/undist-clouds-filtered/";
-    dataset_map["keble03"].pose_file_path = "/home/jiahao/datasets/spires_benchmark/keble03/gt-tum.txt";
+    dataset_map["keble03"].pcd_file_folder = "/datasets/spires/bin/sequences/00/pcd/";
+    dataset_map["keble03"].pose_file_path = "/datasets/spires/bin/sequences/00/poses.txt";
     dataset_map["keble03"].remove_double_return_flag = false;
     dataset_map["keble03"].filter_low_intensity_flag = false;
+    dataset_map["keble03"].seq_num = "00";
     // 300 scans
 
     dataset_map["observatory01"] = DatasetParameters();
@@ -104,11 +114,13 @@ Settings::Settings()
     dataset_map["observatory01"].filter_low_intensity_flag = false;
     // 300 scans
 
-    std::string dataset = "sample";
-    
-    headless_mode = false;
-    num_scans = 50;
-    save_folder = "/home/jiahao/datasets/spires_benchmark/" + dataset + "/Benchmark_final/PlanarMesh/";
+    std::string dataset = "christchurch03";
+    std::string dataset_name = "spires";
+    headless_mode = true;
+    num_scans = 30;
+
+
+    save_folder = "/app/results/" + dataset_name + "/" + dataset_map[dataset].seq_num + "/";
 
     data_loader_settings.pcd_file_folder = dataset_map[dataset].pcd_file_folder;
     data_loader_settings.pose_file_path = dataset_map[dataset].pose_file_path;
@@ -138,7 +150,7 @@ Settings::Settings()
     data_loader_settings.start_point = 0;
 
     process_every_n_points = 1;
-    
+
     fit_plane_threshold = 3;
     shuffle_pointcloud = true;
     use_radius_value = true;
@@ -158,8 +170,8 @@ Settings::Settings()
     seed_surface_area_threshold = 0.02; // below which is considered as a seed surface | 0.01 m^2 = 100 cm^2
 
     // num_of_delete_before_put_to_repeated_queue = 2;
-    
-    num_threads = 1;
+
+    num_threads = 12;
     record_countent_surface_count = false;
 
     use_queue = true;
@@ -182,7 +194,7 @@ Settings::Settings()
         log.review_surfaces = true;
         log.connect_by_edges_and_faces = true;
         log.can_merge = true;
-        log.merge_surface = true;    
+        log.merge_surface = true;
         log.duplicated_point = true;
         log.num_of_concurrent_processes = true;
         log.total_processed_points = true;
@@ -208,8 +220,8 @@ Settings::Settings()
     }
 
     // output time
-    output_time = false;
-    output_file_name = "with_sah_threads_more_iteration_" + std::to_string(num_threads) + ".txt";
+    output_time = true;
+    output_file_name = "/app/results/" + dataset_name + "/" + dataset_map[dataset].seq_num + "/runtime.txt";
     turn_off_sah = false;
 
     // interactive viewer settings
@@ -233,6 +245,10 @@ Settings::Settings()
     show_wireframe = true;
     show_sphere = false;
     number_of_spheres_to_display = 60;
+
+    // mesh export settings
+    mesh_include_seed_surfaces = true;
+    mesh_filter_faces_by_edge_length_radius = false;
 }
 
 bool Settings::edge_is_short_enough(const double& edge_length, const double& radius0, const double& radius1) const
